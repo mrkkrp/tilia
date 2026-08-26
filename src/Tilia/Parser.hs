@@ -3,29 +3,18 @@
 
 -- | Turning source text into a syntax tree and a comment stream.
 module Tilia.Parser
-  ( -- * Parsing
-    ParsedModule (..),
+  ( ParsedModule (..),
+    parseModule,
     ParseError (..),
     describeParseError,
-    parseText,
-
-    -- * Options
     ParserConfig (..),
     defaultParserConfig,
-    sourceExtensions,
-    effectiveExtensions,
-    onUnlessRefused,
-    lookupExtension,
     parserConfigFor,
-
-    -- * Pragmas that move the positions
-    movesPositions,
   )
 where
 
-import Data.List (nub)
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
+import Data.Foldable (toList)
+import Data.List (nub, sortOn)
 import Data.Text (Text)
 import GHC.Driver.Session qualified as GHC
 import Data.Text qualified as T
@@ -34,15 +23,17 @@ import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
 import GHC.Hs (HsModule (..))
 import GHC.Hs.Extension (GhcPs)
-import GHC.LanguageExtensions.Type (Extension (..))
+import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
 import GHC.Parser.Annotation (getLocA)
 import GHC.Parser.Lexer qualified as GHC
+import GHC.Types.Error qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 import Tilia.Comments (Comment, commentsOf)
+import Tilia.Pragma (effectiveExtensions)
 import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOfReal)
 
@@ -70,63 +61,24 @@ data ParsedModule = ParsedModule
     -- GHC reads pragmas from the header and nowhere else, so this is the
     -- line that decides whether a @{-# … #-}@ is a pragma at all. One
     -- written below it has no effect on compilation, and hoisting it to the
-    -- top of the file would give it one.
+    -- top of the module would change its meaning.
     pmHeaderEnd :: Maybe Span
   }
 
--- | Why a module did not parse.
-newtype ParseError = ParseError
-  { -- | Where the parser gave up.
-    peSpan :: GHC.SrcSpan
-  }
-
--- | Where the parser gave up, in a form fit to show.
---
--- Callers should not have to depend on the compiler's libraries merely to
--- report that a file did not parse, which is what turning the span into
--- text here is for.
-describeParseError :: ParseError -> Text
-describeParseError = T.pack . GHC.showSDocUnsafe . GHC.ppr . peSpan
-
--- | What the parser is allowed to accept.
-newtype ParserConfig = ParserConfig
-  { -- | Extensions to enable before parsing.
-    --
-    -- These come from the module's own @LANGUAGE@ pragmas and from the
-    -- @default-extensions@ of the package it belongs to; working out which
-    -- is not this module's business.
-    pcExtensions :: [Extension]
-  }
-
--- | What to parse with when the package says nothing.
-defaultParserConfig :: ParserConfig
-defaultParserConfig = parserConfigFor []
-
--- | What to parse with, given whatever the package had to say.
-parserConfigFor ::
-  -- | What the package puts in force
-  [Extension] ->
-  ParserConfig
-parserConfigFor package =
-  ParserConfig
-    { pcExtensions = GHC.languageExtensions (Just GHC.GHC2021) <> package
-    }
-
 -- | Parse a module.
-parseText ::
+parseModule ::
   ParserConfig ->
   -- | Path, used only in positions reported back
   FilePath ->
   -- | The source
   Text ->
   Either ParseError ParsedModule
-parseText config path source =
+parseModule config path source =
   case GHC.unP GHC.parseModule initialState of
-    GHC.PFailed pstate ->
-      Left (ParseError {peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate)})
+    GHC.PFailed pstate -> Left (whyNot pstate)
     GHC.POk pstate (GHC.L _ hsModule)
       | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
-          Left (ParseError {peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate)})
+          Left (whyNot pstate)
       | otherwise ->
           Right
             ParsedModule
@@ -136,9 +88,30 @@ parseText config path source =
                 pmHeaderEnd = headerEndOf hsModule
               }
   where
+    whyNot pstate =
+      case sortOn at (toList (GHC.getMessages (GHC.getPsErrorMessages pstate))) of
+        m : _ -> ParseError {peSpan = GHC.errMsgSpan m, peProblem = saying m}
+        [] ->
+          ParseError
+            { peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate),
+              peProblem = "parse error"
+            }
+
+    at m = case GHC.srcSpanToRealSrcSpan (GHC.errMsgSpan m) of
+      Just s -> (GHC.srcSpanStartLine s, GHC.srcSpanStartCol s)
+      Nothing -> (maxBound, maxBound)
+
+    saying =
+      T.pack
+        . GHC.showSDocUnsafe
+        . GHC.vcat
+        . GHC.unDecorated
+        . GHC.diagnosticMessage GHC.NoDiagnosticOpts
+        . GHC.errMsgDiagnostic
+
     config' =
       config
-        { pcExtensions = withImplied (pcExtensions config <> sourceExtensions source)
+        { pcExtensions = withImplied (pcExtensions config <> effectiveExtensions [] source)
         }
 
     initialState =
@@ -213,68 +186,35 @@ headerEndOf hsModule =
       | (spanStartLine a, spanStartColumn a) <= (spanStartLine b, spanStartColumn b) = a
       | otherwise = b
 
-----------------------------------------------------------------------------
--- Language pragmas
+-- | Why a module did not parse.
+data ParseError = ParseError
+  { -- | Where the parser gave up.
+    peSpan :: GHC.SrcSpan,
+    -- | GHC's rendered error message.
+    peProblem :: Text
+  }
 
--- | The extensions a module's own @LANGUAGE@ pragmas ask for.
-sourceExtensions :: Text -> [Extension]
-sourceExtensions = pragmasOver []
+-- | Present 'ParseError' in a human-friendly form.
+describeParseError :: ParseError -> Text
+describeParseError e =
+  T.pack (GHC.showSDocUnsafe (GHC.ppr (peSpan e))) <> ": " <> peProblem e
 
--- | The extensions actually in force in a module.
-effectiveExtensions ::
-  -- | What the package the module belongs to puts in force, which is its
-  -- @default-language@ and @default-extensions@ already resolved into a
-  -- set.
+-- | What the parser is allowed to accept.
+newtype ParserConfig = ParserConfig
+  { -- | Extensions to enable before parsing.
+    pcExtensions :: [Extension]
+  }
+
+-- | What to parse with when there is no package to ask.
+defaultParserConfig :: ParserConfig
+defaultParserConfig = parserConfigFor []
+
+-- | What to parse with, given whatever the package had to say.
+parserConfigFor ::
+  -- | What the package puts in force, or nothing if there is no package
   [Extension] ->
-  -- | The module's source, read here for its @LANGUAGE@ pragmas alone.
-  Text ->
-  [Extension]
-effectiveExtensions = pragmasOver
-
--- | The extensions on until a module says otherwise.
-onUnlessRefused :: [Extension]
-onUnlessRefused = [ImplicitPrelude]
-
--- | Apply a module's @LANGUAGE@ pragmas to a starting set.
-pragmasOver :: [Extension] -> Text -> [Extension]
-pragmasOver initial = foldl' apply initial . concatMap pragmaNames . pragmaBodies
-  where
-    apply acc name = case T.stripPrefix "No" name >>= lookupExtension of
-      Just off -> filter (/= off) acc
-      Nothing -> case lookupExtension name of
-        Just on | on `notElem` acc -> acc <> [on]
-        _ -> acc
-    pragmaNames body =
-      let (keyword, names) = T.break (== ' ') body
-       in if T.toUpper keyword == "LANGUAGE"
-            then filter (not . T.null) (map T.strip (T.splitOn "," names))
-            else []
-
--- | What every @{-# … #-}@ in a module has between its braces, each on one
--- line.
-pragmaBodies :: Text -> [Text]
-pragmaBodies source = case T.breakOn "{-#" source of
-  (_, rest)
-    | T.null rest -> []
-    | otherwise -> case T.breakOn "#-}" (T.drop 3 rest) of
-        (_, after) | T.null after -> []
-        (inner, after) -> T.unwords (T.words inner) : pragmaBodies (T.drop 3 after)
-
-----------------------------------------------------------------------------
--- Pragmas that move the positions
-
--- | Does this module pin its positions to somewhere else?
-movesPositions :: Text -> Bool
-movesPositions = any positional . pragmaBodies
-  where
-    positional body =
-      T.toUpper (T.takeWhile (/= ' ') body) `elem` ["LINE", "COLUMN"]
-
-lookupExtension :: Text -> Maybe Extension
-lookupExtension name = Map.lookup name extensionsByName
-
--- | Every extension this compiler knows, by the name one writes in a
--- pragma.
-extensionsByName :: Map Text Extension
-extensionsByName =
-  Map.fromList [(T.pack (show e), e) | e <- [minBound .. maxBound]]
+  -- | The resulting parser config
+  ParserConfig
+parserConfigFor [] =
+  ParserConfig {pcExtensions = GHC.languageExtensions (Just GHC.GHC2021)}
+parserConfigFor package = ParserConfig {pcExtensions = package}

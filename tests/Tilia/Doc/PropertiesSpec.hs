@@ -86,14 +86,6 @@ spec = do
     it "is idempotent under union" $
       property $ \(AnySpan a) -> a <> a === a
 
--- | Does the first span contain the second?
-covers :: Span -> Span -> Bool
-covers outer inner =
-  (spanStartLine outer, spanStartColumn outer)
-    <= (spanStartLine inner, spanStartColumn inner)
-    && (spanEndLine outer, spanEndColumn outer)
-      >= (spanEndLine inner, spanEndColumn inner)
-
 -- | Everything that is not whitespace, in order.
 --
 -- Whitespace is exactly what the engine is entitled to add, move and

@@ -134,6 +134,11 @@ data Doc
   | -- | Fence prevents comments inside from floating out and attaching to
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
+  | -- | Alternatives the preprocessor chooses between, and the condition it
+    -- chooses on.
+    DCppChoice ![(Text, Doc)] !Doc
+  | -- | A preprocessor line that is not a conditional, reproduced.
+    DCppDirective !Text
   deriving (Eq, Show)
 
 -- | Documents concatenate. @'DEmpty'@ is the unit, so a document is a
@@ -279,6 +284,24 @@ go env = \case
     Broken -> go env brokenD
   DLocated _ d -> go env d
   DFence _ d -> go env d
+  DCppChoice branches fallback ->
+    foldr (flip (.)) id . concat $
+      [ [atMargin ("#" <> guard'), go env taken]
+        | (guard', taken) <- branches
+      ]
+        <> [[atMargin "#else", go env fallback] | fallback /= DEmpty]
+        <> [[atMargin "#endif"]]
+  DCppDirective t -> atMargin ("#" <> t)
+
+-- | Put a line of text at the margin, on a line of its own.
+--
+-- A preprocessor directive is not part of the program's layout and does not
+-- take its indentation: it begins where the line begins, whatever is in
+-- force around it. The line before it is closed only if anything was
+-- written to it, so a directive following something that already ended its
+-- line does not leave an empty one behind.
+atMargin :: Text -> Out -> Out
+atMargin t = closeLine 0 . putText 0 t . closeLine 0
 
 -- | Append a fragment, emitting the line's indentation first if this is the
 -- first thing on it.

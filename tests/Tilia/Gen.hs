@@ -155,6 +155,8 @@ shrinkDoc = \case
   DVariant a b -> [DEmpty, a, b]
   DLocated s d -> [DEmpty, d] <> [DLocated s d' | d' <- shrinkDoc d]
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
+  DCppChoice bs e -> [DEmpty, e] <> map snd bs
+  DCppDirective _ -> [DEmpty]
 
 -- | Every fragment of literal text the document contains, in order.
 --
@@ -179,3 +181,5 @@ docTexts = \case
   DVariant a _ -> docTexts a
   DLocated _ d -> docTexts d
   DFence _ d -> docTexts d
+  DCppChoice bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
+  DCppDirective t -> [t]

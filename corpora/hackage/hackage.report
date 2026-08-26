@@ -1,0 +1,4199 @@
+Why every example of this corpus that is not `formatted` is not.
+
+Generated beside the manifest, and compared against nothing: this
+file is the work list, and it is free to say as much as it likes.
+
+5133 examples, 4962 formatted.
+
+==========================================================================
+broken (94)
+==========================================================================
+
+Agda-2.8.0/src/data/MAlonzo/src/MAlonzo/RTE/Float.hs
+    comments, in one configuration: `--  NOTE: Denotational equality distinguishes NaNs, so its results may vary` became `--   NOTE: Denotational equality distinguishes NaNs, so its results may vary`
+    --- input
+    +++ output
+    @@ -2,27 +2,46 @@
+    
+      module MAlonzo.RTE.Float where
+    
+    + import Data.Bifunctor (bimap, second)
+    + import Data.Function (on)
+    + import Data.Maybe (fromMaybe)
+    + import Data.Ratio (denominator, numerator, (%))
+    + import Data.Word (Word64)
+      import Prelude
+    -   ( Bool, Double, Int, Integer, Maybe(..), Ordering(..)
+    -   , Eq(..), Ord(..), Functor(..)
+    -   , Floating(..), Fractional(..), Integral(..), Num(..), Real(..), RealFloat(..), RealFrac(..)
+    -   , ($), (.), otherwise, uncurry, undefined
+    -   , (&&), fst, snd
+    -   , (^), even, fromIntegral
+    +   ( Bool,
+    +     Double,
+    +     Eq (..),
+    +     Floating (..),
+    +     Fractional (..),
+    +     Functor (..),
+    +     Int,
+    +     Integer,
+    +     Integral (..),
+    +     Maybe (..),
+    +     Num (..),
+    +     Ord (..),
+    +     Ordering (..),
+    +     Real (..),
+    +     RealFloat (..),
+    +     RealFrac (..),
+    +     even,
+    +     fromIntegral,
+    +     fst,
+    +     otherwise,
+    +     snd,
+    +     uncurry,
+    +     undefined,
+    +     ($),
+    +     (&&),
+    +     (.),
+    +     (^),
+        )
+    -
+    - import Data.Bifunctor   ( bimap, second )
+    - import Data.Function    ( on )
+    - import Data.Maybe       ( fromMaybe )
+    - import Data.Ratio       ( (%), numerator, denominator )
+    - import Data.Word        ( Word64 )
+    -
+      #if __GLASGOW_HASKELL__ >= 804
+      import GHC.Float (castDoubleToWord64, castWord64ToDouble)
+      #else
+    - import System.IO.Unsafe (unsafePerformIO)
+    - import qualified Foreign          as F
+    + import qualified Foreign as F
+      import qualified Foreign.Storable as F
+    + import System.IO.Unsafe (unsafePerformIO)
+      #endif
+    … and 149 more lines
+
+Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Pragmas.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -35,6 +35,7 @@
+          HsType Range HaskellType
+        |
+          --  ^ @COMPILE GHC X = type <type>@
+    +
+          -- | @COMPILE GHC X = data D (c₁ | ... | cₙ)
+          HsData Range HaskellType [HaskellCode]
+        | -- | @COMPILE GHC x as f@
+
+Agda-2.8.0/src/full/Agda/Interaction/EmacsCommand.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -27,6 +27,7 @@
+        | Cons (Lisp a) (Lisp a)
+        |
+          -- Cons cell.
+    +
+          -- | List.
+          L [Lisp a]
+        | Q (Lisp a)
+
+Agda-2.8.0/src/full/Agda/Interaction/Library/Base.hs
+    comments: `--` became `--   (E.g., containing spaces.)`
+    --- input
+    +++ output
+    @@ -1,55 +1,47 @@
+      -- | Basic data types for library management.
+    -
+      module Agda.Interaction.Library.Base where
+    
+    - import Prelude hiding (null)
+    -
+    - import Control.DeepSeq
+    - import qualified Control.Exception as E
+    -
+    - import Control.Monad.Except
+    - import Control.Monad.State
+    - import Control.Monad.Writer        ( WriterT, runWriterT, MonadWriter, tell )
+    - import Control.Monad.IO.Class      ( MonadIO(..) )
+    -
+    - import Data.Bifunctor              ( first , second )
+    - import Data.Char                   ( isDigit )
+    - import Data.Function               ( (&), on )
+    - import Data.Hashable               ( Hashable )
+    - import qualified Data.List         as List
+    - import Data.Map                    ( Map )
+    - import qualified Data.Map          as Map
+    - import Data.Semigroup              ( Semigroup(..) )
+    - import Data.Text                   ( Text, unpack )
+    - import qualified Data.Text         as T
+    -
+    - import GHC.Generics                ( Generic )
+    -
+    - import System.Directory
+    -
+      import Agda.Interaction.Options.Warnings
+    -
+      import Agda.Syntax.Common.Pretty
+      import Agda.Syntax.Position
+    -
+    - import Agda.Utils.IO               ( showIOException )
+    + import Agda.Utils.IO (showIOException)
+      import Agda.Utils.Lens
+    - import Agda.Utils.List             ( chopWhen )
+    - import Agda.Utils.List1            ( List1, toList )
+    - import Agda.Utils.List2            ( List2, toList )
+    - import qualified Agda.Utils.List1  as List1
+    + import Agda.Utils.List (chopWhen)
+    + import Agda.Utils.List1 (List1, toList)
+    + import qualified Agda.Utils.List1 as List1
+    + import Agda.Utils.List2 (List2, toList)
+      import Agda.Utils.Null
+    + import Control.DeepSeq
+    + import qualified Control.Exception as E
+    + import Control.Monad.Except
+    + import Control.Monad.IO.Class (MonadIO (..))
+    + import Control.Monad.State
+    + import Control.Monad.Writer (MonadWriter, WriterT, runWriterT, tell)
+    + import Data.Bifunctor (first, second)
+    + import Data.Char (isDigit)
+
+Agda-2.8.0/src/full/Agda/Interaction/Options/Types.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -117,6 +117,7 @@
+          _optUniversePolymorphism :: WithDefault 'True,
+          _optIrrelevantProjections :: WithDefault 'False,
+          -- off by default in > 2.5.4, see issue #2170
+    +
+          -- | irrelevant levels, irrelevant data matching
+          _optExperimentalIrrelevance :: WithDefault 'False,
+          _optWithoutK :: WithDefault 'False,
+
+Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -453,6 +453,7 @@
+        { whereModule :: Maybe ModuleName,
+          -- #2897: we need to restrict named where modules in refined contexts,
+          --        so remember whether it was named here
+    +
+          -- | is it an ordinary unnamed @where@?
+          whereAnywhere :: Bool,
+          -- | The declaration is a 'Section'.
+
+Agda-2.8.0/src/full/Agda/Syntax/Common/Aspect.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -93,6 +93,7 @@
+          -- NB: We put CatchallClause and CosmeticProblem last
+          -- so that they are overwritten by other,
+          -- more important, aspects in the emacs mode.
+    +
+          -- | Nothing serious, just a beauty flaw.
+          CosmeticProblem
+        | CatchallClause
+
+Agda-2.8.0/src/full/Agda/Syntax/Concrete.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -761,6 +761,7 @@
+          DisplayPragma Range Pattern Expr
+        |
+          -- Attached (more or less) pragmas handled in the nicifier (Concrete.Definitions):
+    +
+          -- | Applies to the following function clause.
+          CatchallPragma Range
+        | -- | Applies to the following function (and all that are mutually recursive with it)
+
+Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -163,6 +163,7 @@
+          TokSymbol Symbol Interval
+        |
+          -- Other tokens
+    +
+          -- | Arbitrary string (not enclosed in double quotes), used in pragmas.
+          TokString (Interval, String)
+        | TokTeX (Interval, String)
+
+Agda-2.8.0/src/full/Agda/Termination/Monad.hs
+    comments: `-- lazy by intention!` became `--   (= clause telescope).  Used to approximate termination`
+    --- input
+    +++ output
+    @@ -1,133 +1,119 @@
+    -
+      -- | The monad for the termination checker.
+      --
+      --   The termination monad @TerM@ is an extension of
+      --   the type checking monad 'TCM' by an environment
+      --   with information needed by the termination checker.
+    -
+      module Agda.Termination.Monad where
+    
+    - import Prelude hiding (null)
+    -
+    - import Control.Applicative hiding (empty)
+    -
+    - import Control.Monad.IO.Class ( MonadIO(..) )
+    - import Control.Monad.Except   ( MonadError(..) )
+    - import Control.Monad.Reader   ( MonadReader(..), ReaderT(..) )
+    -
+    - import Data.DList (DList)
+    - import qualified Data.DList as DL
+    - import Data.Semigroup ( Semigroup(..) )
+    - import Data.Set (Set)
+    - import qualified Data.Set as Set
+    -
+      import Agda.Interaction.Options (optTerminationDepth)
+    -
+      import Agda.Syntax.Common
+    + import Agda.Syntax.Common.Pretty (Pretty, prettyShow)
+    + import qualified Agda.Syntax.Common.Pretty as P
+      import Agda.Syntax.Internal
+      import Agda.Syntax.Internal.Pattern
+      import Agda.Syntax.Literal
+    -
+      import Agda.Termination.CutOff
+    - import Agda.Termination.Order (Order,le,unknown)
+    + import Agda.Termination.Order (Order, le, unknown)
+      import Agda.Termination.RecCheck (MutualNames, anyDefs)
+    -
+      import Agda.TypeChecking.Monad
+      import Agda.TypeChecking.Monad.Benchmark
+      import Agda.TypeChecking.Pretty
+      import Agda.TypeChecking.Records
+      import Agda.TypeChecking.Reduce
+      import Agda.TypeChecking.Substitute
+    -
+      import Agda.Utils.Benchmark as B
+      import Agda.Utils.Function
+      import Agda.Utils.Functor
+    + import Agda.Utils.Impossible
+      import Agda.Utils.Lens
+    - import Agda.Utils.List   ( hasElem )
+    + import Agda.Utils.List (hasElem)
+      import Agda.Utils.Maybe
+      import Agda.Utils.Monad
+      import Agda.Utils.Monoid
+      import Agda.Utils.Null
+    - import Agda.Syntax.Common.Pretty (Pretty, prettyShow)
+    - import qualified Agda.Syntax.Common.Pretty as P
+      import Agda.Utils.VarSet (VarSet)
+      impo
+
+Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
+    a configuration of the output does not parse
+    --- input
+    +++ output
+    @@ -1,137 +1,131 @@
+      {-# LANGUAGE CPP #-}
+      {-# LANGUAGE NondecreasingIndentation #-}
+    -
+      #if __GLASGOW_HASKELL__ >= 810
+      {-# OPTIONS_GHC -fmax-pmcheck-models=390 #-} -- Andreas, 2023-05-12, limit determined by binary search
+      #endif
+    
+      module Agda.TypeChecking.Conversion where
+    
+    - import Control.Arrow (second)
+    - import Control.Monad.Except ( MonadError(..) )
+    -
+    - import Data.Function (on)
+    - import Data.Semigroup ((<>))
+    - import Data.IntMap (IntMap)
+    -
+    - import qualified Data.List   as List
+    - import qualified Data.IntMap as IntMap
+    - import qualified Data.IntSet as IntSet
+    - import qualified Data.Set    as Set
+    -
+    + import Agda.Interaction.Options
+      import Agda.Syntax.Common
+    + import Agda.Syntax.Common.Pretty (prettyShow)
+      import Agda.Syntax.Internal
+      import Agda.Syntax.Internal.MetaVars
+      import Agda.Syntax.Translation.InternalToAbstract (reify)
+    -
+    - import Agda.TypeChecking.Monad
+    - import Agda.TypeChecking.MetaVars
+    - import Agda.TypeChecking.MetaVars.Occurs (killArgs,PruneResult(..),rigidVarsNotContainedIn)
+    - import Agda.TypeChecking.Names
+    - import Agda.TypeChecking.Reduce
+    - import Agda.TypeChecking.Substitute
+    - import qualified Agda.TypeChecking.SyntacticEquality as SynEq
+    - import Agda.TypeChecking.Telescope
+      import Agda.TypeChecking.Constraints
+      import Agda.TypeChecking.Conversion.Pure (pureCompareAs, runPureConversion)
+    + import Agda.TypeChecking.Datatypes (getConType, getFullyAppliedConType)
+      import Agda.TypeChecking.Forcing (isForced, nextIsForced)
+      import Agda.TypeChecking.Free
+    - import Agda.TypeChecking.Datatypes (getConType, getFullyAppliedConType)
+    - import Agda.TypeChecking.Records
+    - import Agda.TypeChecking.Pretty
+    - import Agda.TypeChecking.Injectivity
+    - import Agda.TypeChecking.Polarity
+    - import Agda.TypeChecking.SizedTypes
+    - import Agda.TypeChecking.Level
+      import Agda.TypeChecking.Implicit (implicitArgs)
+    + import Agda.TypeChecking.Injectivity
+      import Agda.TypeChecking.Irrelevance
+    + impo
+
+Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base.hs
+    comments, in one configuration: `-- XX populated by scope checker` became `--   Those most not be serialized!`
+    --- input
+    +++ output
+    @@ -1,168 +1,165 @@
+      {-# LANGUAGE CPP #-}
+    +
+      -- {-# LANGUAGE UndecidableInstances #-}  -- ghc >= 8.2, GeneralizedNewtypeDeriving MonadTransControl BlockT
+    
+      module Agda.TypeChecking.Monad.Base
+    -   ( module Agda.TypeChecking.Monad.Base
+    -   , module Agda.TypeChecking.Monad.Base.Types
+    -   , module X
+    -   , HasOptions (..)
+    -   , RecordFieldWarning
+    -   , UselessPublicReason(..)
+    -   ) where
+    -
+    - import Prelude hiding (null)
+    -
+    - import Control.Applicative hiding (empty)
+    - import Control.Arrow                ( (&&&) )
+    - import Control.Concurrent           ( forkIO )
+    - import Control.DeepSeq
+    - import qualified Control.Exception as E
+    -
+    - import Control.Monad.Except         ( MonadError(..), ExceptT(..), runExceptT )
+    - import Control.Monad.IO.Class       ( MonadIO(..) )
+    - import Control.Monad.State          ( MonadState(..), modify, StateT(..), runStateT )
+    - import Control.Monad.Reader         ( MonadReader(..), ReaderT(..), runReaderT )
+    - import Control.Monad.Writer         ( WriterT(..), runWriterT )
+    - import Control.Monad.Trans          ( MonadTrans(..), lift )
+    - import Control.Monad.Trans.Control  ( MonadTransControl(..), liftThrough )
+    - import Control.Monad.Trans.Identity ( IdentityT(..), runIdentityT )
+    - import Control.Monad.Trans.Maybe    ( MaybeT(..) )
+    -
+    - import Control.Parallel             ( pseq )
+    -
+    - import Data.Array (Ix)
+    - import Data.Function (on)
+    - import Data.Word (Word32)
+    - import Data.IntMap (IntMap)
+    - import qualified Data.IntMap as IntMap
+    - import Data.IntSet (IntSet)
+    - import qualified Data.IntSet as IntSet
+    - import qualified Data.List as List
+    - import Data.Maybe
+    - import Data.Map (Map)
+    - import qualified Data.Map as Map -- hiding (singleton, null, empty)
+    - import Data.Sequence (Seq)
+    - import Data.Set (Set, toList, fromList)
+    - import qualified Data.Set as Set -- hiding (singleton, null, empty)
+    - import Data.HashMap.Strict (Ha
+
+Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Modality.hs
+    a different program: HsModule > a different number of declarations
+    --- input
+    +++ output
+    @@ -14,27 +14,21 @@
+    
+      See "Agda.TypeChecking.Irrelevance".
+      -}
+    -
+      module Agda.TypeChecking.Monad.Modality where
+    
+    - import qualified Data.Map as Map
+    -
+      import Agda.Interaction.Options
+    -
+      import Agda.Syntax.Common
+    -
+      import Agda.TypeChecking.Monad.Base
+      import Agda.TypeChecking.Monad.Context
+      import Agda.TypeChecking.Monad.Debug
+      import Agda.TypeChecking.Monad.Env
+    -
+      import Agda.Utils.Function
+      import Agda.Utils.Lens
+      import Agda.Utils.Monad
+    + import qualified Data.Map as Map
+    
+      -- | data 'Relevance'
+      --   see "Agda.Syntax.Common".
+    -
+      -- * Operations on 'Dom'.
+    
+      -- | Prepare parts of a parameter telescope for abstraction in constructors
+    @@ -46,8 +40,9 @@
+    
+      -- | Modify the context whenever going from the l.h.s. (term side)
+      --   of the typing judgement to the r.h.s. (type side).
+    - workOnTypes :: (MonadTCEnv m, HasOptions m, MonadDebug m)
+    -             => m a -> m a
+    + workOnTypes ::
+    +   (MonadTCEnv m, HasOptions m, MonadDebug m) =>
+    +   m a -> m a
+      workOnTypes cont = do
+        allowed <- optExperimentalIrrelevance <$> pragmaOptions
+        verboseBracket "tc.irr" 60 "workOnTypes" $ workOnTypes' allowed cont
+    @@ -55,18 +50,22 @@
+      -- | Internal workhorse, expects value of --experimental-irrelevance flag
+      --   as argument.
+      workOnTypes' :: (MonadTCEnv m) => Bool -> m a -> m a
+    - workOnTypes' experimental
+    -   = applyWhen experimental (modifyContextInfo $ mapRelevance irrelevantToShapeIrrelevant)
+    -   . applyQuantityToJudgement zeroQuantity
+    -   . applyPolarityToContext (withStandardLock UnusedPolarity)
+    -   . typeLevelReductions
+    -   . localTC (\ e -> e { envWorkingOnTypes = True })
+    + workOnTypes' experimental =
+    +   applyWhen experimental (modifyContextInfo $ mapRelevance irrelevantToShapeIrrelevant)
+    +     . applyQuantityToJudgement zeroQuantity
+    +     . applyPolarityToContext (withStandardLock UnusedPolarity)
+    +     . typeLevelReductions
+    +     . localTC (\e -> e {envWorkingOnTypes
+
+Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -164,6 +164,7 @@
+      #endif
+              <-
+              liftIO $ readIORef ioref
+    +
+      #ifdef DEBUG_SERIALISATION
+            tickN (kind ++ "  (fresh)") $ fromIntegral fresh
+
+Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -355,7 +355,7 @@
+          Record
+            { recPars = np,
+              recClause = cl,
+    -         recTel = tel{-, recArgOccurrences = occ-}
+    +         recTel = tel {-, recArgOccurrences = occ-}
+            } ->
+              d
+                { recPars = np - size args,
+
+Agda-2.8.0/src/full/Agda/TypeChecking/With.hs
+    comments: `-- @Δ₁@             part of context needed for with arguments and their types.` became `--`
+    --- input
+    +++ output
+    @@ -1,27 +1,17 @@
+    - {-# OPTIONS_GHC -Wunused-imports #-}
+    -
+      {-# LANGUAGE NondecreasingIndentation #-}
+    + {-# OPTIONS_GHC -Wunused-imports #-}
+    
+      module Agda.TypeChecking.With where
+    
+    - import Prelude hiding ((!!))
+    -
+    - import Control.Monad.Writer (WriterT, runWriterT, tell)
+    -
+    - import qualified Data.List as List
+    - import Data.Maybe
+    - import Data.Foldable ( foldrM )
+    - import Data.Semigroup ( sconcat )
+    -
+    - import Agda.Syntax.Common
+    - import Agda.Syntax.Internal as I
+    - import Agda.Syntax.Internal.Pattern
+      import qualified Agda.Syntax.Abstract as A
+      import Agda.Syntax.Abstract.Pattern as A
+      import Agda.Syntax.Abstract.Views
+    + import Agda.Syntax.Common
+    + import Agda.Syntax.Common.Pretty (prettyShow)
+      import Agda.Syntax.Info
+    + import Agda.Syntax.Internal as I
+    + import Agda.Syntax.Internal.Pattern
+      import Agda.Syntax.Position
+    -
+      import Agda.TypeChecking.Abstract
+      import Agda.TypeChecking.Datatypes
+      import Agda.TypeChecking.EtaContract
+    @@ -29,29 +19,32 @@
+      import Agda.TypeChecking.Monad
+      import Agda.TypeChecking.Patterns.Abstract
+      import Agda.TypeChecking.Pretty
+    - import Agda.TypeChecking.Primitive ( getRefl )
+    + import Agda.TypeChecking.Primitive (getRefl)
+      import Agda.TypeChecking.Records
+      import Agda.TypeChecking.Reduce
+      import Agda.TypeChecking.Rules.LHS.Implicit
+    - import Agda.TypeChecking.Rules.LHS.Problem (ProblemEq(..))
+    + import Agda.TypeChecking.Rules.LHS.Problem (ProblemEq (..))
+      import Agda.TypeChecking.Substitute
+      import Agda.TypeChecking.Telescope
+      import Agda.TypeChecking.Telescope.Path
+    - import Agda.TypeChecking.Warnings ( warning )
+    -
+    + import Agda.TypeChecking.Warnings (warning)
+      import Agda.Utils.Functor
+    + import Agda.Utils.Impossible
+      import Agda.Utils.List
+    - import Agda.Utils.List1 ( List1, pattern (:|) )
+    + import Agda.Utils.List1 (List1, pattern (:|))
+      import qualified Agda.Utils.List1 as List1
+      import Agda.Utils.Ma
+
+Agda-2.8.0/src/full/Agda/Utils/Float.hs
+    comments: `--  NOTE: Denotational equality distinguishes NaNs, so its results may vary` became `--   NOTE: Denotational equality distinguishes NaNs, so its results may vary`
+    --- input
+    +++ output
+    @@ -1,63 +1,59 @@
+    -
+      -- | Logically consistent comparison of floating point numbers.
+    -
+      module Agda.Utils.Float
+    -   ( asFinite
+    -   , isPosInf
+    -   , isNegInf
+    -   , isPosZero
+    -   , isNegZero
+    -   , isSafeInteger
+    -   , doubleEq
+    -   , doubleLe
+    -   , doubleLt
+    -   , intToDouble
+    -   , doublePlus
+    -   , doubleMinus
+    -   , doubleTimes
+    -   , doubleNegate
+    -   , doubleDiv
+    -   , doublePow
+    -   , doubleSqrt
+    -   , doubleExp
+    -   , doubleLog
+    -   , doubleSin
+    -   , doubleCos
+    -   , doubleTan
+    -   , doubleASin
+    -   , doubleACos
+    -   , doubleATan
+    -   , doubleATan2
+    -   , doubleSinh
+    -   , doubleCosh
+    -   , doubleTanh
+    -   , doubleASinh
+    -   , doubleACosh
+    -   , doubleATanh
+    -   , doubleRound
+    -   , doubleFloor
+    -   , doubleCeiling
+    -   , doubleDenotEq
+    -   , doubleDenotOrd
+    -   , doubleToWord64
+    -   , doubleToRatio
+    -   , ratioToDouble
+    -   , doubleDecode
+    -   , doubleEncode
+    -   , toStringWithoutDotZero
+    -   ) where
+    -
+    - import Data.Bifunctor   ( second )
+    - import Data.Function    ( on )
+    - import Data.Maybe       ( fromMaybe )
+    - import Data.Ratio       ( (%), numerator, denominator )
+    - import Data.Word        ( Word64 )
+    -
+    - import Agda.Utils.List  ( stripSuffix )
+    +   ( asFinite,
+    +     isPosInf,
+    +     isNegInf,
+    … and 210 more lines
+
+Agda-2.8.0/src/full/Agda/Utils/List1.hs
+    a different program, in one configuration: HsModule > XModulePs > Just > L > WithHsDocIdentifiers > a documentation comment changed
+    --- input
+    +++ output
+    @@ -1,4 +1,5 @@
+      {-# LANGUAGE CPP #-}
+    + {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+    
+      -- | Non-empty lists.
+      --
+    @@ -13,49 +14,46 @@
+      --     import qualified Agda.Utils.List1 as List1
+      --
+      --   @
+    -
+    - {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+    -   -- because of https://gitlab.haskell.org/ghc/ghc/issues/10339
+    + -- because of https://gitlab.haskell.org/ghc/ghc/issues/10339
+    
+      module Agda.Utils.List1
+    -   ( module Agda.Utils.List1
+    -   , module List1
+    -   , module IsList
+    -   , module Unzip
+    -   ) where
+    -
+    - import Prelude hiding (filter, unzip)
+    +   ( module Agda.Utils.List1,
+    +     module List1,
+    +     module IsList,
+    +     module Unzip,
+    +   )
+    + where
+    
+      import Control.Arrow ((&&&))
+      import Control.Monad (filterM)
+      import qualified Control.Monad as List (zipWithM, zipWithM_)
+    -
+      import qualified Data.Either as Either
+    - import Data.Function ( on )
+    + import Data.Function (on)
+      import qualified Data.List as List
+    - import qualified Data.Maybe as Maybe
+    -
+      import Data.List.NonEmpty as List1 hiding (fromList, toList, unzip)
+      import qualified Data.List.NonEmpty as List1 (toList)
+    + import qualified Data.Maybe as Maybe
+    + import Prelude hiding (filter, unzip)
+    
+      -- Prevent warning -Wx-data-list-nonempty-unzip
+    +
+      #if MIN_VERSION_base(4,19,0)
+      import Data.Functor as Unzip (unzip)
+      #else
+      import Data.List.NonEmpty as Unzip (unzip)
+      #endif
+    -
+    - import GHC.Exts as IsList ( IsList(..) )
+    -
+    - import Agda.Utils.Functor ((<.>), (<&>))
+    - import Agda.Utils.Null (Null(..))
+    + import Agda.Utils.Functor ((<&>), (<.>))
+      import qualified Agda.Utils.List as List
+    + import Agda.Utils.Null (Null (..))
+    … and 303 more lines
+
+Agda-2.8.0/src/setup/Agda/Setup.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -17,7 +17,6 @@
+      import Data.Functor ((<&>))
+      import Data.List (intercalate)
+      import Language.Haskell.TH.Syntax (qAddDependentFile, runIO)
+    -
+      #if !MIN_VERSION_bytestring(0,11,2)
+      -- Import instance Lift ByteString if not supplied by bytestring.
+    
+    @@ -26,7 +25,6 @@
+      import Agda.Setup.DataFiles (dataFiles, dataPath)
+      import Agda.VersionCommit (versionWithCommitInfo)
+      import qualified Paths_Agda as Paths
+    -
+      #if !MIN_VERSION_bytestring(0,11,2)
+      #else
+      -- Import instance Lift ByteString if not supplied by bytestring.
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/State.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -19,6 +19,7 @@
+      data State
+        = MkState
+        -- static
+    +
+        { -- | the current terminal
+          terminal :: Terminal,
+          -- | maximum number of successful tests needed
+    @@ -36,6 +37,7 @@
+          maxTestSize :: !Int,
+    
+          -- dynamic
+    +
+          -- | the current number of tests that have succeeded
+          numSuccessTests :: !Int,
+          -- | the current number of discarded tests
+    @@ -56,6 +58,7 @@
+          randomSeed :: !QCGen,
+    
+          -- shrinking
+    +
+          -- | number of successful shrinking steps so far
+          numSuccessShrinks :: !Int,
+          -- | number of failed shrinking steps since the last successful shrink
+
+bifunctors-5.6.3/src/Data/Bifunctor/TH.hs
+    comments, in one configuration: the module's 73 documentation comments became 71
+    --- input
+    +++ output
+    @@ -1,9 +1,11 @@
+    - {-# LANGUAGE CPP #-}
+      {-# LANGUAGE BangPatterns #-}
+    + {-# LANGUAGE CPP #-}
+      {-# LANGUAGE PatternGuards #-}
+      {-# LANGUAGE ScopedTypeVariables #-}
+      {-# LANGUAGE Unsafe #-}
+    +
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Copyright   :  (C) 2008-2016 Edward Kmett, (C) 2015-2016 Ryan Scott
+      -- License     :  BSD-style (see the file LICENSE)
+    @@ -16,57 +18,58 @@
+      -- or 'Bitraversable' instances, or to splice their functions directly into
+      -- source code. You need to enable the @TemplateHaskell@ language extension
+      -- in order to use this module.
+    +
+      ----------------------------------------------------------------------------
+    
+    - module Data.Bifunctor.TH (
+    -     -- * @derive@- functions
+    + module Data.Bifunctor.TH
+    +   ( -- * @derive@- functions
+          -- $derive
+    -     -- * @make@- functions
+          -- $make
+    -     -- * 'Bifunctor'
+    -     deriveBifunctor
+    -   , deriveBifunctorOptions
+    -   , makeBimap
+    -   , makeBimapOptions
+    +     deriveBifunctor,
+    +     deriveBifunctorOptions,
+    +     makeBimap,
+    +     makeBimapOptions,
+    +
+          -- * 'Bifoldable'
+    -   , deriveBifoldable
+    -   , deriveBifoldableOptions
+    -   , makeBifold
+    -   , makeBifoldOptions
+    -   , makeBifoldMap
+    -   , makeBifoldMapOptions
+    -   , makeBifoldr
+    -   , makeBifoldrOptions
+    -   , makeBifoldl
+    -   , makeBifoldlOptions
+    +     deriveBifoldable,
+    +     deriveBifoldableOptions,
+    +     makeBifold,
+    +     makeBifoldOptions,
+    +     makeBifoldMap,
+    +     makeBifoldMapOptions,
+    +     makeBifoldr,
+    +     makeBifoldrOptions,
+    +     makeBifoldl,
+    +     makeBifoldlOptions,
+    +
+          -- * 'Bitraversable'
+    … and 1492 more lines
+
+blaze-markup-0.8.3.0/src/Text/Blaze.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -92,13 +92,13 @@
+      where
+    
+      import Data.Int (Int32, Int64)
+    - import Data.Monoid (mconcat)
+    - import Data.Word (Word, Word32, Word64)
+    - import Numeric.Natural (Natural)
+      import Data.List.NonEmpty (NonEmpty (..))
+    + import Data.Monoid (mconcat)
+      import Data.Text (Text)
+      import qualified Data.Text.Lazy as LT
+      import qualified Data.Text.Lazy.Builder as LTB
+    + import Data.Word (Word, Word32, Word64)
+    + import Numeric.Natural (Natural)
+      import Text.Blaze.Internal
+    
+      -- | Class allowing us to use a single function for Markup values
+    @@ -381,11 +381,11 @@
+    
+      import Data.Int (Int32, Int64)
+      import Data.Monoid (mconcat)
+    - import Data.Word (Word, Word32, Word64)
+    - import Numeric.Natural (Natural)
+      import Data.Text (Text)
+      import qualified Data.Text.Lazy as LT
+      import qualified Data.Text.Lazy.Builder as LTB
+    + import Data.Word (Word, Word32, Word64)
+    + import Numeric.Natural (Natural)
+      import Text.Blaze.Internal
+    
+      -- | Class allowing us to use a single function for Markup values
+    @@ -662,12 +662,12 @@
+      where
+    
+      import Data.Int (Int32, Int64)
+    - import Data.Monoid (mconcat)
+    - import Data.Word (Word, Word32, Word64)
+      import Data.List.NonEmpty (NonEmpty (..))
+    + import Data.Monoid (mconcat)
+      import Data.Text (Text)
+      import qualified Data.Text.Lazy as LT
+      import qualified Data.Text.Lazy.Builder as LTB
+    + import Data.Word (Word, Word32, Word64)
+      import Text.Blaze.Internal
+    
+      -- | Class allowing us to use a single function for Markup values
+    @@ -946,10 +946,10 @@
+    
+      import Data.Int (Int32, Int64)
+      import Data.Monoid (mconcat)
+    - import Data.Word (Word, Word32, Word64)
+      import Data.Text (Text)
+      import qualified Data.Text.Lazy as LT
+      import qualified Data.Text.Lazy.Builder as LTB
+    + import Data.Word (Word, Word32, Word64)
+      import Text.Blaze.Internal
+    
+      -- | Class allowing us to use a single function for Markup values
+
+brick-2.13/src/Brick/Types/Internal.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -401,6 +401,7 @@
+          -- If you're writing a widget, this should make it easier for you to
+          -- do so; but beware this lack of invariant if you are consuming
+          -- widgets.
+    +
+          -- | Places where we may rewrite the edge of the image when
+          -- placing this widget next to another one.
+          borders :: !(BorderMap DynBorder)
+
+brittany-0.14.0.2/data/Test170.hs
+    comments: gained `-- !`
+    --- input
+    +++ output
+    @@ -1,19 +1,14 @@
+    - import           Test                                     ( Thing
+    -                                                             ( -- Comments
+    -                                                             )
+    -                                                           )
+    - import           Test                                     ( Thing
+    -                                                             ( Item
+    -                                                             -- and Comment
+    -                                                             )
+    -                                                           )
+    - import           Test                                     ( Thing
+    -                                                             ( With
+    -                                                             -- Comments
+    -                                                             , and
+    -                                                             -- also
+    -                                                             , items
+    -                                                             -- !
+    -                                                             )
+    -                                                           )
+    + import Test
+    +   ( Thing
+    +       ( Item,
+    +         -- and Comment
+    +         With,
+    +         -- Comments
+    +         and,
+    +         -- also
+    +         items
+    +       ), -- Comments
+    +   )
+    
+    + -- !
+    +
+
+brittany-0.14.0.2/data/Test487.hs
+    comments: gained `-- and Comment`
+    --- input
+    +++ output
+    @@ -1,28 +1,21 @@
+      -- brittany { lconfig_columnAlignMode: { tag: ColumnAlignModeDisabled }, lconfig_indentPolicy: IndentPolicyLeft }
+      import Test
+        ( Thing
+    -     ( With
+    -     -- Comments
+    -     , and
+    -     -- also
+    -     , items
+    +       ( Item,
+    +         With,
+    +         -- Comments
+    +         and,
+    +         -- also
+    +         items
+    +       ),
+          -- !
+    -     )
+        )
+    - import Test
+    -   ( Thing
+    -     ( Item
+    -     -- and Comment
+    -     )
+    -   )
+    - import Test
+    -   ( Thing
+    -     ( With
+    -     -- Comments
+    -     , and
+    -     -- also
+    -     , items
+    -     -- !
+    -     )
+    -   )
+    
+    + -- and Comment
+    +
+    + -- Comments
+    +
+    + -- also
+    +
+    + -- !
+    +
+
+brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -44,6 +44,7 @@
+          _lconfig_indentListSpecial :: f (Last Bool), -- use some special indentation for ","
+          -- when creating zero-indentation
+          -- multi-line list literals.
+    +
+          -- | for import statement layouting, column at which to align the
+          -- elements to be imported from a module.
+          -- It is expected that importAsColumn >= importCol.
+
+conduit-1.3.6.1/test/Data/Conduit/StreamSpec.hs
+    comments, in one configuration: `-- twist.  Rather than returning a list, it returns any MonadPlus type of your` became `--  twist.  Rather than returning a list, it returns any MonadPlus type of your`
+    --- input
+    +++ output
+    @@ -1,319 +1,336 @@
+    - {-# LANGUAGE ViewPatterns #-}
+    + {-# LANGUAGE CPP #-}
+      {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+    - {-# LANGUAGE ScopedTypeVariables #-}
+      {-# LANGUAGE RankNTypes #-}
+    - {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE ScopedTypeVariables #-}
+    + {-# LANGUAGE ViewPatterns #-}
+    +
+      module Data.Conduit.StreamSpec where
+    
+    - import           Control.Applicative
+    + import Control.Applicative
+    + import Control.Monad (MonadPlus (..), liftM)
+      import qualified Control.Monad
+    - import           Control.Monad (MonadPlus(..), liftM)
+    - import           Control.Monad.Identity (Identity, runIdentity)
+    - import           Control.Monad.State (StateT(..), get, put)
+    - import           Data.Conduit
+    - import           Data.Conduit.Internal.Fusion
+    - import           Data.Conduit.Internal.List.Stream
+    - import           Data.Conduit.List
+    + import Control.Monad.Identity (Identity, runIdentity)
+    + import Control.Monad.State (StateT (..), get, put)
+    + import Data.Conduit
+    + import Data.Conduit.Internal.Fusion
+    + import Data.Conduit.Internal.List.Stream
+    + import Data.Conduit.List
+      import qualified Data.Foldable as F
+    - import           Data.Function (on)
+    + import Data.Function (on)
+      import qualified Data.List
+      import qualified Data.Maybe
+    - import           Data.Monoid (Monoid(..))
+    - import           Data.Semigroup (Semigroup(..))
+    - import           Prelude
+    -     ((.), ($), (>>=), (=<<), return, (==), Int, id, Maybe(..), Monad,
+    -      Eq, Show, String, Functor, fst, snd)
+    - import qualified Prelude
+    + import Data.Monoid (Monoid (..))
+    + import Data.Semigroup (Semigroup (..))
+      import qualified Safe
+    - import           Test.Hspec
+    - import           Test.QuickCheck
+    + import Test.Hspec
+    + import Test.QuickCheck
+    + import Prelude
+    +   ( Eq,
+    +     Functor,
+    +     Int,
+    +     Maybe (..),
+    +
+
+distributed-process-0.7.8/src/Control/Distributed/Process/Internal/Closure/TH.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -57,7 +57,6 @@
+          varE,
+          varT,
+        )
+    - import Prelude hiding (any, succ)
+      import Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
+      import Control.Distributed.Process.Internal.Types (Process)
+      import Control.Distributed.Process.Serializable
+    @@ -81,6 +80,7 @@
+          TypVar,
+          Zero,
+        )
+    + import Prelude hiding (any, succ)
+    
+      --------------------------------------------------------------------------------
+      -- User-level API                                                             --
+
+distributed-process-0.7.8/src/Control/Distributed/Process/Internal/WeakTQueue.hs
+    comments: `-- 'TQueue's using 'System.IO.Unsafe.unsafePerformIO', because using` became `--  'TQueue's using 'System.IO.Unsafe.unsafePerformIO', because using`
+    --- input
+    +++ output
+    @@ -1,98 +1,108 @@
+    - {-# LANGUAGE CPP  #-}
+    - {-# LANGUAGE DeriveDataTypeable  #-}
+    - {-# LANGUAGE MagicHash, UnboxedTuples #-}
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE MagicHash #-}
+    + {-# LANGUAGE UnboxedTuples #-}
+    +
+      -- | Clone of Control.Concurrent.STM.TQueue with support for mkWeakTQueue
+      --
+      -- Not all functionality from the original module is available: unGetTQueue,
+      -- peekTQueue and tryPeekTQueue are missing. In order to implement these we'd
+      -- need to be able to touch# the write end of the queue inside unGetTQueue, but
+      -- that means we need a version of touch# that works within the STM monad.
+    - module Control.Distributed.Process.Internal.WeakTQueue (
+    -   -- * Original functionality
+    -   TQueue,
+    -   newTQueue,
+    -   newTQueueIO,
+    -   readTQueue,
+    -   tryReadTQueue,
+    -   writeTQueue,
+    -   isEmptyTQueue,
+    -   -- * New functionality
+    -   mkWeakTQueue
+    -   ) where
+    + module Control.Distributed.Process.Internal.WeakTQueue
+    +   ( -- * Original functionality
+    +     TQueue,
+    +     newTQueue,
+    +     newTQueueIO,
+    +     readTQueue,
+    +     tryReadTQueue,
+    +     writeTQueue,
+    +     isEmptyTQueue,
+    
+    - import Prelude hiding (read)
+    - import GHC.Conc
+    +     -- * New functionality
+    +     mkWeakTQueue,
+    +   )
+    + where
+    +
+      import Data.Typeable (Typeable)
+    - import GHC.IO (IO(IO), unIO)
+    + import GHC.Conc
+      import GHC.Exts (mkWeak#)
+    - import GHC.Weak (Weak(Weak))
+    + import GHC.IO (IO (IO), unIO)
+    + import GHC.Weak (Weak (Weak))
+    + import Prelude hiding (read)
+    
+      --------------------------------------------------------------------------------
+      -- Original functionality                                                     --
+      --------------------------------------------------------------------------------
+    
+      -- | 'TQueue' is an abstract type representing an unbounded FIFO channel.
+    - data T
+
+dlist-1.0/Data/DList.hs
+    a configuration of the input does not parse
+    --- input
+    +++ output
+    @@ -2,11 +2,13 @@
+      {-# LANGUAGE CPP #-}
+    
+      -- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
+    +
+      #if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 800
+      {-# LANGUAGE PatternSynonyms #-}
+      #endif
+    
+      -- CPP: GHC >= 7.8 for Safe Haskell
+    +
+      #if __GLASGOW_HASKELL__ >= 708
+      {-
+    
+    @@ -37,27 +39,40 @@
+      efficiently.
+    
+      -}
+    +
+      {- ORMOLU_ENABLE -}
+    
+      module Data.DList
+        ( -- * Difference List Type
+    -
+    - -- CPP: GHC >= 8 for pattern synonyms allowed in the constructor
+      #if __GLASGOW_HASKELL__ >= 800
+    +
+    +     -- CPP: GHC >= 8 for pattern synonyms allowed in the constructor
+    +
+          DList (Nil, Cons),
+    +
+    +     -- * Conversion
+      #else
+    +
+    +     -- CPP: GHC >= 8 for pattern synonyms allowed in the constructor
+    +
+          DList,
+    
+    - -- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
+      #if __GLASGOW_HASKELL__ >= 708
+    +
+    +     -- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
+    +
+          -- ** Bundled Patterns
+          pattern Nil,
+          pattern Cons,
+    - #endif
+    
+    - #endif
+    +     -- * Conversion
+    + #else
+    
+    +     -- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
+    +
+          -- * Conversion
+    + #endif
+    + #endif
+          fromList,
+          toList,
+          apply,
+
+dlist-1.0/Data/DList/Unsafe.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -1,7 +1,6 @@
+      -----------------------------------------------------------------------------
+    
+      {-# LANGUAGE CPP #-}
+    -
+      #if __GLASGOW_HASKELL__ >= 708
+      -- CPP: GHC >= 7.8 for Safe Haskell
+
+dlist-1.0/tests/DListProperties.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -6,7 +6,6 @@
+      #if __GLASGOW_HASKELL__ >= 708
+      -- For the IsList test
+      {-# LANGUAGE OverloadedLists #-}
+    -
+      #if __GLASGOW_HASKELL__ == 708
+      -- CPP: GHC == 7.8 for using pattern synonyms
+
+dlist-1.0/tests/ImportUnsafe.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -7,7 +7,6 @@
+      {-# LANGUAGE Safe #-}
+    
+      #else
+    -
+      #error "Your GHC does not support Safe Haskell. That's okay!"
+    
+      #endif
+
+dlist-1.0/tests/Main.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -26,6 +26,7 @@
+      main :: IO ()
+      main = do
+        DListProperties.test
+    +
+      #if __GLASGOW_HASKELL__ >= 800
+        -- CPP: GHC >= 8 for DNonEmpty
+
+fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/Types.hs
+    comments: `--` became `-- possibly, does not even exist). For example:`
+    --- input
+    +++ output
+    @@ -1,43 +1,44 @@
+      {-# OPTIONS -fno-warn-name-shadowing #-}
+    - {-# LANGUAGE CPP                #-}
+    + {-# LANGUAGE CPP #-}
+      {-# LANGUAGE DeriveDataTypeable #-}
+    - {-# LANGUAGE DeriveFoldable     #-}
+    - {-# LANGUAGE DeriveFunctor      #-}
+    - {-# LANGUAGE DeriveTraversable  #-}
+    - {-# LANGUAGE NoImplicitPrelude  #-}
+    + {-# LANGUAGE DeriveFoldable #-}
+    + {-# LANGUAGE DeriveFunctor #-}
+    + {-# LANGUAGE DeriveTraversable #-}
+      {-# LANGUAGE StandaloneDeriving #-}
+    + {-# LANGUAGE NoImplicitPrelude #-}
+    +
+      module Language.Haskell.Names.Types
+    -   ( Error (..)
+    -   , ExtensionSet
+    -   , GName (..)
+    -   , HasOrigName (..)
+    -   , ModuleNameS
+    -   , NameInfo (..)
+    -   , NameS
+    -   , OrigName (..)
+    -   , Scoped (..)
+    -   , SymTypeInfo (..)
+    -   , SymValueInfo (..)
+    -   , Symbols (..)
+    -   , mkTy
+    -   , mkVal
+    -   , ppError
+    -   , ppGName
+    -   , ppOrigName
+    -   , sLoc
+    -   , tySyms
+    -   , valSyms
+    -   ) where
+    +   ( Error (..),
+    +     ExtensionSet,
+    +     GName (..),
+    +     HasOrigName (..),
+    +     ModuleNameS,
+    +     NameInfo (..),
+    +     NameS,
+    +     OrigName (..),
+    +     Scoped (..),
+    +     SymTypeInfo (..),
+    +     SymValueInfo (..),
+    +     Symbols (..),
+    +     mkTy,
+    +     mkVal,
+    +     ppError,
+    +     ppGName,
+    +     ppOrigName,
+    +     sLoc,
+    +     tySyms,
+    +     valSyms,
+    +   )
+    + where
+    
+    … and 327 more lines
+
+hakyll-4.17.0.0/lib/Hakyll/Core/Rules/Internal.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -19,7 +19,6 @@
+      import Control.Monad.Fail (MonadFail)
+      #endif
+      import Control.Monad.RWS (RWST, runRWST)
+    -
+      #if !MIN_VERSION_base(4,13,0)
+      #else
+      --------------------------------------------------------------------------------
+
+hashable-1.5.1.0/tests/Regress.hs
+    formatting changed how many configurations there are, from 6 to 8
+    --- input
+    +++ output
+    @@ -4,126 +4,190 @@
+    
+      module Regress (regressions) where
+    
+    - import Test.Tasty (TestTree, testGroup)
+      import Control.Monad (when)
+    - import Test.Tasty.HUnit (testCase, Assertion, assertFailure, (@?=))
+    - import Test.Tasty.QuickCheck (testProperty)
+    - import GHC.Generics (Generic)
+    - import Data.List (nub)
+    - import Data.Fixed (Pico)
+    - import Data.Text (Text)
+      import Data.ByteString (ByteString)
+    -
+    - import qualified Data.Text.Lazy as TL
+      import qualified Data.ByteString.Char8 as BS8
+      import qualified Data.ByteString.Lazy as BSL
+      import qualified Data.ByteString.Lazy.Char8 as BSL8
+    -
+    + import Data.Fixed (Pico)
+    + import Data.List (nub)
+    + import Data.Text (Text)
+    + import qualified Data.Text.Lazy as TL
+    + import GHC.Generics (Generic)
+    + import Test.Tasty (TestTree, testGroup)
+    + import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
+    + import Test.Tasty.QuickCheck (testProperty)
+      #ifdef HAVE_MMAP
+      import qualified Regress.Mmap as Mmap
+      #endif
+    -
+      import Data.Hashable
+    
+      #include "MachDeps.h"
+    
+    - assertInequal :: Eq a => String -> a -> a -> Assertion
+    + assertInequal :: (Eq a) => String -> a -> a -> Assertion
+      assertInequal msg x y
+    -     | x == y    = assertFailure msg
+    -     | otherwise = return ()
+    +   | x == y = assertFailure msg
+    +   | otherwise = return ()
+    
+      regressions :: [TestTree]
+    - regressions = [] ++
+    + regressions =
+    +   []
+      #ifdef HAVE_MMAP
+    -     Mmap.regressions ++
+    -     [ testCase "Fixed" $ do
+    -         (hash (1 :: Pico) == hash (2 :: Pico)) @?= False
+    -     ] ++
+    - #endif
+    -     [ testGroup "Generic: sum of nullary constructors"
+    -         [ testCase "0" $ nullaryCase 0 S0
+    -         , testCase "1" $ nullaryCase 1 S1
+    -         , testCase "2" $ nullaryCase 2 S2
+    -         , testCase "3" $ nullaryCase 3 S3
+    -         , testCase "4" $ nullaryCase 4 S4
+    -         ]
+    … and 214 more lines
+
+hledger-1.52.1/Hledger/Cli/Commands/Setup.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -44,6 +44,7 @@
+      Check and show the status of the hledger installation.
+    
+      -}
+    +
+      -- {-# OPTIONS_GHC -Wno-unused-matches #-}
+    
+      module Hledger.Cli.Commands.Setup
+
+hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -78,17 +78,21 @@
+      #endif
+      import Control.Concurrent
+      import Data.Bool as Imports (bool)
+    + #ifndef __MHS__
+    + import GHC.IO.Exception
+    +   ( IOErrorType (..),
+    +     ioe_type,
+    +   )
+    + #endif
+      import System.Environment as Imports (lookupEnv)
+    - import Text.Read as Imports (readMaybe)
+    - import
+      #ifndef __MHS__
+    -   GHC.IO.Exception
+      #else
+    -   System.IO.Error
+    - #endif
+    + import System.IO.Error
+        ( IOErrorType (..),
+          ioe_type,
+        )
+    + #endif
+    + import Text.Read as Imports (readMaybe)
+    
+      isUnsupportedOperation :: IOError -> Bool
+      isUnsupportedOperation e = ioe_type e == UnsupportedOperation
+
+hspec-core-2.11.17/src/Test/Hspec/Core/FailureReport.hs
+    a configuration of the output does not parse
+    --- input
+    +++ output
+    @@ -1,46 +1,48 @@
+      {-# LANGUAGE CPP #-}
+    - module Test.Hspec.Core.FailureReport (
+    -   FailureReport (..)
+    - , writeFailureReport
+    - , readFailureReport
+    - ) where
+    
+    + module Test.Hspec.Core.FailureReport
+    +   ( FailureReport (..),
+    +     writeFailureReport,
+    +     readFailureReport,
+    +   )
+    + where
+    +
+      #if !defined(__GHCJS__) && !defined(__MHS__)
+      -- ghcjs currently does not support setting environment variables
+      -- (https://github.com/ghcjs/ghcjs/issues/263). Since writing a failure report
+      -- into the environment is a non-essential feature we just disable this to be
+      -- able to run hspec test-suites with ghcjs at all. Should be reverted once
+      -- the issue is fixed.
+    +
+      #define HAS_SET_ENV
+      #endif
+    
+    -
+    - import           Prelude ()
+    - import           Test.Hspec.Core.Compat
+    -
+    + import Prelude ()
+    + import Test.Hspec.Core.Compat
+      #ifdef HAS_SET_ENV
+    - import           System.Environment (setEnv)
+    - import           Test.Hspec.Core.Util (safeTry)
+    + import System.Environment (setEnv)
+    + import Test.Hspec.Core.Util (safeTry)
+      #endif
+    -
+    - import           System.IO
+    - import           System.Directory
+    - import           Test.Hspec.Core.Util (Path)
+    - import           Test.Hspec.Core.Config.Definition (Config(..))
+    + import System.Directory
+    + import System.IO
+    + import Test.Hspec.Core.Config.Definition (Config (..))
+    + import Test.Hspec.Core.Util (Path)
+    
+    - data FailureReport = FailureReport {
+    -   failureReportSeed :: Integer
+    - , failureReportMaxSuccess :: Int
+    - , failureReportMaxSize :: Int
+    - , failureReportMaxDiscardRatio :: Int
+    - , failureReportPaths :: [Path]
+    - } deriving (Eq, Show, Read)
+    + data FailureReport = FailureReport
+    +   { failureReportSeed :: Integer,
+    +     failureReportMaxSuccess :: Int,
+    +     failureReportMaxSize :: Int,
+    +     failureReportMaxDiscardRatio :: Int,
+    +     failureReportPaths :: [Path]
+    … and 21 more lines
+
+hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/V2.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -9,6 +9,7 @@
+      -- instead.
+      module Test.Hspec.Core.Formatters.V2
+      -- {-# WARNING "Use [Test.Hspec.Api.Formatters.V3](https://hackage.haskell.org/package/hspec-api/docs/Test-Hspec-Api-Formatters-V3.html) instead." #-}
+    +
+        ( -- * Formatters
+          silent,
+          checks,
+
+hspec-core-2.11.17/vendor/stm-2.5.0.1/Control/Concurrent/STM/TMVar.hs
+    comments, in one configuration: `-- 'TMVar's using 'System.IO.Unsafe.unsafePerformIO', because using` became `--  'TMVar's using 'System.IO.Unsafe.unsafePerformIO', because using`
+    --- input
+    +++ output
+    @@ -1,12 +1,15 @@
+    - {-# LANGUAGE CPP, DeriveDataTypeable, MagicHash, UnboxedTuples #-}
+    -
+      #if __GLASGOW_HASKELL__ >= 701
+    + #ifdef __GLASGOW_HASKELL__
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE MagicHash #-}
+      {-# LANGUAGE Trustworthy #-}
+    - #endif
+    + {-# LANGUAGE UnboxedTuples #-}
+    
+      {-# OPTIONS -fno-warn-implicit-prelude #-}
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Concurrent.STM.TMVar
+      -- Copyright   :  (c) The University of Glasgow 2004
+    @@ -19,34 +22,231 @@
+      -- TMVar: Transactional MVars, for use in the STM monad
+      -- (GHC only)
+      --
+    +
+      -----------------------------------------------------------------------------
+    
+    - module Control.Concurrent.STM.TMVar (
+    - #ifdef __GLASGOW_HASKELL__
+    -         -- * TMVars
+    -         TMVar,
+    -         newTMVar,
+    -         newEmptyTMVar,
+    -         newTMVarIO,
+    -         newEmptyTMVarIO,
+    -         takeTMVar,
+    -         putTMVar,
+    -         readTMVar,
+    -         tryReadTMVar,
+    -         swapTMVar,
+    -         tryTakeTMVar,
+    -         tryPutTMVar,
+    -         isEmptyTMVar,
+    -         mkWeakTMVar
+    - #endif
+    -   ) where
+    + module Control.Concurrent.STM.TMVar
+    +   ( -- * TMVars
+    +     TMVar,
+    +     newTMVar,
+    +     newEmptyTMVar,
+    +     newTMVarIO,
+    +     newEmptyTMVarIO,
+    +     takeTMVar,
+    +     putTMVar,
+    +     readTMVar,
+    +     tryReadTMVar,
+    +     swapTMVar,
+    +     tryTakeTMVar,
+    +     tryPutTMVar,
+    +     isEmptyTMVar,
+    … and 374 more lines
+
+idris-1.3.4/src/Idris/AbsSyntax.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -1517,9 +1517,8 @@
+          mkShadow (NS x s) = NS (mkShadow x) s
+    
+          en ::
+    -       Int -- \^ The quotation level - only transform terms that are used, not terms
+    -           -- that are merely mentioned.
+    -       ->
+    +       Int -> -- \^ The quotation level - only transform terms that are used, not terms
+    +       -- that are merely mentioned.
+            PTerm ->
+            PTerm
+          en 0 (PLam fc n nfc t s)
+
+idris-1.3.4/src/Idris/Core/Evaluate.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -476,7 +476,8 @@
+                          let (ns, tree) = getCases cd
+                           in if blockSimplify ci n stk
+                                then liftM (VP Ref n) (ev ntimes stk top env ty)
+    -                           else do -- traceWhen runtime (show (n, ns, tree)) $
+    +                           else do
+    +                             -- traceWhen runtime (show (n, ns, tree)) $
+                                  c <- evCase ntimes n (n : stk) top env ns [] tree
+                                  case c of
+                                    (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
+    @@ -604,7 +605,8 @@
+                          let (ns, tree) = getCases cd
+                           in if blockSimplify ci n stk
+                                then return $ unload env (VP Ref n ty) args
+    -                           else do -- traceWhen runtime (show (n, ns, tree)) $
+    +                           else do
+    +                             -- traceWhen runtime (show (n, ns, tree)) $
+                                  c <- evCase ntimes n (n : stk) top env ns args tree
+                                  case c of
+                                    (Nothing, _) -> return $ unload env (VP Ref n ty) args
+
+idris-1.3.4/src/Idris/Core/TT.hs
+    comments, in one configuration: `-- of things in different namespaces with that name.` became `--  of things in different namespaces with that name.`
+    --- input
+    +++ output
+    @@ -1,3 +1,17 @@
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE DeriveFoldable #-}
+    + {-# LANGUAGE DeriveFunctor #-}
+    + {-# LANGUAGE DeriveGeneric #-}
+    + {-# LANGUAGE DeriveTraversable #-}
+    + {-# LANGUAGE FlexibleContexts #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE FunctionalDependencies #-}
+    + {-# LANGUAGE MultiParamTypeClasses #-}
+    + {-# LANGUAGE PatternGuards #-}
+    + {-# LANGUAGE TypeSynonymInstances #-}
+    + {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+    +
+      {-|
+      Module      : Idris.Core.TT
+      Description : The core language of Idris, TT.
+    @@ -22,53 +36,184 @@
+         * We have a simple collection of tactics which we use to elaborate source
+           programs with implicit syntax into fully explicit terms.
+      -}
+    - {-# LANGUAGE CPP, DeriveDataTypeable, DeriveFoldable, DeriveFunctor,
+    -              DeriveGeneric, DeriveTraversable, FlexibleContexts,
+    -              FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses,
+    -              PatternGuards, TypeSynonymInstances #-}
+    - {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+    - module Idris.Core.TT(
+    -     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
+    -   , ConstraintFC(..), DataOpt(..), DataOpts(..), Datatype(..)
+    -   , Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..)
+    -   , FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..)
+    -   , NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..)
+    -   , Provenance(..), Raw(..), RigCount(..), SpecialName(..), TC(..), Term(..)
+    -   , TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..)
+    -   , UConstraint(..), UCs(..), UExp(..), Universe(..)
+    -   , addAlist, addBinder, addDef, allTTNames, arity, bindAll
+    -   , bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact
+    -   , discard, emptyContext, emptyFC, explicitNames, fc_end, fc
+
+idris-1.3.4/src/Idris/Elab/Term.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -1077,7 +1077,8 @@
+                    $ Msg ("No explicit types on left hand side: " ++ show tm)
+                  --             trace (show (f, args_in, args)) $
+                  if (f `elem` map fstEnv env && length args == 1 && length args_in == 1)
+    -               then do -- simple app, as below
+    +               then do
+    +                 -- simple app, as below
+                      simple_app
+                        False
+                        (elabE (ina {e_isfn = True}) (Just fc) (PRef ffc hls f))
+
+idris-1.3.4/src/Idris/PartialEval.hs
+    comments: `-- or references (i.e. that it doesn't contain any complex terms).` became `--  or references (i.e. that it doesn't contain any complex terms).`
+    --- input
+    +++ output
+    @@ -1,3 +1,6 @@
+    + {-# LANGUAGE FlexibleContexts #-}
+    + {-# LANGUAGE PatternGuards #-}
+    +
+      {-|
+      Module      : Idris.PartialEval
+      Description : Implementation of a partial evaluator.
+    @@ -5,30 +8,43 @@
+      License     : BSD3
+      Maintainer  : The Idris Community.
+      -}
+    - {-# LANGUAGE FlexibleContexts, PatternGuards #-}
+    -
+    - module Idris.PartialEval(
+    -     partial_eval, getSpecApps, specType
+    -   , mkPE_TyDecl, mkPE_TermDecl, PEArgType(..)
+    -   , pe_app, pe_def, pe_clauses, pe_simple
+    -   ) where
+    + module Idris.PartialEval
+    +   ( partial_eval,
+    +     getSpecApps,
+    +     specType,
+    +     mkPE_TyDecl,
+    +     mkPE_TermDecl,
+    +     PEArgType (..),
+    +     pe_app,
+    +     pe_def,
+    +     pe_clauses,
+    +     pe_simple,
+    +   )
+    + where
+    
+    + import Control.Monad.State
+      import Idris.AbsSyntax
+      import Idris.Core.CaseTree
+      import Idris.Core.Evaluate
+      import Idris.Core.TT
+      import Idris.Delaborate
+    
+    - import Control.Monad.State
+    -
+      -- | Data type representing binding-time annotations for partial evaluation of arguments
+    - data PEArgType = ImplicitS Name -- ^ Implicit static argument
+    -                | ImplicitD Name -- ^ Implicit dynamic argument
+    -                | ConstraintS    -- ^ Implementation constraint
+    -                | ConstraintD    -- ^ Implementation constraint
+    -                | ExplicitS      -- ^ Explicit static argument
+    -                | ExplicitD      -- ^ Explicit dynamic argument
+    -                | UnifiedD       -- ^ Erasable dynamic argument (found under unification)
+    + data PEArgType
+    +   = -- | Implicit static argument
+    +     ImplicitS Name
+    +   | -- | Implicit dynamic argument
+    +     ImplicitD Name
+    +   | -- | Implementation constraint
+    +     ConstraintS
+    +   | -- | Implementation constraint
+    +     ConstraintD
+    +   | -- | Explicit static argument
+    +     ExplicitS
+    … and 630 more lines
+
+intero-0.1.40/src/GhciMonad.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -471,6 +471,7 @@
+      initInterpBuffering :: Ghc ()
+      initInterpBuffering = do
+        -- make sure these are linked
+    +
+      #if __GLASGOW_HASKELL__ < 800
+        dflags <- GHC.getSessionDynFlags
+      #else
+
+leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
+    the output cannot be formatted again: too many configurations to format
+
+lens-5.3.6/src/Control/Exception/Lens.hs
+    comments, in one configuration: `{-\n$setup\n>>> :set -XNoOverloadedStrings\n>>> :set -XScopedTypeVariables\n>>> import Control.Lens\n>>> import Control.Applicative\n>>> :m + Control.Exception Control.Monad Data.List Prelude\n\n>>> :m + Control.Exception.Context\n\n-}` became `{-\n$setup\n>>> :set -XNoOverloadedStrings\n>>> :set -XScopedTypeVariables\n>>> import Control.Lens\n>>> import Control.Applicative\n>>> :m + Control.Exception Control.Monad Data.List Prelude\n\n\n>>> :m + Control.Exception.Context\n\n\n\n\n\n\n-}`
+    --- input
+    +++ output
+    @@ -1,19 +1,19 @@
+      {-# LANGUAGE CPP #-}
+    - {-# LANGUAGE Rank2Types #-}
+      {-# LANGUAGE FlexibleInstances #-}
+    - {-# LANGUAGE ScopedTypeVariables #-}
+      {-# LANGUAGE MultiParamTypeClasses #-}
+    - {-# LANGUAGE NoMonomorphismRestriction #-}
+      {-# LANGUAGE PatternSynonyms #-}
+    - {-# LANGUAGE ViewPatterns #-}
+    -
+    + {-# LANGUAGE Rank2Types #-}
+    + {-# LANGUAGE ScopedTypeVariables #-}
+      #ifdef TRUSTWORTHY
+      {-# LANGUAGE Trustworthy #-}
+      #endif
+    + {-# LANGUAGE ViewPatterns #-}
+    + {-# LANGUAGE NoMonomorphismRestriction #-}
+    
+      #include "lens-common.h"
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Exception.Lens
+      -- Copyright   :  (C) 2012-16 Edward Kmett
+    @@ -31,139 +31,177 @@
+      -- The combinators in this module have been generalized to work with
+      -- 'MonadCatch' instead of just 'Prelude.IO'. This enables them to be used
+      -- more easily in 'Monad' transformer stacks.
+    +
+      ----------------------------------------------------------------------------
+      module Control.Exception.Lens
+    -   (
+    -   -- * Handling
+    -     catching, catching_
+    -   , handling, handling_
+    -   -- * Trying
+    -   , trying, trying_
+    -   -- * Throwing
+    -   , throwing
+    -   , throwing_
+    -   , throwingM
+    -   , throwingTo
+    -   -- * Mapping
+    -   , mappedException, mappedException'
+    -   -- * Exceptions
+    -   , exception
+    -   , pattern Exception
+    -   -- * Exception Handlers
+    -   , Handleable(..)
+    -   -- ** IOExceptions
+    -   , AsIOException(.
+
+lens-5.3.6/src/Control/Lens/Internal/FieldTH.hs
+    formatting changed how many configurations there are, from 6 to 8
+    --- input
+    +++ output
+    @@ -1,19 +1,24 @@
+      {-# LANGUAGE CPP #-}
+      {-# LANGUAGE PatternGuards #-}
+    + #ifdef TRUSTWORTHY
+    + #if MIN_VERSION_template_haskell(2,12,0)
+    + {-# LANGUAGE Safe #-}
+    + #endif
+    + #endif
+      #if __GLASGOW_HASKELL__ >= 800
+      {-# LANGUAGE TemplateHaskellQuotes #-}
+      #else
+      {-# LANGUAGE TemplateHaskell #-}
+      #endif
+      #ifdef TRUSTWORTHY
+    - # if MIN_VERSION_template_haskell(2,12,0)
+    - {-# LANGUAGE Safe #-}
+    - # else
+    + #if MIN_VERSION_template_haskell(2,12,0)
+    + #else
+      {-# LANGUAGE Trustworthy #-}
+    - # endif
+      #endif
+    + #endif
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Lens.Internal.FieldTH
+      -- Copyright   :  (C) 2014-2016 Edward Kmett, (C) 2014 Eric Mertens
+    @@ -22,55 +27,55 @@
+      -- Stability   :  experimental
+      -- Portability :  non-portable
+      --
+    +
+      -----------------------------------------------------------------------------
+    
+      module Control.Lens.Internal.FieldTH
+    -   ( LensRules(..)
+    -   , FieldNamer
+    -   , DefName(..)
+    -   , ClassyNamer
+    -   , makeFieldOptics
+    -   , makeFieldOpticsForDec
+    -   , makeFieldOpticsForDec'
+    -   , HasFieldClasses
+    -   ) where
+    -
+    - import Prelude ()
+    +   ( LensRules (..),
+    +     FieldNamer,
+    +     DefName (..),
+    +     ClassyNamer,
+    +     makeFieldOptics,
+    +     makeFieldOpticsForDec,
+    +     makeFieldOpticsForDec',
+    +     HasFieldClasses,
+    +   )
+    + where
+    
+      import Control.Lens.At
+    … and 1002 more lines
+
+lens-5.3.6/src/Control/Lens/Internal/TH.hs
+    formatting changed how many configurations there are, from 48 to 64
+    --- input
+    +++ output
+    @@ -1,16 +1,21 @@
+      {-# LANGUAGE CPP #-}
+    - {-# LANGUAGE TemplateHaskellQuotes #-}
+      #ifdef TRUSTWORTHY
+    - # if MIN_VERSION_template_haskell(2,12,0)
+    + #if MIN_VERSION_template_haskell(2,12,0)
+      {-# LANGUAGE Safe #-}
+    - # else
+    + #endif
+    + #endif
+    + {-# LANGUAGE TemplateHaskellQuotes #-}
+    + #ifdef TRUSTWORTHY
+    + #if MIN_VERSION_template_haskell(2,12,0)
+    + #else
+      {-# LANGUAGE Trustworthy #-}
+    - # endif
+      #endif
+    + #endif
+    
+      #include "lens-common.h"
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Lens.Internal.TH
+      -- Copyright   :  (C) 2013-2016 Edward Kmett and Eric Mertens
+    @@ -19,14 +24,16 @@
+      -- Stability   :  experimental
+      -- Portability :  non-portable
+      --
+    +
+      ----------------------------------------------------------------------------
+      module Control.Lens.Internal.TH
+    -   ( module Control.Lens.Internal.TH
+    +   ( module Control.Lens.Internal.TH,
+      #if MIN_VERSION_template_haskell(2,21,0) || MIN_VERSION_th_abstraction(0,6,0)
+    -   , D.TyVarBndrVis
+    -   , D.bndrReq
+    +     D.TyVarBndrVis,
+    +     D.bndrReq,
+      #endif
+    -   ) where
+    +   )
+    + where
+    
+      import Control.Lens.Iso
+      import Control.Lens.Prism
+    @@ -34,8 +41,8 @@
+      import Control.Lens.Type
+      import Control.Lens.Wrapped
+      import Data.Functor.Contravariant
+    - import qualified Data.Set as Set
+      import Data.Set (Set)
+    + import qualified Data.Set as Set
+      import Language.Haskell.TH
+      import qualified Language.Haskell.TH.Datatype as D
+      import qualified Language.Haskell.TH.Datatype.TyVarBndr as D
+    @@ -68,8 +75,13 @@
+      conAppsT conName = foldl AppT (ConT conName)
+    
+    … and 239 more lines
+
+mtl-2.3.2/Control/Monad/Except.hs
+    comments: the module's 12 documentation comments became 11
+    --- input
+    +++ output
+    @@ -1,4 +1,5 @@
+      {-# LANGUAGE Safe #-}
+    +
+      {- |
+      Module      :  Control.Monad.Except
+      Copyright   :  (c) Michael Weber <michael.weber@post.rwth-aachen.de> 2001,
+    @@ -32,11 +33,9 @@
+          Andy Gill (<http://web.cecs.pdx.edu/~andy/>)
+      -}
+      module Control.Monad.Except
+    -   (
+    -     -- * Warning
+    +   ( -- * Warning
+          -- $warning
+    -     -- * Monads with error handling
+    -     Error.MonadError(..),
+    +     Error.MonadError (..),
+          Error.liftEither,
+          Error.tryError,
+          Error.withError,
+    @@ -44,8 +43,9 @@
+          Error.onError,
+          Error.mapError,
+          Error.modifyError,
+    +
+          -- * The ExceptT monad transformer
+    -     Except.ExceptT(ExceptT),
+    +     Except.ExceptT (ExceptT),
+          Except.Except,
+          Except.runExceptT,
+          Except.mapExceptT,
+    @@ -53,12 +53,14 @@
+          Except.runExcept,
+          Except.mapExcept,
+          Except.withExcept,
+    +
+          -- * Example 1: Custom Error Data Type
+          -- $customErrorExample
+    
+          -- * Example 2: Using ExceptT Monad Transformer
+          -- $ExceptTExample
+    -   ) where
+    +   )
+    + where
+    
+      import qualified Control.Monad.Error.Class as Error
+      import qualified Control.Monad.Trans.Except as Except
+
+pandoc-3.10.2/src/Text/Pandoc/ImageSize.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -345,7 +345,8 @@
+                        dpiY = 72
+                      }
+              )
+    -     <|> ( do -- if we encounter a compressed object stream, uncompress it (#10902)
+    +     <|> ( do
+    +             -- if we encounter a compressed object stream, uncompress it (#10902)
+                  A.string "/Type"
+                  A.skipSpace
+                  A.string "/ObjStm"
+
+pandoc-3.10.2/src/Text/Pandoc/Options.hs
+    comments: ` -- and for footnote marks in markdown` became `-- and for footnote marks in markdown`
+    --- input
+    +++ output
+    @@ -1,10 +1,11 @@
+    - {-# LANGUAGE CPP                #-}
+    + {-# LANGUAGE CPP #-}
+      {-# LANGUAGE DeriveDataTypeable #-}
+    - {-# LANGUAGE DeriveGeneric      #-}
+    - {-# LANGUAGE LambdaCase         #-}
+    - {-# LANGUAGE OverloadedStrings  #-}
+    - {-# LANGUAGE PatternSynonyms    #-}
+    - {-# LANGUAGE TemplateHaskell    #-}
+    + {-# LANGUAGE DeriveGeneric #-}
+    + {-# LANGUAGE LambdaCase #-}
+    + {-# LANGUAGE OverloadedStrings #-}
+    + {-# LANGUAGE PatternSynonyms #-}
+    + {-# LANGUAGE TemplateHaskell #-}
+    +
+      {- |
+         Module      : Text.Pandoc.Options
+         Copyright   : Copyright (C) 2012-2024 John MacFarlane
+    @@ -17,90 +18,130 @@
+      Data structures and functions for representing parser and writer
+      options.
+      -}
+    - module Text.Pandoc.Options ( module Text.Pandoc.Extensions
+    -                            , ReaderOptions(..)
+    -                            , HTMLMathMethod (..)
+    -                            , CiteMethod (..)
+    -                            , ObfuscationMethod (..)
+    -                            , HighlightMethod (..)
+    -                            , pattern NoHighlightingString
+    -                            , pattern DefaultHighlightingString
+    -                            , pattern IdiomaticHighlightingString
+    -                            , HTMLSlideVariant (..)
+    -                            , EPUBVersion (..)
+    -                            , WrapOption (..)
+    -                            , TopLevelDivision (..)
+    -                            , WriterOptions (..)
+    -                            , TrackChanges (..)
+    -                            , ReferenceLocation (..)
+    -                            , CaptionPosition (..)
+    -                            , def
+    -                            , isEnabled
+    -                            , defaultMathJaxURL
+    -                            , defaultWebTeXURL
+    -                            , defaultKaTeXURL
+    -                            ) where
+    + module Text.Pandoc.Opt
+
+pandoc-3.10.2/src/Text/Pandoc/Parsing/State.hs
+    comments: ` -- interpreted text role` became `-- interpreted text role`
+    --- input
+    +++ output
+    @@ -1,6 +1,7 @@
+    - {-# LANGUAGE FlexibleInstances          #-}
+    - {-# LANGUAGE MultiParamTypeClasses      #-}
+    - {-# LANGUAGE OverloadedStrings          #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE MultiParamTypeClasses #-}
+    + {-# LANGUAGE OverloadedStrings #-}
+    +
+      {- |
+         Module      : Text.Pandoc.Parsing
+         Copyright   : Copyright (C) 2006-2024 John MacFarlane
+    @@ -9,24 +10,25 @@
+    
+      A default parser state with commonly used properties.
+      -}
+    -
+      module Text.Pandoc.Parsing.State
+    -   ( ParserState (..)
+    -   , ParserContext (..)
+    -   , HeaderType (..)
+    -   , NoteTable
+    -   , NoteTable'
+    -   , Key (..)
+    -   , KeyTable
+    -   , SubstTable
+    -   , defaultParserState
+    -   , toKey
+    +   ( ParserState (..),
+    +     ParserContext (..),
+    +     HeaderType (..),
+    +     NoteTable,
+    +     NoteTable',
+    +     Key (..),
+    +     KeyTable,
+    +     SubstTable,
+    +     defaultParserState,
+    +     toKey,
+        )
+      where
+    
+      import Data.Default (Default (def))
+    + import qualified Data.Map as M
+    + import qualified Data.Set as Set
+      import Data.Text (Text)
+    - import Text.Parsec (SourcePos, getState, setState)
+    + import qualified Data.Text as T
+      import Text.Pandoc.Builder (Blocks, HasMeta (..), Inlines)
+      import Text.Pandoc.Definition (Attr, Meta, Target, nullMeta)
+      import Text.Pandoc.Logging (LogMessage)
+    @@ -34,49 +36,76 @@
+      import Text.Pandoc.Parsing.Capabilities
+      import Text.Pandoc.Parsing.Future
+      import Text.Pandoc.TeX (Macro)
+    -
+    - import qualified Data.Map as M
+    - import qualified Data.Set as Set
+    - import qualified Data.Text as T
+    + import Text.Parsec (SourcePos, getState, setState)
+    
+      -- | Parsing options.
+    … and 276 more lines
+
+pandoc-3.10.2/src/Text/Pandoc/Readers/TikiWiki.hs
+    comments: `-- row2-column1|row2-column2||` became `--  row2-column1|row2-column2||`
+    --- input
+    +++ output
+    @@ -1,4 +1,4 @@
+    - {-# LANGUAGE FlexibleContexts  #-}
+    + {-# LANGUAGE FlexibleContexts #-}
+      {-# LANGUAGE OverloadedStrings #-}
+    
+      {- |
+    @@ -12,9 +12,10 @@
+    
+      Conversion of TikiWiki text to 'Pandoc' document.
+      -}
+    -
+    - module Text.Pandoc.Readers.TikiWiki ( readTikiWiki
+    -                                     ) where
+    + module Text.Pandoc.Readers.TikiWiki
+    +   ( readTikiWiki,
+    +   )
+    + where
+    
+      import Control.Monad
+      import Control.Monad.Except (throwError)
+    @@ -34,16 +35,17 @@
+      import Text.Printf (printf)
+    
+      -- | Read TikiWiki from an input string and return a Pandoc document.
+    - readTikiWiki :: (PandocMonad m, ToSources a)
+    -           => ReaderOptions
+    -           -> a
+    -           -> m Pandoc
+    + readTikiWiki ::
+    +   (PandocMonad m, ToSources a) =>
+    +   ReaderOptions ->
+    +   a ->
+    +   m Pandoc
+      readTikiWiki opts s = do
+        let sources = ensureFinalNewlines 2 (toSources s)
+    -   res <- readWithM parseTikiWiki def{ stateOptions = opts } sources
+    +   res <- readWithM parseTikiWiki def {stateOptions = opts} sources
+        case res of
+    -        Left e  -> throwError e
+    -        Right d -> return d
+    +     Left e -> throwError e
+    +     Right d -> return d
+    
+      type TikiWikiParser = ParsecT Sources ParserState
+    
+    @@ -61,33 +63,36 @@
+      -- main parser
+      --
+    
+    - parseTikiWiki :: PandocMonad m => TikiWikiParser m Pandoc
+    + parseTikiWiki :: (PandocMonad m) => TikiWikiParser m Pandoc
+      parseTikiWiki = do
+        bs <- mconcat <$> many block
+        spaces
+        eof
+        return $ B.doc bs
+    
+    - block :: PandocMonad m => TikiWikiParser m B.Blocks
+    + block :: (PandocMonad m) => TikiWikiParser m B.Blocks
+      block = do
+    … and 660 more lines
+
+pandoc-3.10.2/src/Text/Pandoc/Writers/AsciiDoc.hs
+    comments, in one configuration: `-- 1 is top level table` became `--  1 is top level table`
+    --- input
+    +++ output
+    @@ -1,6 +1,7 @@
+    - {-# LANGUAGE CPP  #-}
+    - {-# LANGUAGE LambdaCase        #-}
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE LambdaCase #-}
+      {-# LANGUAGE OverloadedStrings #-}
+    +
+      {- |
+         Module      : Text.Pandoc.Writers.AsciiDoc
+         Copyright   : Copyright (C) 2006-2024 John MacFarlane
+    @@ -20,116 +21,138 @@
+    
+      AsciiDoc:  <http://www.methods.co.nz/asciidoc/>
+      -}
+    - module Text.Pandoc.Writers.AsciiDoc (
+    -   writeAsciiDoc,
+    -   writeAsciiDocLegacy,
+    -   writeAsciiDoctor
+    -   ) where
+    + module Text.Pandoc.Writers.AsciiDoc
+    +   ( writeAsciiDoc,
+    +     writeAsciiDocLegacy,
+    +     writeAsciiDoctor,
+    +   )
+    + where
+    +
+      import Control.Monad (foldM)
+      import Control.Monad.State.Strict
+    -     ( StateT, MonadState(get), gets, modify, evalStateT )
+    +   ( MonadState (get),
+    +     StateT,
+    +     evalStateT,
+    +     gets,
+    +     modify,
+    +   )
+      import Data.Char (isPunctuation, isSpace)
+      #if MIN_VERSION_base(4,19,0)
+    - import Data.List (delete, intercalate, intersperse, mapAccumL, uncons, sortOn, unsnoc)
+    + import Data.List (delete, intercalate, intersperse, mapAccumL, sortOn, uncons, unsnoc)
+      #else
+    - import Data.List (delete, intercalate, intersperse, mapAccumL, uncons, sortOn)
+    + import Data.List (delete, intercalate, intersperse, mapAccumL, sortOn, uncons)
+      #endif
+    - import Data.List.NonEmpty (NonEmpty((:|)), (<|))
+    + import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
+      import qualified Data.List.NonEmpty as NonEmpty
+    - import Data.Maybe (fromMaybe, isJust, catMaybes)
+      import qualified Data.Map as M
+    + import Data.Maybe (catMaybes, fromMaybe, isJust)
+      import qualified Data.Set as Set
+    - import qualified Data.Text as T
+      import Data.Text (Text)
+    - import Network.URI (parseURI, URI(uriScheme))
+    + import qualified Data.Text as T
+    + import Network.URI (URI (uriScheme), parseURI)
+      import System.FilePath (dropExtension)
+    + import Text.DocLayout
+    + import Text.Pandoc.Builder (emptyCell)
+      import Text.Pa
+
+pandoc-3.10.2/src/Text/Pandoc/Writers/Powerpoint/Output.hs
+    comments: `-- in English Metric Units. It assumes a DPI of 72.` became `--  in English Metric Units. It assumes a DPI of 72.`
+    --- input
+    +++ output
+    @@ -5,6 +5,7 @@
+      {-# LANGUAGE RankNTypes #-}
+      {-# LANGUAGE RecordWildCards #-}
+      {-# LANGUAGE TupleSections #-}
+    +
+      {- |
+         Module      : Text.Pandoc.Writers.Powerpoint.Output
+         Copyright   : Copyright (C) 2017-2020 Jesse Rosenthal
+    @@ -17,64 +18,72 @@
+      Conversion of Presentation datatype (defined in
+      Text.Pandoc.Writers.Powerpoint.Presentation) to a zip archive.
+      -}
+    -
+    - module Text.Pandoc.Writers.Powerpoint.Output ( presentationToArchive
+    -                                              ) where
+    + module Text.Pandoc.Writers.Powerpoint.Output
+    +   ( presentationToArchive,
+    +   )
+    + where
+    
+    - import Control.Monad ( MonadPlus(mplus), foldM, unless )
+    - import Control.Monad.Except (throwError, catchError)
+    + import Codec.Archive.Zip
+    + import Control.Applicative ((<|>))
+    + import Control.Monad (MonadPlus (mplus), foldM, unless)
+    + import Control.Monad.Except (catchError, throwError)
+      import Control.Monad.Reader
+    -     ( asks, MonadReader(local), ReaderT(runReaderT) )
+    +   ( MonadReader (local),
+    +     ReaderT (runReaderT),
+    +     asks,
+    +   )
+      import Control.Monad.State
+    -     ( StateT, gets, modify, evalStateT )
+    - import Codec.Archive.Zip
+    - import Data.List (intercalate, stripPrefix, nub, union, isPrefixOf, intersperse)
+    +   ( StateT,
+    +     evalStateT,
+    +     gets,
+    +     modify,
+    +   )
+      import Data.Bifunctor (bimap)
+    + import qualified Data.ByteString.Lazy as BL
+      import Data.CaseInsensitive (CI)
+      import qualified Data.CaseInsensitive as CI
+      import Data.Default
+      import Data.Foldable (toList)
+    - import Data.List.NonEmpty (nonEmpty, NonEmpty ((:|)))
+    - import Data.Ratio ((%), Ratio)
+    + import Data.List (intercalate, intersperse, isPrefixOf, nub, stripPrefix, union)
+    + import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
+    + import qualified Data.Map as M
+    + import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList
+
+parsec3-1.0.1.8/Text/Parsec/Token.hs
+    comments: `-- name@, but it also checks that the @name@ is not a prefix of a` became `--  name@, but it also checks that the @name@ is not a prefix of a`
+    --- input
+    +++ output
+    @@ -1,35 +1,37 @@
+      -----------------------------------------------------------------------------
+    +
+    + {-# LANGUAGE PolymorphicComponents #-}
+    + {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+    +
+    + -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Text.Parsec.Token
+      -- Copyright   :  (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
+      -- License     :  BSD-style (see the LICENSE file)
+    - -- 
+    + --
+      -- Maintainer  :  derek.a.elkins@gmail.com
+      -- Stability   :  provisional
+      -- Portability :  non-portable (uses local universal quantification: PolymorphicComponents)
+    - -- 
+    + --
+      -- A helper module to parse lexical elements (tokens). See 'makeTokenParser'
+      -- for a description of how to use it.
+    - -- 
+    - -----------------------------------------------------------------------------
+    -
+    - {-# LANGUAGE PolymorphicComponents #-}
+    - {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+    -
+    + --
+      module Text.Parsec.Token
+    -     ( LanguageDef
+    -     , GenLanguageDef (..)
+    -     , TokenParser
+    -     , GenTokenParser (..)
+    -     , makeTokenParser
+    -     ) where
+    +   ( LanguageDef,
+    +     GenLanguageDef (..),
+    +     TokenParser,
+    +     GenTokenParser (..),
+    +     makeTokenParser,
+    +   )
+    + where
+    
+    - import Data.Char ( isAlpha, toLower, toUpper, isSpace, digitToInt )
+    - import Data.List ( nub, sort )
+      import Control.Monad.Identity
+    - import Text.Parsec.Prim
+    + import Data.Char (digitToInt, isAlpha, isSpace, toLower, toUpper)
+    + import Data.List (nub, sort)
+      import Text.Parsec.Char
+      import Text.Parsec.Combinator
+    + import Text.Parsec.Prim
+    
+      -----------------------------------------------------------
+      -- Language Definition
+    @@ -40,64 +42,40 @@
+      -- | The @GenLanguageDef@ type is a record that contains all parameterizable
+      -- features of the "Text.Parsec.Token" module. The module "Text.P
+
+pipes-4.3.16/src/Pipes/Lift.hs
+    a different program, in one configuration: L > HsQualTy > L > HsFunTy > L > HsDocTy became HsAppTy
+    --- input
+    +++ output
+    @@ -7,205 +7,212 @@
+          See the mini-tutorial at the bottom of this module for example code and
+          typical use cases where this module will come in handy.
+      -}
+    -
+    - module Pipes.Lift (
+    -     -- * Utilities
+    -       distribute
+    + module Pipes.Lift
+    +   ( -- * Utilities
+    +     distribute,
+    
+          -- * ExceptT
+    -     , exceptP
+    -     , runExceptP
+    -     , catchError
+    -     , liftCatchError
+    +     exceptP,
+    +     runExceptP,
+    +     catchError,
+    +     liftCatchError,
+    
+          -- * MaybeT
+    -     , maybeP
+    -     , runMaybeP
+    +     maybeP,
+    +     runMaybeP,
+    
+          -- * ReaderT
+    -     , readerP
+    -     , runReaderP
+    +     readerP,
+    +     runReaderP,
+    
+          -- * StateT
+    -     , stateP
+    -     , runStateP
+    -     , evalStateP
+    -     , execStateP
+    +     stateP,
+    +     runStateP,
+    +     evalStateP,
+    +     execStateP,
+    
+          -- * WriterT
+          -- $writert
+    -     , writerP
+    -     , runWriterP
+    -     , execWriterP
+    +     writerP,
+    +     runWriterP,
+    +     execWriterP,
+    
+          -- * RWST
+    -     , rwsP
+    -     , runRWSP
+    -     , evalRWSP
+    -     , execRWSP
+    +     rwsP,
+    +     runRWSP,
+    … and 433 more lines
+
+purescript-0.15.15/src/Language/PureScript/Externs.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -44,6 +44,7 @@
+        -- NOTE: Make sure to keep `efVersion` as the first field in this
+        -- record, so the derived Serialise instance produces CBOR that can
+        -- be checked for its version independent of the remaining format
+    +
+        { -- | The externs version
+          efVersion :: Text,
+          -- | Module name
+
+purescript-0.15.15/src/Language/PureScript/Make/BuildPlan.hs
+    comments: `--` became `-- plan; used to decide whether a module needs rebuilding.`
+    --- input
+    +++ output
+    @@ -1,65 +1,63 @@
+      module Language.PureScript.Make.BuildPlan
+    -   ( BuildPlan(bpEnv, bpIndex)
+    -   , BuildJobResult(..)
+    -   , buildJobSuccess
+    -   , construct
+    -   , getResult
+    -   , collectResults
+    -   , markComplete
+    -   , needsRebuild
+    -   ) where
+    -
+    - import Prelude
+    +   ( BuildPlan (bpEnv, bpIndex),
+    +     BuildJobResult (..),
+    +     buildJobSuccess,
+    +     construct,
+    +     getResult,
+    +     collectResults,
+    +     markComplete,
+    +     needsRebuild,
+    +   )
+    + where
+    
+      import Control.Concurrent.Async.Lifted as A
+      import Control.Concurrent.Lifted as C
+    - import Control.Monad.Base (liftBase)
+      import Control.Monad (foldM)
+    - import Control.Monad.Trans.Control (MonadBaseControl(..))
+    - import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
+    + import Control.Monad.Base (liftBase)
+    + import Control.Monad.Trans.Control (MonadBaseControl (..))
+    + import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+      import Data.Foldable (foldl')
+      import Data.Map qualified as M
+      import Data.Maybe (fromMaybe, mapMaybe)
+      import Data.Time.Clock (UTCTime)
+      import Language.PureScript.AST (Module, getModuleName)
+    - import Language.PureScript.Crash (internalError)
+      import Language.PureScript.CST qualified as CST
+    - import Language.PureScript.Errors (MultipleErrors(..))
+    + import Language.PureScript.Crash (internalError)
+    + import Language.PureScript.Errors (MultipleErrors (..))
+      import Language.PureScript.Externs (ExternsFile)
+      import Language.PureScript.Make.Actions as Actions
+      import Language.PureScript.Make.Cache (CacheDb, CacheInfo, checkChanged)
+      import Language.PureScript.Names (ModuleName)
+      import Language.PureScript.Sugar.Names.Env (Env, primEnv)
+      import System.Directory (getCurrentDirectory)
+    + import Prelude
+    
+      -- | The BuildPlan tracks information about our build progress, and holds all
+      -- prebuilt modules for incremental builds.
+      data BuildPlan = BuildPlan
+    -   { bpPrebuilt :: M.Map Mod
+
+raaz-0.3.11/api/random/PRGenerator.hs
+    a different program: HsModule > XModulePs > Just > L > WithHsDocIdentifiers > a documentation comment changed
+    --- input
+    +++ output
+    @@ -1,3 +1,7 @@
+    + {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE FlexibleContexts #-}
+    + {-# LANGUAGE RecordWildCards #-}
+    +
+      -- | This module implements the pseudo-random generator using the
+      -- /fast key erasure technique/
+      -- (<https://blog.cr.yp.to/20170723-random.html>) parameterised on the
+    @@ -9,29 +13,29 @@
+      -- raaz the library. A casual user should not be looking into this
+      -- module this let alone tweaking the code here.
+      --
+    -
+    - {-# LANGUAGE FlexibleContexts #-}
+    - {-# LANGUAGE DataKinds        #-}
+    - {-# LANGUAGE RecordWildCards   #-}
+      -- {-# LANGUAGE NamedFieldPun    #-}
+    
+      module PRGenerator
+    -        ( -- * Pseudo-random generator
+    -          -- $internals$
+    -          RandomState, reseed, fillRandomBytes
+    -          -- ** Information about the cryptographic generator.
+    -        , entropySource, csprgName, csprgDescription
+    -        ) where
+    +   ( -- * Pseudo-random generator
+    +     -- $internals$
+    +     RandomState,
+    +     reseed,
+    +     fillRandomBytes,
+    
+    - import Foreign.Ptr ( castPtr )
+    - import Entropy
+    - import Prelude
+    +     -- ** Information about the cryptographic generator.
+    +     entropySource,
+    +     csprgName,
+    +     csprgDescription,
+    +   )
+    + where
+    
+    + import Context
+    + import Entropy
+    + import Foreign.Ptr (castPtr)
+    + import Implementation
+      import Raaz.Core
+      import Raaz.Core.Memory
+    -
+    - import Implementation
+    - import Context
+    + import Prelude
+    
+      -- $internals$
+      --
+    @@ -89,7 +93,6 @@
+      -- not reveal the random data that is given out previously.
+      --
+    
+    -
+      -- | Name of the csprg used for stretching the seed.
+    … and 138 more lines
+
+raaz-0.3.11/core/Raaz/Core/Memory.hs
+    comments: `--` became `-- 1. copyMemory`
+    --- input
+    +++ output
+    @@ -1,3 +1,10 @@
+    + {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE GADTs #-}
+    + {-# LANGUAGE MultiParamTypeClasses #-}
+    + {-# LANGUAGE RankNTypes #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    +
+      -- |
+      --
+      -- Module      : Raaz.Core.Memory
+    @@ -7,55 +14,53 @@
+      -- Maintainer  : Piyush P Kurur <ppk@iitpkd.ac.in>
+      -- Stability   : experimental
+      --
+    -
+    - {-# LANGUAGE TypeFamilies               #-}
+    - {-# LANGUAGE GADTs                      #-}
+    - {-# LANGUAGE RankNTypes                 #-}
+    - {-# LANGUAGE MultiParamTypeClasses      #-}
+    - {-# LANGUAGE FlexibleInstances          #-}
+    - {-# LANGUAGE DataKinds                  #-}
+      module Raaz.Core.Memory
+    -        (
+    -
+    -          -- BANNED combinators
+    -          --
+    -          -- 1. copyMemory
+    -
+    -
+    -          -- * Low level memory management in raaz.
+    -          -- $memorysubsystem$
+    -
+    -          -- ** The memory class
+    -          Memory(..)
+    -        , VoidMemory, withMemoryPtr
+    -        , withMemory, withSecureMemory
+    -          -- ** The allocator
+    -        , Alloc
+    -        , pointerAlloc
+    +   (
+    +     -- BANNED combinators
+    +     --
+    +     -- 1. copyMemory
+    
+    -        -- * Initialisation and Extraction.
+    -        -- $init-extract$
+    +     -- * Low level memory management in raaz.
+    +     -- $memorysubsystem$
+    
+    -        , Initialisable(..), Extractable(..), modifyMem
+    +     -- ** The memory class
+    +     Memory (..),
+    +     VoidMemory,
+    +     withMemoryPtr,
+    +     withMemory,
+    +     withSecureMemory,
+    
+    -        -- * Accessing the bytes directly
+    -        -- $access$
+    … and 447 more lines
+
+raaz-0.3.11/core/Raaz/Core/Types/Pointer.hs
+    comments: the module's 50 documentation comments became 49
+    --- input
+    +++ output
+    @@ -1,61 +1,69 @@
+    - {-# OPTIONS_HADDOCK hide                #-}
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE ConstraintKinds #-}
+    + {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE ForeignFunctionInterface #-}
+      {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+    - {-# LANGUAGE MultiParamTypeClasses      #-}
+    - {-# LANGUAGE FlexibleInstances          #-}
+    - {-# LANGUAGE ForeignFunctionInterface   #-}
+    - {-# LANGUAGE DataKinds                  #-}
+    - {-# LANGUAGE ConstraintKinds            #-}
+    - {-# LANGUAGE TypeFamilies               #-}
+    - {-# LANGUAGE CPP                        #-}
+    -
+    + {-# LANGUAGE MultiParamTypeClasses #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    + {-# OPTIONS_HADDOCK hide #-}
+    
+      -- | This module exposes types that builds in type safety into some of
+      -- the low level pointer operations. The functions here are pretty low
+      -- level and will be required only by developers of the core of the
+      -- library.
+      module Raaz.Core.Types.Pointer
+    -        ( -- * Pointers, offsets, and alignment
+    -          -- $basics$
+    -          -- ** Type safe length units.
+    -          LengthUnit(..)
+    -        , BYTES(..)
+    -          -- *** Some length functions.
+    -        , atLeast, atLeastAligned, atMost
+    -        --  ** Type safe functions on Ptr
+    -        , Ptr
+    -        , sizeOf, alignment, alignedSizeOf
+    -        , movePtr, alignPtr, nextLocation
+    -        , peekAligned, pokeAligned
+    -
+    -          -- ** The class of pointer types.
+    -        , Pointer(..), unsafeWithPointer, unsafeWithPointerCast
+    -        , AlignedPtr (..) , ptrAlignment, nextAlignedPtr
+    -        , allocaBuffer, allocaSecure
+    -          -- ** Some low level pointer actions
+    -        , wipeMemory
+    -        , memset
+    -        , memcpy
+    -        , hFillBuf
+    -        ) where
+    -
+    +   ( -- * Pointers, offsets, and alignment
+    +     -- $basics$
+    +     LengthUnit (..),
+    +     BYTES (..),
+    
+    +     -- *** Some length functions.
+    +     atLeast,
+    +     atLeastAlig
+
+raaz-0.3.11/core/Raaz/Primitive/Keyed/Internal.hs
+    comments: `--` became `-- Copyright   : (c) Piyush P Kurur, 2019`
+    --- input
+    +++ output
+    @@ -1,6 +1,6 @@
+    + {-# LANGUAGE FlexibleInstances #-}
+      {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+    - {-# LANGUAGE TypeFamilies               #-}
+    - {-# LANGUAGE FlexibleInstances          #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    
+      -- |
+      --
+    @@ -11,17 +11,19 @@
+      -- Maintainer  : Piyush P Kurur <ppk@iitpkd.ac.in>
+      -- Stability   : experimental
+      --
+    -
+      module Raaz.Primitive.Keyed.Internal
+    -        ( -- * Keyed Hashing.
+    -          -- $keyedhash$
+    -          --
+    -          Keyed(..), KeyedHash(..), Key(..), unsafeToKeyed, unsafeToPrim
+    -        ) where
+    -
+    - import Data.ByteString  as BS
+    - import Foreign.Storable ( Storable )
+    +   ( -- * Keyed Hashing.
+    +     -- $keyedhash$
+    +     Keyed (..),
+    +     KeyedHash (..),
+    +     Key (..),
+    +     unsafeToKeyed,
+    +     unsafeToPrim,
+    +   )
+    + where
+    
+    + import Data.ByteString as BS
+    + import Foreign.Storable (Storable)
+      import Raaz.Core
+    
+      -- $keyedhash$
+    @@ -43,17 +45,17 @@
+    
+      -- | The message authentication code associated with the hashes.
+      newtype Keyed prim = Keyed prim
+    -                  deriving (Eq, Equality, Storable, EndianStore, Encodable)
+    +   deriving (Eq, Equality, Storable, EndianStore, Encodable)
+    
+    - instance IsString prim => IsString (Keyed prim) where
+    + instance (IsString prim) => IsString (Keyed prim) where
+        fromString = unsafeToKeyed . fromString
+    
+    - instance Show prim => Show (Keyed prim) where
+    + instance (Show prim) => Show (Keyed prim) where
+        show = show . unsafeToPrim
+    
+    - instance Primitive prim => Primitive (Keyed prim) where
+    -   type WordType      (Keyed prim)  = WordType prim
+    -   type WordsPerBlock (Keyed prim)  = WordsPerBlock prim
+    + instance (Primitive prim) => Primitive (Keyed prim) where
+    +   type WordType (Keyed prim) = WordType prim
+    +   type WordsPerBlock (Keyed prim) = WordsPerBlock prim
+    
+    … and 23 more lines
+
+raaz-0.3.11/raaz/Raaz.hs
+    comments: `--` became `-- Copyright   : (c) Piyush P Kurur, 2016`
+    --- input
+    +++ output
+    @@ -8,39 +8,40 @@
+      -- Stability   : experimental
+      --
+      module Raaz
+    -        (
+    -          -- * Getting started
+    -          -- $intro$
+    +   ( -- * Getting started
+    +     -- $intro$
+    
+    +     -- * Supported Cryptographic operations
+    +     -- $operations$
+    +     module Raaz.Digest,
+    +     module Raaz.Auth,
+    +     module Raaz.AuthEncrypt,
+    +     module Raaz.Random,
+    
+    -          -- * Supported Cryptographic operations
+    -          -- $operations$
+    -          --
+    -          module Raaz.Digest
+    -        , module Raaz.Auth
+    -        , module Raaz.AuthEncrypt
+    -        , module Raaz.Random
+    -          -- ** Textual and Binary representation
+    -          -- $textual$
+    -        , module Raaz.Core.Encode
+    -          -- ** Core types and operations of raaz
+    -        , Key, Nounce, withMemory, withSecureMemory
+    -          -- * Library information.
+    -        , version
+    -        ) where
+    +     -- ** Textual and Binary representation
+    +     -- $textual$
+    +     module Raaz.Core.Encode,
+    
+    - import qualified Paths_raaz as P
+    - import           Data.Version  (Version)
+    +     -- ** Core types and operations of raaz
+    +     Key,
+    +     Nounce,
+    +     withMemory,
+    +     withSecureMemory,
+    
+    - import Raaz.Core        ( Key, Nounce, withMemory, withSecureMemory)
+    - import Raaz.Core.Encode
+    - import Raaz.Digest
+    +     -- * Library information.
+    +     version,
+    +   )
+    + where
+    +
+    + import Data.Version (Version)
+    + import qualified Paths_raaz as P
+      import Raaz.Auth
+      import Raaz.AuthEncrypt
+    + import Raaz.Core (Key, Nounce, withMemory, withSecureMemory)
+    + import Raaz.Core.Encode
+    + import Raaz.Digest
+      import Raaz.Random
+    … and 31 more lines
+
+raaz-0.3.11/raaz/Raaz/Auth.hs
+    comments: `--` became `-- Copyright   : (c) Piyush P Kurur, 2016`
+    --- input
+    +++ output
+    @@ -7,30 +7,32 @@
+      -- Stability   : experimental
+      --
+      module Raaz.Auth
+    -        ( -- ** Message authentication.
+    -          --
+    -          -- $messageauth$
+    -          --
+    -          Auth
+    -        , auth
+    -        , authFile
+    -        , authSource
+    +   ( -- ** Message authentication.
+    
+    -          -- ** Incremental processing.
+    -          -- $incremental$
+    -        , AuthCxt
+    -        , startAuth, updateAuth, finaliseAuth
+    +     --
+    
+    -          --
+    -          -- *** Specific message authentication algorithms
+    -          -- $specific-auth$
+    -          --
+    -        ) where
+    +     -- $messageauth$
+    +     Auth,
+    +     auth,
+    +     authFile,
+    +     authSource,
+    
+    - import GHC.TypeLits
+    - import Raaz.Core
+    +     -- ** Incremental processing.
+    +     -- $incremental$
+    +     AuthCxt,
+    +     startAuth,
+    +     updateAuth,
+    +     finaliseAuth,
+    
+    +     --
+    
+    +     -- *** Specific message authentication algorithms
+    +     -- $specific-auth$
+    +   )
+    + where
+    +
+    + import GHC.TypeLits
+    + import Raaz.Core
+      import qualified Raaz.V1.Auth as Auth
+    
+      -- $messageauth$
+    @@ -61,29 +63,33 @@
+      -- use encrypted authenticator instead "Raaz.AuthEncrypt".
+      --
+    
+    -
+      -- | The type of authentication tag.
+    - type Auth  = Auth.Auth
+    + type Auth = Auth.Auth
+    … and 87 more lines
+
+raaz-0.3.11/raaz/Raaz/AuthEncrypt/Unsafe.hs
+    comments: the module's 9 documentation comments became 8
+    --- input
+    +++ output
+    @@ -6,12 +6,12 @@
+      -- Stability   : experimental
+      --
+      module Raaz.AuthEncrypt.Unsafe
+    -        ( -- * Explicit computation and taking apart
+    -          -- $unsafe$
+    -          -- ** Specific variants
+    -          -- $specific$
+    -          module Raaz.V1.AuthEncrypt.Unsafe
+    -        ) where
+    +   ( -- * Explicit computation and taking apart
+    +     -- $unsafe$
+    +     -- $specific$
+    +     module Raaz.V1.AuthEncrypt.Unsafe,
+    +   )
+    + where
+    
+      import Raaz.V1.AuthEncrypt.Unsafe
+
+scientific-0.3.8.1/src/Data/Scientific.hs
+    comments: `--` became `-- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.`
+    --- input
+    +++ output
+    @@ -1,11 +1,11 @@
+    - {-# LANGUAGE DeriveDataTypeable #-}
+      {-# LANGUAGE BangPatterns #-}
+    - {-# LANGUAGE ScopedTypeVariables #-}
+    - {-# LANGUAGE UnboxedTuples #-}
+    - {-# LANGUAGE PatternGuards #-}
+    - {-# LANGUAGE Trustworthy #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+      {-# LANGUAGE DeriveLift #-}
+    + {-# LANGUAGE PatternGuards #-}
+    + {-# LANGUAGE ScopedTypeVariables #-}
+      {-# LANGUAGE StandaloneDeriving #-}
+    + {-# LANGUAGE Trustworthy #-}
+    + {-# LANGUAGE UnboxedTuples #-}
+    
+      -- |
+      -- Module      :  Data.Scientific
+    @@ -52,77 +52,76 @@
+      --
+      -- @import qualified Data.Scientific as Scientific@
+      module Data.Scientific
+    -     ( Scientific
+    +   ( Scientific,
+    
+    -       -- * Construction
+    -     , scientific
+    +     -- * Construction
+    +     scientific,
+    
+    -       -- * Projections
+    -     , coefficient
+    -     , base10Exponent
+    +     -- * Projections
+    +     coefficient,
+    +     base10Exponent,
+    
+    -       -- * Predicates
+    -     , isFloating
+    -     , isInteger
+    +     -- * Predicates
+    +     isFloating,
+    +     isInteger,
+    
+    -       -- * Conversions
+    -       -- ** Rational
+    -     , unsafeFromRational
+    -     , fromRationalRepetend
+    -     , fromRationalRepetendLimited
+    -     , fromRationalRepetendUnlimited
+    -     , toRationalRepetend
+    +     -- * Conversions
+    
+    -       -- ** Floating & integer
+    -     , floatingOrInteger
+    -     , toRealFloat
+    -     , toBoundedRealFloat
+    -     , toBoundedInteger
+    -     , fromFloatDigits
+    +     -- ** Rational
+    +     unsafeFromRational,
+    … and 1265 more lines
+
+scotty-0.30/test/Web/ScottySpec.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -7,9 +7,14 @@
+      module Web.ScottySpec (main, spec) where
+    
+      import Control.Applicative
+    + import Control.Concurrent.Async (withAsync)
+    + import Control.Exception (bracketOnError)
+      import qualified Control.Exception as E
+      import qualified Control.Exception.Lifted as EL
+      import Control.Monad
+    + import Data.ByteString (ByteString)
+    + import qualified Data.ByteString as BS
+    + import qualified Data.ByteString.Lazy as LBS
+      import Data.Char
+      import Data.String
+      import qualified Data.Text as T
+    @@ -21,10 +26,13 @@
+      import Data.Time.Clock (secondsToDiffTime)
+      import GHC.Generics (Generic)
+      import Network.HTTP.Types
+    + import Network.Socket (Family (..), SockAddr (..), Socket, SocketOption (..), SocketType (..), bind, close, connect, listen, maxListenQueue, setSocketOption, socket)
+    + import Network.Socket.ByteString (recv, send)
+      import Network.Wai (Application, Request (queryString), responseLBS)
+      import Network.Wai.Middleware.ValidateHeaders (defaultValidateHeadersSettings, validateHeadersMiddleware)
+      import Network.Wai.Parse (defaultParseRequestBodyOptions)
+      import Network.Wai.Test (SResponse)
+    + import System.Directory (removeFile)
+      import Test.Hspec
+      import Test.Hspec.Wai (WaiSession, delete, get, matchBody, matchHeaders, matchStatus, options, patch, post, put, request, shouldRespondWith, with, (<:>))
+      import Test.Hspec.Wai.Extra (FileMeta (..), postMultipartForm)
+    @@ -34,14 +42,6 @@
+      import qualified Web.Scotty as Scotty
+      import qualified Web.Scotty.Cookie as SC (deleteCookie, getCookie, setSimpleCookie)
+      import Web.Scotty.Trans (scottyAppT) -- for testing JSON mode with custom Options
+    - import Control.Concurrent.Async (withAsync)
+    - import Control.Exception (bracketOnError)
+    - import Data.ByteString (ByteString)
+    - import qualified Data.ByteString as BS
+    - import qualified Data.ByteString.Lazy as LBS
+    - import Network.Socket (Family (..), SockAddr (..), Socket, SocketOption (..), SocketType (..), bind,
+
+servant-0.20.3.0/src/Servant/API/TypeLevel.hs
+    comments: the module's 32 documentation comments became 31
+    --- input
+    +++ output
+    @@ -1,16 +1,15 @@
+    - {-# LANGUAGE CPP                      #-}
+    - {-# LANGUAGE ConstraintKinds          #-}
+    - {-# LANGUAGE DataKinds                #-}
+    - {-# LANGUAGE FlexibleInstances        #-}
+    -
+    - {-# LANGUAGE MultiParamTypeClasses    #-}
+    - {-# LANGUAGE PolyKinds                #-}
+    - {-# LANGUAGE ScopedTypeVariables      #-}
+    - {-# LANGUAGE TypeFamilies             #-}
+    - {-# LANGUAGE TypeOperators            #-}
+    - {-# LANGUAGE RankNTypes               #-}
+    - {-# LANGUAGE UndecidableInstances     #-}
+    - {-# LANGUAGE UndecidableSuperClasses  #-}
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE ConstraintKinds #-}
+    + {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE MultiParamTypeClasses #-}
+    + {-# LANGUAGE PolyKinds #-}
+    + {-# LANGUAGE RankNTypes #-}
+    + {-# LANGUAGE ScopedTypeVariables #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    + {-# LANGUAGE TypeOperators #-}
+    + {-# LANGUAGE UndecidableInstances #-}
+    + {-# LANGUAGE UndecidableSuperClasses #-}
+    
+      {-|
+      This module collects utilities for manipulating @servant@ API types. The
+    @@ -22,64 +21,85 @@
+      >             :<|> "bye" :> Capture "name" String :> Post '[JSON, PlainText] Bool
+    
+      -}
+    - module Servant.API.TypeLevel (
+    -     -- $setup
+    -     -- * API predicates
+    + module Servant.API.TypeLevel
+    +   ( -- $setup
+          Endpoints,
+    +
+          -- ** Lax inclusion
+          IsElem',
+          IsElem,
+          IsSubAPI,
+          AllIsElem,
+    +
+          -- ** Strict inclusion
+          IsIn,
+          IsStrictSubAPI,
+          AllIsIn,
+    +
+          -- * Helpers
+    +
+          -- ** Lists
+          MapSub,
+          AppendList,
+          IsSubList,
+          Elem,
+          ElemGo,
+    +
+    … and 248 more lines
+
+statistics-0.16.5.0/tests/Tests/Distribution.hs
+    a different program: (:) > L > DocCommentNext > L > WithHsDocIdentifiers > a documentation comment changed
+    --- input
+    +++ output
+    @@ -1,74 +1,81 @@
+    - {-# LANGUAGE FlexibleInstances, ScopedTypeVariables,
+    -     ViewPatterns #-}
+    + {-# LANGUAGE FlexibleInstances #-}
+    + {-# LANGUAGE ScopedTypeVariables #-}
+    + {-# LANGUAGE ViewPatterns #-}
+    +
+      module Tests.Distribution (tests) where
+    
+      import qualified Control.Exception as E
+      import Data.List (find)
+      import Data.Typeable (Typeable)
+      import Data.Word
+    - import Numeric.MathFunctions.Constants (m_tiny,m_huge,m_epsilon)
+      import Numeric.MathFunctions.Comparison
+    + import Numeric.MathFunctions.Constants (m_epsilon, m_huge, m_tiny)
+      import Statistics.Distribution
+    - import Statistics.Distribution.Beta           (BetaDistribution)
+    - import Statistics.Distribution.Binomial       (BinomialDistribution)
+    + import Statistics.Distribution.Beta (BetaDistribution)
+    + import Statistics.Distribution.Binomial (BinomialDistribution)
+      import Statistics.Distribution.CauchyLorentz
+    - import Statistics.Distribution.ChiSquared     (ChiSquared)
+    - import Statistics.Distribution.Exponential    (ExponentialDistribution)
+    - import Statistics.Distribution.FDistribution  (FDistribution,fDistribution)
+    - import Statistics.Distribution.Gamma          (GammaDistribution,gammaDistr)
+    + import Statistics.Distribution.ChiSquared (ChiSquared)
+    + import Statistics.Distribution.DiscreteUniform (DiscreteUniform)
+    + import Statistics.Distribution.Exponential (ExponentialDistribution)
+    + import Statistics.Distribution.FDistribution (FDistribution, fDistribution)
+    + import Statistics.Distribution.Gamma (GammaDistribution, gammaDistr)
+      import Statistics.Distribution.Geometric
+      import Statistics.Distribution.Hypergeometric
+    - import Statistics.Distribution.Laplace        (LaplaceDistribution)
+    - import Statistics.Distribution.Lognormal      (LognormalDistribution)
+    + import Statistics.Distribution.Laplace (LaplaceDistribution)
+    + import Statistics.Distribution.Lognormal (Lognorma
+
+stm-2.5.3.1/Control/Concurrent/STM/TArray.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -21,7 +21,6 @@
+      {-# LANGUAGE UnboxedTuples #-}
+    
+      #else
+    -
+      #define HAS_UNLIFTED_ARRAY 1
+    
+      #endif
+
+stm-2.5.3.1/Control/Concurrent/STM/TChan.hs
+    comments, in one configuration: `-- 'TChan's using 'System.IO.Unsafe.unsafePerformIO', because using` became `--  'TChan's using 'System.IO.Unsafe.unsafePerformIO', because using`
+    --- input
+    +++ output
+    @@ -1,11 +1,223 @@
+    + #if __GLASGOW_HASKELL__ >= 701
+    + #ifdef __GLASGOW_HASKELL__
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE Trustworthy #-}
+      {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+    - {-# LANGUAGE CPP, DeriveDataTypeable #-}
+    
+    - #if __GLASGOW_HASKELL__ >= 701
+    + -----------------------------------------------------------------------------
+    +
+    + -- |
+    + -- Module      :  Control.Concurrent.STM.TChan
+    + -- Copyright   :  (c) The University of Glasgow 2004
+    + -- License     :  BSD-style (see the file libraries/base/LICENSE)
+    + --
+    + -- Maintainer  :  libraries@haskell.org
+    + -- Stability   :  experimental
+    + -- Portability :  non-portable (requires STM)
+    + --
+    + -- TChan: Transactional channels
+    + -- (GHC only)
+    + --
+    +
+    + -----------------------------------------------------------------------------
+    +
+    + module Control.Concurrent.STM.TChan
+    +   ( -- * TChans
+    +     TChan,
+    +
+    +     -- ** Construction
+    +     newTChan,
+    +     newTChanIO,
+    +     newBroadcastTChan,
+    +     newBroadcastTChanIO,
+    +     dupTChan,
+    +     cloneTChan,
+    +
+    +     -- ** Reading and writing
+    +     readTChan,
+    +     tryReadTChan,
+    +     peekTChan,
+    +     tryPeekTChan,
+    +     writeTChan,
+    +     unGetTChan,
+    +     isEmptyTChan,
+    +   )
+    + where
+    +
+    + import Data.Typeable (Typeable)
+    + import GHC.Conc
+    +
+    + #define _UPK_(x) {-# UNPACK #-} !(x)
+    +
+    + -- | 'TChan' is an abstract type representing an unbounded FIFO channel.
+    + data TChan a
+    +   = TChan
+    +       _UPK_
+    +       (TVar (TVarList a))
+    … and 443 more lines
+
+stm-2.5.3.1/Control/Concurrent/STM/TMVar.hs
+    comments, in one configuration: `-- 'TMVar's using 'System.IO.Unsafe.unsafePerformIO', because using` became `--  'TMVar's using 'System.IO.Unsafe.unsafePerformIO', because using`
+    --- input
+    +++ output
+    @@ -1,10 +1,13 @@
+    - {-# LANGUAGE CPP, DeriveDataTypeable, MagicHash, UnboxedTuples #-}
+    -
+      #if __GLASGOW_HASKELL__ >= 701
+    + #ifdef __GLASGOW_HASKELL__
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE MagicHash #-}
+      {-# LANGUAGE Trustworthy #-}
+    - #endif
+    + {-# LANGUAGE UnboxedTuples #-}
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Concurrent.STM.TMVar
+      -- Copyright   :  (c) The University of Glasgow 2004
+    @@ -17,35 +20,236 @@
+      -- TMVar: Transactional MVars, for use in the STM monad
+      -- (GHC only)
+      --
+    +
+      -----------------------------------------------------------------------------
+    
+    - module Control.Concurrent.STM.TMVar (
+    - #ifdef __GLASGOW_HASKELL__
+    -         -- * TMVars
+    -         TMVar,
+    -         newTMVar,
+    -         newEmptyTMVar,
+    -         newTMVarIO,
+    -         newEmptyTMVarIO,
+    -         takeTMVar,
+    -         putTMVar,
+    -         readTMVar,
+    -         writeTMVar,
+    -         tryReadTMVar,
+    -         swapTMVar,
+    -         tryTakeTMVar,
+    -         tryPutTMVar,
+    -         isEmptyTMVar,
+    -         mkWeakTMVar
+    - #endif
+    -   ) where
+    + module Control.Concurrent.STM.TMVar
+    +   ( -- * TMVars
+    +     TMVar,
+    +     newTMVar,
+    +     newEmptyTMVar,
+    +     newTMVarIO,
+    +     newEmptyTMVarIO,
+    +     takeTMVar,
+    +     putTMVar,
+    +     readTMVar,
+    +     writeTMVar,
+    +     tryReadTMVar,
+    +     swapTMVar,
+    +     tryTakeTMVar,
+    +     tryPutTMVar,
+    +     isEmptyTMVar,
+    … and 376 more lines
+
+stm-2.5.3.1/Control/Concurrent/STM/TQueue.hs
+    comments, in one configuration: `-- 'TQueue's using 'System.IO.Unsafe.unsafePerformIO', because using` became `--  'TQueue's using 'System.IO.Unsafe.unsafePerformIO', because using`
+    --- input
+    +++ output
+    @@ -1,12 +1,13 @@
+    - {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+    - {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+    - {-# LANGUAGE CPP, DeriveDataTypeable #-}
+    -
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+      #if __GLASGOW_HASKELL__ >= 701
+      {-# LANGUAGE Trustworthy #-}
+      #endif
+    + {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+    + {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+    
+      -----------------------------------------------------------------------------
+    +
+      -- |
+      -- Module      :  Control.Concurrent.STM.TQueue
+      -- Copyright   :  (c) The University of Glasgow 2012
+    @@ -30,75 +31,79 @@
+      -- enqueue and dequeue operations.
+      --
+      -- @since 2.4
+    +
+      -----------------------------------------------------------------------------
+    
+    - module Control.Concurrent.STM.TQueue (
+    -         -- * TQueue
+    -         TQueue,
+    -         newTQueue,
+    -         newTQueueIO,
+    -         readTQueue,
+    -         tryReadTQueue,
+    -         flushTQueue,
+    -         peekTQueue,
+    -         tryPeekTQueue,
+    -         writeTQueue,
+    -         unGetTQueue,
+    -         isEmptyTQueue,
+    -   ) where
+    + module Control.Concurrent.STM.TQueue
+    +   ( -- * TQueue
+    +     TQueue,
+    +     newTQueue,
+    +     newTQueueIO,
+    +     readTQueue,
+    +     tryReadTQueue,
+    +     flushTQueue,
+    +     peekTQueue,
+    +     tryPeekTQueue,
+    +     writeTQueue,
+    +     unGetTQueue,
+    +     isEmptyTQueue,
+    +   )
+    + where
+    
+    - import GHC.Conc
+      import Control.Monad (unless)
+      import Data.Typeable (Typeable)
+    + import GHC.Conc
+    
+    … and 127 more lines
+
+stm-2.5.3.1/testsuite/src/Issue17.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -20,6 +20,7 @@
+    
+        -- Same as above, except created within STM
+        queueSTM <- atomically $ newTBQueue 0
+    +
+      #if !MIN_VERSION_stm(2,5,0)
+        assertNoCapacityTBQueue queueSTM
+
+tasty-1.5.4/Test/Tasty/Core.hs
+    comments, in one configuration: `-- See Note [Skipped tests]` became `--`
+    --- input
+    +++ output
+    @@ -1,4 +1,3 @@
+    - -- | Core types and definitions
+      {-# LANGUAGE DeriveGeneric #-}
+      {-# LANGUAGE ExistentialQuantification #-}
+      {-# LANGUAGE FlexibleInstances #-}
+    @@ -6,45 +5,48 @@
+      {-# LANGUAGE LambdaCase #-}
+      {-# LANGUAGE RankNTypes #-}
+      {-# LANGUAGE TypeApplications #-}
+    +
+    + -- | Core types and definitions
+      module Test.Tasty.Core
+    -   ( FailureReason(..)
+    -   , Outcome(..)
+    -   , Time
+    -   , Result(..)
+    -   , resultSuccessful
+    -   , exceptionResult
+    -   , Progress(..)
+    -   , emptyProgress
+    -   , IsTest(..)
+    -   , TestName
+    -   , ResourceSpec(..)
+    -   , ResourceError(..)
+    -   , DependencyType(..)
+    -   , ExecutionMode(..)
+    -   , Parallel(..)
+    -   , TestTree(..)
+    -   , testGroup
+    -   , sequentialTestGroup
+    -   , dependentTestGroup
+    -   , inOrderTestGroup
+    -   , after
+    -   , after_
+    -   , TreeFold(..)
+    -   , trivialFold
+    -   , foldTestTree
+    -   , foldTestTree0
+    -   , treeOptions
+    -   , testFailed
+    -   ) where
+    +   ( FailureReason (..),
+    +     Outcome (..),
+    +     Time,
+    +     Result (..),
+    +     resultSuccessful,
+    +     exceptionResult,
+    +     Progress (..),
+    +     emptyProgress,
+    +     IsTest (..),
+    +     TestName,
+    +     ResourceSpec (..),
+    +     ResourceError (..),
+    +     DependencyType (..),
+    +     ExecutionMode (..),
+    +     Parallel (..),
+    +     TestTree (..),
+    +     testGroup,
+    +     sequentialTestGroup,
+    +     dependentTestGroup,
+    … and 676 more lines
+
+tasty-1.5.4/Test/Tasty/Runners/Utils.hs
+    a configuration of the output does not parse
+    --- input
+    +++ output
+    @@ -3,20 +3,19 @@
+      -- | Note: this module is re-exported as a whole from "Test.Tasty.Runners"
+      module Test.Tasty.Runners.Utils where
+    
+    - import Control.Exception
+      import Control.Concurrent (mkWeakThreadId, myThreadId)
+    + import Control.Exception
+      import Control.Monad (forM_)
+    - import Text.Printf
+      import Foreign.C (CInt)
+    -
+    + import Text.Printf
+      #if MIN_VERSION_base(4,11,0)
+      import GHC.Clock (getMonotonicTime)
+      #else
+      import Data.Time.Clock.POSIX (getPOSIXTime)
+      #endif
+    -
+      #ifdef VERSION_unix
+      #include "HsUnixConfig.h"
+    +
+      #ifdef HAVE_SIGNAL_H
+      #define INSTALL_HANDLERS 1
+      #else
+    @@ -27,10 +26,9 @@
+      #endif
+    
+      #if INSTALL_HANDLERS
+    - import System.Posix.Signals
+      import System.Mem.Weak (deRefWeak)
+    + import System.Posix.Signals
+      #endif
+    -
+      import Test.Tasty.Core (Time)
+    
+      -- | Catch possible exceptions that may arise when evaluating a string.
+    @@ -47,12 +45,12 @@
+        where
+          -- to avoid infinite recursion, we introduce the recursion limit
+          go :: Int -> String -> IO String
+    -     go 0        _ = return "exceptions keep throwing other exceptions!"
+    +     go 0 _ = return "exceptions keep throwing other exceptions!"
+          go recLimit msg = do
+            mbStr <- try $ evaluate $ forceElements msg
+            case mbStr of
+              Right () -> return msg
+    -         Left e' -> printf "message threw an exception: %s" <$> go (recLimit-1) (show (e' :: SomeException))
+    +         Left e' -> printf "message threw an exception: %s" <$> go (recLimit - 1) (show (e' :: SomeException))
+    
+      -- | Force elements of a list
+      -- (<https://ro-che.info/articles/2015-05-28-force-list>).
+    @@ -62,6 +60,7 @@
+      forceElements = foldr seq ()
+    
+      -- from https://ro-che.info/articles/2014-07-30-bracket
+    +
+      -- | Install signal handlers so that e.g. the cursor is restored if the test
+      -- suite is killed by SIGTERM. Upon a signal, a t'SignalException' will be
+      -- thrown to the thread that has executed this action.
+    @@ -74,19 +73,21 @@
+
+th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs
+    a configuration of the output does not parse
+    --- input
+    +++ output
+    @@ -1,10 +1,15 @@
+    - {-# Language CPP, DeriveDataTypeable, DeriveGeneric, ScopedTypeVariables, TupleSections #-}
+    -
+    + {-# LANGUAGE CPP #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+    + {-# LANGUAGE DeriveGeneric #-}
+      #if MIN_VERSION_template_haskell(2,12,0)
+    - {-# Language Safe #-}
+    + {-# LANGUAGE Safe #-}
+    + #endif
+    + {-# LANGUAGE ScopedTypeVariables #-}
+    + #if MIN_VERSION_template_haskell(2,12,0)
+      #else
+    - {-# Language Trustworthy #-}
+    + {-# LANGUAGE Trustworthy #-}
+      #endif
+    + {-# LANGUAGE TupleSections #-}
+    
+      {-|
+      Module      : Language.Haskell.TH.Datatype
+    @@ -56,85 +61,85 @@
+    
+      -}
+      module Language.Haskell.TH.Datatype
+    -   (
+    -   -- * Types
+    -     DatatypeInfo(..)
+    -   , ConstructorInfo(..)
+    -   , DatatypeVariant(..)
+    -   , ConstructorVariant(..)
+    -   , FieldStrictness(..)
+    -   , Unpackedness(..)
+    -   , Strictness(..)
+    +   ( -- * Types
+    +     DatatypeInfo (..),
+    +     ConstructorInfo (..),
+    +     DatatypeVariant (..),
+    +     ConstructorVariant (..),
+    +     FieldStrictness (..),
+    +     Unpackedness (..),
+    +     Strictness (..),
+    
+    -   -- * Normalization functions
+    -   , reifyDatatype
+    -   , reifyConstructor
+    -   , reifyRecord
+    -   , normalizeInfo
+    -   , normalizeDec
+    -   , normalizeCon
+    +     -- * Normalization functions
+    +     reifyDatatype,
+    +     reifyConstructor,
+    +     reifyRecord,
+    +     normalizeInfo,
+    +     normalizeDec,
+    +     normalizeCon,
+    
+    -   -- * 'DatatypeInfo' lookup functions
+    -   , lookupByConstructorName
+    -   , lookupByRecordName
+    … and 2606 more lines
+
+tls-2.4.3/Network/TLS/Context/Internal.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -148,6 +148,7 @@
+          ctxHandshakeSync :: HandshakeSync,
+          ctxQUICMode :: Bool,
+          -- Misc
+    +
+          -- | empty packet workaround for CBC guessability.
+          ctxNeedEmptyPacket :: IORef Bool,
+          -- | maximum size of plaintext fragments, val + 1 is used for TLS 1.3
+
+typed-process-0.2.13.0/src/System/Process/Typed.hs
+    a different program, in one configuration: L > HsQualTy > L > HsFunTy > L > HsDocTy became HsAppTy
+    --- input
+    +++ output
+    @@ -1,11 +1,12 @@
+      {-# LANGUAGE CPP #-}
+    - {-# LANGUAGE TypeFamilies #-}
+    - {-# LANGUAGE DeriveDataTypeable #-}
+    - {-# LANGUAGE RecordWildCards #-}
+      {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+      {-# LANGUAGE DeriveFunctor #-}
+      {-# LANGUAGE RankNTypes #-}
+    + {-# LANGUAGE RecordWildCards #-}
+      {-# LANGUAGE ScopedTypeVariables #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    +
+      -- | The simplest way to get started with this API is to turn on
+      -- @OverloadedStrings@ and call 'runProcess'.  The following will
+      -- write the contents of @/home@ to @stdout@ and then print the exit
+    @@ -20,139 +21,138 @@
+      -- Please see the [README.md](https://github.com/fpco/typed-process#readme)
+      -- file for more examples of using this API.
+      module System.Process.Typed
+    -     ( -- * Types
+    -       ProcessConfig
+    -     , StreamSpec
+    -     , StreamType (..)
+    -     , Process
+    +   ( -- * Types
+    +     ProcessConfig,
+    +     StreamSpec,
+    +     StreamType (..),
+    +     Process,
+    
+    -       -- * ProcessConfig
+    -       -- ** Smart constructors
+    -     , proc
+    -     , shell
+    +     -- * ProcessConfig
+    
+    -       -- | #processconfigsetters#
+    +     -- ** Smart constructors
+    +     proc,
+    +     shell,
+    +     -- | #processconfigsetters#
+    
+    -       -- ** Setters
+    -     , setStdin
+    -     , setStdout
+    -     , setStderr
+    -     , setWorkingDir
+    -     , setWorkingDirInherit
+    -     , setEnv
+    -     , setEnvInherit
+    -     , setCloseFds
+    -     , setCreateGroup
+    -     , setDelegateCtlc
+    +     -- ** Setters
+    +     setStdin,
+    +     setStdout,
+    +     setStderr,
+    +     setWorkingDir,
+    +     setWorkingDirInherit,
+    … and 992 more lines
+
+typed-process-0.2.13.0/src/System/Process/Typed/Internal.hs
+    a different program, in one configuration: L > HsSig > L > HsFunTy > L > HsDocTy became HsAppTy
+    --- input
+    +++ output
+    @@ -1,42 +1,40 @@
+      {-# LANGUAGE CPP #-}
+    - {-# LANGUAGE TypeFamilies #-}
+    - {-# LANGUAGE TypeOperators #-}
+    - {-# LANGUAGE DeriveDataTypeable #-}
+    - {-# LANGUAGE RecordWildCards #-}
+      {-# LANGUAGE DataKinds #-}
+    + {-# LANGUAGE DeriveDataTypeable #-}
+      {-# LANGUAGE DeriveFunctor #-}
+      {-# LANGUAGE RankNTypes #-}
+    + {-# LANGUAGE RecordWildCards #-}
+      {-# LANGUAGE ScopedTypeVariables #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    + {-# LANGUAGE TypeOperators #-}
+    +
+      -- | This module is __internal__ and its contents may change without a warning
+      -- or announcement. It is not subject to the PVP.
+      module System.Process.Typed.Internal where
+    
+    - import qualified Data.ByteString as S
+    - import Data.ByteString.Lazy.Internal (defaultChunkSize)
+    - import qualified Control.Exception as E
+    + import Control.Concurrent.Async (async)
+    + import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, putTMVar, readTMVar, throwSTM, tryPutTMVar)
+      import Control.Exception hiding (bracket, finally, handle)
+    + import qualified Control.Exception as E
+      import Control.Monad (void)
+    - import qualified System.Process as P
+    - import Data.Typeable (Typeable)
+    - import System.IO (Handle, hClose, IOMode(ReadWriteMode), withBinaryFile)
+    - import Control.Concurrent.Async (async)
+    - import Control.Concurrent.STM (newEmptyTMVarIO, atomically, putTMVar, readTMVar, STM, tryPutTMVar, throwSTM)
+    - import System.Exit (ExitCode)
+    + import Control.Monad.IO.Unlift
+    + import qualified Data.ByteString as S
+      import qualified Data.ByteString.Lazy as L
+    + import Data.ByteString.Lazy.Internal (defaultChunkSize)
+      import Data.String (IsString (fromString))
+    - import Control.Monad.IO.Unlift
+      import qualified Data.Text.Encoding.Error as TEE
+      import qualified Data.Text.Lazy as TL
+      import qualified Data.Text.Lazy.Encoding as TLE
+    -
+    + import Data.Typeable (Typeable)
+    + import System.Exit (ExitCode)
+    + import System.IO (Handle, IOMo
+
+unpacked-containers-0/utils/Internal/BitUtil.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -90,6 +90,7 @@
+            x3 = x2 .|. x2 `shiftRL` 2
+            x4 = x3 .|. x3 `shiftRL` 4
+            x5 = x4 .|. x4 `shiftRL` 8
+    +
+      #if !(defined(__GLASGOW_HASKELL__) && WORD_SIZE_IN_BITS==32)
+            x6 = x5 .|. x5 `shiftRL` 16
+
+uuid-types-1.0.6.1/src/Data/UUID/Types/Internal.hs
+    comments: `-- exactly sixteen bytes long` became `--  exactly sixteen bytes long`
+    --- input
+    +++ output
+    @@ -1,10 +1,10 @@
+    - {-# LANGUAGE CPP                #-}
+    + {-# LANGUAGE CPP #-}
+      {-# LANGUAGE DeriveDataTypeable #-}
+    - {-# LANGUAGE TypeFamilies       #-}
+    - {-# LANGUAGE ViewPatterns       #-}
+    - {-# LANGUAGE Unsafe             #-}
+    - {-# LANGUAGE DeriveLift         #-}
+    + {-# LANGUAGE DeriveLift #-}
+      {-# LANGUAGE StandaloneDeriving #-}
+    + {-# LANGUAGE TypeFamilies #-}
+    + {-# LANGUAGE Unsafe #-}
+    + {-# LANGUAGE ViewPatterns #-}
+      {-# OPTIONS_HADDOCK hide #-}
+    
+      -- |
+    @@ -17,69 +17,64 @@
+      --
+      -- Maintainer  : hvr@gnu.org
+      -- Portability : portable
+    -
+      module Data.UUID.Types.Internal
+    -     ( UUID(..)
+    -     , null
+    -     , nil
+    -     , fromByteString
+    -     , toByteString
+    -     , fromString
+    -     , toString
+    -     , fromText
+    -     , toText
+    -     , fromWords
+    -     , toWords
+    -     , fromWords64
+    -     , toWords64
+    -     , toList
+    -     , buildFromBytes
+    -     , buildFromWords
+    -     , fromASCIIBytes
+    -     , toASCIIBytes
+    -     , fromLazyASCIIBytes
+    -     , toLazyASCIIBytes
+    -     , UnpackedUUID(..)
+    -     , pack
+    -     , unpack
+    -     ) where
+    -
+    - import           Prelude                          hiding (null)
+    -
+    - import           Control.Applicative              ((<*>))
+    - import           Control.DeepSeq                  (NFData (..))
+    - import           Control.Monad                    (guard, liftM2)
+    - import           Data.Bits
+    - import           Data.Char
+    - import           Data.Data
+    - import           Data.Functor                     ((<$>))
+    - import           Data.Hashable
+    - import           Data.List                        (elemIndices)
+    - import           Foreign.Ptr                      (Ptr)
+    -
+    … and 843 more lines
+
+vector-0.13.2.0/src/Data/Vector.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -335,11 +335,11 @@
+          NFData1 (liftRnf),
+      #endif
+        )
+    + import Control.Monad (MonadPlus (..), ap, liftM)
+      import Data.Primitive.Array
+      import qualified Data.Vector.Fusion.Bundle as Bundle
+      import qualified Data.Vector.Generic as G
+      import Data.Vector.Mutable (MVector (..))
+    - import Control.Monad (MonadPlus (..), ap, liftM)
+      #if !MIN_VERSION_base(4,13,0)
+      import Control.Monad (fail)
+      #endif
+
+vector-0.13.2.0/src/Data/Vector/Primitive.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -302,19 +302,19 @@
+          NFData1 (liftRnf),
+      #endif
+        )
+    - import Data.Primitive (Prim, sizeOf)
+    - import Data.Primitive.ByteArray
+    - import qualified Data.Vector.Fusion.Bundle as Bundle
+    - import qualified Data.Vector.Generic as G
+    - import Data.Vector.Internal.Check
+    - import Data.Vector.Primitive.Mutable (MVector (..))
+      import Control.Monad (liftM)
+      import Control.Monad.Primitive
+      import Control.Monad.ST (ST)
+      import Data.Coerce
+      import Data.Data (Data (..))
+    + import Data.Primitive (Prim, sizeOf)
+    + import Data.Primitive.ByteArray
+      import Data.Semigroup (Semigroup (..))
+      import Data.Typeable (Typeable)
+    + import qualified Data.Vector.Fusion.Bundle as Bundle
+    + import qualified Data.Vector.Generic as G
+    + import Data.Vector.Internal.Check
+    + import Data.Vector.Primitive.Mutable (MVector (..))
+      import qualified GHC.Exts as Exts
+      import Text.Read (Read (..), readListPrecDefault)
+      import Unsafe.Coerce
+
+vector-0.13.2.0/src/Data/Vector/Primitive/Mutable.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -134,13 +134,13 @@
+        )
+      import Control.Monad (liftM)
+      import Control.Monad.Primitive
+    + import Data.Coerce
+      import Data.Primitive (Prim, sizeOf)
+      import Data.Primitive.ByteArray
+    + import Data.Typeable (Typeable)
+      import qualified Data.Vector.Generic.Mutable as G
+      import Data.Vector.Internal.Check
+      import Data.Word (Word8)
+    - import Data.Coerce
+    - import Data.Typeable (Typeable)
+      import Unsafe.Coerce
+      import Prelude
+        ( Bool,
+
+vector-0.13.2.0/src/Data/Vector/Storable.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -313,6 +313,12 @@
+          NFData1 (liftRnf),
+      #endif
+        )
+    + import Control.Monad.Primitive
+    + import Control.Monad.ST (ST)
+    + import Data.Coerce
+    + import Data.Data (Data (..))
+    + import Data.Semigroup (Semigroup (..))
+    + import Data.Typeable (Typeable)
+      import qualified Data.Vector.Fusion.Bundle as Bundle
+      import qualified Data.Vector.Generic as G
+      import Data.Vector.Storable.Internal
+    @@ -321,12 +327,6 @@
+      import Foreign.Marshal.Array (advancePtr, copyArray)
+      import Foreign.Ptr
+      import Foreign.Storable
+    - import Control.Monad.Primitive
+    - import Control.Monad.ST (ST)
+    - import Data.Coerce
+    - import Data.Data (Data (..))
+    - import Data.Semigroup (Semigroup (..))
+    - import Data.Typeable (Typeable)
+      import qualified GHC.Exts as Exts
+      import Text.Read (Read (..), readListPrecDefault)
+      import Unsafe.Coerce
+
+vector-0.13.2.0/src/Data/Vector/Strict.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -339,13 +339,13 @@
+          NFData1 (liftRnf),
+      #endif
+        )
+    + import Control.Monad (MonadPlus (..), ap)
+      import Data.Coerce
+      import Data.Primitive.Array
+      import qualified Data.Vector as V
+      import qualified Data.Vector.Fusion.Bundle as Bundle
+      import qualified Data.Vector.Generic as G
+      import Data.Vector.Strict.Mutable (MVector (..))
+    - import Control.Monad (MonadPlus (..), ap)
+      #if !MIN_VERSION_base(4,13,0)
+      import Control.Monad (fail)
+      #endif
+
+yesod-core-1.7.0.0/src/Yesod/Core/Dispatch.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -113,9 +113,16 @@
+      #endif
+          gzip,
+        )
+    + import Control.Monad (when)
+    + import Control.Monad.Logger
+    + import Data.Version (showVersion)
+    + import qualified Network.Wai.Handler.Warp
+    + import Network.Wai.Middleware.MethodOverride
+      import Network.Wai.Middleware.RequestLogger
+    + import qualified Paths_yesod_core
+      import System.Entropy (getEntropy)
+      import System.Environment (getEnvironment)
+    + import System.Log.FastLogger
+      import Text.Read (readMaybe)
+      import Yesod.Core.Class.Dispatch
+      import Yesod.Core.Class.Dispatch.ToParentRoute
+    @@ -124,13 +131,6 @@
+      import Yesod.Core.Types
+      import Yesod.Routes.Parse
+      import Yesod.Routes.TH (TyArgs (..))
+    - import Control.Monad (when)
+    - import Control.Monad.Logger
+    - import Data.Version (showVersion)
+    - import qualified Network.Wai.Handler.Warp
+    - import Network.Wai.Middleware.MethodOverride
+    - import qualified Paths_yesod_core
+    - import System.Log.FastLogger
+    
+      -- | Convert the given argument into a WAI application, executable with any WAI
+      -- handler. This function will provide no middlewares; if you want commonly
+
+yesod-core-1.7.0.0/test/YesodCoreTest.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -45,7 +45,6 @@
+      import qualified YesodCoreTest.WaiSubsite as WaiSubsite
+      import YesodCoreTest.Widget
+      import qualified YesodCoreTest.ZeroPieceShadowRuntime as ZeroPieceShadowRuntime
+    -
+      #ifndef WINDOWS
+      -- Skip on Windows, see https://github.com/yesodweb/yesod/issues/1523#issuecomment-398278450
+    
+    @@ -57,7 +56,6 @@
+      import qualified YesodCoreTest.LiteApp as LiteApp
+      import qualified YesodCoreTest.Reps as Reps
+      import qualified YesodCoreTest.Ssl as Ssl
+    -
+      #ifndef WINDOWS
+      #else
+      -- Skip on Windows, see https://github.com/yesodweb/yesod/issues/1523#issuecomment-398278450
+
+==========================================================================
+does-not-parse (2)
+==========================================================================
+
+ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
+    ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs:49:1
+
+leksah-0.16.2.2/src/IDE/Find.hs
+    leksah-0.16.2.2/src/IDE/Find.hs:786:1
+
+==========================================================================
+partly-checked (24)
+==========================================================================
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
+    512 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
+    192 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+async-2.2.6/Control/Concurrent/Async/Internal.hs
+    1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+cryptonite-0.30/Crypto/Number/Compat.hs
+    180 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+hspec-core-2.11.17/vendor/async-2.2.5/Control/Concurrent/Async.hs
+    256 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+intero-0.1.40/src/GhciInfo.hs
+    72 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+stm-2.5.3.1/Control/Monad/STM.hs
+    72 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+th-abstraction-0.7.2.0/test/Main.hs
+    4096 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Applicative/Backwards.hs
+    3072 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Applicative/Lift.hs
+    96 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Accum.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Except.hs
+    1536 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Identity.hs
+    12288 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Maybe.hs
+    1536 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/RWS/Lazy.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/RWS/Strict.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Reader.hs
+    24576 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/State/Lazy.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/State/Strict.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Writer/Lazy.hs
+    1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Control/Monad/Trans/Writer/Strict.hs
+    1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/Data/Functor/Reverse.hs
+    6144 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/legacy/pre711/Data/Functor/Product.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+unliftio-0.2.25.1/src/UnliftIO/Directory.hs
+    1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+==========================================================================
+declined (51)
+==========================================================================
+
+Agda-2.8.0/src/full/Agda/Main.hs
+    too many configurations to format
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+    too many configurations to format
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
+    too many configurations to format
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
+    too many configurations to format
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
+    too many configurations to format
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
+    QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs:315:13-14, in the configuration taking #ifndef NO_TYPEABLE, then #ifndef NO_SAFE_HASKELL, then #ifndef NO_TIMEOUT, then #if defined(MIN_VERSION_base), then #ifndef NO_DEEPSEQ, then #ifdef NO_TIMEOUT
+
+cryptonite-0.30/Crypto/Cipher/AES.hs
+    cryptonite-0.30/Crypto/Cipher/AES.hs:52:5
+
+cryptonite-0.30/Crypto/Cipher/Blowfish.hs
+    cryptonite-0.30/Crypto/Cipher/Blowfish.hs:54:5
+
+cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
+    cryptonite-0.30/Crypto/Random/Entropy/Windows.hs:64:16-28, in the configuration taking #if defined(ARCH_X86)
+
+dlist-1.0/Data/DList/Internal.hs
+    too many configurations to format
+
+hashable-1.5.1.0/src/Data/Hashable/Class.hs
+    too many configurations to format
+
+hlint-3.10/data/HLint_TypeCheck.hs
+    a pragma that moves positions, which we do not rewrite
+
+hlint-3.10/src/Config/Yaml.hs
+    too many configurations to format
+
+idris-1.3.4/Setup.hs
+    too many configurations to format
+
+idris-1.3.4/src/Util/DynamicLinker.hs
+    idris-1.3.4/src/Util/DynamicLinker.hs:43:63, in the configuration taking #ifdef IDRIS_FFI, then #ifdef mingw32_HOST_OS, then #if defined(linux_HOST_OS) || defined(freebsd_HOST_OS) \, then #ifndef mingw32_HOST_OS, then #ifdef linux_HOST_OS
+
+intero-0.1.40/src/InteractiveUI.hs
+    too many configurations to format
+
+intero-0.1.40/src/Main.hs
+    too many configurations to format
+
+lens-5.3.6/src/Control/Lens/Wrapped.hs
+    too many configurations to format
+
+lens-5.3.6/src/Language/Haskell/TH/Lens.hs
+    too many configurations to format
+
+lens-5.3.6/tests/properties.hs
+    lens-5.3.6/tests/properties.hs:118:26-28
+
+microlens-0.5.0.0/src/Lens/Micro.hs
+    too many configurations to format
+
+microlens-0.5.0.0/src/Lens/Micro/Internal.hs
+    too many configurations to format
+
+optics-0.4.2.1/tests/Optics/Tests/Utils.hs
+    optics-0.4.2.1/tests/Optics/Tests/Utils.hs:123:62, in the configuration taking #if __GLASGOW_HASKELL__ >= 802 && __GLASGOW_HASKELL__ <= 806, then #if __GLASGOW_HASKELL__ >= 806 && __GLASGOW_HASKELL__ <= 810, then #if __GLASGOW_HASKELL__ == 802, then #if __GLASGOW_HASKELL__ == 810, then #if __GLASGOW_HASKELL__ >= 806, then #if __GLASGOW_HASKELL__ <= 804, then #if __GLASGOW_HASKELL__ == 802 \, then #if __GLASGOW_HASKELL__ >= 900, then #if __GLASGOW_HASKELL__ >= 902 && __GLASGOW_HASKELL__ <= 904, then #if __GLASGOW_HASKELL__ >= 806 && __GLASGOW_HASKELL__ <= 810 \
+
+semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
+    too many configurations to format
+
+shake-0.19.9/src/Development/Shake/Internal/FileInfo.hs
+    shake-0.19.9/src/Development/Shake/Internal/FileInfo.hs:149:16-23, in the configuration taking #ifndef MIN_VERSION_unix, then #ifndef MIN_VERSION_time, then #elif defined(mingw32_HOST_OS), then #ifdef x86_64_HOST_ARCH
+
+shake-0.19.9/src/Development/Shake/Internal/History/Symlink.hs
+    shake-0.19.9/src/Development/Shake/Internal/History/Symlink.hs:31:16-23, in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
+
+shake-0.19.9/src/Development/Shake/Internal/Progress.hs
+    shake-0.19.9/src/Development/Shake/Internal/Progress.hs:44:16-23, in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
+
+shake-0.19.9/src/General/EscCodes.hs
+    shake-0.19.9/src/General/EscCodes.hs:52:16-23, in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
+
+shake-0.19.9/src/General/FileLock.hs
+    shake-0.19.9/src/General/FileLock.hs:28:16-23, in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
+
+swagger2-2.9.1/Setup.hs
+    swagger2-2.9.1/Setup.hs:25:10, in the configuration taking #ifndef MIN_VERSION_cabal_doctest, then no branch of #if MIN_VERSION_cabal_doctest(1,0,0), then #ifdef MIN_VERSION_Cabal
+
+text-2.1.4/src/Data/Text.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Array.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Encoding.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Internal.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Internal/Builder.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Internal/Encoding/Utf8.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/src/Data/Text/Lazy.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/tests/Tests/Lift.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/tests/Tests/Properties/Folds.hs
+    a #ifdef directive, which we do not handle
+
+text-2.1.4/tests/Tests/Properties/LowLevel.hs
+    a #ifdef directive, which we do not handle
+
+text-2.1.4/tests/Tests/Properties/Text.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/tests/Tests/QuickCheckUtils.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/tests/Tests/RebindableSyntaxTest.hs
+    a #if directive, which we do not handle
+
+text-2.1.4/tests/Tests/ShareEmpty.hs
+    a #if directive, which we do not handle
+
+time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
+    time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs:35:16-19, in the configuration taking no branch of #if !defined(javascript_HOST_ARCH), then #ifndef mingw32_HOST_OS, then no branch of #if defined(javascript_HOST_ARCH) || defined(__MHS__)
+
+time-1.16.0.1/test/template/Main.hs
+    time-1.16.0.1/test/template/Main.hs:19:33-34, in the configuration taking #if __GLASGOW_HASKELL__ >= 914
+
+transformers-0.6.3.0/Data/Functor/Constant.hs
+    too many configurations to format
+
+transformers-0.6.3.0/legacy/pre709/Data/Functor/Identity.hs
+    too many configurations to format
+
+unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
+    unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs:116:1, in the configuration taking #if defined(ASSERTS), then #if defined(__GLASGOW_HASKELL__)
+
+vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs
+    vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs:406:3-12, in the configuration taking #if MIN_VERSION_deepseq(1,4,3)
+
+vector-0.13.2.0/tests/Utilities.hs
+    vector-0.13.2.0/tests/Utilities.hs:119:3-6
+

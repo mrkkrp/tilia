@@ -26,6 +26,7 @@ module Tilia.Doc.Combinators
     variant,
     located,
     fence,
+    cppChoice,
 
     -- * Attachment
     Placement (..),
@@ -172,6 +173,16 @@ located = DLocated
 -- elements they are not supposed to attach to.
 fence :: Span -> Doc -> Doc
 fence = DFence
+
+-- | Alternatives the preprocessor chooses between.
+cppChoice ::
+  -- | One alternative per directive, each directive as written after its
+  -- hash
+  [(Text, Doc)] ->
+  -- | What holds when none of them applies
+  Doc ->
+  Doc
+cppChoice = DCppChoice
 
 ----------------------------------------------------------------------------
 -- Attachment

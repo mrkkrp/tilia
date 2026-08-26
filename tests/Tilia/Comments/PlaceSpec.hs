@@ -224,6 +224,6 @@ firstComment src = case commentsIn src of
   [] -> error "the test input had no comments"
 
 commentsIn :: Text -> [Comment]
-commentsIn src = case parseText defaultParserConfig "test.hs" src of
+commentsIn src = case parseModule defaultParserConfig "test.hs" src of
   Left _ -> error "the test input did not parse"
   Right pm -> pmComments pm

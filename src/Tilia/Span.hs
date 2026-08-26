@@ -17,6 +17,8 @@ module Tilia.Span
     -- * Asking about two
     sameLine,
     blankBetween,
+    meets,
+    covers,
 
     -- * Narrowing
     startOf,
@@ -80,6 +82,21 @@ sameLine _ _ = False
 blankBetween :: Maybe Span -> Maybe Span -> Bool
 blankBetween (Just a) (Just b) = spanStartLine b > spanEndLine a + 1
 blankBetween _ _ = False
+
+-- | Do the two cover any of the same input?
+--
+-- Touching counts: a span ending where the next begins shares that position,
+-- and the callers that ask this are asking whether the two are looking at
+-- one thing, not whether either strictly contains the other.
+meets :: Span -> Span -> Bool
+meets a b = startPoint a <= endPoint b && startPoint b <= endPoint a
+
+-- | Does the first cover all of the second?
+--
+-- Reflexive, so a span covers itself. Callers wanting one thing to be
+-- strictly inside another want this and inequality.
+covers :: Span -> Span -> Bool
+covers a b = startPoint a <= startPoint b && endPoint b <= endPoint a
 
 -- | A zero-width span at the start of the given one.
 startOf :: Span -> Span

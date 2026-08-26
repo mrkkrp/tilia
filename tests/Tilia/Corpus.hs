@@ -9,9 +9,12 @@ module Tilia.Corpus
     Corpus (..),
     Source (..),
     Reference (..),
+    Expectations (..),
+    Lists (..),
     vendoredExamples,
     ormoluExamples,
     ghcTestSuite,
+    hackagePackages,
 
     -- * Obtaining one
     Example (..),
@@ -43,6 +46,8 @@ import System.Environment (lookupEnv)
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import System.FilePath (splitDirectories, takeDirectory, (</>))
+import GHC.LanguageExtensions.Type (Extension)
+import Tilia.Package (newPackageReader)
 
 ----------------------------------------------------------------------------
 -- Corpora
@@ -63,8 +68,28 @@ data Source
   = -- | Fetched from the network and unpacked into a cache, once per
     -- machine.
     Fetched (Url 'Https, Option 'Https) FilePath
+  | -- | Hackage releases, each unpacked beside the others under one root.
+    HackageReleases [String]
   | -- | Checked into this repository, so always at hand and never fetched.
     Vendored FilePath
+
+-- | What a corpus says it expects of the formatter.
+data Expectations
+  = -- | Named by hand, here. Every example not named is expected to format.
+    Listed Lists
+  | -- | Recorded in a file, one line per example, holding what each of them
+    -- does today.
+    Recorded FilePath
+
+-- | The exceptions a 'Listed' corpus makes, named in full.
+data Lists = Lists
+  { -- | Examples to leave alone, named relative to the root of the corpus.
+    -- A name with no extension stands for a directory and takes everything
+    -- under it.
+    expectSkip :: [FilePath],
+    -- | Examples the formatter is supposed to refuse.
+    expectDeclined :: [FilePath]
+  }
 
 -- | Where a corpus comes from and what is in it.
 data Corpus = Corpus
@@ -74,12 +99,13 @@ data Corpus = Corpus
     corpusSource :: Source,
     -- | Whether the corpus says what the formatted result should look like.
     corpusReference :: Reference,
-    -- | Examples to leave alone, named relative to the root of the corpus.
-    -- A name with no extension stands for a directory and takes everything
-    -- under it.
-    corpusSkip :: [FilePath],
-    -- | Examples the formatter is supposed to refuse, named in full.
-    corpusDeclined :: [FilePath]
+    -- | What it expects the formatter to make of them.
+    corpusExpectations :: Expectations,
+    -- | Are these modules of the package around them?
+    --
+    -- True for a corpus of releases, where a module is compiled with its
+    -- package's @default-extensions@ and does not parse without them.
+    corpusInPackages :: Bool
   }
 
 -- | Our own examples.
@@ -87,10 +113,19 @@ vendoredExamples :: Corpus
 vendoredExamples =
   Corpus
     { corpusName = "tilia",
-      corpusSource = Vendored "vendored-corpus",
+      corpusSource = Vendored ("corpora" </> "vendored"),
       corpusReference = ReferenceSuffix "-out.hs",
-      corpusSkip = [],
-      corpusDeclined = ["other" </> "position-pragmas.hs"]
+      corpusExpectations =
+        Listed
+          Lists
+            { expectSkip = [],
+              expectDeclined =
+                [ "other" </> "position-pragmas.hs",
+                  "other" </> "cpp" </> "unbalanced.hs",
+                  "other" </> "cpp" </> "define-in-a-quasiquote.hs"
+                ]
+            },
+      corpusInPackages = False
     }
 
 -- | Ormolu's examples.
@@ -108,34 +143,9 @@ ormoluExamples =
           )
           ("data" </> "examples"),
       corpusReference = ReferenceSuffix "-out.hs",
-      corpusSkip =
-        [ "other" </> "disabling",
-          "declaration" </> "value" </> "function" </> "required-type-arguments-2.hs",
-          "declaration" </> "data" </> "comment-in-empty-record.hs",
-          "import" </> "comment-inside-empty-import-list.hs",
-          "other" </> "comment-two-blocks.hs",
-          "other" </> "multiple-blank-line-comment.hs",
-          "declaration" </> "type" </> "parens-comments.hs",
-          "declaration" </> "value" </> "function" </> "parens-comments.hs",
-          "import" </> "comments-inside-imports.hs",
-          "import" </> "comment-between-merged-imports.hs",
-          "declaration" </> "data" </> "with-comment.hs",
-          "declaration" </> "data" </> "record-empty-haddock.hs",
-          "other" </> "empty-haddock.hs",
-          "declaration" </> "value" </> "function" </> "arrow" </> "proc-do-complex.hs",
-          "declaration" </> "value" </> "function" </> "comprehension" </> "transform-multi-line2.hs",
-          "declaration" </> "value" </> "function" </> "if-with-comment-next-to-keyword.hs",
-          "declaration" </> "value" </> "function" </> "operator-comments-2.hs",
-          "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-0.hs",
-          "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-1.hs",
-          "other" </> "pragma-comments-after.hs",
-          "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-0.hs",
-          "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-1.hs",
-          "declaration" </> "class" </> "default-signatures.hs",
-          "declaration" </> "type-families" </> "closed-type-family" </> "with-comments.hs"
-        ]
-          <> ormoluUnreadable,
-      corpusDeclined = []
+      corpusExpectations =
+        Listed Lists {expectSkip = ormoluSkip, expectDeclined = []},
+      corpusInPackages = False
     }
 
 -- | GHC's test suite.
@@ -156,19 +166,164 @@ ghcTestSuite =
           )
           ("testsuite" </> "tests"),
       corpusReference = NoReference,
-      corpusSkip =
-        [ "perf" </> "compiler" </> "parsing001.hs"
-        ]
-          <> ghcUnreadable,
-      corpusDeclined =
-        [ "ghci.debugger" </> "HappyTest.hs",
-          "parser" </> "should_compile" </> "ColumnPragma.hs",
-          "parser" </> "should_compile" </> "T7118.hs",
-          "perf" </> "compiler" </> "T20261.hs",
-          "perf" </> "compiler" </> "T5631.hs",
-          "programs" </> "joao-circular" </> "Funcs_Parser_Lazy.hs"
-        ]
+      corpusExpectations =
+        Listed
+          Lists
+            { expectSkip =
+                ["perf" </> "compiler" </> "parsing001.hs"] <> ghcUnreadable,
+              expectDeclined = ghcDeclined
+            },
+      corpusInPackages = False
     }
+
+-- | GHC test suite files the formatter is right to refuse.
+ghcDeclined :: [FilePath]
+ghcDeclined =
+  [ "ghci.debugger" </> "HappyTest.hs",
+    "parser" </> "should_compile" </> "ColumnPragma.hs",
+    "parser" </> "should_compile" </> "T7118.hs",
+    "perf" </> "compiler" </> "T20261.hs",
+    "perf" </> "compiler" </> "T5631.hs",
+    "programs" </> "joao-circular" </> "Funcs_Parser_Lazy.hs",
+    "quasiquotation" </> "T4150.hs"
+  ]
+
+-- | Packages from Hackage.
+hackagePackages :: Corpus
+hackagePackages =
+  Corpus
+    { corpusName = "hackage",
+      corpusSource = HackageReleases hackageReleases,
+      corpusReference = NoReference,
+      corpusExpectations = Recorded ("corpora" </> "hackage" </> "hackage.manifest"),
+      corpusInPackages = True
+    }
+
+hackageReleases :: [String]
+hackageReleases =
+  [ "Agda-2.8.0",
+    "HUnit-1.6.2.0",
+    "QuickCheck-2.18.0.0",
+    "ShellCheck-0.11.0",
+    "adjunctions-4.4.4",
+    "aeson-2.3.1.0",
+    "ansi-terminal-1.1.5",
+    "async-2.2.6",
+    "attoparsec-0.14.4",
+    "aws-0.25.3",
+    "base64-bytestring-1.2.1.0",
+    "bifunctors-5.6.3",
+    "blaze-html-0.9.2.0",
+    "blaze-markup-0.8.3.0",
+    "brick-2.13",
+    "brittany-0.14.0.2",
+    "capability-0.5.0.1",
+    "cassava-0.5.5.0",
+    "comonad-5.0.10",
+    "conduit-1.3.6.1",
+    "contravariant-1.5.6",
+    "criterion-1.6.5.0",
+    "cryptonite-0.30",
+    "diagrams-core-1.5.1.2",
+    "distributed-process-0.7.8",
+    "dlist-1.0",
+    "esqueleto-3.6.0.3",
+    "exceptions-0.10.12",
+    "fay-0.24.2.0",
+    "free-5.2",
+    "hakyll-4.17.0.0",
+    "hashable-1.5.1.0",
+    "haxl-2.5.1.1",
+    "hedgehog-1.7",
+    "hledger-1.52.1",
+    "hlint-3.10",
+    "hspec-core-2.11.17",
+    "http-client-0.7.19",
+    "http-types-0.12.6",
+    "idris-1.3.4",
+    "intero-0.1.40",
+    "leksah-0.16.2.2",
+    "lens-5.3.6",
+    "megaparsec-9.8.1",
+    "microlens-0.5.0.0",
+    "mtl-2.3.2",
+    "optics-0.4.2.1",
+    "optparse-applicative-0.19.0.0",
+    "pandoc-3.10.2",
+    "pandoc-types-1.23.1.2",
+    "parsec3-1.0.1.8",
+    "parser-combinators-1.3.1",
+    "persistent-2.18.1.0",
+    "pipes-4.3.16",
+    "postgrest-9.0.1",
+    "profunctors-5.6.3",
+    "purescript-0.15.15",
+    "raaz-0.3.11",
+    "random-1.3.1",
+    "recursion-schemes-5.2.3",
+    "resourcet-1.3.0",
+    "retry-0.9.3.1",
+    "safe-exceptions-0.1.7.4",
+    "scientific-0.3.8.1",
+    "scotty-0.30",
+    "semigroupoids-6.0.2",
+    "servant-0.20.3.0",
+    "servant-server-0.20.3.0",
+    "shake-0.19.9",
+    "split-0.2.5",
+    "stack-9.9.9",
+    "statistics-0.16.5.0",
+    "stm-2.5.3.1",
+    "swagger2-2.9.1",
+    "tasty-1.5.4",
+    "tensorflow-0.2.0.1",
+    "text-2.1.4",
+    "th-abstraction-0.7.2.0",
+    "time-1.16.0.1",
+    "tls-2.4.3",
+    "transformers-0.6.3.0",
+    "typed-process-0.2.13.0",
+    "unliftio-0.2.25.1",
+    "unordered-containers-0.2.21",
+    "unpacked-containers-0",
+    "uuid-types-1.0.6.1",
+    "vector-0.13.2.0",
+    "vector-algorithms-0.9.1.0",
+    "wai-3.2.5",
+    "warp-3.4.15",
+    "xmonad-0.18.1",
+    "yesod-core-1.7.0.0"
+  ]
+
+-- | Ormolu examples we do not format the way Ormolu does.
+ormoluSkip :: [FilePath]
+ormoluSkip =
+  [ "other" </> "disabling",
+    "declaration" </> "value" </> "function" </> "required-type-arguments-2.hs",
+    "declaration" </> "data" </> "comment-in-empty-record.hs",
+    "import" </> "comment-inside-empty-import-list.hs",
+    "other" </> "comment-two-blocks.hs",
+    "other" </> "multiple-blank-line-comment.hs",
+    "declaration" </> "type" </> "parens-comments.hs",
+    "declaration" </> "value" </> "function" </> "parens-comments.hs",
+    "import" </> "comments-inside-imports.hs",
+    "import" </> "comment-between-merged-imports.hs",
+    "declaration" </> "data" </> "with-comment.hs",
+    "declaration" </> "data" </> "record-empty-haddock.hs",
+    "other" </> "empty-haddock.hs",
+    "declaration" </> "value" </> "function" </> "arrow" </> "proc-do-complex.hs",
+    "declaration" </> "value" </> "function" </> "comprehension" </> "transform-multi-line2.hs",
+    "declaration" </> "value" </> "function" </> "if-with-comment-next-to-keyword.hs",
+    "declaration" </> "value" </> "function" </> "operator-comments-2.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-0.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-1.hs",
+    "other" </> "pragma-comments-after.hs",
+    "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-0.hs",
+    "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-1.hs",
+    "declaration" </> "class" </> "default-signatures.hs",
+    "declaration" </> "type-families" </> "closed-type-family" </> "with-comments.hs"
+  ]
+    <> ormoluUnreadable
 
 -- | Ormolu examples GHC's own parser cannot read.
 ormoluUnreadable :: [FilePath]
@@ -640,7 +795,11 @@ data Example = Example
     -- | The file holding what the corpus says formatting should produce, if
     -- it says. 'Nothing' for a corpus that ships no expected outputs, and
     -- for an example within one that happens to have none.
-    exampleReference :: Maybe FilePath
+    exampleReference :: Maybe FilePath,
+    -- | What the package around it puts in force, already resolved from its
+    -- @.cabal@ file. Empty for a corpus whose examples are not modules of a
+    -- package; see 'corpusInPackages'.
+    exampleExtensions :: [Extension]
   }
   deriving (Eq, Show)
 
@@ -658,23 +817,47 @@ obtain corpus = case corpusSource corpus of
   Vendored dir -> Right <$> examplesIn corpus dir
   Fetched url root -> do
     home <- corpusCache
-    let archive = home </> corpusName corpus <> ".tar.gz"
-        unpacked = home </> corpusName corpus
+    let unpacked = home </> corpusName corpus
     createDirectoryIfMissing True home
-    ready <- doesDirectoryExist unpacked
-    prepared <-
-      if ready
-        then pure (Right ())
-        else do
-          have <- doesFileExist archive
-          got <-
-            if have
-              then pure (Right ())
-              else download url archive
-          either (pure . Left) (const (unpackTo archive unpacked)) got
-    case prepared of
+    fetch url (home </> corpusName corpus <> ".tar.gz") unpacked >>= \case
       Left problem -> pure (Left problem)
       Right () -> Right <$> examplesIn corpus (unpacked </> root)
+  HackageReleases releases -> do
+    home <- corpusCache
+    let root = home </> corpusName corpus
+    createDirectoryIfMissing True root
+    inTurn root releases >>= \case
+      Left problem -> pure (Left problem)
+      Right () -> Right <$> examplesIn corpus root
+  where
+    inTurn _ [] = pure (Right ())
+    inTurn root (name : rest) =
+      fetch (hackage name) (root </> name <> ".tar.gz") (root </> name) >>= \case
+        Left problem -> pure (Left problem)
+        Right () -> inTurn root rest
+
+-- | Put an archive's contents where they are wanted, if they are not there.
+--
+-- Fetching happens once and unpacking happens once, and either step already
+-- done is skipped.
+fetch :: (Url 'Https, Option 'Https) -> FilePath -> FilePath -> IO (Either Text ())
+fetch url archive unpacked =
+  doesDirectoryExist unpacked >>= \case
+    True -> pure (Right ())
+    False -> do
+      have <- doesFileExist archive
+      got <- if have then pure (Right ()) else download url archive
+      either (pure . Left) (const (unpackTo archive unpacked)) got
+
+-- | Where Hackage keeps a release's sources.
+hackage :: String -> (Url 'Https, Option 'Https)
+hackage name =
+  ( https "hackage.haskell.org"
+      /: "package"
+      /: T.pack name
+      /: T.pack (name <> ".tar.gz"),
+    mempty
+  )
 
 -- | Where corpora are kept.
 --
@@ -700,14 +883,14 @@ corpusCache =
 -- is caught: a file that cannot be written is a fault worth hearing about.
 download :: (Url 'Https, Option 'Https) -> FilePath -> IO (Either Text ())
 download (url, query) dest =
-  try fetch >>= \case
+  try get >>= \case
     Left (e :: HttpException) -> pure (Left (explain e))
     Right bytes -> do
       BL.writeFile partial bytes
       Right <$> renameFile partial dest
   where
     partial = dest <> ".part"
-    fetch =
+    get =
       runReq defaultHttpConfig $
         responseBody <$> req GET url NoReqBody lbsResponse query
     explain = \case
@@ -741,7 +924,7 @@ unpackTo archive dest = do
       case Tar.entryContent entry of
         Tar.NormalFile content _
           | Just path <- beneathTop (Tar.entryPath entry),
-            ".hs" `isSuffixOf` path -> do
+            any (`isSuffixOf` path) [".hs", ".cabal"] -> do
               createDirectoryIfMissing True (takeDirectory (staging </> path))
               BL.writeFile (staging </> path) content
         _ -> pure ()
@@ -758,22 +941,27 @@ unpackTo archive dest = do
 examplesIn :: Corpus -> FilePath -> IO [Example]
 examplesIn corpus root = do
   found <- sort <$> haskellFilesIn root
+  reader <- packageReaderFor corpus
   let files = filter (not . skipped) found
+      example f reference = Example (nameOf f) f reference <$> reader f
   case corpusReference corpus of
-    NoReference -> pure [Example (nameOf f) f Nothing | f <- files]
+    NoReference -> traverse (`example` Nothing) files
     ReferenceSuffix suffix -> forM files $ \f ->
       if suffix `isSuffixOf` f
-        then pure (Example (nameOf f) f (Just f))
+        then example f (Just f)
         else do
           let reference = take (length f - length (".hs" :: String)) f <> suffix
           there <- doesFileExist reference
-          pure (Example (nameOf f) f (if there then Just reference else Nothing))
+          example f (if there then Just reference else Nothing)
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
     skipped f = any listed (nameOf f : maybeToList (inputFor (nameOf f)))
-    listed name = any covers (corpusSkip corpus)
+    listed name = any covers skips
       where
         covers entry = entry == name || (entry <> "/") `isPrefixOf` name
+    skips = case corpusExpectations corpus of
+      Listed lists -> expectSkip lists
+      Recorded _ -> []
     inputFor name = case corpusReference corpus of
       ReferenceSuffix suffix
         | Just stem <- withoutSuffix suffix name -> Just (stem <> ".hs")
@@ -781,6 +969,14 @@ examplesIn corpus root = do
     withoutSuffix suffix name
       | suffix `isSuffixOf` name = Just (take (length name - length suffix) name)
       | otherwise = Nothing
+
+-- | What each of a corpus's examples has in force before its own pragmas.
+packageReaderFor :: Corpus -> IO (FilePath -> IO [Extension])
+packageReaderFor corpus
+  | not (corpusInPackages corpus) = pure (const (pure []))
+  | otherwise = do
+      reader <- newPackageReader
+      pure (fmap (either (const []) id) . reader)
 
 haskellFilesIn :: FilePath -> IO [FilePath]
 haskellFilesIn dir = do

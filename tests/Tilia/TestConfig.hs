@@ -2,7 +2,7 @@
 
 -- | The settings every corpus example is formatted with.
 module Tilia.TestConfig
-  ( exampleSettings,
+  ( exampleRenderConfig,
   )
 where
 
@@ -12,6 +12,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
+import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Fixity
   ( Direction (..),
     Fixity (..),
@@ -19,15 +20,21 @@ import Tilia.Fixity
     resolveScope,
   )
 import Tilia.Fixity.Builtin (builtinFixities)
-import Tilia.Parser (effectiveExtensions, onUnlessRefused)
-import Tilia.Render (Settings (..), defaultSettings)
+import Tilia.Pragma (effectiveExtensions)
+import Tilia.Render (RenderConfig (..), defaultRenderConfig)
 
 -- | How to format one corpus example.
-exampleSettings :: Text -> HsModule GhcPs -> Settings
-exampleSettings source hsModule =
-  defaultSettings
-    { setExtensions = Set.fromList (effectiveExtensions onUnlessRefused source),
-      setScope = Just (resolveScope exportsOf hsModule)
+exampleRenderConfig ::
+  -- | What the package around it puts in force, if it is a module of one.
+  [Extension] ->
+  Text ->
+  HsModule GhcPs ->
+  RenderConfig
+exampleRenderConfig package source hsModule =
+  defaultRenderConfig
+    { rcExtensions =
+        Set.fromList (effectiveExtensions package source),
+      rcScope = Just (resolveScope exportsOf hsModule)
     }
 
 -- | What a module in scope exports, as far as the corpus is concerned.

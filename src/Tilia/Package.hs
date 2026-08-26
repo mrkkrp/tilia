@@ -37,7 +37,7 @@ import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
 import System.Directory (canonicalizePath, doesDirectoryExist, listDirectory)
 import System.FilePath (takeDirectory, (</>))
-import Tilia.Parser (lookupExtension)
+import Tilia.Pragma (lookupExtension)
 import Tilia.Utils (attempted, quietly)
 
 -- | Why a file's extensions could not be settled.

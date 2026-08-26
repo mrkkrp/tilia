@@ -13,7 +13,6 @@ import Tilia.Format
   ( describeFormatError,
     formatErrorExitCode,
     formatFile,
-    formatIn,
   )
 import Tilia.Package (newPackageReader)
 
@@ -21,9 +20,7 @@ main :: IO ()
 main = do
   Opts {..} <- execParser optsParserInfo
   askPackage <- newPackageReader
-  result <- case optInputFile of
-    Just path -> formatFile askPackage path
-    Nothing -> T.getContents >>= formatIn askPackage "."
+  result <- formatFile askPackage optInputFile
   case result of
     Left e -> do
       T.hPutStrLn stderr ("tilia: " <> describeFormatError e)
@@ -35,8 +32,8 @@ main = do
 
 -- | The options a run was given.
 newtype Opts = Opts
-  { -- | File to format, 'Nothing' means stdin
-    optInputFile :: Maybe FilePath
+  { -- | File to format.
+    optInputFile :: FilePath
   }
 
 optsParserInfo :: ParserInfo Opts
@@ -55,7 +52,7 @@ optsParserInfo =
 optsParser :: Parser Opts
 optsParser =
   Opts
-    <$> (optional . strArgument . mconcat)
+    <$> (strArgument . mconcat)
       [ metavar "FILE",
-        help "Haskell source file to format or stdin (default)"
+        help "Haskell source file to format"
       ]

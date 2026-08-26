@@ -7,24 +7,26 @@ module Tilia.Format
     describeFormatError,
     formatErrorExitCode,
     formatFile,
-    formatIn,
   )
 where
 
+import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Tilia.Cpp (CppError (..), blankCpp, describeCppError, formatWithCpp, usesCpp)
 import Tilia.Fixity.Plan (loadPlan, newResolver, scopeFor)
 import Tilia.Parser
   ( ParseError,
     describeParseError,
-    parseText,
+    parseModule,
     parserConfigFor,
     pmModule,
-    effectiveExtensions,
-    movesPositions,
   )
+import Tilia.Pragma (effectiveExtensions, movesPositions)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Package
   ( PackageProblem (..),
@@ -32,7 +34,7 @@ import Tilia.Package
     describePackageProblem,
   )
 import Tilia.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Render (Settings (..), defaultSettings, renderModule)
+import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 
 -- | Why a file could not be formatted.
 data FormatError
@@ -47,6 +49,8 @@ data FormatError
     NotParsed ParseError
   | -- | The file carries @{-# LINE #-}@ or @{-# COLUMN #-}@ pragmas.
     PositionPragmas FilePath
+  | -- | The file uses the preprocessor in a way we cannot handle.
+    CppUnsupported FilePath CppError
 
 -- | Say what went wrong, in one line.
 describeFormatError :: FormatError -> Text
@@ -63,13 +67,10 @@ describeFormatError = \case
   NotParsed e -> "cannot parse " <> describeParseError e
   PositionPragmas path ->
     "will not format " <> T.pack path <> ": it uses {-# LINE #-} pragmas, and no reformatting can leave those true"
+  CppUnsupported path why ->
+    "will not format " <> T.pack path <> ": " <> describeCppError why
 
 -- | The exit status a failure should leave behind.
---
--- One code per kind of failure, so that a caller can tell them apart
--- without matching on the message. @1@ is deliberately not among them: it
--- is what a shell takes any command to mean by \"that did not work\", and a
--- code that means something in particular should not be confusable with it.
 formatErrorExitCode :: FormatError -> Int
 formatErrorExitCode = \case
   NoProject {} -> 2
@@ -81,38 +82,53 @@ formatErrorExitCode = \case
     PackageUnreadable {} -> 6
     PackageMalformed {} -> 7
     FileUnclaimed {} -> 8
+  CppUnsupported _ why -> case why of
+    UnhandledDirective {} -> 9
+    UnsplittableConditional -> 10
+    TooManyConfigurations -> 11
+    ConfigurationNotParsed {} -> 12
+    DirectiveUnplaceable {} -> 13
+    DirectiveInQuotedText {} -> 14
 
 -- | Format a file, using the project it belongs to.
-formatFile :: PackageReader -> FilePath -> IO (Either FormatError Text)
-formatFile askPackage path = T.readFile path >>= formatIn askPackage path
-
--- | Format text that belongs where the given path does.
-formatIn :: PackageReader -> FilePath -> Text -> IO (Either FormatError Text)
-formatIn askPackage path source
-  | movesPositions source = pure (Left (PositionPragmas path))
-  | otherwise =
-      findProjectRoot path >>= \case
-        Nothing -> pure (Left (NoProject path))
-        Just root ->
-          loadPlan (prPath root) >>= \case
-            Left reason -> pure (Left (NoBuildPlan (prPath root) reason))
-            Right plan -> do
-              askPackage path >>= \case
-                Left problem -> pure (Left (NoPackage path problem))
-                Right package ->
-                  case parseText (parserConfigFor package) path source of
-                    Left e -> pure (Left (NotParsed e))
-                    Right parsed -> do
-                      resolve <- newResolver plan
-                      scope <- scopeFor resolve (pmModule parsed)
-                      let settings =
-                            defaultSettings
-                              { setExtensions =
-                                  Set.fromList
-                                    (effectiveExtensions package source),
-                                setScope = Just scope
-                              }
-                      pure
-                        ( Right
-                            (printDoc defaultRenderOptions (renderModule settings parsed))
-                        )
+formatFile ::
+  -- | Package reader
+  PackageReader ->
+  -- | File to format
+  FilePath ->
+  -- | Result
+  IO (Either FormatError Text)
+formatFile askPackage path = runExceptT $ do
+  source <- liftIO (T.readFile path)
+  when (movesPositions source) $
+    throwE (PositionPragmas path)
+  root <- prPath <$> (need (NoProject path) =<< liftIO (findProjectRoot path))
+  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan root)
+  package <- orElse (NoPackage path) =<< liftIO (askPackage path)
+  resolve <- liftIO (newResolver plan)
+  let extensionsInForce = effectiveExtensions package source
+      config = parserConfigFor package
+      extensions = Set.fromList extensionsInForce
+      renderConfigFor hsModule = liftIO $ do
+        scope <- scopeFor resolve hsModule
+        pure defaultRenderConfig
+          { rcExtensions = extensions,
+            rcScope = Just scope
+          }
+  if usesCpp extensionsInForce source
+    then do
+      render <- case parseModule config path (blankCpp source) of
+        Left _ -> pure defaultRenderConfig {rcExtensions = extensions}
+        Right whole -> renderConfigFor (pmModule whole)
+      orElse
+        (CppUnsupported path)
+        (formatWithCpp config render path source)
+    else do
+      parsed <- orElse NotParsed (parseModule config path source)
+      render <- renderConfigFor (pmModule parsed)
+      pure (printDoc defaultRenderOptions (renderModule render parsed))
+  where
+    need :: FormatError -> Maybe a -> ExceptT FormatError IO a
+    need e = maybe (throwE e) pure
+    orElse :: (e -> FormatError) -> Either e a -> ExceptT FormatError IO a
+    orElse f = either (throwE . f) pure

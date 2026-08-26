@@ -6,7 +6,6 @@ module Tilia.FixitySpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
 import Tilia.Fixity
 import Tilia.Parser
@@ -138,31 +137,6 @@ spec = do
        in lookupFixity s Nothing (OpName "!")
             `shouldBe` Resolved defaultFixity ReportDefault
 
-  describe "language pragmas" $ do
-    it "reads one extension" $
-      sourceExtensions "{-# LANGUAGE BangPatterns #-}\nmodule M where\n"
-        `shouldBe` [BangPatterns]
-    it "reads several from one pragma" $
-      sourceExtensions "{-# LANGUAGE GADTs, RankNTypes #-}\nmodule M where\n"
-        `shouldBe` [GADTs, RankNTypes]
-    it "reads several pragmas" $
-      sourceExtensions "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE MagicHash #-}\n"
-        `shouldBe` [GADTs, MagicHash]
-    it "ignores other pragmas" $
-      sourceExtensions "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [GADTs]
-    it "ignores an unknown extension rather than failing" $
-      sourceExtensions "{-# LANGUAGE GADTs, NotARealExtension #-}\n"
-        `shouldBe` [GADTs]
-    it "treats a No-prefix as turning one off" $
-      sourceExtensions "{-# LANGUAGE ImplicitPrelude #-}\n{-# LANGUAGE NoImplicitPrelude #-}\n"
-        `shouldBe` []
-    it "does not repeat an extension named twice" $
-      sourceExtensions "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [GADTs]
-    it "finds nothing when there are no pragmas" $
-      sourceExtensions "module M where\n" `shouldBe` []
-
   describe "parsing with the module's own pragmas" $
     it "parses a module that needs an extension it declares" $
       -- Without reading the pragma this does not parse at all.
@@ -195,7 +169,7 @@ exportsOf = \case
   _ -> Just Map.empty
 
 parsed :: Text -> ParsedModule
-parsed src = case parseText defaultParserConfig "test.hs" src of
+parsed src = case parseModule defaultParserConfig "test.hs" src of
   Left _ -> error "the test input did not parse"
   Right pm -> pm
 

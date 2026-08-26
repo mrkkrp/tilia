@@ -2,11 +2,8 @@
 
 -- | Turning a parsed module into a document.
 module Tilia.Render
-  ( -- * Settings
-    Settings (..),
-    defaultSettings,
-
-    -- * Rendering
+  ( RenderConfig (..),
+    defaultRenderConfig,
     renderModule,
   )
 where
@@ -39,40 +36,31 @@ import Tilia.Render.Header (hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
 import Tilia.Span
 
-----------------------------------------------------------------------------
--- Settings
-
 -- | What the printer needs to know about the module beyond its text.
---
--- Every field has a defensible empty value, and 'defaultSettings' uses
--- them, which is what keeps the printer usable with nothing configured. The
--- cost of the empty values is precision rather than correctness: without a
--- scope no operator chain is regrouped, and without the extensions a
--- handful of spacing decisions are made conservatively.
-data Settings = Settings
+data RenderConfig = RenderConfig
   { -- | Extensions in force, from the module's own pragmas and from the
     -- package it belongs to.
-    setExtensions :: Set Extension,
+    rcExtensions :: Set Extension,
     -- | Whether this is a module or a Backpack signature.
-    setSourceType :: SourceType,
+    rcSourceType :: SourceType,
     -- | What the module can see, if it could be worked out.
-    setScope :: Maybe Scope
+    rcScope :: Maybe Scope,
+    -- | Source lines the import block must not be sorted across.
+    rcImportBarriers :: [Int]
   }
 
--- | Settings that assert nothing.
-defaultSettings :: Settings
-defaultSettings =
-  Settings
-    { setExtensions = Set.empty,
-      setSourceType = ModuleSource,
-      setScope = Nothing
+-- | A configuration that asserts nothing.
+defaultRenderConfig :: RenderConfig
+defaultRenderConfig =
+  RenderConfig
+    { rcExtensions = Set.empty,
+      rcSourceType = ModuleSource,
+      rcScope = Nothing,
+      rcImportBarriers = []
     }
 
-----------------------------------------------------------------------------
--- Rendering
-
 -- | Render a parsed module, comments and all.
-renderModule :: Settings -> ParsedModule -> Doc
+renderModule :: RenderConfig -> ParsedModule -> Doc
 renderModule settings parsed =
   prologue (pmPrologue parsed)
     <> stackHeader
@@ -88,26 +76,21 @@ renderModule settings parsed =
       m
         { hsmodImports =
             normalizeImports
-              (Set.member ImplicitPrelude (setExtensions settings))
+              (Set.member ImplicitPrelude (rcExtensions settings))
+              (rcImportBarriers settings)
               (hsmodImports m)
         }
     ctx =
       Ctx
-        { ctxExtensions = setExtensions settings,
-          ctxSourceType = setSourceType settings,
-          ctxScope = setScope settings,
+        { ctxExtensions = rcExtensions settings,
+          ctxSourceType = rcSourceType settings,
+          ctxScope = rcScope settings,
           ctxLineComments = indexOn (filter (not . closesItself) loose),
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot
         }
 
 -- | Keep a comment from running into a Haddock.
---
--- A Haddock is printed from the syntax tree and a comment is placed against
--- whatever node it belongs to, so the two can come out on consecutive lines
--- however far apart they were written. Read together they look like one
--- block of prose, and they are not: one documents a declaration and the
--- other is a remark. An empty line is what says so.
 heldOff :: [Comment] -> [Comment] -> [Comment]
 heldOff haddocks = map holdOff
   where
@@ -124,10 +107,6 @@ heldOff haddocks = map holdOff
         s = commentSpan c
 
 -- | The lines above the module, put back exactly as they were written.
---
--- They stand outside everything: no comment attaches to them, and no layout
--- decision may reach them. A @#!@ line that were indented, wrapped or moved
--- would stop being one.
 prologue :: [Text] -> Doc
 prologue = foldMap (\l -> txt l <> hardBreak)
 
@@ -144,29 +123,11 @@ knot =
     }
 
 -- | Separate the comments the syntax tree also knows about from the rest.
---
--- A doc comment the parser did not manage to attach to anything is not in
--- the tree, so nothing will print it, and it stays in the stream to be
--- attached by position like any other comment. Matching on positions rather
--- than on how the comment was written is what keeps those from being
--- dropped—and keeps the ones that /are/ in the tree from being printed
--- twice.
 splitHaddocks ::
   HsModule GhcPs ->
   -- | Every comment in the module
   [Comment] ->
-  -- | The ones the tree carries, and the ones it does not.
-  --
-  -- The first are not placed by the comment machinery at all: the printer
-  -- reaches them through the node that owns them and keeps them here only so
-  -- that it can reuse the text the author wrote rather than rebuilding it
-  -- from the doc string. The second are the comment stream proper—attached
-  -- by position, and the header pragmas taken out of them first.
-  --
-  -- This is also where it is settled what a doc comment's trigger is for. A
-  -- Haddock the tree carries is going to be printed as one, so its trigger
-  -- is tidied; one the tree does not carry is going to be printed as an
-  -- ordinary comment, so its trigger is escaped and stops being a trigger.
+  -- | The ones the tree carries, and the ones it does not
   ([Comment], [Comment])
 splitHaddocks hsMod = foldr sort' ([], [])
   where

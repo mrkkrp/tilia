@@ -206,7 +206,7 @@ countOf needle = length . T.breakOnAll needle
 
 commentsIn :: Text -> [Comment]
 commentsIn src =
-  case parseText defaultParserConfig "test.hs" src of
+  case parseModule defaultParserConfig "test.hs" src of
     Left _ -> error "the test input did not parse"
     Right pm -> pmComments pm
 
@@ -224,6 +224,6 @@ followeds :: Text -> [Bool]
 followeds = map commentFollowed . commentsIn
 
 headerLine :: Text -> Maybe Int
-headerLine src = case parseText defaultParserConfig "test.hs" src of
+headerLine src = case parseModule defaultParserConfig "test.hs" src of
   Left _ -> error "the test input did not parse"
   Right pm -> spanStartLine <$> pmHeaderEnd pm

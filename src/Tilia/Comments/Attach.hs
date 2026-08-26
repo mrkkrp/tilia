@@ -12,6 +12,7 @@ module Tilia.Comments.Attach
 where
 
 import Data.Bifunctor (first, second)
+import Data.List (mapAccumL)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Tilia.Comments
@@ -38,6 +39,7 @@ markedSpans = \case
   DAlign d -> markedSpans d
   DGroup _ d -> markedSpans d
   DVariant a _ -> markedSpans a
+  DCppChoice bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
   _ -> ([], [])
 
 -- | Walk the document, giving each region what it was given.
@@ -55,6 +57,11 @@ walk = go
             only' = only (endOfAConstruct s) mine
          in (only' Before <> DLocated s d' <> only' After, p'')
       DFence s d -> first (DFence s) (go p d)
+      DCppChoice bs e ->
+        let branch q (c, d) = let (d', q') = go q d in (q', (c, d'))
+            (p', bs') = mapAccumL branch p bs
+            (e', p'') = go p' e
+         in (DCppChoice bs' e', p'')
       DNest n d -> first (DNest n) (go p d)
       DAlign d -> first DAlign (go p d)
       DGroup l d -> first (DGroup l) (go p d)

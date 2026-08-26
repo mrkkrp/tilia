@@ -15,7 +15,10 @@ synopsis: A formatter for Haskell source code
 description: A formatter for Haskell source code.
 category: Development, Formatting
 build-type: Simple
-extra-source-files: vendored-corpus/**/*.hs
+extra-source-files:
+  corpora/hackage/hackage.manifest
+  corpora/hackage/hackage.report
+  corpora/vendored/**/*.hs
 extra-doc-files:
   CHANGELOG.md
   README.md
@@ -34,6 +37,7 @@ library
     Tilia.Comments
     Tilia.Comments.Attach
     Tilia.Comments.Place
+    Tilia.Cpp
     Tilia.Doc
     Tilia.Doc.Body
     Tilia.Doc.Combinators
@@ -48,6 +52,7 @@ library
     Tilia.Imports
     Tilia.Package
     Tilia.Parser
+    Tilia.Pragma
     Tilia.Project
     Tilia.Render
     Tilia.Render.Body
@@ -87,10 +92,12 @@ library
     syb >=0.7 && <0.8,
     tar >=0.6 && <0.7,
     text >=2.1 && <3,
+    transformers >=0.5 && <0.7,
     zlib >=0.6 && <0.8,
 
   if flag(dev)
     ghc-options:
+      -O2
       -Wall
       -Werror
       -Wredundant-constraints
@@ -122,6 +129,7 @@ executable tilia
 
   if flag(dev)
     ghc-options:
+      -O2
       -Wall
       -Werror
       -Wredundant-constraints
@@ -142,7 +150,9 @@ test-suite tests
   other-modules:
     Tilia.Comments.PlaceSpec
     Tilia.CommentsSpec
+    Tilia.CppSpec
     Tilia.Corpus
+    Tilia.Corpus.Manifest
     Tilia.CorpusSpec
     Tilia.Diff
     Tilia.Doc.BodySpec
@@ -154,9 +164,9 @@ test-suite tests
     Tilia.Fixity.CacheSpec
     Tilia.Fixity.PlanSpec
     Tilia.FixitySpec
+    Tilia.PragmaSpec
     Tilia.Gen
     Tilia.PackageSpec
-    Tilia.ParserSpec
     Tilia.ProjectSpec
     Tilia.Render.OperatorSpec
     Tilia.RenderSpec
@@ -175,23 +185,20 @@ test-suite tests
     hspec >=2 && <3,
     http-client >=0.7 && <0.8,
     req >=3.13 && <4,
-    syb >=0.7 && <0.8,
     tar >=0.6 && <0.7,
     tilia,
     temporary ^>=1.3,
     text >=2.1 && <3,
     zlib >=0.6 && <0.8,
 
-  -- A corpus example that will not stop is caught by a timeout, but one
-  -- that allocates without bound is not: it takes the machine down before
-  -- any limit expressed in seconds comes due. The cap makes that a heap
-  -- overflow reported against the run rather than a wedged machine.
   ghc-options:
+    -threaded
     -rtsopts
-    "-with-rtsopts=-M8G"
+    "-with-rtsopts=-M8G -N"
 
   if flag(dev)
     ghc-options:
+      -O2
       -Wall
       -Werror
       -Wredundant-constraints

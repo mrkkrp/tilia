@@ -16,7 +16,7 @@ import Tilia.Fixity
     Provenance (..),
     Scope (..),
   )
-import Tilia.Parser (defaultParserConfig, parseText)
+import Tilia.Parser (defaultParserConfig, parseModule)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Render
 
@@ -247,14 +247,14 @@ format = formatWith Nothing
 
 -- | Format with the given extensions in force, as a package would put them.
 formatUnder :: [Extension] -> [Text] -> [Text]
-formatUnder exts = withSettings defaultSettings {setExtensions = Set.fromList exts}
+formatUnder exts = withSettings defaultRenderConfig {rcExtensions = Set.fromList exts}
 
 formatWith :: Maybe Scope -> [Text] -> [Text]
-formatWith scope = withSettings defaultSettings {setScope = scope}
+formatWith scope = withSettings defaultRenderConfig {rcScope = scope}
 
-withSettings :: Settings -> [Text] -> [Text]
+withSettings :: RenderConfig -> [Text] -> [Text]
 withSettings settings input =
-  case parseText defaultParserConfig "<test>" source of
+  case parseModule defaultParserConfig "<test>" source of
     Left _ -> error ("did not parse:\n" <> T.unpack source)
     Right parsed ->
       T.lines (printDoc defaultRenderOptions (renderModule settings parsed))

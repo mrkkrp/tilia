@@ -9,7 +9,7 @@ module Tilia.Imports
 where
 
 import Data.Char (isAlphaNum)
-import Data.Function (on)
+import Data.Function (on, (&))
 import Data.List (groupBy, sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -36,13 +36,30 @@ data PreludeImport
 normalizeImports ::
   -- | Whether @ImplicitPrelude@ is on
   Bool ->
+  -- | Source lines the block must not be sorted across
+  [Int] ->
+  -- | Original imports
   [LImportDecl GhcPs] ->
+  -- | Normalized imports
   [LImportDecl GhcPs]
-normalizeImports implicitPrelude imports =
-  foldRuns fuse [(identity prelude i, i) | i <- tidied]
+normalizeImports implicitPrelude barriers imports =
+  concatMap stretch (segmented barriers tidied)
   where
     prelude = if implicitPrelude then Refines else Provides
     tidied = map (fmap tidyList) imports
+    stretch is = foldRuns fuse [(identity prelude i, i) | i <- is]
+
+-- | Cut a list of imports into the stretches the barriers leave between
+-- them, in order.
+segmented :: [Int] -> [LImportDecl GhcPs] -> [[LImportDecl GhcPs]]
+segmented [] imports = [imports]
+segmented barriers imports =
+  groupBy ((==) `on` fst) [(between i, i) | i <- imports] & map (map snd)
+  where
+    between i = length (takeWhile (< lineOf i) barriers)
+    lineOf i = case srcSpanStart (getLocA i) of
+      RealSrcLoc l _ -> srcLocLine l
+      _ -> 0
 
 ----------------------------------------------------------------------------
 -- Runs

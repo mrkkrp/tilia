@@ -54,7 +54,6 @@ module Tilia.Fixity.Plan
     -- * Resolving
     newResolver,
     scopeFor,
-
   )
 where
 
@@ -87,6 +86,7 @@ import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
 import System.Process (readCreateProcessWithExitCode, proc, cwd)
+import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
 import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.Cabal (exposedModules, packageModules, sourceDirs)
@@ -432,7 +432,7 @@ fromText ::
   Text ->
   IO (Maybe (Map OpName Fixity))
 fromText reach visiting source modName =
-  case parseText defaultParserConfig (T.unpack modName) (blankCpp source) of
+  case parseModule defaultParserConfig (T.unpack modName) (blankCpp source) of
     Left _ -> pure Nothing
     Right pm -> withReexports reach visiting modName (pmModule pm)
 
@@ -663,14 +663,6 @@ plannedTarballs plan = do
     isLocal p = case ppSource p of
       LocalPackage _ -> True
       _ -> False
-
--- | Blank out CPP directive lines.
-blankCpp :: Text -> Text
-blankCpp = T.unlines . map blank . T.lines
-  where
-    blank l
-      | "#" `T.isPrefixOf` T.stripStart l = ""
-      | otherwise = l
 
 -- | Where @cabal@ keeps downloaded package sources.
 packageCacheDir :: IO FilePath

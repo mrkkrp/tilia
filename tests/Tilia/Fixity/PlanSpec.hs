@@ -231,7 +231,7 @@ endToEnd ::
   (Scope -> Expectation) ->
   Expectation
 endToEnd resolve source assertion =
-  case parseText defaultParserConfig "test.hs" source of
+  case parseModule defaultParserConfig "test.hs" source of
     Left _ -> expectationFailure "the test input did not parse"
     Right pm -> do
       scope <- scopeFor resolve (pmModule pm)

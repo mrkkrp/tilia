@@ -16,9 +16,10 @@ import Control.Applicative ((<|>))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Data
-import Data.Generics.Aliases (mkT)
-import Data.Generics.Schemes (everywhere)
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.List (sortOn)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
@@ -26,6 +27,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import System.IO.Unsafe (unsafePerformIO)
 import GHC.Data.FastString (FastString)
 import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Doc (LHsDoc, WithHsDocIdentifiers (..))
@@ -79,79 +81,130 @@ import Tilia.Span.Ghc (spanOf, spansOf)
 -- corpus worth running is being able to see that six hundred failures are
 -- four causes.
 syntaxDifference :: (Data a) => a -> a -> Maybe Text
-syntaxDifference x y = differ [] (withoutEmptyDocs x) (withoutEmptyDocs y)
+syntaxDifference = differ []
 
--- | Forget the doc comments that say nothing.
-withoutEmptyDocs :: (Data a) => a -> a
-withoutEmptyDocs =
-  everywhere (mkT amongDecls . mkT amongExports . mkT onItsOwn)
+-- | The constructors on the way down to where the walk has got to,
+-- innermost first.
+--
+-- Innermost first because it is built by consing. The walk visits some
+-- millions of nodes for every one it reports on, and appending to the end of
+-- a list that grows with the depth — at every node, packing a constructor's
+-- name into 'Text' to do it — was a large part of what a comparison cost.
+-- 'describe' puts it back in reading order, and only for a difference that
+-- is really being reported.
+type Path = [Constr]
+
+differ :: forall a. (Data a) => Path -> a -> a -> Maybe Text
+differ path x y = case classify (typeOf x) of
+  Incidental -> Nothing
+  Special
+    | Just outcome <- asStandaloneDoc path x y -> outcome
+    | Just outcome <- asExportItems path x y -> outcome
+    | Just outcome <- asDeclarations path x y -> outcome
+    | Just outcome <- asDerivingClause path x y -> outcome
+    | Just outcome <- asQualifiedStyle path x y -> outcome
+    | Just outcome <- asDocString path x y -> outcome
+    | Just outcome <- asContext path x y -> outcome
+    | Just outcome <- asImports path x y -> outcome
+    | otherwise -> structurally
+  Ordinary -> structurally
   where
-    onItsOwn :: Maybe (LHsDoc GhcPs) -> Maybe (LHsDoc GhcPs)
-    onItsOwn d = if any (saysNothing . unLoc) d then Nothing else d
-    amongExports :: [LIE GhcPs] -> [LIE GhcPs]
-    amongExports = filter (not . emptyExport . unLoc)
-    emptyExport = \case
-      IEDoc _ doc -> saysNothing (unLoc doc)
-      _ -> False
-    amongDecls :: [LHsDecl GhcPs] -> [LHsDecl GhcPs]
-    amongDecls = filter (not . emptyDecl . unLoc)
-    emptyDecl = \case
-      DocD _ d -> case d of
-        DocCommentNext doc -> saysNothing (unLoc doc)
-        DocCommentPrev doc -> saysNothing (unLoc doc)
-        _ -> False
-      _ -> False
-    saysNothing = null . docWords . hsDocString
-
-differ :: forall a. (Data a) => [Text] -> a -> a -> Maybe Text
-differ path x y
-  | incidental (typeOf x) = Nothing
-  | Just outcome <- asDerivingClause path x y = outcome
-  | Just outcome <- asQualifiedStyle path x y = outcome
-  | Just outcome <- asDocString path x y = outcome
-  | Just outcome <- asContext path x y = outcome
-  | Just outcome <- asImports path x y = outcome
-  | otherwise = case dataTypeRep (dataTypeOf x) of
+    structurally = case dataTypeRep (dataTypeOf x) of
       AlgRep _
-        | constructorOf x /= constructorOf y -> Just disagreement
-        | settledByConstructor (constructorOf x) -> Nothing
+        | toConstr x /= toConstr y -> Just disagreement
+        | settledByConstructor (toConstr x) -> Nothing
         | otherwise ->
             firstOf
               ( zipWith
-                  (cellDiffer (path <> [constructorOf x]))
+                  (cellDiffer (toConstr x : path))
                   (gmapQ Cell x)
                   (gmapQ Cell y)
               )
-      -- A type that will not be taken apart cannot be compared field by
-      -- field, and cannot even be asked for its constructor. See 'opaque'.
       NoRep
         | opaque x y -> Nothing
         | otherwise ->
             Just (describe path (T.pack (typeNameOf x) <> " changed"))
-      -- An integer, a fractional, a character or a string. For these the
-      -- constructor carries the value, so comparing constructors compares
-      -- the literal that was written.
       _
-        | constructorOf x == constructorOf y -> Nothing
+        | toConstr x == toConstr y -> Nothing
         | otherwise -> Just disagreement
-  where
+
     disagreement =
-      describe path (constructorOf x <> " became " <> constructorOf y)
+      describe path (named (toConstr x) <> " became " <> named (toConstr y))
+
+-- | What is known about a type before either value of it is looked at.
+data Verdict
+  = -- | Records only how or where something was written. See 'incidental'.
+    Incidental
+  | -- | One of the types the @as…@ functions below compare by hand.
+    Special
+  | -- | Compared by its constructor and then field by field.
+    Ordinary
+
+-- | Which of the three a type is, worked out once.
+--
+-- Worth memoising rather than recomputing: 'incidental' is string
+-- manipulation over a type's module and name, and the question is asked at
+-- every node of every configuration of every module. There are a few
+-- hundred types in a parse tree and tens of millions of nodes.
+--
+-- The cache races harmlessly. A reader that misses an entry another thread
+-- has just written recomputes a pure function of the key and writes the
+-- same answer.
+classify :: TypeRep -> Verdict
+classify rep = unsafePerformIO $ do
+  known <- readIORef classified
+  case Map.lookup rep known of
+    Just verdict -> pure verdict
+    Nothing -> do
+      let verdict = worked
+      atomicModifyIORef' classified (\m -> (Map.insert rep verdict m, ()))
+      pure verdict
+  where
+    worked
+      | incidental rep = Incidental
+      | rep `Set.member` spokenFor = Special
+      | otherwise = Ordinary
+
+classified :: IORef (Map TypeRep Verdict)
+classified = unsafePerformIO (newIORef Map.empty)
+{-# NOINLINE classified #-}
+
+-- | The types compared by hand, which is to say the ones the @as…@ chain in
+-- 'differ' can match.
+--
+-- Kept beside that chain and in the same order. A type here with nothing to
+-- match it costs one failed run down the chain; a type in the chain and not
+-- here is never reached at all, which is why the corpora are what says this
+-- list is right.
+spokenFor :: Set TypeRep
+spokenFor =
+  Set.fromList
+    [ typeRep (Proxy @(Maybe (LHsDoc GhcPs))),
+      typeRep (Proxy @[LIE GhcPs]),
+      typeRep (Proxy @[LHsDecl GhcPs]),
+      typeRep (Proxy @(DerivClauseTys GhcPs)),
+      typeRep (Proxy @ImportDeclQualifiedStyle),
+      typeRep (Proxy @HsDocString),
+      typeRep (Proxy @(Maybe (LHsContext GhcPs))),
+      typeRep (Proxy @(LHsContext GhcPs)),
+      typeRep (Proxy @(XRec GhcPs [LHsExpr GhcPs])),
+      typeRep (Proxy @[LImportDecl GhcPs])
+    ]
 
 -- | Constructors whose fields say only how they were written.
 --
 -- @HsStarTy@ carries a flag for whether the @*@ was typed as @★@. Both are
 -- the same kind; which one the author reached for is spelling.
-settledByConstructor :: Text -> Bool
-settledByConstructor c = c == "HsStarTy"
+settledByConstructor :: Constr -> Bool
+settledByConstructor c = showConstr c == "HsStarTy"
 
-constructorOf :: (Data a) => a -> Text
-constructorOf = T.pack . show . toConstr
+named :: Constr -> Text
+named = T.pack . showConstr
 
 -- | The tail of the path, and what was found at the end of it.
-describe :: [Text] -> Text -> Text
+describe :: Path -> Text -> Text
 describe path leaf =
-  T.intercalate " > " (drop (length path - 5) path <> [leaf])
+  T.intercalate " > " (map named (reverse (take 5 path)) <> [leaf])
 
 firstOf :: [Maybe a] -> Maybe a
 firstOf = listToMaybe . catMaybes
@@ -159,10 +212,81 @@ firstOf = listToMaybe . catMaybes
 -- | One field of a value, with its type hidden.
 data Cell = forall d. (Data d) => Cell d
 
-cellDiffer :: [Text] -> Cell -> Cell -> Maybe Text
+cellDiffer :: Path -> Cell -> Cell -> Maybe Text
 cellDiffer path (Cell a) (Cell b) = case cast b of
   Just b' -> differ path a b'
   Nothing -> Just (describe path "fields of different types")
+
+-- | Two lists compared one element at a time.
+--
+-- Handed back to 'differ' whole they would arrive at the same @as…@ function
+-- again and never stop, which is why the lengths are settled here and only
+-- the elements go back round.
+elementwise :: (Data b) => Path -> Text -> [b] -> [b] -> Maybe Text
+elementwise path what before after
+  | length before /= length after = Just (describe path what)
+  | otherwise = firstOf (zipWith (differ path) before after)
+
+-- | Does this documentation comment say anything?
+saysNothing :: HsDocString -> Bool
+saysNothing = null . docWords
+
+-- | A documentation comment with no words in it is no comment at all.
+--
+-- @-- |@ on a line of its own attaches an empty doc string to whatever
+-- follows, and the formatter drops it, which is not a change to what the
+-- module says.
+--
+-- This and the two below were a pass over both trees with @everywhere@
+-- before the comparison started. That rebuilt two whole parse trees per
+-- configuration in order to remove a handful of nodes from each; done here,
+-- the same normalisation costs nothing until the walk arrives at one.
+asStandaloneDoc :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asStandaloneDoc path x y = case (cast x, cast y) of
+  (Just before, Just after) -> Just (compared (kept before) (kept after))
+  _ -> Nothing
+  where
+    kept :: Maybe (LHsDoc GhcPs) -> Maybe (LHsDoc GhcPs)
+    kept d = if any (saysNothing . hsDocString . unLoc) d then Nothing else d
+
+    compared before after = case (before, after) of
+      (Nothing, Nothing) -> Nothing
+      (Just b, Just a) -> differ (toConstr before : path) b a
+      _ ->
+        Just
+          ( describe
+              path
+              (named (toConstr before) <> " became " <> named (toConstr after))
+          )
+
+-- | An export list, minus the documentation that says nothing.
+asExportItems :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asExportItems path x y = case (cast x, cast y) of
+  (Just before, Just after) ->
+    Just (elementwise path "the module exports a different list" (kept before) (kept after))
+  _ -> Nothing
+  where
+    kept :: [LIE GhcPs] -> [LIE GhcPs]
+    kept = filter (not . emptyExport . unLoc)
+    emptyExport = \case
+      IEDoc _ doc -> saysNothing (hsDocString (unLoc doc))
+      _ -> False
+
+-- | A block of declarations, minus the documentation that says nothing.
+asDeclarations :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asDeclarations path x y = case (cast x, cast y) of
+  (Just before, Just after) ->
+    Just (elementwise path "a different number of declarations" (kept before) (kept after))
+  _ -> Nothing
+  where
+    kept :: [LHsDecl GhcPs] -> [LHsDecl GhcPs]
+    kept = filter (not . emptyDecl . unLoc)
+    emptyDecl = \case
+      DocD _ d -> case d of
+        DocCommentNext doc -> saysNothing (hsDocString (unLoc doc))
+        DocCommentPrev doc -> saysNothing (hsDocString (unLoc doc))
+        _ -> False
+      _ -> False
 
 -- | Does this type record only how or where something was written?
 incidental :: TypeRep -> Bool
@@ -217,7 +341,7 @@ structural con =
 -- writes whichever the extension calls for, so the two are not expected to
 -- survive as they were. Whether the import is qualified at all is another
 -- matter, and that is what is compared.
-asQualifiedStyle :: (Data a) => [Text] -> a -> a -> Maybe (Maybe Text)
+asQualifiedStyle :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asQualifiedStyle path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (compared before after)
   _ -> Nothing
@@ -234,7 +358,7 @@ asQualifiedStyle path x y = case (cast x, cast y) of
 -- the generic comparison cannot see past the brackets. The formatter always
 -- writes the brackets, so what is compared is the list of types being
 -- derived.
-asDerivingClause :: (Data a) => [Text] -> a -> a -> Maybe (Maybe Text)
+asDerivingClause :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asDerivingClause path x y = case (cast x, cast y) of
   (Just before, Just after) ->
     Just (differ path (derived before) (derived after))
@@ -256,7 +380,7 @@ asDerivingClause path x y = case (cast x, cast y) of
 -- Both sides are put through the same normalisation rather than being
 -- compared loosely, so an import that was genuinely lost or whose list lost
 -- an entry still shows up.
-asImports :: (Data a) => [Text] -> a -> a -> Maybe (Maybe Text)
+asImports :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asImports path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (alongside (normalised before) (normalised after))
   _ -> Nothing
@@ -268,7 +392,7 @@ asImports path x y = case (cast x, cast y) of
     -- it does not matter what is said about the Prelude, only that the same
     -- thing is said about both sides.
     normalised :: [LImportDecl GhcPs] -> [LImportDecl GhcPs]
-    normalised = normalizeImports True
+    normalised = normalizeImports True []
 
     -- Compared one import at a time rather than as two lists, because a
     -- list of imports is what this function is called on: handing it back
@@ -289,7 +413,7 @@ asImports path x y = case (cast x, cast y) of
 --
 -- Only the brackets directly around a constraint are dropped. Brackets
 -- inside one group a type and are compared like any others.
-asContext :: (Data a) => [Text] -> a -> a -> Maybe (Maybe Text)
+asContext :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asContext path x y = compared optional <|> compared written <|> compared quoted
   where
     compared :: forall b c. (Typeable b, Data c) => (b -> c) -> Maybe (Maybe Text)
@@ -322,7 +446,7 @@ asContext path x y = compared optional <|> compared written <|> compared quoted
 -- What must survive is the words, in order, and what kind of Haddock it is:
 -- a @$section@ and a @* heading@ say more than which way a comment points,
 -- so those stay distinct while @|@ and @^@ do not.
-asDocString :: (Data a) => [Text] -> a -> a -> Maybe (Maybe Text)
+asDocString :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asDocString path x y = case (cast x, cast y) of
   (Just before, Just after)
     | summarised before == summarised after -> Just Nothing
