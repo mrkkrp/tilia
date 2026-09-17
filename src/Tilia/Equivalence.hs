@@ -534,7 +534,7 @@ typeNameOf = dataTypeName . dataTypeOf
 -- but the comment is.
 commentDifference ::
   -- | The module each stream came from, which is asked only how far down its
-  -- header reaches
+  -- header reaches.
   (HsModule GhcPs, HsModule GhcPs) ->
   [Comment] ->
   [Comment] ->

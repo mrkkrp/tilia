@@ -56,11 +56,11 @@ sourceLines = srcLines
 
 -- | Read a module's source.
 sourceOf ::
-  -- | The lines of the module, as this configuration has them
+  -- | The lines of the module, as this configuration has them.
   Lines ->
   -- | Comments the syntax tree does not carry. See 'commentsOf'.
   [LEpaComment] ->
-  -- | The result of parsing
+  -- | The result of parsing.
   HsModule GhcPs ->
   Source
 sourceOf ls loose hsModule =

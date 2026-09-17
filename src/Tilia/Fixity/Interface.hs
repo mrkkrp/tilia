@@ -27,28 +27,19 @@ data Interface = Interface
   { -- | The fixities the module declares itself, by the namespace each
     -- governs.
     interfaceDeclares :: Fixities,
-    -- | The names it exports that some other module declared, each with the
-    -- module that did. Not only the operators: a plain function can be
-    -- given a fixity and used in backticks, and one of these is where the
-    -- declaration would be.
-    interfacePassedOn :: [(Text, OpName)],
-    -- | What it exports under each name, for the names that carry others
-    -- with them. This is what @T(..)@ in an import list stands for, and the
-    -- compiler has already worked it out: an export entry wears its members
-    -- in braces.
+    -- | The names it reexports, each with the source module.
+    interfaceReexports :: [(Text, OpName)],
+    -- | What it exports under each name. This is what @T(..)@ in an import
+    -- list stands for.
     interfaceChildren :: Map OpName (Set OpName)
   }
   deriving (Eq, Show)
 
--- | Read a module's interface file, if the compiler will show it to us.
---
--- 'Nothing' where it will not, which covers a file that is not there, one
--- built by another compiler, and @ghc@ not being on the path at all. None
--- of those is fatal; they only mean this module has nothing to add.
+-- | Read a module's interface file.
 readInterface ::
-  -- | The module the file is supposed to hold
+  -- | The module the file is supposed to hold.
   Text ->
-  -- | The file
+  -- | The file.
   FilePath ->
   IO (Maybe Interface)
 readInterface modName path =
@@ -68,7 +59,7 @@ parseInterface modName out
               namespaced
                 (typeNamesIn out)
                 (Map.fromList (concatMap declared (sectionsNamed "fixities"))),
-            interfacePassedOn = concatMap passedOn (sectionsNamed "exports:"),
+            interfaceReexports = concatMap reexports (sectionsNamed "exports:"),
             interfaceChildren =
               Map.unionsWith Set.union (map childrenIn (sectionsNamed "exports:"))
           }
@@ -78,7 +69,7 @@ parseInterface modName out
       _ -> False
     sectionsNamed name = [body | (heading, body) <- sections out, heading == name]
     declared = mapMaybe fixityEntry . T.splitOn ","
-    passedOn = concatMap fromExport . T.words
+    reexports = concatMap reexportsIn . T.words
     childrenIn section =
       Map.fromListWith
         Set.union
@@ -87,10 +78,6 @@ parseInterface modName out
         ]
 
 -- | The names an interface declares as types.
---
--- The compiler writes each declaration out, and a type is written as one:
--- @data (:~:) a b where@, @type (==) :: …@, @class Eq a where@. A name
--- that turns up in none of those is a value, which is the other namespace.
 typeNamesIn :: Text -> Set OpName
 typeNamesIn out =
   Set.fromList
@@ -105,11 +92,6 @@ typeNamesIn out =
     indented l = maybe False (== ' ') (fst <$> T.uncons l)
 
 -- | Sort declared fixities into the namespaces they govern.
---
--- A fixity for a name the interface declares as a type governs types; one
--- for any other name governs terms. A name that is both—rare, and legal—
--- gets the fixity in both, which is what the interface says: it records
--- one fixity for the name and no namespace of its own.
 namespaced :: Set OpName -> Map OpName Fixity -> Fixities
 namespaced types declared =
   Map.fromList
@@ -154,11 +136,6 @@ fixityEntry entry = case T.words entry of
 
 -- | Split an exports section into its entries, keeping the members an entry
 -- wears in braces with the name they belong to.
---
--- An entry is @Some.Module.T@, or @Some.Module.T{Some.Module.A
--- Some.Module.B}@ where @T@ carries names with it. A partial export writes
--- the name as @T|@, which says that not all of them are there; the ones in
--- the braces are still exactly what @T(..)@ would bring in.
 exportEntries :: Text -> [(Text, [Text])]
 exportEntries = go
   where
@@ -178,13 +155,10 @@ exportEntries = go
 nameOnly :: Text -> OpName
 nameOnly t = OpName (maybe t snd (moduleOf t))
 
--- | The names an export entry passes on, with the module that declared each.
---
--- An entry is a name, and a type or class is followed by its members in
--- braces. A name written bare was declared by the module whose interface
--- this is, and is left out: its fixity is in the @fixities@ line already.
-fromExport :: Text -> [(Text, OpName)]
-fromExport = mapMaybe qualified . T.split (`elem` ("{}|," :: String))
+-- | The names an export entry reexports, with the module that declared
+-- each.
+reexportsIn :: Text -> [(Text, OpName)]
+reexportsIn = mapMaybe qualified . T.split (`elem` ("{}|," :: String))
   where
     qualified name = case moduleOf name of
       Just (m, n) | not (T.null n) -> Just (m, OpName n)

@@ -466,7 +466,7 @@ surelyNames carries op = any $ \case
 
 -- | The imports of a module.
 moduleImports ::
-  -- | Whether @ImplicitPrelude@ is on
+  -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
   HsModule GhcPs ->
   [Import]
@@ -644,9 +644,9 @@ nothingKnown =
 -- "Tilia.Fixity.Plan" already follows, through export lists in source and
 -- through the export section of an interface.
 resolveScope ::
-  -- | Whether @ImplicitPrelude@ is on
+  -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | What is known about the modules this one imports
+  -- | What is known about the modules this one imports.
   Known ->
   HsModule GhcPs ->
   Scope
@@ -756,15 +756,15 @@ data Resolution
 
 -- | The fixity of an operator as this module sees it.
 lookupFixity ::
-  -- | The scope
+  -- | The scope.
   Scope ->
-  -- | The namespace the operator is written in
+  -- | The namespace the operator is written in.
   Namespace ->
-  -- | The qualifier written at the use site, if any
+  -- | The qualifier written at the use site, if any.
   Maybe Text ->
-  -- | Operator to resolve
+  -- | Operator to resolve.
   OpName ->
-  -- | The resolution
+  -- | The resolution.
   Resolution
 lookupFixity scope namespace qualifier op =
   case settledFor scope namespace qualifier op of
@@ -803,14 +803,14 @@ settledFor scope namespace qualifier op =
 -- operator, one unreachable package deep in a dependency tree would
 -- unsettle a whole file.
 unreadFor ::
-  -- | The scope
+  -- | The scope.
   Scope ->
-  -- | The qualifier written at the use site, if any
+  -- | The qualifier written at the use site, if any.
   Maybe Text ->
-  -- | Operator being resolved
+  -- | Operator being resolved.
   OpName ->
   -- | The imports that could hold the answer, each down to the module that
-  -- actually stopped us
+  -- actually stopped us.
   [ModuleChain]
 unreadFor scope qualifier op =
   [ ModuleChain (importModule (unreadImport u) :| unreadBelow u)
@@ -899,9 +899,9 @@ operatorSpelling qualifier (OpName op) = maybe "" (<> ".") qualifier <> op
 -- | Spell out where an unsettled operator may have come from, and the fact
 -- that this run could not read any of it.
 spellUnreadIn ::
-  -- | Whether there is anybody there to see color
+  -- | Whether there is anybody there to see color.
   Palette ->
-  -- | The chains, as 'Unresolved' gives them
+  -- | The chains, as 'Unresolved' gives them.
   NonEmpty ModuleChain ->
   Text
 spellUnreadIn palette missing =

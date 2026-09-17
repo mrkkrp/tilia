@@ -29,7 +29,7 @@ macros =
 
 -- | What this guard comes to, given the plan above.
 answer :: Text -> Maybe Bool
-answer = answerTo macros
+answer = guardHolds macros
 
 spec :: Spec
 spec = do

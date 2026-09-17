@@ -3,13 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Classes, instances and families.
---
--- What these have in common is a head followed by a body of declarations,
--- and a recurring difficulty: the syntax tree keeps the body's declarations
--- in several lists—signatures here, bindings there, associated families
--- somewhere else—so the order the author wrote them in survives only in
--- their spans. Every body in this module has to be put back in order before
--- it can be printed.
 module Tilia.Render.Class
   ( classDecl,
     clsInstDecl,
@@ -37,9 +30,6 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span.Ghc
-
-----------------------------------------------------------------------------
--- Classes
 
 -- | A type class declaration.
 classDecl ::
@@ -130,9 +120,6 @@ funDep ctx (FunDep _ before after) =
     <> txt "->"
     <> space
     <> hsep (map (name ctx) after)
-
-----------------------------------------------------------------------------
--- Instances
 
 -- | A class instance.
 clsInstDecl :: Ctx -> ClsInstDecl GhcPs -> Doc
@@ -225,9 +212,6 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn {..}) =
       HsOuterExplicit _ bndrs ->
         forallBndrs ctx Invisible (tyVarBndr ctx) bndrs <> breakOrSpace
 
-----------------------------------------------------------------------------
--- Families
-
 -- | A @data family@ or @type family@ declaration.
 famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
 famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
@@ -273,13 +257,7 @@ famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
       Just eqs ->
         indent (layoutFrom ctx headAndSigSpan (breakOrSpace <> txt "where"))
           <> case eqs of
-            -- @where ..@ is how a closed family says that its equations are
-            -- not being given here.
             Nothing -> space <> txt ".."
-            -- A closed family may be given no equations at all, and then
-            -- the @where@ is the whole of it. Breaking the line anyway
-            -- leaves the next thing along hanging under a @where@ that
-            -- opened a block nothing was put in.
             Just given ->
               includeUnless (null given) $
                 hardBreak <> indent (vsep (map (at_ ctx (tyFamInstEqn ctx)) given))
@@ -325,9 +303,6 @@ tyFamInstEqn ctx FamEqn {..} =
     rhs =
       indent (joinedBy "=" <> hsType ctx feqn_rhs)
 
-----------------------------------------------------------------------------
--- Role annotations
-
 -- | A @type role@ declaration.
 roleAnnot :: Ctx -> RoleAnnotDecl GhcPs -> Doc
 roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
@@ -343,9 +318,6 @@ roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
       Nominal -> txt "nominal"
       Representational -> txt "representational"
       Phantom -> txt "phantom"
-
-----------------------------------------------------------------------------
--- Helpers
 
 -- | Merge several lists of declarations back into the order they were
 -- written in.

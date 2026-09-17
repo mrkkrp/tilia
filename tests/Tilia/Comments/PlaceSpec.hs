@@ -204,11 +204,11 @@ carriedOnThenMore =
 -- 'Nothing' is a comment nothing came for, which the printer writes after
 -- the whole document.
 placedIn ::
-  -- | The regions a comment may be given to
+  -- | The regions a comment may be given to.
   [Span] ->
-  -- | The boundaries a comment printed in place may not be carried across
+  -- | The boundaries a comment printed in place may not be carried across.
   [Span] ->
-  -- | A module for the comments to be read out of
+  -- | A module for the comments to be read out of.
   Text ->
   [(Text, Maybe (Position, Span))]
 placedIn regions fences src =
@@ -216,7 +216,7 @@ placedIn regions fences src =
   where
     cs = commentsIn src
     gathered = fst (foldl collect ([], placeComments regions fences cs) regions)
-    collect (found, placements) r = case takePlaced r placements of
+    collect (found, placements) r = case claimPlaced r placements of
       (mine, rest) -> (found <> [(commentSpan c, (p, r)) | (p, c) <- mine], rest)
 
 firstComment :: Text -> Comment

@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
--- | Putting comments into the document.
+-- | Attaching a stream of comments to a 'Doc'.
 --
 -- Attachment happens once, on the finished document, before anything is
 -- rendered. A comment becomes an ordinary part of the document like any
@@ -21,18 +21,25 @@ import Tilia.Doc.Combinators
 import Tilia.Doc.Internal (Doc (..))
 import Tilia.Span
 
--- | Put every comment into the document.
+-- | Attache comments to a 'Doc'.
 attachComments :: [Comment] -> Doc -> Doc
-attachComments cs doc = written <> afterEverything (unplaced left)
+attachComments cs doc = written <> closingComments (unplaced left)
   where
     (written, left) = walk (placeComments regions fences cs) doc
     (regions, fences) = markedSpans doc
 
 -- | The comments nothing came to collect, written after everything.
-afterEverything :: [Comment] -> Doc
-afterEverything = \case
+closingComments :: [Comment] -> Doc
+closingComments = \case
   [] -> mempty
-  (opening : rest) -> atEnd True opening <> foldMap (atEnd False) rest
+  (opening : rest) -> placeOne True opening <> foldMap (placeOne False) rest
+  where
+    placeOne opensTheRun c =
+      commentDoc c $
+        closeLine
+          <> includeWhen (opensTheRun || commentGapAbove c) blankLine
+          <> commentText c
+          <> closeLine
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
 -- in that order.
@@ -48,7 +55,14 @@ markedSpans = \case
   DCppChoice bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
   _ -> ([], [])
 
--- | Walk the document, giving each region what it was given.
+-- | Write the placed comments into the document, each one around the region
+-- it was given to. Taking is destructive: the 'Placements' is threaded
+-- through the walk and a region's comments are removed as they are written,
+-- so a span that occurs twice is served once. The two sides of a 'DVariant'
+-- are the exception—they are one piece of code laid out two ways, so both
+-- are walked from the same 'Placements' and both come out holding the
+-- comment, and only one of them is ever printed. What is still unwritten
+-- when the walk ends is returned next to the resulting 'Doc'.
 walk :: Placements -> Doc -> (Doc, Placements)
 walk = go
   where
@@ -58,10 +72,10 @@ walk = go
             (b', p'') = go p' b
          in (DCat a' b', p'')
       DLocated s d ->
-        let (mine, p') = takePlaced s p
+        let (mine, p') = claimPlaced s p
             (d', p'') = go p' d
             write position cs =
-              foldMap (writtenAs (endOfAConstruct s) position) cs
+              foldMap (writtenAs (isEmptyAnchor s) position) cs
             before' = heldOffFrom d [c | (q, c) <- mine, q == Before]
             after' = [c | (q, c) <- mine, q == After]
          in (write Before before' <> DLocated s d' <> write After after', p'')
@@ -114,19 +128,18 @@ opensWithHaddock = maybe False opensHaddock . listToMaybe . fst . firstLine Brok
       DSoftBreak -> ([], layout == Broken)
       _ -> ([], False)
 
--- | Does this region stand for where a construct stops rather than for
--- anything written?
-endOfAConstruct :: Span -> Bool
-endOfAConstruct s = startPoint s == endPoint s
+-- | Is this region an 'emptyAnchor' rather than one covering something
+-- written?
+isEmptyAnchor :: Span -> Bool
+isEmptyAnchor s = startPoint s == endPoint s
 
-----------------------------------------------------------------------------
--- What a comment looks like
-
--- | One comment, written where it was placed.
+-- | Render one 'Comment' where it was placed.
 writtenAs ::
   -- | Does what follows only mark where the construct ends?
   Bool ->
+  -- | Comment position.
   Position ->
+  -- | The comment to render.
   Comment ->
   Doc
 writtenAs atTheEnd position c = commentDoc c $ case shapeOf position c of
@@ -141,28 +154,7 @@ writtenAs atTheEnd position c = commentDoc c $ case shapeOf position c of
     gapAbove = includeWhen (commentGapAbove c) (closeLine <> blankLine)
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
--- | Turn a 'Comment' that trails the document into a 'Doc'.
-atEnd ::
-  -- | Is this the first of them, and so the one held off the code above?
-  Bool ->
-  Comment ->
-  Doc
-atEnd opensTheRun c =
-  commentDoc c $
-    closeLine
-      <> includeWhen (opensTheRun || commentGapAbove c) blankLine
-      <> commentText c
-      <> closeLine
-
 -- | A comment, and the spacing that goes with it, as one region.
---
--- One region and not several, because the empty line a comment is held off
--- by belongs to the comment and not to whatever it happens to sit next to.
--- Anything that takes a document apart and puts it back together—the merge
--- in "Tilia.Cpp" above all—works on what a region holds, and would
--- otherwise be free to keep the spacing and move the comment, which is how
--- a blank line comes to be left behind in a place that cannot produce it
--- again.
 commentDoc :: Comment -> Doc -> Doc
 commentDoc = located . commentSpan
 
@@ -171,15 +163,11 @@ commentText :: Comment -> Doc
 commentText c =
   align $ sepBy (verbatimBreak AtIndent) (map txt (NE.toList (commentBody c)))
 
-----------------------------------------------------------------------------
--- The two document atoms that exist for comments
-
--- | Text put at the end of the line this position falls on.
---
--- The argument must not contain a line break.
+-- | Put this text at the end of the line this position falls on.
 holdBack :: Text -> Doc
 holdBack = DHoldBack
 
--- | Close the line, absorbing a break that immediately follows.
+-- | End the current line and leave a mark so that a line break that follows
+-- it immediately (if any) will have no effect.
 closeLine :: Doc
 closeLine = DCloseLine

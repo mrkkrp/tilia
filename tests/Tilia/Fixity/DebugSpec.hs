@@ -166,7 +166,7 @@ notesFor = notesThrough []
 
 -- | The same, told how far reading got below each import it could not read.
 notesThrough ::
-  -- | What lies below an import, ending at the module that stopped it
+  -- | What lies below an import, ending at the module that stopped it.
   [(Text, [Text])] ->
   [(Text, Maybe [(Text, Fixity)])] ->
   Text ->

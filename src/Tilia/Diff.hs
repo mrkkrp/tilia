@@ -24,11 +24,11 @@ data Mark = Context | Removed | Added
 -- | A unified diff of two texts, cut short once it has said enough.
 diff ::
   Palette ->
-  -- | What to call the two sides
+  -- | What to call the two sides.
   (Text, Text) ->
-  -- | Before
+  -- | Before.
   Text ->
-  -- | After
+  -- | After.
   Text ->
   Text
 diff palette = unified palette (Just roomFor) []
@@ -37,11 +37,11 @@ diff palette = unified palette (Just roomFor) []
 -- headed the way @git diff@ heads one.
 diffInFull ::
   Palette ->
-  -- | The file, named as it was given on the command line
+  -- | The file, named as it was given on the command line.
   FilePath ->
-  -- | What is in it
+  -- | What is in it.
   Text ->
-  -- | What would be
+  -- | What would be.
   Text ->
   Text
 diffInFull palette path =
@@ -56,15 +56,15 @@ diffInFull palette path =
 
 unified ::
   Palette ->
-  -- | How many lines are worth printing, where there is a limit at all
+  -- | How many lines are worth printing, where there is a limit at all.
   Maybe Int ->
-  -- | Whatever goes above the two file names
+  -- | Whatever goes above the two file names.
   [Text] ->
-  -- | What to call the two sides
+  -- | What to call the two sides.
   (Text, Text) ->
-  -- | Before
+  -- | Before.
   Text ->
-  -- | After
+  -- | After.
   Text ->
   Text
 unified palette limit above (beforeName, afterName) before after

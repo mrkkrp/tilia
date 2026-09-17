@@ -214,10 +214,10 @@ data Session = Session
 
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
-  -- | Where to start looking for the project
+  -- | Where to start looking for the project.
   FilePath ->
   -- | The components about to be formatted, so that a plan which says
-  -- nothing about them can be solved again rather than trusted
+  -- nothing about them can be solved again rather than trusted.
   [PlanComponent] ->
   -- | Check AST equivalence.
   Choice "checkAst" ->
@@ -264,13 +264,13 @@ fixityNotesOf session = case sessionFixityNotes session of
 -- to compare the two needs the original anyway, and reading a file twice to
 -- format it once is the sort of thing this is trying to stop doing.
 formatSource ::
-  -- | What the run has worked out already
+  -- | What the run has worked out already.
   Session ->
-  -- | The file the source came from, for reporting and for its package
+  -- | The file the source came from, for reporting and for its package.
   FilePath ->
-  -- | The source
+  -- | The source.
   Text ->
-  -- | Result
+  -- | Result.
   IO (Either FormatError Text)
 formatSource session path source = runExceptT $ do
   when (movesPositions source) $
@@ -360,17 +360,17 @@ whereTheyDiffer before after =
 -- the text as it stands is not a program: the branches only make one once
 -- the preprocessor has chosen between them.
 rewritten ::
-  -- | How to parse both sides
+  -- | How to parse both sides.
   ParserConfig ->
-  -- | Whether the file uses the preprocessor
+  -- | Whether the file uses the preprocessor.
   Bool ->
-  -- | The file, for the parser's messages
+  -- | The file, for the parser's messages.
   FilePath ->
-  -- | What was read, and the tree it was printed from where it has one
+  -- | What was read, and the tree it was printed from where it has one.
   (Text, Maybe ParsedModule) ->
-  -- | What was printed
+  -- | What was printed.
   Text ->
-  -- | What formatting changed, and the tree of what was printed
+  -- | What formatting changed, and the tree of what was printed.
   (Maybe Text, Maybe ParsedModule)
 rewritten config cpp path (before, printedFrom') after
   | not cpp = case parseModule config path after of

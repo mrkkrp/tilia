@@ -38,7 +38,7 @@ data OpChain a op
 -- node that is an application of an infix operator, and nothing for a node
 -- that is a leaf.
 flatten ::
-  -- | Take one node apart, if it comes apart
+  -- | Take one node apart, if it comes apart.
   (a -> Maybe (a, op, a)) ->
   a ->
   (NonEmpty a, [op])
@@ -75,7 +75,7 @@ flattenAround split l op r =
 -- is left as one flat branch: nothing is asserted about how it associates,
 -- so nothing is rearranged.
 associate ::
-  -- | The fixity of an operator, if it was established
+  -- | The fixity of an operator, if it was established.
   (op -> Maybe Fixity) ->
   NonEmpty a ->
   [op] ->

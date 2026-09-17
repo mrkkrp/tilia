@@ -67,7 +67,7 @@ itemsSepBy semisWhenBroken bracing xs = variant flatForm brokenForm
 keepBlanks ::
   -- | Was there an empty line between two items?
   (Maybe Span -> Maybe Span -> Bool) ->
-  -- | Where each item was, and what it prints as
+  -- | Where each item was, and what it prints as.
   [(Maybe Span, Doc)] ->
   [Doc]
 keepBlanks blank xs = zipWith gap (Nothing : map fst xs) xs

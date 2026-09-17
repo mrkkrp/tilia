@@ -1,20 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Which package exposes a module, according to the compiler.
---
--- The other way of answering this — reading @exposed-modules@ from a
--- @.cabal@ file inside a source tarball — only works where tarballs are.
--- Under Nix they are not: dependencies arrive already built, and a plan
--- solved there calls almost all of them @pre-existing@, so nothing is ever
--- looked for.
---
--- The compiler always knows, though, because it is what compiles against
--- them. Asking @ghc-pkg@ works in both worlds and is the faster of the two.
---
--- What this does /not/ give is fixities. A package database records what
--- was built, not what it was built from, so the source is still read from a
--- tarball; this only decides which tarball to look for.
+-- | Querying the compiler on which package exposes a module and where its
+-- compiled interfaces are.
 module Tilia.Fixity.PackageDb
   ( InstalledPackage (..),
     Installed (..),
@@ -36,15 +24,14 @@ import System.FilePath ((</>))
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (quietly)
 
--- | A package the compiler can see.
+-- | An installed package.
 data InstalledPackage = InstalledPackage
   { -- | Package name
     ipName :: Text,
     -- | Package version
     ipVersion :: Text,
     -- | Every module it holds, hidden ones included, with re-export clauses
-    -- dropped: those name modules belonging to another package, and looking
-    -- there is that package's business.
+    -- dropped.
     ipModules :: [Text],
     -- | Where its compiled interfaces are.
     ipImportDirs :: [FilePath]
@@ -55,6 +42,8 @@ data InstalledPackage = InstalledPackage
 data Installed = Installed
   { -- | Every package it can see.
     installedPackages :: [InstalledPackage],
+    -- | The databases those were read from. Stamping these is how a later
+    -- run tells whether what the compiler can see has changed.
     installedDatabases :: [FilePath]
   }
   deriving (Eq, Show)
@@ -82,20 +71,7 @@ readInstalledPackages =
               installedDatabases = databases
             }
 
--- | What tells one compiler environment from another.
---
--- The resolved path of the @ghc-pkg@ that 'readInstalledPackages' will run.
--- Which packages a run can see is settled by that program and by nothing in
--- the project, so it is what an answer about them has to be filed under.
--- Under Nix the path is a store path, and it changes exactly when the
--- environment does; elsewhere it is stable, which is the same thing said of
--- an environment that does not change.
---
--- Hashing the databases themselves would be more exact, but they cannot be
--- named without running @ghc-pkg dump@—the very thing being remembered.
---
--- Empty where there is no @ghc-pkg@ to find, which is a state a run can be
--- in and has to be told apart from the others.
+-- | What distinguishes one compiler environment from another.
 compilerIdentity :: IO Text
 compilerIdentity =
   quietly "" (maybe "" T.pack <$> findExecutable "ghc-pkg")
@@ -161,9 +137,6 @@ moduleNames = go . filter (not . T.null) . concatMap (T.split (== ',')) . T.word
       Nothing -> False
 
 -- | Split a record into its fields.
---
--- A field is @name: value@, and its value continues onto any following
--- indented lines.
 parseFields :: Text -> Map.Map Text Text
 parseFields = Map.fromList . mapMaybe field . groups . T.lines
   where

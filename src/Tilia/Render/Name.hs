@@ -32,6 +32,7 @@ import GHC.Types.SrcLoc (getLoc)
 import GHC.Utils.Outputable (Outputable, ppr, showSDocUnsafe)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
+import Tilia.Source (SourceType (..))
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -160,9 +161,9 @@ defHead ::
   Bool ->
   -- | Indent the arguments?
   Bool ->
-  -- | The name
+  -- | The name.
   Doc ->
-  -- | The arguments
+  -- | The arguments.
   [Doc] ->
   Doc
 defHead True indentArgs nameDoc (a0 : a1 : rest) =

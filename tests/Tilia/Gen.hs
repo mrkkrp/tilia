@@ -100,11 +100,11 @@ instance Arbitrary FlatSafeDoc where
 
 -- | Build a document.
 genDoc ::
-  -- | Whether 'DVariant' may appear
+  -- | Whether 'DVariant' may appear.
   Bool ->
-  -- | Whether things that force a break may appear
+  -- | Whether things that force a break may appear.
   Bool ->
-  -- | The size parameter
+  -- | The size parameter.
   Int ->
   Gen Doc
 genDoc withVariant withBreaks = go

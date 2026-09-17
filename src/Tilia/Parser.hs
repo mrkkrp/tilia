@@ -67,9 +67,9 @@ data ParsedModule = ParsedModule
 -- | Parse a module.
 parseModule ::
   ParserConfig ->
-  -- | Path, used only in positions reported back
+  -- | Path, used only in positions reported back.
   FilePath ->
-  -- | The source
+  -- | The source.
   Text ->
   Either ParseError ParsedModule
 parseModule config path source =
@@ -83,12 +83,12 @@ parseModule config path source =
 -- text and this is 'parseModule'.
 parseConfiguration ::
   ParserConfig ->
-  -- | Path, used only in positions reported back
+  -- | Path, used only in positions reported back.
   FilePath ->
   -- | The lines of the module as written, except for the lines that do not
-  -- belong to this configuration
+  -- belong to this configuration.
   Lines ->
-  -- | The configuration of it to parse
+  -- | The configuration of it to parse.
   Text ->
   Either ParseError ParsedModule
 parseConfiguration config path written source =
@@ -240,9 +240,9 @@ defaultParserConfig = parserConfigFor []
 
 -- | What to parse with, given whatever the package had to say.
 parserConfigFor ::
-  -- | What the package puts in force, or nothing if there is no package
+  -- | What the package puts in force, or nothing if there is no package.
   [Extension] ->
-  -- | The resulting parser config
+  -- | The resulting parser config.
   ParserConfig
 parserConfigFor package =
   ParserConfig
