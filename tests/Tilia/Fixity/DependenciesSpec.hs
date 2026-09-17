@@ -74,7 +74,7 @@ withPlan plan = do
             Just (takeDirectory dir) == compilerDir
           ]
       readFromSourcePackages =
-        Set.fromList (map depPackage dependencies)
+        Set.fromList (fmap depPackage dependencies)
           `Set.difference` shippedPackages
   missing <-
     runIO $
@@ -93,7 +93,7 @@ withPlan plan = do
     -- pass without having compared anything: this is where that is caught,
     -- rather than in a hundred quietly hollow ticks.
     it "has the source of every package it reads" $
-      case map (T.unpack . ppName . fst) missing of
+      case fmap (T.unpack . ppName . fst) missing of
         [] -> pure ()
         names ->
           expectationFailure $
@@ -245,9 +245,9 @@ contradicts (modName, interfaceFile) =
 -- | Every fixity the compiler recorded for a module that reading the
 -- package's source did not produce.
 undeclared ::
-  -- | What a module declares, read from the package's source
+  -- | What a module declares, read from the package's source.
   (Text -> IO (Maybe (Fixities))) ->
-  -- | The module, and the interface the compiler wrote for it
+  -- | The module, and the interface the compiler wrote for it.
   (Text, FilePath) ->
   IO [String]
 undeclared fromSource (modName, interfaceFile) =
@@ -285,9 +285,9 @@ undeclared fromSource (modName, interfaceFile) =
 -- compiler followed the same chain when it built the package, so the two
 -- have to arrive at the same place.
 conflicting ::
-  -- | The answer read out of the package's source
+  -- | The answer read out of the package's source.
   (Text -> IO (Maybe (Fixities))) ->
-  -- | The answer read out of the compiler's interfaces
+  -- | The answer read out of the compiler's interfaces.
   (Text -> IO (Maybe (Fixities))) ->
   Text ->
   IO [String]

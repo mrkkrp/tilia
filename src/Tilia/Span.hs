@@ -1,30 +1,14 @@
 -- | Regions of the input, and the questions asked about them.
---
--- Deliberately not GHC's @RealSrcSpan@. Almost everything here wants to ask
--- one of a handful of questions—did this occupy a single line, did that
--- begin on the line this ended on, was there an empty line between them—and
--- a type of our own keeps the modules that ask them free of the compiler's
--- libraries. Conversion happens at the edge, in "Tilia.Span.Ghc", which is
--- the only place that has to know what GHC's positions look like.
 module Tilia.Span
-  ( -- * Spans
-    Span (..),
+  ( Span (..),
     mkSpan,
-
-    -- * Asking about one
     isSingleLine,
-
-    -- * Asking about two
     sameLine,
     blankBetween,
     meets,
     covers,
-
-    -- * Narrowing
     startOf,
     endOf,
-
-    -- * Positions
     startPoint,
     endPoint,
   )
@@ -44,10 +28,6 @@ mkSpan :: (Int, Int) -> (Int, Int) -> Span
 mkSpan (sl, sc) (el, ec) = Span sl sc el ec
 
 -- | The smallest span covering both arguments.
---
--- Printing code needs this often enough—a construct the syntax tree has no
--- single node for still has to be laid out as a unit—that it is worth having
--- as an instance rather than as a function each caller reimplements.
 instance Semigroup Span where
   a <> b =
     Span
@@ -64,16 +44,10 @@ instance Semigroup Span where
       }
 
 -- | Did this occupy a single line of the input?
---
--- The question the whole formatter turns on: what was written on one line
--- stays on one line, and what was spread out stays spread out.
 isSingleLine :: Span -> Bool
 isSingleLine s = spanStartLine s == spanEndLine s
 
 -- | Did the second thing begin on the line the first thing ended on?
---
--- This is the question behind almost every hanging decision: a body may only
--- hang off what precedes it when the author had them starting together.
 sameLine :: Maybe Span -> Maybe Span -> Bool
 sameLine (Just a) (Just b) = spanEndLine a == spanStartLine b
 sameLine _ _ = False
@@ -85,16 +59,13 @@ blankBetween _ _ = False
 
 -- | Do the two cover any of the same input?
 --
--- Touching counts: a span ending where the next begins shares that position,
--- and the callers that ask this are asking whether the two are looking at
--- one thing, not whether either strictly contains the other.
+-- Touching counts: a span ending where the next begins shares that
+-- position, and the callers that ask this are asking whether the two are
+-- looking at one thing, not whether either strictly contains the other.
 meets :: Span -> Span -> Bool
 meets a b = startPoint a <= endPoint b && startPoint b <= endPoint a
 
 -- | Does the first cover all of the second?
---
--- Reflexive, so a span covers itself. Callers wanting one thing to be
--- strictly inside another want this and inequality.
 covers :: Span -> Span -> Bool
 covers a b = startPoint a <= startPoint b && endPoint b <= endPoint a
 
@@ -106,6 +77,7 @@ startOf s = at (spanStartLine s, spanStartColumn s)
 endOf :: Span -> Span
 endOf s = at (spanEndLine s, spanEndColumn s)
 
+-- | A zero-width span at the given position.
 at :: (Int, Int) -> Span
 at position = mkSpan position position
 

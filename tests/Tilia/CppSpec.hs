@@ -23,7 +23,7 @@ spec = do
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       cfgGuards <$> configurations atDeclarations
-        `shouldBe` Just (map Guard ["ifdef FOO"])
+        `shouldBe` Just (fmap Guard ["ifdef FOO"])
 
     it "keeps every line where it was" $
       let sameLength c = all ((== length (T.lines atDeclarations)) . length . T.lines) (cfgTexts c)
@@ -31,20 +31,20 @@ spec = do
 
     it "has one more configuration than it has directives" $
       let balanced c = length (cfgTexts c) == length (cfgGuards c) + 1
-       in map (fmap balanced . configurations) [atDeclarations, withoutElse, withElif]
+       in fmap (fmap balanced . configurations) [atDeclarations, withoutElse, withElif]
             `shouldBe` [Just True, Just True, Just True]
 
     it "finds every directive of an #elif chain, in order" $
       cfgGuards <$> configurations withElif
-        `shouldBe` Just (map Guard ["if A", "elif B"])
+        `shouldBe` Just (fmap Guard ["if A", "elif B"])
 
     it "takes only the outermost conditional, leaving the nested one alone" $
       cfgGuards <$> configurations nested
-        `shouldBe` Just (map Guard ["if OUTER"])
+        `shouldBe` Just (fmap Guard ["if OUTER"])
 
     it "takes only the first of two conditionals side by side" $
       cfgGuards <$> configurations twoConditionals
-        `shouldBe` Just (map Guard ["if FIRST"])
+        `shouldBe` Just (fmap Guard ["if FIRST"])
 
     it "declines a module with no conditional at all" $
       configurations "module M where\nf = 1\n" `shouldBe` Nothing
@@ -76,11 +76,11 @@ spec = do
 
   describe "every configuration of the output"
     $ it "is the same program as that configuration of the input"
-    $ mapM_ (`shouldBe` Right ()) (map roundTrip everyFixture)
+    $ mapM_ (`shouldBe` Right ()) (fmap roundTrip everyFixture)
 
   describe "formatting an already formatted module"
     $ it "changes nothing, for every module the prototype handles"
-    $ mapM_ (`shouldBe` Right ()) (map settles everyFixture)
+    $ mapM_ (`shouldBe` Right ()) (fmap settles everyFixture)
 
   describe "an #elif chain" $ do
     it "is printed back as one conditional rather than as nested ones" $
@@ -178,7 +178,7 @@ spec = do
   describe "counting the configurations" $ do
     it "agrees with enumerating them, where enumerating them is possible" $
       let counted m = (said (countLeaves m), said (toInteger . length <$> leaves m))
-       in map
+       in fmap
             counted
             [ atDeclarations,
               withElif,
@@ -814,7 +814,7 @@ agreement :: Text -> Either String (Map.Map Span Bool)
 agreement source = do
   c <- maybe (Left "no conditional") Right (configurations source)
   docs <- traverse documentOf (cfgTexts c)
-  case map regions docs of
+  case fmap regions docs of
     [] -> Left "a conditional with no branches"
     (first' : rest) -> Right (foldl' (narrow first') (True <$ first') rest)
   where

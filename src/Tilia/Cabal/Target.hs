@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Working out which files a run was asked to format.
-module Tilia.Target
+-- | Handling Cabal targets in order to figure out what to format.
+module Tilia.Cabal.Target
   ( Target (..),
     Kind (..),
     parseTarget,
@@ -50,8 +50,8 @@ import System.Directory
     listDirectory,
   )
 import System.FilePath (normalise, takeDirectory, takeExtension, (</>))
+import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
 import Tilia.Fixity.Plan (PlanComponent (..))
-import Tilia.Project (Marker (..), ProjectRoot (..), markerFile)
 import Tilia.Utils (attempted, quietly)
 
 -- | Which components a run was asked for.
@@ -126,7 +126,7 @@ data TargetProblem
     NoSuchTarget Text [Text]
   deriving (Eq, Show)
 
--- | Say what went wrong, in one line.
+-- | Say what went wrong.
 describeTargetProblem :: TargetProblem -> Text
 describeTargetProblem = \case
   NoPackages file ->
@@ -140,7 +140,10 @@ describeTargetProblem = \case
       <> foldMap ("\n  " <>) ("all" : available)
 
 -- | Every component of the project that the target asks for.
-componentsOfTarget :: ProjectRoot -> Target -> IO (Either TargetProblem [Component])
+componentsOfTarget ::
+  ProjectRoot ->
+  Target ->
+  IO (Either TargetProblem [Component])
 componentsOfTarget root target = do
   files <- packageFilesOf root
   if null files
@@ -153,7 +156,7 @@ componentsOfTarget root target = do
               let found = concat [cs | Right cs <- results]
               pure $ case filter (targetSelectsComponent target) found of
                 [] | Everything <- target -> Right []
-                [] -> Left (NoSuchTarget (spellTarget target) (map spellComponent found))
+                [] -> Left (NoSuchTarget (spellTarget target) (fmap spellComponent found))
                 wanted -> Right wanted
 
 -- | How a component would have to be named to be asked for on its own.
@@ -197,7 +200,7 @@ spellTarget = \case
 -- | Every Haskell file in a component, in a settled order.
 filesOfComponent :: Component -> IO [FilePath]
 filesOfComponent c =
-  sort . Set.toList . Set.fromList . map normalise . concat
+  sort . Set.toList . Set.fromList . fmap normalise . concat
     <$> traverse (walk . (componentRoot c </>)) (componentDirs c)
   where
     walk directory =
@@ -220,7 +223,8 @@ filesOfComponent c =
 -- | Every Haskell file a set of components holds, each named once.
 filesOfComponents :: [Component] -> IO [FilePath]
 filesOfComponents components =
-  sort . Set.toList . Set.fromList . concat <$> traverse filesOfComponent components
+  sort . Set.toList . Set.fromList . concat
+    <$> traverse filesOfComponent components
 
 -- | The extensions a Haskell source file can have.
 formattableFileExtensions :: [String]
@@ -254,8 +258,11 @@ packagesInCabalProjectContents contents = case readFields contents of
             [T.unwords [T.decodeUtf8Lenient value | FieldLine _ value <- ls]]
         | otherwise -> []
       Section _ _ inner -> packagesIn inner
-
-    entries = filter (not . T.null) . map T.strip . concatMap (T.split (== ',')) . T.words
+    entries =
+      filter (not . T.null)
+        . fmap T.strip
+        . concatMap (T.split (== ','))
+        . T.words
 
 -- | Turn one entry of a @packages@ field into the @.cabal@ files it names.
 packageToCabalFile :: FilePath -> Text -> IO [FilePath]
@@ -263,7 +270,7 @@ packageToCabalFile root entry = do
   paths <-
     packageGlobToCabalFiles
       root
-      (map T.unpack (T.split (== '/') (T.dropWhile (== '.') stripped)))
+      (fmap T.unpack (T.split (== '/') (T.dropWhile (== '.') stripped)))
   concat <$> traverse asPackage paths
   where
     stripped = T.dropWhile (== '/') (T.strip entry)
@@ -301,7 +308,7 @@ cabalFilesIn :: FilePath -> IO [FilePath]
 cabalFilesIn directory = quietly [] $ do
   entries <- listDirectory directory
   let named = sort (filter (".cabal" `isSuffixOf`) entries)
-  filterM doesFileExist (map (directory </>) named)
+  filterM doesFileExist (fmap (directory </>) named)
 
 -- | Every component one @.cabal@ file declares.
 componentsInCabalFile :: FilePath -> IO (Either TargetProblem [Component])
@@ -311,7 +318,7 @@ componentsInCabalFile cabalFile =
     Right bytes ->
       case snd (runParseResult (parseGenericPackageDescription bytes)) of
         Left (_, complaints) ->
-          pure (Left (Unparseable cabalFile (map said (NE.toList complaints))))
+          pure (Left (Unparseable cabalFile (fmap said (NE.toList complaints))))
           where
             said = T.pack . showPError cabalFile
         Right described ->
@@ -321,7 +328,9 @@ componentsInCabalFile cabalFile =
 declaredComponents :: FilePath -> GenericPackageDescription -> [Component]
 declaredComponents root described =
   concat
-    [ foldMap (pure . made Lib package . libBuildInfo . condTreeData) (condLibrary described),
+    [ foldMap
+        (pure . made Lib package . libBuildInfo . condTreeData)
+        (condLibrary described),
       [ made Lib (nameOf n) (libBuildInfo (condTreeData t))
       | (n, t) <- condSubLibraries described
       ],
@@ -346,7 +355,7 @@ declaredComponents root described =
           componentKind = kind,
           componentName = name,
           componentRoot = root,
-          componentDirs = case map getSymbolicPath (hsSourceDirs bi) of
+          componentDirs = case fmap getSymbolicPath (hsSourceDirs bi) of
             [] -> ["."]
             ds -> ds
         }

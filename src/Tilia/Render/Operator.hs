@@ -2,13 +2,10 @@
 
 -- | Regrouping a chain of infix operators by precedence.
 module Tilia.Render.Operator
-  ( -- * Chains
-    OpChain (..),
+  ( OpChain (..),
     flatten,
     flattenAround,
     associate,
-
-    -- * Asking about a chain
     chainSpan,
     lastOperand,
     isSeparator,
@@ -38,8 +35,9 @@ data OpChain a op
 -- node that is an application of an infix operator, and nothing for a node
 -- that is a leaf.
 flatten ::
-  -- | Take one node apart, if it comes apart
+  -- | Take one node apart, if it comes apart.
   (a -> Maybe (a, op, a)) ->
+  -- | The root of the tree.
   a ->
   (NonEmpty a, [op])
 flatten split = go
@@ -57,9 +55,13 @@ flatten split = go
 -- parts, so by the time a chain is being built the outermost node has
 -- already been destructured and there is nothing left to hand to 'flatten'.
 flattenAround ::
+  -- | Take one node apart, if it comes apart.
   (a -> Maybe (a, op, a)) ->
+  -- | The left operand of the node already taken apart.
   a ->
+  -- | Its operator.
   op ->
+  -- | Its right operand.
   a ->
   (NonEmpty a, [op])
 flattenAround split l op r =
@@ -71,13 +73,15 @@ flattenAround split l op r =
 --
 -- The loosest-binding operators of the run become the operators of the top
 -- branch, and everything between two of them becomes a subtree, regrouped
--- the same way. When any operator in the run has no known precedence the run
--- is left as one flat branch: nothing is asserted about how it associates,
--- so nothing is rearranged.
+-- the same way. When any operator in the run has no known precedence the
+-- run is left as one flat branch: nothing is asserted about how it
+-- associates, so nothing is rearranged.
 associate ::
-  -- | The fixity of an operator, if it was established
+  -- | The fixity of an operator, if it was established.
   (op -> Maybe Fixity) ->
+  -- | The operands of the run, in the order written.
   NonEmpty a ->
+  -- | The operators standing between them.
   [op] ->
   OpChain a op
 associate fixityOf = build
@@ -90,14 +94,16 @@ associate fixityOf = build
             (groups, splitters) -> Chain (fmap (uncurry build) groups) splitters
       where
         loosest = minimum (mapMaybe precedenceOf ops)
-
     flatBranch operands ops = Chain (Operand <$> operands) ops
     precedenceOf = fmap fixityPrecedence . fixityOf
 
 -- | Cut a run wherever the operator satisfies the predicate.
 splitOn ::
+  -- | Which operators cut the run.
   (op -> Bool) ->
+  -- | The operands of the run, in the order written.
   NonEmpty a ->
+  -- | The operators standing between them.
   [op] ->
   (NonEmpty (NonEmpty a, [op]), [op])
 splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
@@ -108,9 +114,6 @@ splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
           let (groups, splitters) = go (y :| []) [] rest
            in (NE.cons (NE.reverse current, reverse currentOps) groups, op : splitters)
       | otherwise = go (NE.cons y current) (op : currentOps) rest
-
-----------------------------------------------------------------------------
--- Asking about a chain
 
 -- | The region of the input a chain came from.
 chainSpan :: (a -> Maybe Span) -> OpChain a op -> Maybe Span

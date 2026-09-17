@@ -21,14 +21,14 @@ import Tilia.Fixity
   ( Direction (..),
     Fixities,
     Fixity (..),
-    Known (..),
+    KnownModules (..),
     Namespace (..),
     OpName (..),
     Provenance (..),
     Reach (..),
     Scope (..),
     inBothNamespaces,
-    nothingKnown,
+    noKnownModules,
     operatorsUsed,
     resolveScope,
   )
@@ -54,7 +54,7 @@ exampleRenderConfig package source hsModule =
           )
     }
   where
-    known = nothingKnown {knownFixities = exportsOf}
+    known = noKnownModules {knownFixities = exportsOf}
     underEveryQualifier scope =
       scope
         { scopeInTypes = alsoQualified (scopeInTypes scope),

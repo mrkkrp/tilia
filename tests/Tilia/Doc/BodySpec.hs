@@ -9,7 +9,6 @@ import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Body
 import Tilia.Doc.Combinators
-import Tilia.Span
 
 -- | A stand-in for a real body type, enough to exercise the class: one
 -- construct that hangs, one that does not, and one that takes its answer
@@ -22,7 +21,7 @@ data Toy
 instance Body Toy where
   printBody = \case
     Call f x -> txt f <> space <> txt x
-    Block ss -> txt "do" <> indent (hardBreak <> sepBy hardBreak (map txt ss))
+    Block ss -> txt "do" <> indent (hardBreak <> sepBy hardBreak (fmap txt ss))
     Apply f x -> printBody f <> space <> printBody x
 
   bodyPlacement = \case
@@ -42,12 +41,6 @@ spec = do
     it "stays on one line when flat, either way" $ do
       out (flat (txt "=" <> attach Normal (txt "x"))) `shouldBe` "= x\n"
       out (flat (txt "=" <> attach Hanging (txt "x"))) `shouldBe` "= x\n"
-
-  describe "hangingIfSingleLine" $ do
-    it "hangs for a single-line span" $
-      hangingIfSingleLine (mkSpan (1, 1) (1, 9)) `shouldBe` Hanging
-    it "does not hang for a multi-line span" $
-      hangingIfSingleLine (mkSpan (1, 1) (2, 9)) `shouldBe` Normal
 
   describe "Body" $ do
     it "attaches a hanging body" $

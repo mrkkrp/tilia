@@ -1,7 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 
 -- | Running a program and reading its output.
-module Tilia.Process (readProgramOutput) where
+module Tilia.Process
+  ( readProgramOutput,
+  )
+where
 
 import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
 import Data.ByteString qualified as BS
@@ -24,16 +27,9 @@ import Tilia.Utils (quietly)
 
 -- | Run a program and read what it printed on standard output.
 --
--- 'Nothing' where it could not be run at all or did not succeed, which the
--- callers treat alike: both mean this program has nothing to tell them.
--- Whatever it printed on its error stream is read but not kept—see 'drain'
--- for why it has to be read—because the one thing worse than a tool that
--- cannot answer is a tool that says so over the formatter's own output.
+-- 'Nothing' where it could not be run at all or did not succeed.
 --
--- Line endings come back as newlines however the program wrote them. A
--- child writing to a pipe on Windows ends its lines the Windows way, and
--- every caller here goes on to split what it gets into lines and compare
--- them against something.
+-- Line endings come back as newlines however the program wrote them.
 readProgramOutput :: FilePath -> [String] -> IO (Maybe Text)
 readProgramOutput program args = quietly Nothing $
   withCreateProcess spec $ \toChild fromChild childErrors running -> do

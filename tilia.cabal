@@ -35,10 +35,14 @@ flag dev
 
 library
   exposed-modules:
+    Tilia.Cabal.Package
+    Tilia.Cabal.Project
+    Tilia.Cabal.Target
     Tilia.Comments
     Tilia.Comments.Attach
     Tilia.Comments.Place
     Tilia.Cpp
+    Tilia.Cpp.Directives
     Tilia.Cpp.Macros
     Tilia.Diff
     Tilia.Doc
@@ -58,12 +62,10 @@ library
     Tilia.Format
     Tilia.Imports
     Tilia.Newline
-    Tilia.Package
     Tilia.Palette
     Tilia.Parser
     Tilia.Pragma
     Tilia.Process
-    Tilia.Project
     Tilia.Render
     Tilia.Render.Body
     Tilia.Render.Class
@@ -86,7 +88,6 @@ library
     Tilia.Source.Lines
     Tilia.Span
     Tilia.Span.Ghc
-    Tilia.Target
     Tilia.Utils
 
   hs-source-dirs: src
@@ -179,6 +180,9 @@ test-suite tests
   hs-source-dirs: tests
   other-modules:
     Spec
+    Tilia.Cabal.PackageSpec
+    Tilia.Cabal.ProjectSpec
+    Tilia.Cabal.TargetSpec
     Tilia.Comments.PlaceSpec
     Tilia.CommentsSpec
     Tilia.Corpus
@@ -202,14 +206,11 @@ test-suite tests
     Tilia.FixitySpec
     Tilia.Gen
     Tilia.NewlineSpec
-    Tilia.PackageSpec
     Tilia.PragmaSpec
     Tilia.ProcessSpec
-    Tilia.ProjectSpec
     Tilia.Render.OperatorSpec
     Tilia.RenderSpec
     Tilia.RunSpec
-    Tilia.TargetSpec
     Tilia.TestConfig
 
   default-language: GHC2021

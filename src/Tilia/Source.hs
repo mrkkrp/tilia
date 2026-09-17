@@ -1,11 +1,4 @@
 -- | The module as its author wrote it.
---
--- Almost everything the formatter decides about layout is a question about
--- the source: what is on the line above a comment, whether two constructs
--- had an empty line between them, whether a directive stands between a
--- comment and the pragma under it. All these questions are asked in a
--- single place here, or in "Tilia.Source.Lines" for the ones that can be
--- asked before the module has been parsed.
 module Tilia.Source
   ( -- * The source
     SourceType (..),
@@ -23,7 +16,8 @@ module Tilia.Source
     blankAt,
     blankBelow,
     closesABranch,
-    directiveAt,
+    directivePresentOnLine,
+    directiveOnLine,
 
     -- * Its comments
     comments,
@@ -56,11 +50,11 @@ sourceLines = srcLines
 
 -- | Read a module's source.
 sourceOf ::
-  -- | The lines of the module, as this configuration has them
+  -- | The lines of the module, as this configuration has them.
   Lines ->
   -- | Comments the syntax tree does not carry. See 'commentsOf'.
   [LEpaComment] ->
-  -- | The result of parsing
+  -- | The result of parsing.
   HsModule GhcPs ->
   Source
 sourceOf ls loose hsModule =

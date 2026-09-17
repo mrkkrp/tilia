@@ -134,7 +134,7 @@ spec = do
         `shouldBe` []
 
     it "declines one that writes an operator both agree to disagree about" $
-      map snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\nf a b = a :> b\n")
+      fmap snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\nf a b = a :> b\n")
         `shouldBe` [Ambiguous]
 
   describe "what a module says it exports" $ do
@@ -152,33 +152,6 @@ spec = do
     it "reads a whole module passed on as the module it names" $
       exportsOfSource "module M (module Data.Map) where\n"
         `shouldBe` Just [ExportModule "Data.Map"]
-
-  describe "the operators an export list names" $ do
-    it "takes them from an explicit list" $
-      exportedIn "module M ((<+>), (<?>), f) where\n"
-        `shouldBe` Just [OpName "<+>", OpName "<?>", OpName "f"]
-
-    it "takes the members of a class the module declares itself" $
-      exportedIn
-        "module M (C (..)) where\nclass C a where\n  infixr 8 .=\n  (.=) :: a -> a -> Int\n"
-        `shouldBe` Just [OpName ".=", OpName "C"]
-
-    it "takes the constructors of a type the module declares itself" $
-      exportedIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
-        `shouldBe` Just [OpName ":|", OpName "A", OpName "T"]
-
-    it "knows nothing of a type the module only passes on" $
-      exportedIn "module M (C (..)) where\nimport Elsewhere\n" `shouldBe` Nothing
-
-    it "knows nothing of a module that hands a whole module on" $
-      exportedIn "module M ((<+>), module Data.Map) where\n" `shouldBe` Nothing
-
-    it "takes what a module with no export list declares" $
-      exportedIn "module M where\ninfixr 5 <+>\ninfixl 6 <?>\n"
-        `shouldBe` Just [OpName "<+>", OpName "<?>"]
-
-    it "finds nothing in a module with no list and no declarations" $
-      exportedIn "module M where\nf = 1\n" `shouldBe` Just []
 
   describe "which unread module an unsettled operator is blamed on" $ do
     it "passes over one whose export list has no such operator" $
@@ -426,7 +399,7 @@ spec = do
         `shouldBe` []
 
     it "would be caught between two spellings were the Prelude assumed" $
-      map snd (unsettledAboutPrelude (Is #implicitPrelude) usingItBothWays)
+      fmap snd (unsettledAboutPrelude (Is #implicitPrelude) usingItBothWays)
         `shouldBe` [Ambiguous]
 
     it "still takes the Prelude where the module does import it" $
@@ -541,7 +514,7 @@ spec = do
         `shouldBe` [((Just "M", OpName "!"), Ambiguous)]
 
     it "spells a use the way the module wrote it" $
-      map (uncurry operatorSpelling . fst) (unsettledIn "module M where\nimport qualified Opaque as O\nf a b = a O.<+> b\n")
+      fmap (uncurry operatorSpelling . fst) (unsettledIn "module M where\nimport qualified Opaque as O\nf a b = a O.<+> b\n")
         `shouldBe` ["O.<+>"]
 
   describe "parsing with the module's own pragmas"
@@ -591,7 +564,7 @@ parsed src = case parseModule defaultParserConfig "test.hs" src of
 -- declaration, however many places it lands in.
 declaredIn :: Text -> [(OpName, Fixity)]
 declaredIn =
-  Map.toList . Map.fromList . map (\((_, op), fixity) -> (op, fixity)) . declaredWithNamespaces
+  Map.toList . Map.fromList . fmap (\((_, op), fixity) -> (op, fixity)) . declaredWithNamespaces
 
 -- | The same, keeping the namespace each governs.
 declaredWithNamespaces :: Text -> [((Namespace, OpName), Fixity)]
@@ -607,8 +580,8 @@ fullScope =
   resolveScope (Is #implicitPrelude) knowingExports . pmModule . parsed
 
 -- | What is known in a world made of 'exportsOf' alone.
-knowingExports :: Known
-knowingExports = nothingKnown {knownFixities = exportsOf}
+knowingExports :: KnownModules
+knowingExports = noKnownModules {knownFixities = exportsOf}
 
 -- | The one import blamed for an operator, unread on its own account and so
 -- with nothing below it. What every answer here was before a chain could be
@@ -637,7 +610,7 @@ scopeKnowing said =
     . pmModule
     . parsed
   where
-    exportNamesOf m = Set.fromList . map OpName <$> lookup m said
+    exportNamesOf m = Set.fromList . fmap OpName <$> lookup m said
 
 -- | What each name a module declares carries with it, in a settled order.
 childrenIn :: Text -> [(OpName, [OpName])]
@@ -648,7 +621,7 @@ exportedChildrenIn :: Text -> [(OpName, [OpName])]
 exportedChildrenIn = settled . moduleChildren . pmModule . parsed
 
 settled :: Map.Map OpName (Set.Set OpName) -> [(OpName, [OpName])]
-settled = map (fmap Set.toList) . Map.toList
+settled = fmap (fmap Set.toList) . Map.toList
 
 -- | A scope over a world where Carrier keeps @:|@ under @T@.
 --
@@ -686,13 +659,9 @@ scopeSuspecting carries source =
   where
     childrenOf m =
       Map.fromList
-        [ (OpName parent, Set.fromList (map OpName kids))
+        [ (OpName parent, Set.fromList (fmap OpName kids))
         | (parent, kids) <- Map.findWithDefault [] m (Map.fromList carries)
         ]
-
--- | The operators a module's export list names, in a settled order.
-exportedIn :: Text -> Maybe [OpName]
-exportedIn = fmap Set.toList . exportedOperators . pmModule . parsed
 
 -- | The uses of an operator a module makes that its scope cannot settle.
 unsettledIn :: Text -> [((Maybe Text, OpName), Unknown)]
@@ -718,8 +687,8 @@ usingItBothWays = takesItsPreludeElsewhere <> "f a b = a <%> b\n"
 --
 -- Kept out of 'exportsOf' so that a Prelude which declares something does
 -- not have to be reckoned with by every other test in the file.
-disagreeingAboutPrelude :: Known
-disagreeingAboutPrelude = nothingKnown {knownFixities = said}
+disagreeingAboutPrelude :: KnownModules
+disagreeingAboutPrelude = noKnownModules {knownFixities = said}
   where
     said = \case
       "Prelude" -> whichever [(OpName "<%>", Fixity RightAssoc 6)]

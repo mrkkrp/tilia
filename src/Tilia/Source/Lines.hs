@@ -2,12 +2,6 @@
 
 -- | The lines of a module, and the questions that can be asked of them
 -- without a parse.
---
--- Apart from "Tilia.Source" because a 'Tilia.Source.Source' cannot be had
--- until the module has been parsed, and two things need these answers
--- earlier than that: the preprocessor support, which asks what the author
--- wrote on a line while it is still deciding what to hand the parser, and
--- the comment machinery, which "Tilia.Source" itself is built on top of.
 module Tilia.Source.Lines
   ( -- * The lines
     Written (..),
@@ -17,7 +11,8 @@ module Tilia.Source.Lines
     lineTexts,
     lineAt,
     blankAt,
-    directiveAt,
+    directivePresentOnLine,
+    directiveOnLine,
     blankBelow,
     closesABranch,
   )
@@ -28,6 +23,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -81,13 +77,18 @@ blankAt :: Int -> Lines -> Bool
 blankAt n = maybe False (T.all isSpace) . lineAt n
 
 -- | Does this line hold a preprocessor directive?
-directiveAt :: Int -> Lines -> Bool
-directiveAt n = maybe False opensWithHash . lineAt n
-  where
-    opensWithHash l = case T.uncons (T.stripStart l) of
-      Just ('#', rest) ->
-        maybe False (isAsciiLower . fst) (T.uncons (T.stripStart rest))
-      _ -> False
+directivePresentOnLine :: Int -> Lines -> Bool
+directivePresentOnLine n ls = isJust (directiveOnLine =<< lineAt n ls)
+
+-- | The keyword a directive line opens with, and everything after its @#@.
+directiveOnLine :: Text -> Maybe (Text, Text)
+directiveOnLine l = case T.uncons (T.stripStart l) of
+  Just ('#', rest)
+    | not (T.null keyword) -> Just (keyword, body)
+    where
+      body = T.stripStart rest
+      keyword = T.takeWhile isAsciiLower body
+  _ -> Nothing
 
 -- | Did the author leave an empty line below this line?
 blankBelow :: Int -> Lines -> Bool
@@ -98,10 +99,9 @@ blankBelow start ls = go (start + 1)
       | Nothing <- lineAt n ls = go (n + 1)
       | leadsOut n = go (n + 1)
       | otherwise = blankAt n ls
-    leadsOut n = case lineAt n ls of
-      Just l | directiveAt n ls -> keywordOf l `elem` leavingKeywords
-      _ -> False
-    keywordOf l = T.takeWhile isAsciiLower (T.stripStart (T.drop 1 (T.stripStart l)))
+    leadsOut n = case directiveOnLine =<< lineAt n ls of
+      Just (keyword, _) -> keyword `elem` leavingKeywords
+      Nothing -> False
 
 -- | Does the empty line under this one stand at the end of a branch?
 closesABranch :: Int -> Lines -> Bool
@@ -113,9 +113,9 @@ closesABranch n ls = go False (n + 1)
           Nothing -> go crossed (k + 1)
           Just l
             | T.null (T.strip l) -> go True (k + 1)
-            | directiveAt k ls -> crossed && keywordOf l `elem` leavingKeywords
+            | Just (keyword, _) <- directiveOnLine l ->
+                crossed && keyword `elem` leavingKeywords
             | otherwise -> False
-    keywordOf l = T.takeWhile isAsciiLower (T.stripStart (T.drop 1 (T.stripStart l)))
 
 -- | The directives that lead out of the region the line below them is in,
 -- rather than into one it is not.

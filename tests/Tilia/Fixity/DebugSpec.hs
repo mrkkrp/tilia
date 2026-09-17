@@ -14,10 +14,10 @@ import Test.Hspec
 import Tilia.Fixity
   ( Direction (..),
     Fixity (..),
-    Known (..),
+    KnownModules (..),
     OpName (..),
     inBothNamespaces,
-    nothingKnown,
+    noKnownModules,
     resolveScope,
   )
 import Tilia.Fixity.Debug (fixityNotes, renderFixityNotes)
@@ -129,8 +129,8 @@ spec = do
 
     it "sets out under headings" $ do
       told <- notesFor [("Prelude", Just [("+", infixl' 6)])] "f a b = a + b\n"
-      map T.stripStart told `shouldContain` ["· imports"]
-      map T.stripStart told `shouldContain` ["· operators"]
+      fmap T.stripStart told `shouldContain` ["· imports"]
+      fmap T.stripStart told `shouldContain` ["· operators"]
 
     it "leaves out a heading it would have nothing to put under" $
       notesFor [("Prelude", Just [])] "f = 1\n"
@@ -166,7 +166,7 @@ notesFor = notesThrough []
 
 -- | The same, told how far reading got below each import it could not read.
 notesThrough ::
-  -- | What lies below an import, ending at the module that stopped it
+  -- | What lies below an import, ending at the module that stopped it.
   [(Text, [Text])] ->
   [(Text, Maybe [(Text, Fixity)])] ->
   Text ->
@@ -178,7 +178,7 @@ notesThrough chains world source =
     scope =
       resolveScope
         (Is #implicitPrelude)
-        nothingKnown {knownFixities = exportsOf, knownChain = chainFor}
+        noKnownModules {knownFixities = exportsOf, knownChain = chainFor}
         hsModule
     chainFor m = maybe [] id (lookup m chains)
     chainOf = pure . chainFor
@@ -188,7 +188,7 @@ notesThrough chains world source =
       Right m -> m
     exportsOf m = do
       declared <- lookup m world
-      inBothNamespaces . Map.fromList . map (\(op, fixity) -> (OpName op, fixity))
+      inBothNamespaces . Map.fromList . fmap (\(op, fixity) -> (OpName op, fixity))
         <$> declared
 
 infixl' :: Int -> Fixity
@@ -207,7 +207,7 @@ throughHspec =
 -- | Is this line among them, whatever it was indented by?
 shouldContain' :: [Text] -> Text -> Expectation
 shouldContain' told wanted =
-  map T.stripStart (rejoined told) `shouldContain` [wanted]
+  fmap T.stripStart (rejoined told) `shouldContain` [wanted]
 
 -- | Does some line say this much, whatever else it goes on to say?
 mentions :: [Text] -> Text -> Expectation

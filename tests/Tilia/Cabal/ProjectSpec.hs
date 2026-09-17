@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Finding the project a file belongs to.
-module Tilia.ProjectSpec (spec) where
+module Tilia.Cabal.ProjectSpec (spec) where
 
 import System.Directory (createDirectoryIfMissing, withCurrentDirectory)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-import Tilia.Project
+import Tilia.Cabal.Project
 
 spec :: Spec
 spec = do

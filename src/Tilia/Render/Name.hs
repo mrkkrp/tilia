@@ -1,26 +1,23 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Names, and the decorations the author put around them.
 module Tilia.Render.Name
-  ( -- * Rendering anything GHC can show
-    outputable,
+  ( outputable,
     showGhc,
     sourceText,
-
-    -- * Names
     name,
     moduleHeadName,
     wrappedName,
     namespaceSpec,
     multiplicity,
-
-    -- * Definition heads
     defHead,
   )
 where
 
+import Data.Choice (Choice, isTrue)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
@@ -32,6 +29,7 @@ import GHC.Types.SrcLoc (getLoc)
 import GHC.Utils.Outputable (Outputable, ppr, showSDocUnsafe)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
+import Tilia.Source (SourceType (..))
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -53,9 +51,6 @@ sourceText = \case
   NoSourceText -> mempty
   SourceText s -> outputable s
 
-----------------------------------------------------------------------------
--- Names
-
 -- | A name, with whatever the author wrapped it in.
 name :: Ctx -> LocatedN RdrName -> Doc
 name ctx l = at ctx l $ \x -> adorn ctx (spanOf l) x (getLoc l) (bareName x)
@@ -73,35 +68,20 @@ adorn :: Ctx -> Maybe Span -> RdrName -> EpAnn NameAnn -> Doc -> Doc
 adorn ctx here x = go
   where
     go EpAnn {anns} = case anns of
-      -- A promotion tick, with whatever the name carries under it.
       NameAnnQuote {nann_quoted} -> (txt "'" <>) . go nann_quoted
-      -- The empty unboxed sum and the empty list are written out whole:
-      -- there is no name under the brackets to print.
       NameAnnOnly {nann_adornment = NameParensHash {}} -> const (txt "(# #)")
       NameAnnOnly {nann_adornment = NameSquare {}} ->
         const (txt "[" <> insideBrackets here mempty <> txt "]")
-      -- @->@ is the one name that is a keyword as well, and the parentheses
-      -- are recorded on their own rather than as an adornment.
       NameAnnRArrow {nann_mopen = Just _} -> inParens
-      -- The name inside the brackets is claimed separately from the
-      -- brackets themselves, so that a comment written against it—@( {-
-      -- here -} :+: )@—is put where it was written rather than after the
-      -- closing bracket.
       NameAnn {nann_adornment, nann_name} -> case nann_adornment of
         NameParens {} -> inParens . spaceOutHash . itsOwn nann_name
         NameBackquotes {} -> backticks . itsOwn nann_name
         _ -> itsOwn nann_name
       _ -> id
-
     itsOwn = atSpan ctx . annSpan
-
     inParens d = txt "(" <> d <> txt ")"
-
-    -- With UnboxedSums on, @(#@ lexes as one token, so an operator starting
-    -- with @#@ cannot sit against its opening bracket.
     spaceOutHash d
       | extensionOn ctx UnboxedSums,
-        -- A qualified name never begins with a @#@.
         Unqual (occNameString -> '#' : _) <- x =
           space <> d <> space
       | otherwise = d
@@ -144,9 +124,6 @@ multiplicity render = \case
   HsLinearAnn _ -> txt "%1"
   HsExplicitMult _ mult -> txt "%" <> render mult
 
-----------------------------------------------------------------------------
--- Definition heads
-
 -- | The left-hand side of a definition: a name and the things it is applied
 -- to.
 --
@@ -157,26 +134,31 @@ multiplicity render = \case
 -- indented anyway, so that the arguments do not end up two steps in.
 defHead ::
   -- | Written infix?
-  Bool ->
+  Choice "writtenInfix" ->
   -- | Indent the arguments?
-  Bool ->
-  -- | The name
+  Choice "indentArgs" ->
+  -- | The name.
   Doc ->
-  -- | The arguments
+  -- | The arguments.
   [Doc] ->
   Doc
-defHead True indentArgs nameDoc (a0 : a1 : rest) =
-  wrap (a0 <> breakOrSpace <> indent (align (nameDoc <> space <> a1)))
-    <> includeUnless (null rest) (nest (steps indentArgs) (breakOrSpace <> spread rest))
+defHead writtenInfix indentArgs nameDoc (a0 : a1 : rest)
+  | isTrue writtenInfix =
+      wrap (a0 <> breakOrSpace <> indent (align (nameDoc <> space <> a1)))
+        <> includeUnless
+          (null rest)
+          (nest (steps indentArgs) (breakOrSpace <> spread rest))
   where
     wrap = if null rest then id else parens
 defHead _ indentArgs nameDoc args =
   nameDoc
-    <> includeUnless (null args) (nest (steps indentArgs) (breakOrSpace <> spread args))
+    <> includeUnless
+      (null args)
+      (nest (steps indentArgs) (breakOrSpace <> spread args))
 
 -- | Arguments, each aligned under itself, one per line when broken.
 spread :: [Doc] -> Doc
-spread = align . sepBy breakOrSpace . map align
+spread = align . sepBy breakOrSpace . fmap align
 
-steps :: Bool -> Int
-steps b = if b then 1 else 0
+steps :: Choice "indentArgs" -> Int
+steps indentArgs = if isTrue indentArgs then 1 else 0

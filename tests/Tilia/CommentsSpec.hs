@@ -213,17 +213,17 @@ commentsIn src =
     Right pm -> comments (pmSource pm)
 
 bodies :: Text -> [[Text]]
-bodies = map (NE.toList . commentBody) . commentsIn
+bodies = fmap (NE.toList . commentBody) . commentsIn
 
 -- | The bodies a doc comment comes out with once its trigger is tidied.
 widened :: Text -> [[Text]]
-widened = map (NE.toList . commentBody . widenTrigger) . commentsIn
+widened = fmap (NE.toList . commentBody . widenTrigger) . commentsIn
 
 trailings :: Text -> [Bool]
-trailings = map commentTrailing . commentsIn
+trailings = fmap commentTrailing . commentsIn
 
 followeds :: Text -> [Bool]
-followeds = map commentFollowed . commentsIn
+followeds = fmap commentFollowed . commentsIn
 
 headerLine :: Text -> Maybe Int
 headerLine src = case parseModule defaultParserConfig "test.hs" src of

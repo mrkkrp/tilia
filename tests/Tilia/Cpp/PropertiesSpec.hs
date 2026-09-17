@@ -17,6 +17,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
+import Tilia.Utils (tshow)
 
 spec :: Spec
 spec = modifyMaxSuccess (const 5000) $
@@ -43,7 +44,7 @@ spec = modifyMaxSuccess (const 5000) $
         let source = sourceOf m
          in case (answeredLeaves source, answeredLeaves (withoutRuledOut macros source)) of
               (Right went, Right came) ->
-                let had = Set.fromList (map snd went)
+                let had = Set.fromList (fmap snd went)
                  in conjoin $
                       counterexample "nothing was left to read" (not (null came))
                         : [ counterexample
@@ -203,6 +204,3 @@ written = \case
       <> concatMap written yes
       <> (if null no then [] else "#else" : concatMap written no)
       <> ["#endif"]
-
-tshow :: Int -> Text
-tshow = T.pack . show

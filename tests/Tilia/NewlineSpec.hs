@@ -10,7 +10,7 @@ spec :: Spec
 spec = do
   describe "the style a text is written in" $ do
     it "is read off the first ending there is" $
-      map getNewlineStyle ["a\r\nb\n", "a\nb\r\n", "a\nb\n", "a\r\nb\r\n"]
+      fmap getNewlineStyle ["a\r\nb\n", "a\nb\r\n", "a\nb\n", "a\r\nb\r\n"]
         `shouldBe` [CrLf, Lf, Lf, CrLf]
 
     it "is newlines for a text that ends no line at all" $
@@ -25,7 +25,7 @@ spec = do
       setNewlineStyle Lf "a\r\nb\r\n" `shouldBe` "a\nb\n"
 
     it "can be told to set the style already there, and change nothing" $
-      map (\(style, t) -> setNewlineStyle style t) [(CrLf, "a\r\nb\r\n"), (Lf, "a\nb\n")]
+      fmap (\(style, t) -> setNewlineStyle style t) [(CrLf, "a\r\nb\r\n"), (Lf, "a\nb\n")]
         `shouldBe` ["a\r\nb\r\n", "a\nb\n"]
 
     it "brings a text whose endings disagree to one of them" $ do
@@ -37,7 +37,7 @@ spec = do
       setNewlineStyle CrLf "x = \"a\\\r b\"\n" `shouldBe` "x = \"a\\\r b\"\r\n"
 
     it "has nothing to do to a text that ends no line" $
-      map (`setNewlineStyle` "module A where") [Lf, CrLf]
+      fmap (`setNewlineStyle` "module A where") [Lf, CrLf]
         `shouldBe` ["module A where", "module A where"]
 
     it "takes a text out and back unchanged, whichever style it began in" $

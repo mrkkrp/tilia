@@ -26,29 +26,30 @@ stringLiteral src = case takeApart (T.pack (unpackFS src)) of
   Nothing -> error ("Tilia: unparsable string literal: " <> show src)
   Just literal -> align (renderLiteral literal)
 
+-- | Print a literal back out, on one line or across several.
 renderLiteral :: Literal -> Doc
 renderLiteral literal =
   txt (litOpen literal) <> body <> txt (litClose literal)
   where
     body = case litKind literal of
       Regular -> variant onOneLine acrossLines
-      Multiline -> sepBy (verbatimBreak AtIndent) (map txt (litParts literal))
+      Multiline -> sepBy (verbatimBreak AtIndent) (fmap txt (litParts literal))
     onOneLine = txt (joinParts (litParts literal))
     acrossLines =
-      sepBy breakOrSpace (map continued (places (litParts literal)))
+      sepBy breakOrSpace (fmap continued (places (litParts literal)))
     continued (place, s) = case place of
       Only -> txt s
       First -> txt s <> txt "\\"
       Middle -> txt "\\" <> txt s <> txt "\\"
       Last -> txt "\\" <> txt s
 
-----------------------------------------------------------------------------
--- Taking a literal apart
-
 -- | A literal split into the bits that may be laid out separately.
 data Literal = Literal
-  { litOpen :: Text,
+  { -- | The opening quote.
+    litOpen :: Text,
+    -- | The closing quote, with any @#@ that followed it.
     litClose :: Text,
+    -- | Which syntax it was written in.
     litKind :: LiteralKind,
     -- | For a regular literal, the runs between string gaps; for a
     -- multi-line one, the lines.
@@ -56,11 +57,13 @@ data Literal = Literal
   }
   deriving (Eq, Show)
 
+-- | Which of the two string syntaxes a literal was written in.
 data LiteralKind
   = Regular
   | Multiline
   deriving (Eq, Show)
 
+-- | Take a literal apart into its quotes and the parts between them.
 takeApart :: Text -> Maybe Literal
 takeApart s = do
   literal <-
@@ -86,24 +89,16 @@ runsBetweenGaps s = case gapAt 0 s of
   Nothing -> [s]
   Just (before, after) -> T.take before s : runsBetweenGaps after
   where
-    -- How much comes before the first gap, and what comes after it.
     gapAt n t = case T.uncons t of
       Nothing -> Nothing
       Just ('\\', rest) -> case afterGap rest of
         Just resumes -> Just (n, resumes)
         Nothing -> let taken = 1 + escapedWidth rest in gapAt (n + taken) (T.drop taken t)
       Just (_, rest) -> gapAt (n + 1) rest
-
-    -- Where the literal picks up again, if this backslash opened a gap.
     afterGap t = case T.span is_space t of
       (blank, rest)
         | not (T.null blank), Just ('\\', resumes) <- T.uncons rest -> Just resumes
       _ -> Nothing
-
-    -- How much follows the backslash of an escape that is not a gap. Only
-    -- @\\^X@ reaches past the character after the backslash; the numeric
-    -- escapes run on further, but their digits are not backslashes and do
-    -- not need skipping.
     escapedWidth t = case T.uncons t of
       Just ('^', _) -> 2
       Just _ -> 1
@@ -114,7 +109,7 @@ runsBetweenGaps s = case gapAt 0 s of
 splitMultiline :: Text -> [Text]
 splitMultiline =
   dropCommonIndent
-    . map expandTabs
+    . fmap expandTabs
     . splitLines
     . joinParts
     . runsBetweenGaps
@@ -143,7 +138,7 @@ dropCommonIndent = \case
   [] -> []
   firstLine : rest -> firstLine : trimmed
     where
-      (indents, trimmed) = unzip (map measure rest)
+      (indents, trimmed) = unzip (fmap measure rest)
       common = maybe 0 getMin (mconcat indents)
       measure l
         | T.all is_space l = (Nothing, "")

@@ -162,7 +162,7 @@ spec = do
             \trusted: none\n"
       fmap (Map.toList . interfaceDeclares) (parseInterface "Data.Aeson" out)
         `shouldBe` Just [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
-      fmap interfacePassedOn (parseInterface "Data.Aeson" out)
+      fmap interfaceReexports (parseInterface "Data.Aeson" out)
         `shouldBe` Just [("Data.Aeson.Types.FromJSON", OpName ".:")]
 
   describe "output it will not read" $ do
@@ -183,7 +183,7 @@ header modName = "interface " <> modName <> " 9103\n"
 -- | The fixities an interface of this shape declares, by name alone.
 declares :: Text -> [(OpName, Fixity)]
 declares =
-  map (\((_, op), fixity) -> (op, fixity))
+  fmap (\((_, op), fixity) -> (op, fixity))
     . maybe [] (Map.toList . interfaceDeclares)
     . parseInterface "M"
     . (header "M" <>)
@@ -194,11 +194,11 @@ declaresIn =
   maybe [] (Map.toList . interfaceDeclares) . parseInterface "M" . (header "M" <>)
 
 passesOn :: Text -> [(Text, OpName)]
-passesOn = maybe [] interfacePassedOn . parseInterface "M" . (header "M" <>)
+passesOn = maybe [] interfaceReexports . parseInterface "M" . (header "M" <>)
 
 -- | What each exported name carries with it, in a settled order.
 carries :: Text -> [(OpName, [OpName])]
 carries =
-  maybe [] (map (fmap Set.toList) . Map.toList . interfaceChildren)
+  maybe [] (fmap (fmap Set.toList) . Map.toList . interfaceChildren)
     . parseInterface "M"
     . (header "M" <>)

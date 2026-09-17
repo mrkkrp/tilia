@@ -3,18 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Declarations: dispatching to the right printer, and grouping.
---
--- Two jobs live here. The first is a case over every kind of declaration,
--- which is mostly a matter of handing the work on; the few forms with no
--- module of their own—foreign imports, annotations, @default@ declarations,
--- top-level splices—are printed here rather than in four files of a dozen
--- lines each.
---
--- The second is grouping, which is the interesting one. A blank line between
--- declarations is meaningful to a reader, so a signature and the function it
--- describes should stay together while unrelated declarations are kept
--- apart. Nothing in the syntax tree says which declarations belong together,
--- so it is worked out from what they are and what they name.
 module Tilia.Render.Declaration
   ( decls,
     declsKeepingGroups,
@@ -43,22 +31,15 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Signature
 import Tilia.Render.Type
+import Tilia.Source (SourceType (..))
 import Tilia.Span
 import Tilia.Span.Ghc
-
-----------------------------------------------------------------------------
--- Runs of declarations
 
 -- | A run of declarations, with blank lines wherever we think they belong.
 decls :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
 decls = declRun Disregard
 
 -- | A run of declarations that keeps the author's grouping.
---
--- Where the author ran declarations together we run them together too, and
--- where they left a blank line we leave one. The exception is documentation:
--- a documented declaration always gets air around it, since a Haddock that
--- butts up against the declaration above reads as belonging to that one.
 declsKeepingGroups :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
 declsKeepingGroups = declRun Respect
 
@@ -68,6 +49,7 @@ data Grouping
   | Respect
   deriving (Eq, Show)
 
+-- | Render a declaration run while applying the requested 'Grouping'.
 declRun :: Grouping -> Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
 declRun grouping ctx style ds =
   items NoBrace $ case groups of
@@ -104,10 +86,6 @@ declRun grouping ctx style ds =
 groupDecls :: Ctx -> Bool -> [LHsDecl GhcPs] -> [NonEmpty (LHsDecl GhcPs)]
 groupDecls _ _ [] = []
 groupDecls ctx isSignatureFile (d : ds)
-  -- A Haddock documenting what follows belongs to the group that follows,
-  -- not to a group of its own—unless what follows is another Haddock, which
-  -- documents nothing either. Those two have to be kept apart: run
-  -- together they are not two doc comments but one.
   | isDocNext (unLoc d) = case groupDecls ctx isSignatureFile ds of
       [] -> [d :| []]
       (g : gs)
@@ -115,7 +93,7 @@ groupDecls ctx isSignatureFile (d : ds)
         | otherwise -> (d <| g) : gs
   | otherwise =
       let (together, rest) = span belongs (zip (d : ds) ds)
-       in (d :| map snd together) : groupDecls ctx isSignatureFile (map snd rest)
+       in (d :| fmap snd together) : groupDecls ctx isSignatureFile (fmap snd rest)
   where
     isDocNext = \case
       DocD _ (DocCommentNext _) -> True
@@ -144,14 +122,7 @@ isDerivingSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
     not (separatedByBlank ctx (spanOf x) (spanOf y))
   _ -> False
 
-----------------------------------------------------------------------------
--- What a declaration is about
-
 -- | The kinds of declaration that grouping distinguishes.
---
--- Anything not named here groups with nothing, which is the right default:
--- an unrecognised declaration standing on its own is merely a missed
--- opportunity, whereas one wrongly attached to its neighbour is a mistake.
 data Kind
   = TypeSignature
   | DefaultSignature
@@ -173,10 +144,10 @@ data Kind
 -- | What a declaration is, and what it names.
 declKind :: HsDecl GhcPs -> (Kind, [RdrName])
 declKind = \case
-  SigD _ (TypeSig _ ns _) -> (TypeSignature, map unLoc ns)
-  SigD _ (ClassOpSig _ True ns _) -> (DefaultSignature, map unLoc ns)
-  SigD _ (ClassOpSig _ False ns _) -> (TypeSignature, map unLoc ns)
-  SigD _ (PatSynSig _ ns _) -> (PatternSignature, map unLoc ns)
+  SigD _ (TypeSig _ ns _) -> (TypeSignature, fmap unLoc ns)
+  SigD _ (ClassOpSig _ True ns _) -> (DefaultSignature, fmap unLoc ns)
+  SigD _ (ClassOpSig _ False ns _) -> (TypeSignature, fmap unLoc ns)
+  SigD _ (PatSynSig _ ns _) -> (PatternSignature, fmap unLoc ns)
   SigD _ (InlineSig _ (L _ n) _) -> (PragmaDeclaration, [n])
   SigD _ (SCCFunSig _ (L _ n) _) -> (PragmaDeclaration, [n])
   SigD _ sig
@@ -222,8 +193,6 @@ relatedDecls :: LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 relatedDecls a b = case (kindA, kindB) of
   (DocumentsNext, _) -> True
   (_, DocumentsPrevious) -> True
-  -- Splices name nothing, so the only evidence they belong together is that
-  -- the author wrote them together.
   (TopLevelSplice, TopLevelSplice) -> not (blankBetween (spanOf a) (spanOf b))
   pair | pair `elem` relatedKinds -> shareAName namesA namesB
   _ -> False
@@ -233,10 +202,6 @@ relatedDecls a b = case (kindA, kindB) of
 
 -- | The pairs of declaration kinds that group when they name something in
 -- common.
---
--- Reading this as a list rather than as nested cases is the point: what
--- belongs with what is a policy, and a policy is easier to check when it is
--- written out.
 relatedKinds :: [(Kind, Kind)]
 relatedKinds =
   [ (TypeSignature, FunctionBody),
@@ -258,12 +223,8 @@ relatedKinds =
   ]
 
 -- | Do the two declarations name anything in common?
---
--- Names are compared as text rather than as parsed names, since a pragma
--- may name a constructor where the declaration names the type, and the two
--- are different parsed names for the same spelling.
 shareAName :: [RdrName] -> [RdrName] -> Bool
-shareAName xs ys = overlaps (sort (map spelling xs)) (sort (map spelling ys))
+shareAName xs ys = overlaps (sort (fmap spelling xs)) (sort (fmap spelling ys))
   where
     spelling :: RdrName -> String
     spelling = unpackFS . occNameFS . rdrNameOcc
@@ -272,9 +233,6 @@ shareAName xs ys = overlaps (sort (map spelling xs)) (sort (map spelling ys))
       | a > b = overlaps (a : as) bs
       | otherwise = True
     overlaps _ _ = False
-
-----------------------------------------------------------------------------
--- One declaration
 
 -- | Print one declaration.
 hsDecl :: Ctx -> FamilyStyle -> HsDecl GhcPs -> Doc
@@ -299,6 +257,7 @@ hsDecl ctx style = \case
     DocCommentNamed n str -> haddock ctx (Chunk n) Open str
     DocGroup n str -> haddock ctx (Section n) Open str
 
+-- | A type, class or family declaration.
 tyClDecl :: Ctx -> FamilyStyle -> TyClDecl GhcPs -> Doc
 tyClDecl ctx style = \case
   FamDecl _ x -> famDecl ctx style x
@@ -329,14 +288,12 @@ tyClDecl ctx style = \case
       tcdATDefs
       tcdDocs
 
+-- | An instance of a class, or of a type or data family.
 instDecl :: Ctx -> FamilyStyle -> InstDecl GhcPs -> Doc
 instDecl ctx style = \case
   ClsInstD _ x -> clsInstDecl ctx x
   TyFamInstD _ x -> tyFamInstDecl ctx style x
   DataFamInstD _ x -> dataFamInstDecl ctx style x
-
-----------------------------------------------------------------------------
--- The declarations with nowhere else to live
 
 -- | A @default@ declaration.
 defaultDecl :: Ctx -> DefaultDecl GhcPs -> Doc
@@ -344,7 +301,7 @@ defaultDecl ctx (DefaultDecl _ className types) =
   txt "default"
     <> foldMap (\c -> breakOrSpace <> name ctx c) className
     <> breakOrSpace
-    <> indent (parens (commaSep (map (align . hsType ctx) types)))
+    <> indent (parens (commaSep (fmap (align . hsType ctx) types)))
 
 -- | An @ANN@ pragma.
 annDecl :: Ctx -> AnnDecl GhcPs -> Doc
@@ -385,6 +342,7 @@ foreignImport ctx (CImport src callConv safety _ _) =
           SourceText lit -> breakOrSpace <> stringLiteral lit
       )
 
+-- | The head of a foreign export.
 foreignExport :: Ctx -> ForeignExport GhcPs -> Doc
 foreignExport ctx (CExport src (L loc (CExportStatic _ _ callConv))) =
   txt "foreign export"

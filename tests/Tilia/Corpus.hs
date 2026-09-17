@@ -48,7 +48,7 @@ import System.Directory
   )
 import System.Environment (lookupEnv)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
-import Tilia.Package (newPackageReader)
+import Tilia.Cabal.Package (newPackageReader)
 
 ----------------------------------------------------------------------------
 -- Corpora

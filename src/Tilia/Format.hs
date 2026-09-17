@@ -28,6 +28,13 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
+import Tilia.Cabal.Package
+  ( PackageProblem (..),
+    PackageReader,
+    describePackageProblem,
+    newPackageReader,
+  )
+import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cpp
   ( CppError (..),
     blankCpp,
@@ -40,7 +47,13 @@ import Tilia.Cpp
 import Tilia.Cpp.Macros (Macros)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
-import Tilia.Fixity (OpName, Unknown (..), operatorSpelling, spellUnreadIn, unknownOperators)
+import Tilia.Fixity
+  ( OpName,
+    Unknown (..),
+    operatorSpelling,
+    spellUnreadIn,
+    unknownOperators,
+  )
 import Tilia.Fixity.Debug (FixityNotes, fixityNotes)
 import Tilia.Fixity.Plan
   ( PlanComponent,
@@ -49,12 +62,6 @@ import Tilia.Fixity.Plan
     macrosOf,
     newResolver,
     scopeFor,
-  )
-import Tilia.Package
-  ( PackageProblem (..),
-    PackageReader,
-    describePackageProblem,
-    newPackageReader,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser
@@ -68,9 +75,9 @@ import Tilia.Parser
     pmSource,
   )
 import Tilia.Pragma (effectiveExtensions, movesPositions)
-import Tilia.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 import Tilia.Source (comments)
+import Tilia.Utils (tshow)
 
 -- | Why a file could not be formatted.
 data FormatError
@@ -97,7 +104,7 @@ data FormatError
   | -- | Formatting is not idempotent.
     NotIdempotent FilePath Text
 
--- | Say what went wrong, in one line.
+-- | Say what went wrong.
 describeFormatError :: Palette -> FormatError -> Text
 describeFormatError palette = \case
   NoProject path ->
@@ -123,7 +130,7 @@ describeFormatError palette = \case
     "will not format "
       <> file path
       <> ": "
-      <> T.intercalate ", and " (map saying (together unknown))
+      <> T.intercalate ", and " (fmap saying (together unknown))
     where
       saying (why, ops) =
         (if length ops == 1 then "the fixity of " else "the fixities of ")
@@ -214,10 +221,10 @@ data Session = Session
 
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
-  -- | Where to start looking for the project
+  -- | Where to start looking for the project.
   FilePath ->
   -- | The components about to be formatted, so that a plan which says
-  -- nothing about them can be solved again rather than trusted
+  -- nothing about them can be solved again rather than trusted.
   [PlanComponent] ->
   -- | Check AST equivalence.
   Choice "checkAst" ->
@@ -259,18 +266,14 @@ fixityNotesOf session = case sessionFixityNotes session of
   Just ref -> readIORef ref
 
 -- | Format source that has already been read.
---
--- The text is passed in rather than read here because a caller that means
--- to compare the two needs the original anyway, and reading a file twice to
--- format it once is the sort of thing this is trying to stop doing.
 formatSource ::
-  -- | What the run has worked out already
+  -- | What the run has worked out already.
   Session ->
-  -- | The file the source came from, for reporting and for its package
+  -- | The file the source came from.
   FilePath ->
-  -- | The source
+  -- | The source.
   Text ->
-  -- | Result
+  -- | Result.
   IO (Either FormatError Text)
 formatSource session path source = runExceptT $ do
   when (movesPositions source) $
@@ -335,12 +338,17 @@ formatSource session path source = runExceptT $ do
   when (isTrue (sessionCheckIdempotence session)) $ do
     (settled, _) <- formatting (extensionsAndCpp formatted) printedTree formatted
     when (settled /= formatted) $
-      throwE (NotIdempotent path (whereTheyDiffer formatted settled))
+      throwE (NotIdempotent path (whyNotIdempotent formatted settled))
   pure formatted
 
--- | Where two spellings of the same file first disagree.
-whereTheyDiffer :: Text -> Text -> Text
-whereTheyDiffer before after =
+-- | Why a second formatting pass did not come out like the first.
+whyNotIdempotent ::
+  -- | What the first pass printed.
+  Text ->
+  -- | What the second pass printed.
+  Text ->
+  Text
+whyNotIdempotent before after =
   case [n | (n, one, two) <- zip3 [1 :: Int ..] first second, one /= two] of
     (n : _) -> "line " <> tshow n <> " differs"
     [] ->
@@ -351,26 +359,20 @@ whereTheyDiffer before after =
   where
     first = T.lines before
     second = T.lines after
-    tshow :: Int -> Text
-    tshow = T.pack . show
 
 -- | What formatting changed about the program.
---
--- A file with conditionals is compared one configuration at a time, because
--- the text as it stands is not a program: the branches only make one once
--- the preprocessor has chosen between them.
 rewritten ::
-  -- | How to parse both sides
+  -- | How to parse both sides.
   ParserConfig ->
-  -- | Whether the file uses the preprocessor
+  -- | Whether the file uses the preprocessor.
   Bool ->
-  -- | The file, for the parser's messages
+  -- | The file, for the parser's messages.
   FilePath ->
-  -- | What was read, and the tree it was printed from where it has one
+  -- | What was read, and the tree it was printed from where it has one.
   (Text, Maybe ParsedModule) ->
-  -- | What was printed
+  -- | What was printed.
   Text ->
-  -- | What formatting changed, and the tree of what was printed
+  -- | What formatting changed, and the tree of what was printed.
   (Maybe Text, Maybe ParsedModule)
 rewritten config cpp path (before, printedFrom') after
   | not cpp = case parseModule config path after of
@@ -379,8 +381,6 @@ rewritten config cpp path (before, printedFrom') after
           Nothing
         )
       Right a' -> case printedFrom' <|> whatParsed (parseModule config path before) of
-        -- The input parsed once already, or there would be nothing to
-        -- compare.
         Nothing -> (Nothing, Just a')
         Just b' -> (comparing b' a', Just a')
   | otherwise = (underCpp, Nothing)
@@ -393,8 +393,6 @@ rewritten config cpp path (before, printedFrom') after
           (comments (pmSource a'))
     whatParsed = either (const Nothing) Just
     underCpp = case (branchLeaves before, branchLeaves after) of
-      -- Neither can really happen: a source that would not split never got
-      -- as far as being formatted. Saying so beats saying nothing.
       (Left _, _) -> Just "the input could not be split into configurations"
       (_, Left _) -> Just "the output could not be split into configurations"
       (Right went, Right came)
@@ -411,14 +409,11 @@ rewritten config cpp path (before, printedFrom') after
               | (b, a) <- zip went came
               ]
     difference b a = case (parseModule config path b, parseModule config path a) of
-      -- The input parsed once already, or there would be nothing to compare.
       (Left _, _) -> Nothing
       (_, Left e) ->
         Just ("the formatted output does not parse: " <> describeParseError e)
       (Right b', Right a') -> comparing b' a'
     firstJust = foldr (<|>) Nothing
-    tshow :: Int -> Text
-    tshow = T.pack . show
 
 -- | Give up with the given error where there is one to give up over.
 orElse :: (e -> FormatError) -> Either e a -> ExceptT FormatError IO a

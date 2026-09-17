@@ -39,7 +39,7 @@ import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, li
 import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOfReal)
 
--- | A module that parsed, together with the comments found in it.
+-- | A parsed module, together with the comments found in it.
 data ParsedModule = ParsedModule
   { -- | The syntax tree, exactly as GHC produced it.
     pmModule :: HsModule GhcPs,
@@ -50,9 +50,7 @@ data ParsedModule = ParsedModule
     -- | The lines above the module that the parser never sees.
     --
     -- The lexer skips a @#!@ line, which puts it in no annotation and no
-    -- node, so nothing downstream could put it back. Whatever empty line
-    -- follows the last of them is kept too: it is what holds the module off
-    -- the interpreter line, and it is the author's to decide.
+    -- node, so nothing downstream could put it back.
     pmPrologue :: [Text],
     -- | Where the file header stops and the module proper begins, if the
     -- module has anything after its header.
@@ -66,29 +64,25 @@ data ParsedModule = ParsedModule
 
 -- | Parse a module.
 parseModule ::
+  -- | Parser config.
   ParserConfig ->
-  -- | Path, used only in positions reported back
+  -- | Path, used only in positions reported back.
   FilePath ->
-  -- | The source
+  -- | The source.
   Text ->
   Either ParseError ParsedModule
 parseModule config path source =
   parseConfiguration config path (linesOf (Written source)) source
 
 -- | Parse one configuration of a module.
---
--- The text to parse is one configuration of the module; the 'Written' text
--- is the module the author wrote, which is what every question about the
--- source is answered against. Without the preprocessor the two are the same
--- text and this is 'parseModule'.
 parseConfiguration ::
   ParserConfig ->
-  -- | Path, used only in positions reported back
+  -- | Path, used only in positions reported back.
   FilePath ->
   -- | The lines of the module as written, except for the lines that do not
-  -- belong to this configuration
+  -- belong to this configuration.
   Lines ->
-  -- | The configuration of it to parse
+  -- | The configuration of it to parse.
   Text ->
   Either ParseError ParsedModule
 parseConfiguration config path written source =
@@ -107,8 +101,6 @@ parseConfiguration config path written source =
                 pmHeaderEnd = headerEndOf hsModule
               }
   where
-    -- Everything above the @signature@ keyword: the parser leaves those
-    -- here rather than in the tree. A module's are in both.
     headerComments = concat . GHC.header_comments
 
     sourceType = sourceTypeOf path
@@ -185,10 +177,6 @@ quietDiagnostics =
     }
 
 -- | The @#!@ lines a file begins with, and the empty line after them.
---
--- At most one empty line is taken: the rest would only be collapsed
--- wherever they were reproduced, so keeping them would be keeping a
--- distinction that cannot survive.
 prologueOf :: [Text] -> [Text]
 prologueOf ls = case span isShebang ls of
   ([], _) -> []
@@ -197,14 +185,11 @@ prologueOf ls = case span isShebang ls of
     isShebang = T.isPrefixOf "#!"
 
 -- | The start of the first thing that is not part of the header.
---
--- Imports and declarations are the only things that can end a header, and
--- either may come first, so both are consulted.
 headerEndOf :: HsModule GhcPs -> Maybe Span
 headerEndOf hsModule =
   foldl' earliest Nothing $
-    map getLocA (hsmodImports hsModule)
-      <> map getLocA (hsmodDecls hsModule)
+    fmap getLocA (hsmodImports hsModule)
+      <> fmap getLocA (hsmodDecls hsModule)
   where
     earliest acc l = case GHC.srcSpanToRealSrcSpan l of
       Nothing -> acc
@@ -228,7 +213,7 @@ describeParseError :: ParseError -> Text
 describeParseError e =
   T.pack (GHC.showSDocUnsafe (GHC.ppr (peSpan e))) <> ": " <> peProblem e
 
--- | What the parser is allowed to accept.
+-- | Parser configuration.
 newtype ParserConfig = ParserConfig
   { -- | Extensions to enable before parsing.
     pcExtensions :: [Extension]
@@ -240,9 +225,9 @@ defaultParserConfig = parserConfigFor []
 
 -- | What to parse with, given whatever the package had to say.
 parserConfigFor ::
-  -- | What the package puts in force, or nothing if there is no package
+  -- | What the package puts in force, or nothing if there is no package.
   [Extension] ->
-  -- | The resulting parser config
+  -- | The resulting parser config.
   ParserConfig
 parserConfigFor package =
   ParserConfig

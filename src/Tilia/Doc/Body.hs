@@ -1,4 +1,4 @@
--- | Constructs that can stand as the body of an enclosing one.
+-- | Something that can appear as the body of an enclosing construct.
 module Tilia.Doc.Body
   ( Body (..),
     attachBody,
@@ -16,9 +16,5 @@ class Body a where
   bodyPlacement :: a -> Placement
 
 -- | Print a body and join it to whatever precedes it.
---
--- This is the whole of what an enclosing construct needs, which is why it
--- is worth having: a caller that reaches for 'printBody' and
--- 'bodyPlacement' separately is about to reimplement it.
 attachBody :: (Body a) => a -> Doc
 attachBody x = attach (bodyPlacement x) (printBody x)

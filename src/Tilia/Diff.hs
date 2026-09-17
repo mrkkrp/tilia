@@ -21,14 +21,14 @@ data Line = Line !Mark !Int !Int !Text
 data Mark = Context | Removed | Added
   deriving (Eq)
 
--- | A unified diff of two texts, cut short once it has said enough.
+-- | A unified diff of two texts.
 diff ::
   Palette ->
-  -- | What to call the two sides
+  -- | What to call the two sides.
   (Text, Text) ->
-  -- | Before
+  -- | Before.
   Text ->
-  -- | After
+  -- | After.
   Text ->
   Text
 diff palette = unified palette (Just roomFor) []
@@ -37,11 +37,11 @@ diff palette = unified palette (Just roomFor) []
 -- headed the way @git diff@ heads one.
 diffInFull ::
   Palette ->
-  -- | The file, named as it was given on the command line
+  -- | The file, named as it was given on the command line.
   FilePath ->
-  -- | What is in it
+  -- | What is in it.
   Text ->
-  -- | What would be
+  -- | What would be.
   Text ->
   Text
 diffInFull palette path =
@@ -54,17 +54,18 @@ diffInFull palette path =
     before = "a/" <> T.pack path
     after = "b/" <> T.pack path
 
+-- | A unified diff, with whatever heading and limit the caller wants.
 unified ::
   Palette ->
-  -- | How many lines are worth printing, where there is a limit at all
+  -- | How many lines are worth printing, where there is a limit at all.
   Maybe Int ->
-  -- | Whatever goes above the two file names
+  -- | Whatever goes above the two file names.
   [Text] ->
-  -- | What to call the two sides
+  -- | What to call the two sides.
   (Text, Text) ->
-  -- | Before
+  -- | Before.
   Text ->
-  -- | After
+  -- | After.
   Text ->
   Text
 unified palette limit above (beforeName, afterName) before after
@@ -91,7 +92,7 @@ unified palette limit above (beforeName, afterName) before after
 
     body = concatMap render hunks
 
-    render range = hunkHeading range : map line (slice range)
+    render range = hunkHeading range : fmap line (slice range)
 
     hunkHeading range =
       paint palette Meta $
@@ -121,7 +122,7 @@ unified palette limit above (beforeName, afterName) before after
     changed = [i | (i, Line m _ _ _) <- zip [0 ..] lines', m /= Context]
     total = length lines'
     lines' = tag (D.getGroupedDiff (split before) (split after))
-    split = map withoutReturn . T.splitOn "\n"
+    split = fmap withoutReturn . T.splitOn "\n"
     withoutReturn l = fromMaybe l (T.stripSuffix "\r" l)
 
 -- | How many unchanged lines to show either side of a change.

@@ -25,7 +25,13 @@ module Tilia.Run
   )
 where
 
-import Control.Concurrent (forkIO, getNumCapabilities, newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent
+  ( forkIO,
+    getNumCapabilities,
+    newEmptyMVar,
+    putMVar,
+    takeMVar,
+  )
 import Control.Monad (replicateM)
 import Data.ByteString qualified as BS
 import Data.Foldable (for_, traverse_)
@@ -54,22 +60,22 @@ import Tilia.Utils (attempted, indent, lineWidth, wrapTo)
 
 -- | What became of one file.
 data Outcome
-  = -- | Formatted, and it was already in that shape.
+  = -- | The file did not need to change.
     Unchanged
-  | -- | Formatted, and this is what it should say instead.
+  | -- | The file got formatted, the arguments are texts before and after.
     Changed Text Text
   | -- | Declined.
     Declined FormatError
   | -- | Failed to format.
     Failed FormatError
 
--- | Was the file left alone because we would not touch it?
+-- | Was the file declined?
 declined :: Outcome -> Bool
 declined = \case
   Declined {} -> True
   _ -> False
 
--- | Was the file left alone because something is wrong with it?
+-- | Did the file fail to format?
 failed :: Outcome -> Bool
 failed = \case
   Failed {} -> True
@@ -81,11 +87,8 @@ differs = \case
   Changed {} -> True
   _ -> False
 
--- | What a run that met a failure should exit with.
---
--- 'Nothing' where nothing failed. Where several did, the lowest of their
--- codes: they are all true, and one of them has to be picked, so it may as
--- well be picked the same way every time.
+-- | Determine the exit code based on the set of outcomes. 'Nothing' means
+-- success.
 exitCodeOf :: [(FilePath, Outcome)] -> Maybe Int
 exitCodeOf outcomes =
   case [formatErrorExitCode e | (_, Failed e) <- outcomes] of
@@ -120,9 +123,9 @@ readAsUtf8 path =
 
 -- | Formatting outcome for a file.
 formattingOutcome ::
-  -- | The file, as it is
+  -- | The file, as it is.
   Text ->
-  -- | Its formatted text, in newlines
+  -- | Its formatted text, in newlines.
   Text ->
   Outcome
 formattingOutcome before formatted
@@ -144,12 +147,15 @@ inParallel act xs = do
   queue <- newIORef (zip [0 :: Int ..] xs)
   answers <- newIORef Map.empty
   let worker =
-        atomicModifyIORef' queue (\case [] -> ([], Nothing); (y : ys) -> (ys, Just y)) >>= \case
-          Nothing -> pure ()
-          Just (i, x) -> do
-            y <- act x
-            atomicModifyIORef' answers (\m -> (Map.insert i y m, ()))
-            worker
+        atomicModifyIORef'
+          queue
+          (\case [] -> ([], Nothing); (y : ys) -> (ys, Just y))
+          >>= \case
+            Nothing -> pure ()
+            Just (i, x) -> do
+              y <- act x
+              atomicModifyIORef' answers (\m -> (Map.insert i y m, ()))
+              worker
   done <- replicateM (max 1 (min capabilities (length xs))) newEmptyMVar
   for_ done $ \signal -> forkIO (worker >> putMVar signal ())
   traverse_ takeMVar done
@@ -213,24 +219,36 @@ asides palette outcomes =
 -- | One line per extension, for the files a test picks out.
 tally ::
   Palette ->
-  -- | The mark to set the line under, and the color to set it in
+  -- | The mark to set the line under, and the color to set it in.
   (Text, Color) ->
-  -- | What became of the files being counted
+  -- | What became of the files being counted.
   Text ->
+  -- | Which outcomes to count.
   (Outcome -> Bool) ->
+  -- | Every file of the run, and what became of it.
   [(FilePath, Outcome)] ->
   [Text]
 tally palette (mark, color) what wanted outcomes =
-  [ indent 1 <> marker palette color mark <> " " <> what <> " " <> count palette n extension
+  [ indent 1
+      <> marker palette color mark
+      <> " "
+      <> what
+      <> " "
+      <> count palette n extension
   | (extension, n) <- countedBy (wanted . snd) outcomes
   ]
 
 -- | How many files of each extension, among the ones a test picks out.
-countedBy :: ((FilePath, Outcome) -> Bool) -> [(FilePath, Outcome)] -> [(Text, Int)]
+countedBy ::
+  -- | Which files to count.
+  ((FilePath, Outcome) -> Bool) ->
+  -- | Every file of the run, and what became of it.
+  [(FilePath, Outcome)] ->
+  [(Text, Int)]
 countedBy wanted =
   Map.toList
     . Map.fromListWith (+)
-    . map (\(path, _) -> (T.pack (takeExtension path), 1 :: Int))
+    . fmap (\(path, _) -> (T.pack (takeExtension path), 1 :: Int))
     . filter wanted
 
 -- | Render the number of files.
@@ -246,12 +264,12 @@ bulleted :: Palette -> FormatError -> [Text]
 bulleted palette e = case wrapTo (lineWidth - 6) (describeFormatError palette e) of
   [] -> []
   (opening : rest) ->
-    (indent 2 <> "· " <> opening) : map (indent 3 <>) rest
+    (indent 2 <> "· " <> opening) : fmap (indent 3 <>) rest
 
 -- | Something to say under a mark of its own, wrapped to fit beneath it.
 noted ::
   Palette ->
-  -- | The mark to set it under, and the color to set that in
+  -- | The mark to set it under, and the color to set that in.
   (Text, Color) ->
   Text ->
   [Text]
@@ -259,4 +277,4 @@ noted palette (mark, color) text = case wrapTo (lineWidth - 6) text of
   [] -> []
   (opening : rest) ->
     (indent 1 <> marker palette color mark <> " " <> opening)
-      : map (indent 3 <>) rest
+      : fmap (indent 3 <>) rest

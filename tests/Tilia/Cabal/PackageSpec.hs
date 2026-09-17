@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Information obtained from @.cabal@ files.
-module Tilia.PackageSpec (spec) where
+module Tilia.Cabal.PackageSpec (spec) where
 
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
@@ -13,7 +13,7 @@ import System.Directory (createDirectoryIfMissing, removeFile)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-import Tilia.Package (PackageProblem (..), newPackageReader)
+import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
 
 spec :: Spec
 spec = do

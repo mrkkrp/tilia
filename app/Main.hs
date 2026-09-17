@@ -26,6 +26,16 @@ import System.IO
     stderr,
     stdout,
   )
+import Tilia.Cabal.Project (findProjectRoot)
+import Tilia.Cabal.Target
+  ( Component,
+    Target,
+    componentInPlan,
+    componentsOfTarget,
+    describeTargetProblem,
+    filesOfComponents,
+    parseTarget,
+  )
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
   ( FormatError,
@@ -36,7 +46,6 @@ import Tilia.Format
   )
 import Tilia.Palette (Color (Bad), Palette, paletteFor)
 import Tilia.Parser (ghcLibParserVersion)
-import Tilia.Project (findProjectRoot)
 import Tilia.Run
   ( Outcome,
     Report (..),
@@ -47,15 +56,6 @@ import Tilia.Run
     noted,
     runOver,
     writeBack,
-  )
-import Tilia.Target
-  ( Component,
-    Target,
-    componentInPlan,
-    componentsOfTarget,
-    describeTargetProblem,
-    filesOfComponents,
-    parseTarget,
   )
 import Tilia.Utils (lineWidth, quietly)
 
@@ -92,7 +92,8 @@ main = do
     Check -> printReport (checkReport palette outcomes)
   exitWith optMode outcomes
 
--- | Transliterate unprintable characters if the stream cannot handle them.
+-- | Transliterate unprintable characters if the output stream cannot handle
+-- them.
 transliterateUnprintable :: Handle -> IO ()
 transliterateUnprintable h =
   quietly () $
@@ -103,13 +104,17 @@ transliterateUnprintable h =
             hSetEncoding h =<< mkTextEncoding (name <> "//TRANSLIT")
       _ -> pure ()
 
--- | Exit the way the run turned out.
+-- | Exit with a status code determined by 'Mode' of operation and the
+-- formatting 'Outcome's.
 exitWith :: Mode -> [(FilePath, Outcome)] -> IO ()
 exitWith mode outcomes = case exitCodeOf outcomes of
   Just code -> System.Exit.exitWith (ExitFailure code)
   Nothing -> case mode of
     Inplace -> pure ()
-    Check -> when (any (differs . snd) outcomes) (System.Exit.exitWith (ExitFailure 1))
+    Check ->
+      when
+        (any (differs . snd) outcomes)
+        (System.Exit.exitWith (ExitFailure 1))
 
 -- | Print a 'Report'.
 printReport :: Report -> IO ()
@@ -127,8 +132,10 @@ componentsFor palette target =
       die 2 palette "no cabal.project or .cabal file at or above the working directory"
     Just root ->
       componentsOfTarget root target >>= \case
-        Left problem -> die usageExitCode palette (describeTargetProblem problem)
-        Right components -> pure components
+        Left problem ->
+          die usageExitCode palette (describeTargetProblem problem)
+        Right components ->
+          pure components
 
 -- | What @sysexits.h@ has called a usage error since 4.3BSD, and well clear
 -- of the codes 'formatErrorExitCode' returns.
@@ -149,10 +156,10 @@ dieFormatting palette e =
 ----------------------------------------------------------------------------
 -- Command line options
 
--- | What a run was asked to do.
+-- | The mode of operation.
 data Mode = Inplace | Check
 
--- | The options a run was given.
+-- | The command line options.
 data Opts = Opts
   { -- | The mode of operation.
     optMode :: Mode,
@@ -171,19 +178,27 @@ optsParserInfo =
   info (helper <*> versionOption <*> optsParser) . mconcat $
     [ fullDesc,
       progDesc "Format Haskell source code",
-      header "tilia - a formatter for Haskell source code"
+      header "tilia — a formatter for Haskell source code"
     ]
   where
     versionOption =
       infoOption
-        ("tilia " ++ showVersion version ++ "\nusing ghc-lib-parser " ++ ghcLibParserVersion)
+        ( "tilia "
+            ++ showVersion version
+            ++ "\nusing ghc-lib-parser "
+            ++ ghcLibParserVersion
+        )
         (long "version" <> short 'v' <> help "Print version of the program")
 
 optsParser :: Parser Opts
 optsParser =
   hsubparser . mconcat $
-    [ command "inplace" (info (parser Inplace) (progDesc "Format files, in place")),
-      command "check" (info (parser Check) (progDesc "Report what formatting would change, and fail if anything would"))
+    [ command
+        "inplace"
+        (info (parser Inplace) (progDesc "Format files, in place")),
+      command
+        "check"
+        (info (parser Check) (progDesc "Report what formatting would change, and fail if anything would"))
     ]
   where
     parser mode =

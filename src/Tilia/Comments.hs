@@ -17,8 +17,6 @@ module Tilia.Comments
     triggerEscaped,
     opensHaddock,
     commentsWithin,
-
-    -- * Pragmas
     Pragma (..),
     commentPragma,
   )
@@ -50,9 +48,6 @@ data Comment = Comment
     -- | How it was written.
     commentStyle :: CommentStyle,
     -- | What was on the line above it.
-    --
-    -- What a comment lines up with is how its author said what it is about,
-    -- and the line above is the only thing it can line up with.
     commentAbove :: Above,
     -- | Where the code before it on its opening line stops: the column one
     -- past the last character of that code, or 'Nothing' when the comment
@@ -81,7 +76,7 @@ data CommentStyle
 
 -- | What was on the line above a comment.
 data Above
-  = -- | Nothing was: the comment begins on the first line of the file.
+  = -- | The comment begins on the first line of the file.
     TopOfFile
   | -- | An empty line.
     BlankLine
@@ -91,18 +86,15 @@ data Above
 
 -- | Every comment in a module, in source order.
 commentsOf ::
-  -- | The module's lines, which every comment is read against
+  -- | The module's lines, which every comment is read against.
   Lines ->
-  -- | Comments the tree does not carry
-  --
-  -- Everything above a signature's @signature@ keyword: the parser leaves
-  -- those in its own state rather than in an annotation.
+  -- | Comments the tree does not carry.
   [GHC.LEpaComment] ->
-  -- | Parsed module
+  -- | Parsed module.
   HsModule GhcPs ->
   [Comment]
 commentsOf ls loose hsModule =
-  map (uncurry (mkComment ls))
+  fmap (uncurry (mkComment ls))
     . dedupeOnSpan
     . sortOn (GHC.realSrcSpanStart . fst)
     . mapMaybe located
@@ -140,17 +132,11 @@ mkComment ls spn tok =
       GHC.EpaBlockComment s -> (BlockComment, T.pack s)
       GHC.EpaDocComment _ -> (DocComment, sliceSpan (lineTexts ls) spn)
       GHC.EpaDocOptions s -> (LineComment, T.pack s)
-
-    -- The lines the answers are read off, and where on the opening one the
-    -- comment starts. Indentation is how many characters precede, which is
-    -- not the column: see 'offsetOf'.
     startColumn = maybe 0 (`offsetOf` GHC.srcSpanStartCol spn) openingLine
     openingLine = lineAt (GHC.srcSpanStartLine spn) ls
     lineAbove
       | GHC.srcSpanStartLine spn <= 1 = Nothing
       | otherwise = lineAt (GHC.srcSpanStartLine spn - 1) ls
-
-    -- The rest in the order the fields are declared in.
     above = case lineAbove of
       Nothing -> TopOfFile
       Just l
@@ -172,7 +158,7 @@ normalizeBody startColumn style raw =
   case NE.nonEmpty (T.lines raw) of
     Nothing -> spaceAfterDashes style raw :| []
     Just (first' :| rest) ->
-      fmap T.stripEnd (spaceAfterDashes style first' :| map dedent rest)
+      fmap T.stripEnd (spaceAfterDashes style first' :| fmap dedent rest)
   where
     dedent l = T.drop (min startColumn (T.length (T.takeWhile isSpace l))) l
 
@@ -201,7 +187,6 @@ sliceSpan sourceLines spn =
       (if n == startLine then T.drop (offsetOf l startCol) else id)
         . (if n == endLine then T.take (offsetOf l endCol) else id)
         $ l
-
     startLine = GHC.srcSpanStartLine spn
     endLine = GHC.srcSpanEndLine spn
     startCol = GHC.srcSpanStartCol spn
@@ -240,7 +225,7 @@ widenTrigger c
     Just (upToTrigger, body) <- splitTrigger headLine,
     not (T.null body),
     not (" " `T.isPrefixOf` body) =
-      c {commentBody = (upToTrigger <> " " <> body) :| map shiftOne rest}
+      c {commentBody = (upToTrigger <> " " <> body) :| fmap shiftOne rest}
   | otherwise = c
   where
     shiftOne l = case openerWidth l of
@@ -266,7 +251,6 @@ escapeTrigger c = case commentStyle c of
     ordinaryStyle
       | "{-" `T.isPrefixOf` NE.head (commentBody c) = BlockComment
       | otherwise = LineComment
-
     escape l = case openerWidth l of
       Just n
         | (gap, rest) <- T.span (== ' ') (T.drop n l),
@@ -325,9 +309,6 @@ commentsWithin s = filter (within . commentSpan)
   where
     within c = startPoint s <= startPoint c && endPoint c <= endPoint s
 
-----------------------------------------------------------------------------
--- Pragmas
-
 -- | A compiler pragma, which is written as a block comment but is not one.
 --
 -- GHC reads pragmas only from the file header, so where a pragma sits
@@ -357,10 +338,7 @@ commentPragma c = do
             pragmaBody = T.strip body
           }
   where
-    oneLine = T.unwords (map T.strip (NE.toList (commentBody c)))
-
-----------------------------------------------------------------------------
--- Columns and offsets
+    oneLine = T.unwords (fmap T.strip (NE.toList (commentBody c)))
 
 -- | How many characters of a line come before the compiler's column.
 --

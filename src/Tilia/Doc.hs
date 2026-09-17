@@ -1,9 +1,6 @@
 -- | Turning a printed document into source text.
 module Tilia.Doc
-  ( -- * Documents
-    Doc,
-
-    -- * Rendering
+  ( Doc,
     RenderOptions (..),
     defaultRenderOptions,
     printDoc,

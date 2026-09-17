@@ -13,8 +13,8 @@ module Tilia.Fixity.Plan
     sourceHashOf,
     BuildPlan (..),
     readBuildPlan,
-    planToken,
-    tokenFor,
+    tokenForEnvAndBuildPlan,
+    tokenForBuildPlan,
     macrosOf,
 
     -- * Readiness
@@ -27,8 +27,8 @@ module Tilia.Fixity.Plan
     plannedTarballs,
     packageCacheRoot,
     guessedPackageCacheRoot,
-    Solves (..),
-    forgetfulSolves,
+    Futility (..),
+    undiscoveredFutility,
     prepareWith,
     loadPlan,
 
@@ -102,7 +102,8 @@ import System.Process
     std_out,
     waitForProcess,
   )
-import Tilia.Cpp (branchLeaves, withoutRuledOut)
+import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Builtin (builtinFixities)
@@ -119,7 +120,6 @@ import Tilia.Fixity.Cabal
 import Tilia.Fixity.Cache
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
-import Tilia.Package (newPackageReader)
 import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Process (readProgramOutput)
@@ -142,19 +142,12 @@ data PlanPackage = PlanPackage
     -- time and gives each its own entry. A package it cannot take apart—one
     -- with a @Custom@ build type, whose @Setup.hs@ is entitled to do as it
     -- pleases—is planned whole instead, and its entry is about every
-    -- component at once. Empty where the entry is about none of them.
+    -- component at once.
     ppComponents :: [Text]
   }
   deriving (Eq, Show)
 
--- | Where a package's source is, if anywhere.
---
--- A plan contains exactly three kinds of entry and they are mutually
--- exclusive, which two independent flags could not say: a package cannot be
--- both shipped with the compiler and fetched from Hackage. Each carries
--- what is peculiar to it and nothing else, so there is no hash to consult
--- on a package that has no tarball, and no tarball to look for on one that
--- is a directory.
+-- | Where a package's source is.
 data PackageSource
   = -- | Already installed, so @cabal@ will not build it.
     --
@@ -165,42 +158,27 @@ data PackageSource
     LocalPackage FilePath
   | -- | Fetched from a repository as a tarball, with the SHA-256 the plan
     -- expects it to have and where it was fetched from.
-    --
-    -- Hackage is one such repository and not a special one. A company that
-    -- runs its own has packages here exactly as Hackage does, and the only
-    -- difference that reaches us is where the tarball landed.
-    RepoPackage (Maybe Text) Repository
+    RepoPackage (Maybe Text) RepoProvenance
   | -- | A @source-repository-package@ we have not found the sources of.
-    --
-    -- The plan says where the repository is, which is of no use: what is
-    -- wanted is where @cabal@ put the clone, and the plan does not say. A
-    -- package that stays this way is one nothing can be read from, which is
-    -- what every one of them was before 'checkedOutIn' went looking.
     SourceRepo
   | -- | The same, found unpacked under the project's own @dist-newstyle@.
-    --
-    -- A directory of sources like 'LocalPackage', and read the same way.
-    -- Kept apart from it because a dependency is not one of the project's
-    -- own packages: its components are not components a run formats, and
-    -- its @.cabal@ file being newer than the plan says nothing about
-    -- whether the plan is stale.
     CheckedOut FilePath
   deriving (Eq, Show)
 
 -- | Which repository a package was fetched from, as far as it bears on
 -- finding the tarball afterwards.
-data Repository
+data RepoProvenance
   = -- | One @cabal@ downloads from, named by its URI. The tarball goes into
     -- the package cache, in a directory named after the repository as the
     -- configuration spells it.
-    Downloaded Text
+    RepoDownloaded Text
   | -- | A directory of tarballs, named by @file+noindex@. Nothing is
     -- downloaded and nothing is cached: the tarball is already sitting
     -- there, beside the index @cabal@ wrote for it.
-    ADirectory FilePath
+    RepoFromDirectory FilePath
   | -- | A plan that does not say. Older @cabal@ wrote nothing here, and
     -- Hackage is the only guess worth making.
-    Unsaid
+    RepoNoProvenance
   deriving (Eq, Show)
 
 -- | Is there a tarball to go and read?
@@ -210,8 +188,8 @@ isFetchable p = case ppSource p of
   _ -> False
 
 -- | Every package the compiler can see.
-whatTheCompilerSees :: Maybe Cache -> IO [InstalledPackage]
-whatTheCompilerSees cache =
+getInstalledPackages :: Maybe Cache -> IO [InstalledPackage]
+getInstalledPackages cache =
   remembered >>= \case
     Just packages -> pure packages
     Nothing -> do
@@ -223,20 +201,15 @@ whatTheCompilerSees cache =
 
 -- | Summarize a 'BuildPlan', and the environment it will be read in, by
 -- hashing over both.
---
--- The plan alone would not do. What a failure to read a module leans on is
--- partly the plan and partly the compiler this run can ask: a package the
--- plan names is unreadable where @ghc-pkg@ does not expose it and readable
--- where it does, and one shell can differ from another in that while
--- solving the very same plan. Tying failures to the plan alone would let
--- one shell's \"could not be read\" be handed to a shell that can.
-tokenFor :: BuildPlan -> IO PlanToken
-tokenFor plan = flip planToken plan <$> compilerIdentity
+tokenForBuildPlan :: BuildPlan -> IO PlanToken
+tokenForBuildPlan plan = do
+  environment <- compilerIdentity
+  pure (tokenForEnvAndBuildPlan environment plan)
 
--- | 'tokenFor' without the asking, so that what goes into the token is
--- visible in one place.
-planToken :: Text -> BuildPlan -> PlanToken
-planToken environment plan =
+-- | Similar to 'tokenForBuildPlan', but allows passing a compiler identity
+-- as an argument.
+tokenForEnvAndBuildPlan :: Text -> BuildPlan -> PlanToken
+tokenForEnvAndBuildPlan environment plan =
   PlanToken
     . T.take 16
     . T.decodeUtf8Lenient
@@ -245,7 +218,7 @@ planToken environment plan =
     . T.encodeUtf8
     $ T.intercalate
       "\n"
-      (environment : bpCompiler plan : Data.List.sort (map cacheKey (bpPackages plan)))
+      (environment : bpCompiler plan : Data.List.sort (fmap cacheKey (bpPackages plan)))
 
 -- | The SHA-256 the plan expects this package's tarball to have.
 sourceHashOf :: PlanPackage -> Maybe Text
@@ -291,9 +264,9 @@ instance FromJSON PlanPackage where
               RepoPackage
                 sourceHash
                 ( case (join (join repoKind) :: Maybe Text, join (join repoPath), join (join repoUri)) of
-                    (Just "local-repo-no-index", Just dir, _) -> ADirectory (T.unpack dir)
-                    (_, _, Just uri) -> Downloaded uri
-                    _ -> Unsaid
+                    (Just "local-repo-no-index", Just dir, _) -> RepoFromDirectory (T.unpack dir)
+                    (_, _, Just uri) -> RepoDownloaded uri
+                    _ -> RepoNoProvenance
                 )
             (_, Just "local") -> LocalPackage (maybe "" T.unpack (join sourcePath))
             (_, Just "source-repo") -> SourceRepo
@@ -396,8 +369,7 @@ macrosOf plan =
         _ -> Nothing
     nth i xs = if i < length xs then xs !! i else 0
 
--- | The modules @cabal@ writes itself for a plan's packages, and which are
--- therefore in nobody's sources.
+-- | The modules @cabal@ writes itself for a plan's packages.
 generatedModules :: BuildPlan -> Set Text
 generatedModules plan =
   Set.fromList
@@ -423,7 +395,7 @@ numberedVersion = traverse number . T.splitOn "."
 ----------------------------------------------------------------------------
 -- Readiness
 
--- | A component of the project, named the way a build plan names one.
+-- | A component of the project.
 data PlanComponent = PlanComponent
   { -- | The package it belongs to.
     pcPackage :: Text,
@@ -459,9 +431,8 @@ data Readiness
     -- nor built. The names are listed so that a caller can say what it is
     -- waiting for.
     --
-    -- Built counts as having them: their interfaces answer everything the
-    -- source would have been read for, so a package the compiler already
-    -- holds is not missing however absent its tarball is.
+    -- Built counts as having them: their interfaces provide everything the
+    -- source tarball would.
     SourcesMissing [Text]
   deriving (Eq, Show)
 
@@ -469,10 +440,10 @@ data Readiness
 planPathFor :: FilePath -> FilePath
 planPathFor projectDir = projectDir </> "dist-newstyle" </> "cache" </> "plan.json"
 
--- | Check what is missing, cheaply.
+-- | Check what is missing.
 --
 -- One read of the plan and one @stat@ per package, so this is fast enough
--- to run before every format without anyone noticing.
+-- to run before every format.
 checkReadiness :: [PlanComponent] -> FilePath -> IO Readiness
 checkReadiness wanted projectDir =
   readBuildPlan (planPathFor projectDir) >>= \case
@@ -490,26 +461,18 @@ checkReadiness wanted projectDir =
             ns -> pure (SourcesMissing ns)
 
 -- | The packages the plan expects to fetch whose sources are not here.
---
--- Asked apart from the rest of 'checkReadiness' because it is a different
--- question with a different answer. Whether the plan covers the components
--- a run is about to format is about the plan; whether the sources it names
--- are on this machine is about the machine, and a plan that will never
--- cover everything—one component of the project does not build, and the
--- solver leaves it out—must not stop the sources for the rest being
--- fetched.
 sourcesShortOf :: BuildPlan -> IO [Text]
 sourcesShortOf plan = do
   tarballs <- filter (isFetchable . fst) <$> plannedTarballs plan
-  absent <- map fst <$> filterM (fmap not . doesFileExist . snd) tarballs
+  absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
   short <-
     if null absent
       then pure []
       else do
-        cache <- openCache =<< tokenFor plan
-        installed <- whatTheCompilerSees cache
+        cache <- openCache =<< tokenForBuildPlan plan
+        installed <- getInstalledPackages cache
         pure (filter (not . builtAlready installed) absent)
-  pure (map ppName short)
+  pure (fmap ppName short)
 
 -- | Has the compiler got this package already?
 builtAlready :: [InstalledPackage] -> PlanPackage -> Bool
@@ -518,12 +481,6 @@ builtAlready installed p = any matches installed
     matches i = ipName i == ppName p && ipVersion i == ppVersion p
 
 -- | The project files that have changed since the plan was written.
---
--- A plan describes the dependencies as they were when @cabal@ last solved.
--- Edit a @build-depends@ and the plan on disk is about a different project,
--- and resolving fixities against it would answer for packages that are no
--- longer in play. Comparing modification times is one @stat@ each, so this
--- costs nothing to check every time.
 filesNewerThanPlan :: BuildPlan -> FilePath -> IO [FilePath]
 filesNewerThanPlan plan projectDir = quietly [] $ do
   planTime <- getModificationTime (planPathFor projectDir)
@@ -539,7 +496,7 @@ filesNewerThanPlan plan projectDir = quietly [] $ do
     projectFiles =
       ["cabal.project", "cabal.project.local", "cabal.project.freeze"]
     localDirs p =
-      Data.List.nub [dir | LocalPackage dir <- map ppSource (bpPackages p)]
+      Data.List.nub [dir | LocalPackage dir <- fmap ppSource (bpPackages p)]
     cabalFilesIn dir = quietly [] $ do
       entries <- listDirectory dir
       pure [dir </> f | f <- entries, ".cabal" `isSuffixOf` f]
@@ -548,29 +505,21 @@ filesNewerThanPlan plan projectDir = quietly [] $ do
       pure (if t > planTime then Just path else Nothing)
 
 -- | Do whatever is missing, by asking @cabal@.
---
--- Neither of these builds anything: a dry run only solves, and
--- @--only-download@ only fetches. Both are one-time costs, and @cabal@'s
--- package cache is shared between projects, so a machine that has seen a
--- dependency once never fetches it again.
---
--- This runs a subprocess and may reach the network, so it is a separate
--- call rather than something 'newResolver' does behind the caller's back.
--- An editor formatting on save must not block on it.
 prepare :: [PlanComponent] -> FilePath -> Readiness -> IO (Either Text ())
 prepare wanted projectDir readiness =
-  prepareWith (runCabal projectDir) (solvesFor projectDir) wanted projectDir readiness
+  prepareWith
+    (runCabal projectDir)
+    (futilityFor projectDir)
+    wanted
+    projectDir
+    readiness
 
--- | What a run knows about the asking earlier runs did, and how to add to
--- it.
---
--- Both halves are the same idea: @cabal@ was asked for something, it did
--- not help, and asking again will not help either. A run that formats on
--- save would otherwise ask on every save.
-data Solves = Solves
+-- | An account of actions we know are not worth attempting.
+data Futility = Futility
   { -- | Has solving this plan already been tried and left it as narrow?
     solveWasFutile :: IO Bool,
-    -- | Remember that it has.
+    -- | Record that a solve has been run and left it narrow, which is what
+    -- 'solveWasFutile' answers from afterwards.
     rememberFutileSolve :: IO (),
     -- | The packages an earlier fetch was still short of afterwards.
     fetchWasFutileFor :: IO [Text],
@@ -578,24 +527,20 @@ data Solves = Solves
     rememberFutileFetch :: [Text] -> IO ()
   }
 
--- | Solves remembered nowhere, for a caller with nothing to remember them
--- in.
-forgetfulSolves :: Solves
-forgetfulSolves =
-  Solves
+-- | The state when we know nothing about futile actions yet.
+undiscoveredFutility :: Futility
+undiscoveredFutility =
+  Futility
     { solveWasFutile = pure False,
       rememberFutileSolve = pure (),
       fetchWasFutileFor = pure [],
       rememberFutileFetch = const (pure ())
     }
 
--- | Solves remembered in the cache, under the plan the project has now.
---
--- A project with no readable plan has no token to file anything under, and
--- nothing to remember either: a solve is exactly what it needs.
-solvesFor :: FilePath -> Solves
-solvesFor projectDir =
-  Solves
+-- | A memory kept in the cache, under the plan the project has now.
+futilityFor :: FilePath -> Futility
+futilityFor projectDir =
+  Futility
     { solveWasFutile = withCache False cachedFutileSolve,
       rememberFutileSolve = withCache () storeFutileSolve,
       fetchWasFutileFor = withCache [] cachedFutileFetch,
@@ -606,29 +551,30 @@ solvesFor projectDir =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure fallback
         Right plan -> do
-          opened <- openCache =<< tokenFor plan
+          opened <- openCache =<< tokenForBuildPlan plan
           maybe (pure fallback) use opened
 
--- | 'prepare', given a way to run @cabal@ and a memory of earlier solves.
+-- | 'prepare', given a way to run @cabal@ and a memory of what earlier
+-- attempts came to.
 prepareWith ::
-  -- | Run @cabal@ with these arguments
+  -- | Run @cabal@ with these arguments.
   ([String] -> IO (Either Text ())) ->
-  -- | What is known about solves already asked for
-  Solves ->
-  -- | The components the run is about to format
+  -- | What earlier attempts came to.
+  Futility ->
+  -- | The components the run is about to format.
   [PlanComponent] ->
-  -- | The project being prepared
+  -- | The project being prepared.
   FilePath ->
-  -- | What it was found to be short of
+  -- | What it was found to be short of.
   Readiness ->
   IO (Either Text ())
-prepareWith cabal solves wanted projectDir = \case
+prepareWith cabal futility wanted projectDir = \case
   Ready -> pure (Right ())
   SourcesMissing _ -> fetch
   PlanMissing -> solveThenFetch
   PlanStale _ -> solveThenFetch
   PlanNarrow _ ->
-    solveWasFutile solves >>= \case
+    solveWasFutile futility >>= \case
       True -> fetchWhatIsShort
       False -> solveThenFetch
   where
@@ -643,7 +589,7 @@ prepareWith cabal solves wanted projectDir = \case
         Left _ -> pure (Right ())
         Right plan -> do
           short <- sourcesShortOf plan
-          refused <- fetchWasFutileFor solves
+          refused <- fetchWasFutileFor futility
           if null short || all (`elem` refused) short
             then pure (Right ())
             else
@@ -651,7 +597,7 @@ prepareWith cabal solves wanted projectDir = \case
                 Left err -> pure (Left err)
                 Right () -> do
                   left <- sourcesShortOf plan
-                  rememberFutileFetch solves left
+                  rememberFutileFetch futility left
                   pure (Right ())
     solveThenFetch =
       tryWholeProject ["build", "all", "--dry-run"] >>= \case
@@ -659,7 +605,7 @@ prepareWith cabal solves wanted projectDir = \case
         Right () ->
           checkReadiness wanted projectDir >>= \case
             SourcesMissing _ -> fetch
-            PlanNarrow _ -> rememberFutileSolve solves >> fetchWhatIsShort
+            PlanNarrow _ -> rememberFutileSolve futility >> fetchWhatIsShort
             _ -> pure (Right ())
 
 -- | Run @cabal@ in a project directory, letting it speak for itself.
@@ -680,15 +626,9 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
   code <- waitForProcess running
   pure $ case code of
     ExitSuccess -> Right ()
-    _ -> Left ("cabal " <> T.unwords (map T.pack args) <> " failed; see above")
+    _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
 
 -- | Get a plan that is safe to use, doing whatever @cabal@ work is needed.
---
--- This is the call most users want. It checks, asks @cabal@ if anything is
--- missing or possibly out of date, and then reads the plan. 'prepare' does
--- at most one solve and one fetch however much is missing, so a project
--- whose files are merely newer than its plan cannot send this into a loop,
--- and the plan is read once at the end rather than judged again.
 loadPlan :: [PlanComponent] -> FilePath -> IO (Either Text BuildPlan)
 loadPlan wanted projectDir = do
   readiness <- checkReadiness wanted projectDir
@@ -698,18 +638,9 @@ loadPlan wanted projectDir = do
 
 -- | Every planned package whose source could be in the package cache, with
 -- where that would be.
---
--- Not only the ones the plan will fetch. A package already installed still
--- has a tarball in the cache if anything ever downloaded it, and under Nix
--- that is the normal case for every dependency. A package with no tarball
--- costs one @stat@ and falls through.
---
--- Local packages are excluded: they are directories, not archives.
 plannedTarballs :: BuildPlan -> IO [(PlanPackage, FilePath)]
 plannedTarballs plan = do
   cacheRoot <- packageCacheRoot
-  -- Listed once rather than once per package: a plan holds hundreds of
-  -- these and the answer is the same for every one of them.
   repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
   traverse
     (\p -> (,) p <$> tarballFor cacheRoot repos p)
@@ -724,18 +655,23 @@ plannedTarballs plan = do
 -- repository it downloads from.
 packageCacheRoot :: IO FilePath
 packageCacheRoot =
-  readProgramOutput "cabal" ["path", "--remote-repo-cache", "--output-format=json"] >>= \case
-    Just said | Just dir <- remoteRepoCacheIn said -> pure dir
-    _ -> guessedPackageCacheRoot
+  readProgramOutput
+    "cabal"
+    ["path", "--remote-repo-cache", "--output-format=json"]
+    >>= \case
+      Just said | Just dir <- remoteRepoCacheIn said -> pure dir
+      _ -> guessedPackageCacheRoot
 
 -- | The package cache directory, out of what @cabal path@ printed.
 remoteRepoCacheIn :: Text -> Maybe FilePath
 remoteRepoCacheIn said = do
-  spoken <- listToMaybe (reverse (filter (not . T.null) (map T.strip (T.lines said))))
+  spoken <-
+    listToMaybe $
+      reverse (filter (not . T.null) (fmap T.strip (T.lines said)))
   value <- decodeStrict (T.encodeUtf8 spoken)
   parseMaybe (withObject "cabal path" (.: "remote-repo-cache")) value
 
--- | Where @cabal@ probably keeps them, for a @cabal@ that will not say.
+-- | Where @cabal@ probably keeps its downloaded packages.
 guessedPackageCacheRoot :: IO FilePath
 guessedPackageCacheRoot =
   lookupEnv "CABAL_DIR" >>= \case
@@ -770,25 +706,29 @@ hackageByDefault = "hackage.haskell.org"
 
 -- | Where a package's source tarball is, or where fetching would put it.
 tarballFor :: FilePath -> [FilePath] -> PlanPackage -> IO FilePath
-tarballFor cacheRoot repos p = case repositoryOf p of
-  ADirectory dir -> pure (dir </> flat)
-  Downloaded uri -> searched (hostOf uri)
-  Unsaid -> searched Nothing
+tarballFor cacheRoot repos p = case provenanceOf p of
+  RepoFromDirectory dir -> pure (dir </> flat)
+  RepoDownloaded uri -> searched (hostOf uri)
+  RepoNoProvenance -> searched Nothing
   where
     flat = T.unpack (ppName p <> "-" <> ppVersion p <> ".tar.gz")
     under repo =
-      cacheRoot </> repo </> T.unpack (ppName p) </> T.unpack (ppVersion p) </> flat
+      cacheRoot
+        </> repo
+        </> T.unpack (ppName p)
+        </> T.unpack (ppVersion p)
+        </> flat
     searched preferred = do
       let first' = fromMaybe hackageByDefault preferred
           rest = filter (/= first') repos
-      found <- filterM doesFileExist (map under (first' : rest))
+      found <- filterM doesFileExist (fmap under (first' : rest))
       pure (fromMaybe (under first') (listToMaybe found))
 
 -- | Which repository a package came from, where it came from one.
-repositoryOf :: PlanPackage -> Repository
-repositoryOf p = case ppSource p of
+provenanceOf :: PlanPackage -> RepoProvenance
+provenanceOf p = case ppSource p of
   RepoPackage _ repo -> repo
-  _ -> Unsaid
+  _ -> RepoNoProvenance
 
 -- | The host a URI names, which is what @cabal@ conventionally calls the
 -- repository that lives there.
@@ -817,11 +757,6 @@ data Route
   deriving (Eq, Show)
 
 -- | What can be asked about a module, once a plan says where to look.
---
--- The three questions "Tilia.Fixity" has, answered against the outside
--- world. They come back together because they share everything—the module
--- index, the cache, the packages the compiler holds, the memo of what has
--- been read—and answering them apart would settle all of it three times.
 data Resolver = Resolver
   { -- | What a module exports, with 'Nothing' for one that could not be
     -- read, which is not the same as its having no operators; see
@@ -836,33 +771,33 @@ data Resolver = Resolver
     askExportNames :: Text -> IO (Maybe (Set OpName)),
     -- | The modules reading a module went through before giving up, the one
     -- it gave up on last. Asked only of the modules 'askFixities' gave up
-    -- on, and only so that a message can name the module really in the way
+    -- on, and only so that a message can name the exact problematic module
     -- rather than the import that happens to sit above it.
     askChain :: Text -> IO [Text]
   }
 
--- | Build the answers to what "Tilia.Fixity" asks.
+-- | Build a new 'Resolver'.
 --
 -- Answers are remembered on disk between runs by "Tilia.Fixity.Cache", so a
 -- package is decompressed and parsed once per machine rather than once per
 -- file.
 newResolver ::
-  -- | The build plan to use
+  -- | The build plan to use.
   BuildPlan ->
   IO Resolver
 newResolver = newResolverVia [FromInterface, FromSource]
 
 -- | 'newResolver', restricted to the routes given.
 newResolverVia ::
-  -- | Which readings to try, in order
+  -- | Which readings to try, in order.
   [Route] ->
-  -- | The build plan to use
+  -- | The build plan to use.
   BuildPlan ->
   IO Resolver
 newResolverVia routes plan = do
   tarballs <- plannedTarballs plan
-  cache <- openCache =<< tokenFor plan
-  installed <- whatTheCompilerSees cache
+  cache <- openCache =<< tokenForBuildPlan plan
+  installed <- getInstalledPackages cache
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
   local <- localModules plan
@@ -968,14 +903,14 @@ newResolverVia routes plan = do
         askChain = chain Set.empty
       }
 
--- | The operators a module's export list names, where that list can be
--- enumerated without reading what it passes on.
+-- | The operators a module's export list names, following what it
+-- reexports.
 --
 -- Asked only about modules whose fixities could not be established, and
 -- only to decide which of them an unsettled operator can be blamed on. A
--- module that exports whole modules keeps its own counsel and answers
--- 'Nothing'; one with no export list exports what it declares, which is
--- every fixity it could supply.
+-- module that hands on one nobody could read answers 'Nothing'; one with no
+-- export list exports what it declares, which is every fixity it could
+-- supply.
 exportNamesOfModule :: Workings -> Set Text -> Text -> IO (Maybe (Set OpName))
 exportNamesOfModule
   Workings {wkCache, wkLocal, wkIndex, wkReachChildren, wkReachExports, wkMacros}
@@ -1045,7 +980,7 @@ childrenOfModule
         readFileText path >>= \case
           Nothing -> pure Map.empty
           Just text -> inSource text
-    | otherwise = firstAnswer (map taking wkRoutes)
+    | otherwise = firstAnswer (fmap taking wkRoutes)
     where
       taking = \case
         FromInterface -> case Map.lookup modName wkInterfaces of
@@ -1102,18 +1037,18 @@ childrenOfModule
 -- not read arrives as 'Nothing' and stays 'Nothing', which is what lets
 -- 'Tilia.Fixity.lookupFixity' distinguish a conclusion from a guess.
 scopeFor ::
-  -- | What can be asked about the modules it imports
+  -- | What can be asked about the modules it imports.
   Resolver ->
   -- | Whether @ImplicitPrelude@ is on, which the module's own pragmas
-  -- and its package's @default-extensions@ decide between them
+  -- and its package's @default-extensions@ decide between them.
   Choice "implicitPrelude" ->
-  -- | The module whose scope is wanted, already parsed
+  -- | The module whose scope is wanted, already parsed.
   HsModule GhcPs ->
-  -- | Everything that module can see, and what it could not find out
+  -- | Everything that module can see, and what it could not find out.
   IO Scope
 scopeFor resolver implicitPrelude hsModule = do
   let imports = moduleImports implicitPrelude hsModule
-  answers <- traverse (\m -> (m,) <$> askFixities resolver m) (map importModule imports)
+  answers <- traverse (\m -> (m,) <$> askFixities resolver m) (fmap importModule imports)
   let table = Map.fromList answers
       unread = [m | (m, Nothing) <- answers]
   names <- Map.fromList <$> traverse (\m -> (m,) <$> askExportNames resolver m) unread
@@ -1122,11 +1057,11 @@ scopeFor resolver implicitPrelude hsModule = do
     Map.fromList
       <$> traverse
         (\m -> (m,) <$> askChildren resolver m)
-        (Set.toList (Set.fromList (map importModule (filter expands imports))))
+        (Set.toList (Set.fromList (fmap importModule (filter expands imports))))
   pure $
     resolveScope
       implicitPrelude
-      Known
+      KnownModules
         { knownFixities = \m -> Map.findWithDefault Nothing m table,
           knownChildren = \m -> Map.findWithDefault Map.empty m kept,
           knownExportNames = \m -> Map.findWithDefault Nothing m names,
@@ -1172,13 +1107,9 @@ data Workings = Workings
     -- | How to reach another module for what its export list names, tied
     -- back the same way again.
     wkReachExports :: Set Text -> Text -> IO (Maybe (Set OpName)),
-    -- | What the package a module belongs to puts in force. A module that
-    -- leans on its package's @default-extensions@ does not parse without
-    -- them, and one that does not parse cannot be read for anything.
+    -- | What extensions the package a module belongs to puts in force.
     wkExtensionsOf :: Text -> IO [Extension],
-    -- | What the plan settles about the questions a module's conditionals
-    -- ask, so that a branch written for another version of a dependency is
-    -- not read as part of it.
+    -- | Known macro expansions.
     wkMacros :: Macros,
     -- | The modules @cabal@ writes itself, which are therefore in no
     -- package's sources. See 'generatedModules'.
@@ -1190,15 +1121,11 @@ resolveModule ::
   -- | Where to look, and how to get back to the resolver.
   Workings ->
   -- | Modules currently being resolved further up the call chain.
-  --
-  -- Only passed through, so that a chase started here carries where it came
-  -- from. What is done about a module already in it belongs to
-  -- 'newResolverVia', which decides it before anything is remembered.
   Set Text ->
   -- | The module to resolve.
   Text ->
   -- | Its operator fixities, or, where they could not be established, the
-  -- module below it that stopped us if there was one.
+  -- module below it that stopped us.
   IO Established
 resolveModule
   Workings
@@ -1233,7 +1160,7 @@ resolveModule
               visiting'
               source
               modName
-    | otherwise = answered <$> firstAnswer (map taking wkRoutes)
+    | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
     where
       visiting' = Set.insert modName visiting
 
@@ -1295,14 +1222,6 @@ resolveModule
         Just c -> storeFixities c package modName fixities
 
 -- | Which package and tarball holds each module.
---
--- The module list of a package is itself cached: it comes from a @.cabal@
--- file inside an archive, and reading seventy of those is the bulk of what
--- starting up costs.
---
--- Where two packages expose the same module the first is kept. A plan that
--- builds cannot contain such a pair for any module the project imports, so
--- the choice only ever falls on a module nothing will ask about.
 buildModuleIndex ::
   -- | Where to remember each package's module list, if anywhere.
   Maybe Cache ->
@@ -1329,11 +1248,6 @@ buildModuleIndex cache installed tarballs =
       pure [(m, (key, tarball)) | m <- modules]
 
 -- | Where each installed module's compiled interface is.
---
--- Filed under the directory it was found in rather than under the package's
--- name and version, because those do not say which build: the same version
--- compiled with different flags can declare different fixities, and under
--- Nix a different build is a different directory.
 interfaceIndex :: [InstalledPackage] -> Map Text (Text, FilePath)
 interfaceIndex installed =
   Map.fromListWith
@@ -1356,35 +1270,35 @@ asInterface :: Fixities -> Interface
 asInterface fixities =
   Interface
     { interfaceDeclares = fixities,
-      interfacePassedOn = [],
+      interfaceReexports = [],
       interfaceChildren = Map.empty
     }
 
 -- | The fixities a compiled interface reports, and those it passes on.
 fromInterface ::
-  -- | A module's interface, if it has one
+  -- | A module's interface, if it has one.
   (Text -> IO (Maybe Interface)) ->
-  -- | The module to read
+  -- | The module to read.
   Text ->
   IO Established
 fromInterface interfaceOf modName =
   interfaceOf modName >>= \case
     Nothing -> pure (Unreadable Nothing)
     Just iface -> do
-      declarers <- traverse asked (distinct (map fst (interfacePassedOn iface)))
+      declarers <- traverse asked (distinct (fmap fst (interfaceReexports iface)))
       pure $ case [m | (m, Nothing) <- declarers] of
         (m : _) -> Unreadable (Just m)
         [] ->
           Declares . Map.union (interfaceDeclares iface) . Map.unions $
             [ Map.filterWithKey (\(_, o) _ -> o == op) (interfaceDeclares declarer)
-            | (m, op) <- interfacePassedOn iface,
+            | (m, op) <- interfaceReexports iface,
               Just (Just declarer) <- [lookup m declarers]
             ]
   where
     asked m = do
       interface <- interfaceOf m
       pure (m, interface)
-    distinct = Map.keys . Map.fromList . map (,())
+    distinct = Map.keys . Map.fromList . fmap (,())
 
 -- | A package's module list from the @.cabal@ file in its tarball.
 fromCabalFile ::
@@ -1405,9 +1319,6 @@ fromCabalFile cache key tarball p = do
     Nothing -> pure Nothing
     Just c -> cachedModules c key
   case remembered of
-    -- A cached entry was written after the tarball was verified, and the
-    -- key it is filed under contains the hash it was verified against, so a
-    -- changed tarball simply misses rather than matching the wrong data.
     Just ms -> pure (Just ms)
     Nothing ->
       verified p tarball >>= \case
@@ -1422,18 +1333,11 @@ fromCabalFile cache key tarball p = do
               pure (Just ms)
 
 -- | How a package's cached answers are filed.
---
--- The expected hash is part of the key, so everything derived from a
--- tarball is bound to the exact bytes it was derived from. A package with
--- no hash in the plan is keyed by name and version alone.
 cacheKey :: PlanPackage -> Text
 cacheKey p =
   ppName p <> "-" <> ppVersion p <> maybe "" (("-" <>) . T.take 16) (sourceHashOf p)
 
 -- | Does the tarball hash to what the plan says it should?
---
--- Hashing a few megabytes is not free, which is why it happens only on a
--- cache miss: once per package version per machine.
 verified :: PlanPackage -> FilePath -> IO Bool
 verified p tarball = case sourceHashOf p of
   Nothing -> pure True
@@ -1467,7 +1371,7 @@ fromSource ::
   FilePath ->
   -- | The module to read.
   Text ->
-  -- | What it declares, including what it only passes on, and whether that
+  -- | What it declares, including what it only reexports, and whether that
   -- is worth remembering.
   IO Reading
 fromSource macros extensions reach reachChildren visiting tarball modName =
@@ -1485,9 +1389,7 @@ fromSource macros extensions reach reachChildren visiting tarball modName =
 data Reading
   = -- | The archive was there, and this is what reading it established.
     FromArchive Established
-  | -- | There was no archive to open. That is a fact about this machine and
-    -- not about the module—the plan can stay exactly as it is while
-    -- somebody downloads the sources—so it is never remembered.
+  | -- | There was no archive to open.
     NoArchive
 
 -- | The fixities a module's text declares and passes on.
@@ -1502,8 +1404,8 @@ fromText ::
   (Text -> IO (Maybe (Fixities))) ->
   -- | How to reach another module for what its names carry with them.
   (Text -> IO (Map OpName (Set OpName))) ->
-  -- | Modules currently being resolved, passed through so that a
-  -- re-export chain cannot loop.
+  -- | Modules currently being resolved, passed through so that a re-export
+  -- chain cannot loop.
   Set Text ->
   -- | The module's source.
   Text ->
@@ -1531,22 +1433,11 @@ fromText macros extensions reach reachChildren visiting source modName =
 -- another. Which of them holds depends on how the module is compiled, which
 -- is not ours to decide, so disagreement is not an answer. Agreement across
 -- the ones we could read is one, and a stronger one than the blanked text
--- could give: it is a fact about the module rather than about a reading.
+-- could give.
 --
 -- A configuration whose imports could not be resolved is passed over rather
 -- than counted against the rest, because almost every one of those is a
--- branch meant for somewhere else. @System.IO.CodePage@ imports
--- @System.Win32.CodePage@ under @#ifdef WINDOWS@, and no plan solved on
--- Linux has Win32 anywhere in it. Refusing the whole module over a branch
--- that will never be compiled here would be letting a fact about this
--- machine stand as a fact about the module.
---
--- Every configuration unresolvable is still no answer. There is nothing
--- left to agree, and saying the module declares nothing would be a guess
--- rather than the silence it deserves. What is passed on then is the first
--- reason any configuration gave, which is as good as any: they are branches
--- of one module, and whichever of them is reported the reader is being sent
--- to a real module that really could not be read.
+-- branch meant for a different platform.
 agreeing :: NonEmpty Established -> Established
 agreeing answers = case [fixities | Declares fixities <- toList answers] of
   [] -> Unreadable (listToMaybe (catMaybes [below | Unreadable below <- toList answers]))
@@ -1577,10 +1468,6 @@ localModules plan =
             Just text ->
               Map.fromList . concat
                 <$> traverse (locate dir (sourceDirs text)) (containedModules text)
-
-    -- A package may list several source directories and the @.cabal@ file
-    -- does not say which one holds which module, so they are tried in turn
-    -- and the first that has the file wins.
     locate dir dirs m = do
       found <-
         filterM
@@ -1601,11 +1488,7 @@ readFileText path = quietly Nothing $ do
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
     else pure Nothing
 
--- | What a module passes on, as well as what it declares.
---
--- A module that exports an operator it did not declare carries no fixity of
--- its own for it, so the declaration is chased through the export list into
--- whichever module the name came from.
+-- | What a module reexports, as well as what it declares.
 withReexports ::
   -- | Whether @ImplicitPrelude@ is on in the module being read.
   Choice "implicitPrelude" ->
@@ -1684,11 +1567,11 @@ withReexports implicitPrelude reach reachChildren visiting modName hsModule =
 childrenWithReexports ::
   -- | Whether @ImplicitPrelude@ is on in the module being read.
   Choice "implicitPrelude" ->
-  -- | How to reach another module for what its names carry
+  -- | How to reach another module for what its names carry.
   (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The name this module was looked up under
+  -- | The name this module was looked up under.
   Text ->
-  -- | The module, already parsed
+  -- | The module, already parsed.
   HsModule GhcPs ->
   IO (Map OpName (Set OpName))
 childrenWithReexports implicitPrelude reachChildren modName hsModule =
@@ -1704,26 +1587,18 @@ childrenWithReexports implicitPrelude reachChildren modName hsModule =
           : Map.fromListWith Set.union [(parent, ops) | ((_, parent), Just ops) <- carried]
           : wholes
 
--- | The operators a module's export list names, following what it hands on.
---
--- 'exportedOperators' answers for a list that names everything outright.
--- Where the list hands a whole module on, or a @T(..)@ for a type declared
--- elsewhere, the answer is in another module and this goes and gets it.
---
--- 'Nothing' where any part of the list stays beyond us, since a set that
--- leaves names out would clear a module of carrying an operator it may
--- well carry. Everything or nothing: this answer is only ever used to rule
--- a module out.
+-- | The operators a module's export list names, following what it
+-- reexports.
 exportNamesWithReexports ::
   -- | Whether @ImplicitPrelude@ is on in the module being read.
   Choice "implicitPrelude" ->
-  -- | How to reach another module for what its export list names
+  -- | How to reach another module for what its export list names.
   (Text -> IO (Maybe (Set OpName))) ->
-  -- | How to reach another module for what its names carry
+  -- | How to reach another module for what its names carry.
   (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The name this module was looked up under
+  -- | The name this module was looked up under.
   Text ->
-  -- | The module, already parsed
+  -- | The module, already parsed.
   HsModule GhcPs ->
   IO (Maybe (Set OpName))
 exportNamesWithReexports
@@ -1754,18 +1629,18 @@ exportNamesWithReexports
             Just kids <- [Map.lookup parent declared]
           ]
 
--- | What the types a module hands on but does not declare carry with them,
--- asked of the modules they could have come from.
+-- | What the types a module reexports carry with them, asked of the modules
+-- they could have come from.
 carriedNames ::
   -- | Whether @ImplicitPrelude@ is on in the module being read.
   Choice "implicitPrelude" ->
-  -- | How to reach another module for what its export list names
+  -- | How to reach another module for what its export list names.
   (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The module, already parsed
+  -- | The module, already parsed.
   HsModule GhcPs ->
-  -- | Export items
+  -- | Export items.
   [ExportItem] ->
-  -- | For each handed-on name, what it carries, or 'Nothing' where no
+  -- | For each reexported name, what it carries, or 'Nothing' where no
   -- module that could have supplied it had anything to say about it.
   IO [((Maybe Text, OpName), Maybe (Set OpName))]
 carriedNames implicitPrelude reachChildren hsModule items =
@@ -1784,7 +1659,7 @@ carriedNames implicitPrelude reachChildren hsModule items =
         [] -> Nothing
         kids -> Just (Set.unions kids)
 
--- | Could this import have supplied a name an export list hands on?
+-- | Could this import have supplied a name an export list reexports?
 canSupply :: Maybe Text -> OpName -> Import -> Bool
 canSupply qualifier op i =
   reaches && case importNames i of
@@ -1796,12 +1671,19 @@ canSupply qualifier op i =
       Nothing -> not (importQualified i)
       Just q -> importAlias i == q
 
--- | The modules a @module M@ export hands on whole, by their own names.
+-- | The modules a @module M@ export reexports whole, by their own names.
 wantedModules ::
+  -- | Whether @ImplicitPrelude@ is on in the module being read.
   Choice "implicitPrelude" ->
+  -- | The name this module was looked up under, so that a module handing
+  -- itself on under it is not chased.
   Text ->
+  -- | The module, already parsed.
   HsModule GhcPs ->
+  -- | Export items.
   [ExportItem] ->
+  -- | The modules named, with an alias resolved to what it was imported
+  -- as, and this module itself left out.
   [Text]
 wantedModules implicitPrelude modName hsModule items =
   Set.toList . Set.fromList $
@@ -1813,29 +1695,17 @@ wantedModules implicitPrelude modName hsModule items =
     imports = moduleImports implicitPrelude hsModule
     isSelf m = Just m == moduleName hsModule || m == modName
 
--- | What to parse a module with: what its package puts in force, and then
--- whatever its own pragmas say about that.
-configFor :: [Extension] -> Text -> ParserConfig
-configFor extensions source = parserConfigFor (effectiveExtensions extensions source)
-
--- | What a parse produced, where only having it or not matters.
-whatParsed :: Either e a -> Maybe a
-whatParsed = either (const Nothing) Just
-
 -- | Every configuration the preprocessor allows of a module's text that is
 -- Haskell, parsed, each with whether it has the Prelude without importing
 -- it.
 configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
-  -- | What the module's package puts in force, or 'Nothing' where nothing
-  -- is known about it. Then it is parsed under the most generous edition
-  -- rather than the narrowest, and taken to have the Prelude unless it
-  -- says otherwise—both being the way to be wrong that costs least.
+  -- | What extensions the module's package puts in force.
   Maybe [Extension] ->
-  -- | The module's name, for the parser to put in its errors
+  -- | The module's name, for the parser to put in its errors.
   Text ->
-  -- | Its text
+  -- | Its text.
   Text ->
   Maybe (NonEmpty (Choice "implicitPrelude", HsModule GhcPs))
 configurationsOf macros extensions modName text =
@@ -1845,7 +1715,9 @@ configurationsOf macros extensions modName text =
     parsed leaf =
       (,) (hasImplicitPrelude (fromMaybe [] extensions) leaf) . pmModule
         <$> whatParsed (parseModule (configOf leaf) named leaf)
-    configOf leaf = maybe defaultParserConfig (`configFor` leaf) extensions
+    whatParsed = either (const Nothing) Just
+    configOf leaf = maybe defaultParserConfig (configFor leaf) extensions
+    configFor leaf exts = parserConfigFor (effectiveExtensions exts leaf)
     named = T.unpack modName
 
 -- | Does this module see the Prelude without importing it?
@@ -1854,11 +1726,6 @@ hasImplicitPrelude extensions source =
   fromBool (ImplicitPrelude `elem` effectiveExtensions extensions source)
 
 -- | Find a module inside a tarball and say what was found.
---
--- Looked for under each of the endings a package may write a module with,
--- Haskell first. An @.hsc@ is reported rather than read: it is not Haskell
--- until @hsc2hs@ has been over it, and what it declares is answered out of
--- 'hscFixities' instead.
 readModule :: FilePath -> Text -> IO (Maybe InArchive)
 readModule tarball modName = quietly Nothing $ do
   bytes <- BL.readFile tarball
@@ -1867,7 +1734,7 @@ readModule tarball modName = quietly Nothing $ do
   pure (listToMaybe (mapMaybe (pick dirs candidates) moduleEndings))
   where
     suffix ending = "/" <> T.unpack (T.replace "." "/" modName) <> ending
-    suffixes = map suffix moduleEndings
+    suffixes = fmap suffix moduleEndings
     sweep cabal found = \case
       Tar.Next entry rest
         | Tar.NormalFile content _ <- Tar.entryContent entry,
@@ -1893,9 +1760,6 @@ readModule tarball modName = quietly Nothing $ do
 
 -- | The endings a package may write a module under, in the order they are
 -- tried.
---
--- Plain Haskell first: a package that ships both has generated the one from
--- the other, and the generated one is the module as it will be compiled.
 moduleEndings :: [String]
 moduleEndings = [".hs", ".hsc"]
 
@@ -1918,9 +1782,6 @@ writtenForHsc :: FilePath -> Bool
 writtenForHsc = isSuffixOf ".hsc"
 
 -- | What an @.hsc@ module declares, which is nothing unless it is named.
---
--- See 'hscFixities' for why an absence is an answer here and not a refusal
--- to give one.
 hscDeclares :: Text -> Established
 hscDeclares modName =
   Declares (maybe Map.empty inBothNamespaces (Map.lookup modName hscFixities))

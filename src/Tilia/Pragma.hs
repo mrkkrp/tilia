@@ -51,10 +51,10 @@ pragmasOver initial = foldl' apply initial . concatMap pragmaNames . pragmaBodie
     pragmaNames body =
       let (keyword, names) = T.break (== ' ') body
        in if T.toUpper keyword == "LANGUAGE"
-            then filter (not . T.null) (map T.strip (T.splitOn "," names))
+            then filter (not . T.null) (fmap T.strip (T.splitOn "," names))
             else []
 
--- | The extension one writes this name for, if any compiler knows it.
+-- | Parse an extension name.
 lookupExtension :: Text -> Maybe Extension
 lookupExtension name = Map.lookup name extensionsByName
 

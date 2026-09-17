@@ -139,7 +139,7 @@ againstRecord path run examples = do
                   PartlyChecked -> pendingWith (T.unpack why)
                   Broken -> pendingWith (T.unpack (T.take reasonLength why))
       it "records nothing it does not have" $ do
-        let had = Set.fromList (map exampleName examples)
+        let had = Set.fromList (fmap exampleName examples)
             gone = [n | n <- Map.keys manifest, not (Set.member n had)]
         unless (null gone) . expectationFailure $
           show (length gone)

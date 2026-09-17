@@ -72,10 +72,8 @@ renderModule settings parsed =
     (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     loose = heldOffModuleDoc hsMod haddocks pragmas uncovered
-
     implicitPrelude =
       fromBool (Set.member ImplicitPrelude (rcExtensions settings))
-
     sorted m =
       m
         { hsmodImports =
@@ -98,10 +96,10 @@ renderModule settings parsed =
 
 -- | Keep a comment from running into a Haddock.
 heldOff :: [Comment] -> [Comment] -> [Comment]
-heldOff haddocks = map holdOff
+heldOff haddocks = fmap holdOff
   where
     written = filter (not . bracketed) haddocks
-    ends = Set.fromList (map (spanEndLine . commentSpan) written)
+    ends = Set.fromList (fmap (spanEndLine . commentSpan) written)
     starts =
       Set.fromList
         [ spanStartLine (commentSpan h)
@@ -123,9 +121,9 @@ heldOff haddocks = map holdOff
 -- | Hold the first comment of the header off the module's own Haddock.
 heldOffModuleDoc ::
   HsModule GhcPs ->
-  -- | The Haddocks of the module, the module's own among them
+  -- | The Haddocks of the module, the module's own among them.
   [Comment] ->
-  -- | The pragmas the header is about to hoist
+  -- | The pragmas the header is about to hoist.
   [HeaderPragma] ->
   [Comment] ->
   [Comment]
@@ -142,7 +140,7 @@ heldOffModuleDoc hsMod haddocks pragmas cs
         && not (Set.member (spanEndLine here + 1) travellers)
       where
         here = commentSpan c
-    travellers = Set.fromList (map (spanStartLine . hpSpan) pragmas)
+    travellers = Set.fromList (fmap (spanStartLine . hpSpan) pragmas)
     endOfModuleDoc = do
       s <- moduleDoc
       c <- lookup (startPoint s) [(startPoint (commentSpan h), h) | h <- haddocks]
@@ -171,13 +169,13 @@ knot =
 -- | Separate the comments the syntax tree also knows about from the rest.
 splitHaddocks ::
   HsModule GhcPs ->
-  -- | Every comment in the module
+  -- | Every comment in the module.
   [Comment] ->
-  -- | The ones the tree carries, and the ones it does not
+  -- | The ones the tree carries, and the ones it does not.
   ([Comment], [Comment])
 splitHaddocks hsMod = foldr sort' ([], [])
   where
-    inTree = Set.fromList (map startPoint (haddockSpans hsMod))
+    inTree = Set.fromList (fmap startPoint (haddockSpans hsMod))
     sort' c (docs, rest)
       | startPoint (commentSpan c) `Set.member` inTree =
           (widenTrigger c : docs, rest)

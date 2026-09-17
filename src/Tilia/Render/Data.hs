@@ -1,22 +1,18 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Data types and type synonyms.
---
--- One declaration form covers a great deal of ground here—@data@,
--- @newtype@, @type data@, ordinary constructors, record constructors, GADT
--- constructors, and instances of all of them—which is why this reads as a
--- series of decisions rather than as a single shape. The decisions are:
--- whether the constructors are written in GADT style, whether there is
--- exactly one and it is a record, and whether anything is documented with a
--- Haddock that takes whole lines.
 module Tilia.Render.Data
   ( dataDecl,
     synDecl,
   )
 where
 
+import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing, mapMaybe, maybeToList)
@@ -36,19 +32,21 @@ import Tilia.Span.Ghc
 
 -- | A @data@, @newtype@ or @type data@ declaration, or an instance of one.
 --
--- The type variables are left abstract because a data instance is applied to
--- types rather than to variables, and the two are otherwise printed
+-- The type variables are left abstract because a data instance is applied
+-- to types rather than to variables, and the two are otherwise printed
 -- identically.
 dataDecl ::
+  -- | The context.
   Ctx ->
+  -- | The family style.
   FamilyStyle ->
-  -- | The type constructor
+  -- | The type constructor.
   LocatedN RdrName ->
-  -- | What it is applied to
+  -- | What it is applied to.
   [tyVar] ->
-  -- | Where each of those was
+  -- | Where each of those was.
   (tyVar -> Maybe Span) ->
-  -- | How to print one
+  -- | How to print one.
   (tyVar -> Doc) ->
   -- | Was the head written infix?
   LexicalFixity ->
@@ -64,6 +62,7 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
       NewTypeCon _ -> "newtype"
       DataTypeCons False _ -> "data"
       DataTypeCons True _ -> "type data"
+
     instanceWord = case style of
       Associated -> ""
       Free -> " instance"
@@ -84,13 +83,17 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
           <> layoutFrom
             ctx
             headSpan
-            (defHead (fixity == Infix) True (name ctx tyCon) (map renderTyVar tyVars))
+            ( defHead
+                (fromBool (fixity == Infix))
+                (Do #indentArgs)
+                (name ctx tyCon)
+                (fmap renderTyVar tyVars)
+            )
           <> foldMap kindSignature dd_kindSig
 
     kindSignature k =
       joinedBy "::" <> indent (hsType ctx k)
 
-    -- The @{-# CTYPE … #-}@ pragma of a foreign data type.
     foreignType = case unLoc <$> dd_cType of
       Nothing -> mempty
       Just (CType prag header' (type_, _)) ->
@@ -105,8 +108,6 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
       NewTypeCon c -> [c]
       DataTypeCons _ cs -> cs
 
-    -- A kind signature on the head, or any constructor written with a
-    -- signature of its own, means the whole declaration is in GADT style.
     isGadt = isJust dd_kindSig || any (isGadtCon . unLoc) cons
 
     constructors = case cons of
@@ -116,20 +117,13 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
             indent $
               layoutFrom ctx wholeHeadSpan (breakOrSpace <> txt "where")
                 <> breakOrSpace
-                -- Braces once there is a semicolon to protect: written flat
-                -- the @where@ block has no column to end at, so anything
-                -- after the declaration would be read as another
-                -- constructor. One constructor needs no separator and so no
-                -- braces.
                 <> items
                   (if null (drop 1 cons) then NoBrace else MayBrace)
-                  (map (at_ ctx (conDecl ctx False)) cons)
+                  (fmap (at_ ctx (conDecl ctx (Isn't #singleRecCon))) cons)
         | otherwise ->
             layoutFrom ctx (spanOf tyCon <> spansOf cons) . indent $
               beforeEquals <> txt "=" <> space <> alternatives
         where
-          -- A single record constructor is laid out as one thing with the
-          -- @=@, since there is no choice of constructor to present.
           singleRecCon = case cons of
             [L _ ConDeclH98 {con_args = RecCon {}}] -> True
             _ -> False
@@ -139,10 +133,6 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
             ConDeclGADT {..} -> spansOf (NE.toList con_names)
             ConDeclH98 {..} -> spanOf con_name
 
-          -- Documentation written as @--@ lines owns the rest of the line
-          -- it starts, so nothing can follow it and the constructors go one
-          -- to a line. Written as @{- | … -}@ it closes itself and asks
-          -- nothing of the layout.
           lineHaddocks = any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
 
           beforeEquals
@@ -159,21 +149,20 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
             | otherwise = id
 
           alternatives =
-            sepBy separator (map (keepTogether . at_ ctx (conDecl ctx singleRecCon)) cons)
-
+            sepBy
+              separator
+              ( fmap
+                  (keepTogether . at_ ctx (conDecl ctx (fromBool singleRecCon)))
+                  cons
+              )
     derivings =
       includeUnless (null dd_derivs) beforeDerivings
-        <> indent (vsep (map (at_ ctx (derivingClause ctx)) dd_derivs))
+        <> indent (vsep (fmap (at_ ctx (derivingClause ctx)) dd_derivs))
     beforeDerivings
       | length dd_derivs > 1 = hardBreak
       | otherwise = breakOrSpace
 
 -- | The documentation a constructor's own layout has to make room for.
---
--- Which is its Haddock and the ones on its prefix arguments, and nothing
--- deeper. A field of a record gets a line of its own wherever the @=@ ends
--- up, so a Haddock on one of those settles nothing about the constructor
--- around it and is left out of the question.
 visibleDocs :: ConDecl GhcPs -> [LHsDoc GhcPs]
 visibleDocs = \case
   ConDeclH98 {..} ->
@@ -182,22 +171,18 @@ visibleDocs = \case
       _ -> []
   ConDeclGADT {} -> []
 
+-- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
 isGadtCon = \case
   ConDeclGADT {} -> True
   ConDeclH98 {} -> False
 
-----------------------------------------------------------------------------
--- Constructors
-
 -- | One constructor.
-conDecl :: Ctx -> Bool -> ConDecl GhcPs -> Doc
+conDecl :: Ctx -> Choice "singleRecCon" -> ConDecl GhcPs -> Doc
 conDecl ctx _ ConDeclGADT {..} =
   foldMap (haddock ctx Pipe Closed) con_doc
     <> layoutFrom ctx declSpan (brokenIfDocumented ctx documented body)
   where
-    -- Every part of the signature shares one layout decision, so a Haddock
-    -- anywhere in it puts the whole of it on several lines.
     documented = (con_g_args, con_res_ty)
 
     c :| cs = con_names
@@ -205,7 +190,7 @@ conDecl ctx _ ConDeclGADT {..} =
       name ctx c
         <> includeUnless
           (null cs)
-          (indent (comma <> breakOrSpace <> commaSep (map (name ctx) cs)))
+          (indent (comma <> breakOrSpace <> commaSep (fmap (name ctx) cs)))
         <> joinedBy "::"
         <> indent (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
 
@@ -251,7 +236,7 @@ conDecl ctx _ ConDeclGADT {..} =
     sigSpan = spanOf con_outer_bndrs <> foldMap spanOf con_mb_cxt <> argResSpan
     argResSpan =
       spanOf con_res_ty <> case con_g_args of
-        PrefixConGADT NoExtField xs -> spansOf (map cdf_type xs)
+        PrefixConGADT NoExtField xs -> spansOf (fmap cdf_type xs)
         RecConGADT _ x -> spanOf x
 conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
   PrefixCon xs ->
@@ -263,7 +248,7 @@ conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
         ( brokenIfDocumented ctx xs $
             name ctx con_name
               <> includeUnless (null xs) breakOrSpace
-              <> indent (align (sepBy breakOrSpace (map (align . documentedConDeclField ctx) xs)))
+              <> indent (align (sepBy breakOrSpace (fmap (align . documentedConDeclField ctx) xs)))
         )
   RecCon l ->
     ownDoc
@@ -273,12 +258,9 @@ conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
         declSpan
         ( name ctx con_name
             <> breakOrSpace
-            <> nest (if singleRecCon then 0 else 1) (recordFieldsAt ctx l)
+            <> nest (if isTrue singleRecCon then 0 else 1) (recordFieldsAt ctx l)
         )
   InfixCon l r ->
-    -- The constructor's own Haddock can only go above the whole constructor
-    -- when neither argument has one of its own; otherwise it goes between
-    -- them, next to the name.
     includeWhen docOnTop ownDoc
       <> existentials
       <> layoutFrom
@@ -294,9 +276,6 @@ conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
         )
     where
       docOnTop = isNothing (cdf_doc l) && isNothing (cdf_doc r)
-      -- The left argument's Haddock may use pipe style only when the
-      -- constructor itself is documented, since otherwise there is nothing
-      -- above it for the pipe to point at.
       leftArgument x
         | isJust con_doc =
             foldMap (haddock ctx Pipe Closed) (cdf_doc x)
@@ -328,9 +307,9 @@ conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
 
     declSpan = spanOf con_name <> argSpans
     argSpans = case con_args of
-      PrefixCon xs -> spansOf (map cdf_type xs)
+      PrefixCon xs -> spansOf (fmap cdf_type xs)
       RecCon l -> spanOf l
-      InfixCon x y -> spansOf (map cdf_type [x, y])
+      InfixCon x y -> spansOf (fmap cdf_type [x, y])
 
 -- | A context standing to the left of a @=>@, with the arrow and the break
 -- after it.
@@ -339,9 +318,7 @@ leftContext ctx = \case
   L _ [] -> mempty
   ctxt -> context ctx ctxt <> joinedBy "=>"
 
-----------------------------------------------------------------------------
--- Deriving clauses
-
+-- | One @deriving@ clause, with the strategy it was written with.
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
 derivingClause ctx HsDerivingClause {..} =
   brokenIfDocumented ctx deriv_clause_tys $
@@ -352,7 +329,7 @@ derivingClause ctx HsDerivingClause {..} =
         brokenIfDocumented ctx tys $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
-            parens (commaSep (map (align . hsSigType ctx) sigTys))
+            parens (commaSep (fmap (align . hsSigType ctx) sigTys))
 
     strategy = case deriv_clause_strategy of
       Nothing -> breakOrSpace <> indent what
@@ -372,9 +349,6 @@ derivingClause ctx HsDerivingClause {..} =
       where
         named kw = txt kw <> breakOrSpace <> indent what
 
-----------------------------------------------------------------------------
--- Type synonyms
-
 -- | @type T a = …@.
 synDecl ::
   Ctx ->
@@ -389,7 +363,12 @@ synDecl ctx tyCon fixity HsQTvs {..} rhs =
     <> layoutFrom
       ctx
       (spanOf tyCon <> spansOf hsq_explicit)
-      (defHead (fixity == Infix) True (name ctx tyCon) (map (at_ ctx (tyVarBndr ctx)) hsq_explicit))
+      ( defHead
+          (fromBool (fixity == Infix))
+          (Do #indentArgs)
+          (name ctx tyCon)
+          (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
+      )
     <> indent (space <> txt "=" <> separator <> hsType ctx rhs)
   where
     separator

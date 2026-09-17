@@ -79,7 +79,7 @@ split = \case
 leaves :: [Char] -> NonEmpty E
 leaves = \case
   [] -> error "leaves: none"
-  (c : cs) -> Leaf c :| map Leaf cs
+  (c : cs) -> Leaf c :| fmap Leaf cs
 
 -- | @?@ is the operator nothing is known about.
 known :: Char -> Maybe Fixity

@@ -32,7 +32,7 @@ import Tilia.Utils (quietly)
 -- | The modules a package exposes, read from the @.cabal@ file in its
 -- source tarball.
 --
--- Nothing if the tarball cannot be read or holds no @.cabal@ file.
+-- 'Nothing' if the tarball cannot be read or holds no @.cabal@ file.
 packageModules :: FilePath -> IO (Maybe [Text])
 packageModules tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
@@ -64,41 +64,28 @@ cabalFileAtTop path = ".cabal" `isSuffixOf` path && depth path == 2
     depth = (1 +) . length . filter (== '/')
 
 -- | Every module a package holds, whether it exposes it or not.
---
--- A package's internals are worth knowing about because its exposed modules
--- pass names on from them: @base@ re-exports from @GHC.Internal.*@, none of
--- which it exposes. Reading only the exposed list leaves those unreachable,
--- and a re-export that cannot be followed is an answer thrown away.
 containedModules :: Text -> [Text]
 containedModules t =
   modulesUnder "exposed-modules" t <> modulesUnder "other-modules" t
-
-modulesUnder :: Text -> Text -> [Text]
-modulesUnder field =
-  concatMap moduleNames . fieldsNamed field . T.lines
   where
-    moduleNames =
-      filter looksLikeModule
-        . concatMap (T.split (== ','))
-        . T.words
-
-    looksLikeModule m = case T.uncons m of
-      Just (c, _) -> c `elem` ['A' .. 'Z']
-      Nothing -> False
+    modulesUnder field =
+      concatMap moduleNames . fieldsNamed field . T.lines
+      where
+        moduleNames =
+          filter looksLikeModule
+            . concatMap (T.split (== ','))
+            . T.words
+        looksLikeModule m = case T.uncons m of
+          Just (c, _) -> c `elem` ['A' .. 'Z']
+          Nothing -> False
 
 -- | Every directory a @.cabal@ file's modules could be under.
---
--- The current directory is always among them, whatever @hs-source-dirs@
--- says. This is deliberately more than cabal would look at: a package can
--- keep modules beside its @.cabal@ file and name other directories as well,
--- and a directory too many costs one @stat@ where a directory too few costs
--- a module we cannot resolve.
 sourceDirs :: Text -> [Text]
 sourceDirs contents = Data.List.nub (named <> ["."])
   where
     named =
       filter (not . T.null)
-        . map T.strip
+        . fmap T.strip
         . concatMap (T.split (== ','))
         . concatMap T.words
         . fieldsNamed "hs-source-dirs"
@@ -135,20 +122,17 @@ fieldsNamed :: Text -> [Text] -> [Text]
 fieldsNamed name = go . filter (not . commented)
   where
     commented = T.isPrefixOf "--" . T.stripStart
-
     go = \case
       [] -> []
       (l : ls)
         | Just value <- fieldValue l ->
             let (continued, rest) = span (deeperThan (indentOf l)) ls
-             in T.unwords (value : map T.strip continued) : go rest
+             in T.unwords (value : fmap T.strip continued) : go rest
         | otherwise -> go ls
-
     fieldValue l =
       let (key, rest) = T.break (== ':') l
        in if T.toLower (T.strip key) == name && not (T.null rest)
             then Just (T.strip (T.drop 1 rest))
             else Nothing
-
     deeperThan n l = T.null (T.strip l) || indentOf l > n
     indentOf = T.length . T.takeWhile isSpace

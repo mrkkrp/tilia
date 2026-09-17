@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Working with cabal targets.
-module Tilia.TargetSpec (spec) where
+module Tilia.Cabal.TargetSpec (spec) where
 
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
@@ -12,8 +12,8 @@ import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-import Tilia.Project (Marker (..), ProjectRoot (..), findProjectRoot)
-import Tilia.Target
+import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
+import Tilia.Cabal.Target
 
 spec :: Spec
 spec = do
@@ -65,13 +65,13 @@ spec = do
           componentsOfTarget here Everything >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs ->
-              sort (map (\c -> (componentKind c, componentName c)) cs)
+              sort (fmap (\c -> (componentKind c, componentName c)) cs)
                 `shouldBe` sort [(Lib, "tilia"), (Exe, "tilia"), (Test, "tests")]
 
         it "narrows to one component when asked for one" $
           componentsOfTarget here (Qualified Nothing Lib "tilia") >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-            Right cs -> map componentDirs cs `shouldBe` [["src"]]
+            Right cs -> fmap componentDirs cs `shouldBe` [["src"]]
 
         it "takes the package name as all of its components" $
           componentsOfTarget here (Called "tilia") >>= \case
@@ -92,7 +92,7 @@ spec = do
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents cs
-              map takeFileName files `shouldSatisfy` elem "TargetSpec.hs"
+              fmap takeFileName files `shouldSatisfy` elem "TargetSpec.hs"
 
         it "finds only Haskell in it" $
           componentsOfTarget here Everything >>= \case
@@ -120,7 +120,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> sort (map componentPackage cs) `shouldBe` ["one", "two"]
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "expands a glob in the packages field"
       $ withProject
@@ -131,7 +131,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> sort (map componentPackage cs) `shouldBe` ["one", "two"]
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "passes over a package a comment has taken out"
       $ withProject
@@ -142,7 +142,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> map componentPackage cs `shouldBe` ["one"]
+          Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
     it "reads a packages field continued onto later lines"
       $ withProject
@@ -153,7 +153,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> sort (map componentPackage cs) `shouldBe` ["one", "two"]
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "reads one continued with tabs, as cabal itself does"
       $ withProject
@@ -164,7 +164,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> sort (map componentPackage cs) `shouldBe` ["one", "two"]
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "finds one a conditional has put inside a section"
       $ withProject
@@ -174,7 +174,7 @@ spec = do
       $ \root ->
         componentsOfTarget root Everything >>= \case
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> map componentPackage cs `shouldBe` ["one"]
+          Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
     it "walks every source directory a component names"
       $ withProject
@@ -187,7 +187,7 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents cs
-            sort (map takeFileName files) `shouldBe` ["A.hs", "B.hs"]
+            sort (fmap takeFileName files) `shouldBe` ["A.hs", "B.hs"]
 
     it "spells a path through a dot source directory without the dot"
       $ withProject
@@ -213,7 +213,7 @@ spec = do
           Right cs -> do
             files <- filesOfComponents cs
             length cs `shouldBe` 2
-            map takeFileName files `shouldBe` ["Main.hs"]
+            fmap takeFileName files `shouldBe` ["Main.hs"]
 
     it "leaves hidden directories alone"
       $ withProject
@@ -226,7 +226,7 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents cs
-            map takeFileName files `shouldBe` ["A.hs"]
+            fmap takeFileName files `shouldBe` ["A.hs"]
 
     it "says so when a cabal.project names nothing that exists" $
       withProject [("cabal.project", "packages: nowhere\n")] $ \root ->

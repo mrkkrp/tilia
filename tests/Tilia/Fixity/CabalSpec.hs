@@ -25,7 +25,7 @@ spec = do
           (Tar.entryTarPath (entryFor "hspec-2.11.17/hspec.cabal" ""))
 
     it "knows a package's own cabal file from one further down" $
-      map
+      fmap
         cabalFileAtTop
         [ "hspec-2.11.17/hspec.cabal",
           "hspec-2.11.17/vendor/other.cabal",

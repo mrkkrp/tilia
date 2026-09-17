@@ -55,9 +55,6 @@ spec = do
     it "keeps commas on the line above when broken" $
       out (broken (commaSep [txt "a", txt "b"]))
         `shouldBe` "a,\nb\n"
-    it "punctuates all but the last" $
-      out (flat (hsep (punctuate comma [txt "a", txt "b", txt "c"])))
-        `shouldBe` "a, b, c\n"
     it "handles an empty list" $
       out (flat (commaSep [])) `shouldBe` ""
     it "handles a single element" $

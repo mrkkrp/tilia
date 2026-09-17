@@ -4,28 +4,12 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- | The @{-# … #-}@ annotations that appear among declarations.
---
--- These look like comments and are not: the compiler reads them, so their
--- content is not ours to reflow and their placement is not ours to change.
--- What is ours is where the braces break, which is all this module decides.
---
--- The @LANGUAGE@ and @OPTIONS_GHC@ pragmas of the file header are not here.
--- They are part of the header rather than of any declaration, they are
--- sorted rather than left where they were, and they are handled in
--- "Tilia.Render.Header".
 module Tilia.Render.Pragma
-  ( -- * Braces
-    pragmaBrackets,
+  ( pragmaBrackets,
     pragma,
-
-    -- * Inlining and rules
     activation,
     inlineSpec,
-
-    -- * Instances
     overlapMode,
-
-    -- * Warnings
     warnDecls,
     warningTxt,
   )
@@ -41,13 +25,7 @@ import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Name
 
-----------------------------------------------------------------------------
--- Braces
-
 -- | Wrap a body in pragma braces.
---
--- The closing brace is indented when the pragma breaks, which keeps it from
--- being mistaken for the start of a new declaration.
 pragmaBrackets :: Doc -> Doc
 pragmaBrackets body =
   align (txt "{-#" <> space <> body <> breakOrSpace <> indent (txt "#-}"))
@@ -56,9 +34,6 @@ pragmaBrackets body =
 pragma :: Text -> Doc -> Doc
 pragma pragmaName body =
   pragmaBrackets (txt pragmaName <> breakOrSpace <> body)
-
-----------------------------------------------------------------------------
--- Inlining and rules
 
 -- | The phase control of an @INLINE@ or @RULES@ pragma.
 activation :: Activation -> Doc
@@ -78,28 +53,17 @@ inlineSpec = \case
   Opaque _ -> txt "OPAQUE"
   NoUserInlinePrag -> mempty
 
-----------------------------------------------------------------------------
--- Instances
-
 -- | The overlap pragma of an instance, and the separator after it.
 overlapMode :: Maybe (LocatedP OverlapMode) -> Maybe Doc
 overlapMode mode = txt . braced <$> (spelled . unLoc =<< mode)
   where
-    -- Written out whole rather than built with 'pragmaBrackets': an overlap
-    -- mode is one word and must never be broken across lines.
     braced keyword = "{-# " <> keyword <> " #-}"
-
     spelled = \case
       Overlappable {} -> Just "OVERLAPPABLE"
       Overlapping {} -> Just "OVERLAPPING"
       Overlaps {} -> Just "OVERLAPS"
       Incoherent {} -> Just "INCOHERENT"
-      -- The rest are what an instance means when it says nothing about
-      -- overlapping, so nothing is what they are written as.
       _ -> Nothing
-
-----------------------------------------------------------------------------
--- Warnings
 
 -- | A @WARNING@ or @DEPRECATED@ declaration.
 warnDecls :: Ctx -> WarnDecls GhcPs -> Doc
@@ -109,7 +73,7 @@ warnDecls ctx (Warnings _ warnings) = case warnings of
     layoutAcross ctx warnings
       . pragma (keywordOf wtxt)
       . indent
-      $ sepBy (txt ";" <> breakOrSpace) (map (at_ ctx (warned ctx)) warnings)
+      $ sepBy (txt ";" <> breakOrSpace) (fmap (at_ ctx (warned ctx)) warnings)
   where
     keywordOf wtxt = let (keyword, _, _) = warningParts wtxt in keyword
 
@@ -118,7 +82,7 @@ warned :: Ctx -> WarnDecl GhcPs -> Doc
 warned ctx (Warning (namespace, _) names wtxt) =
   category
     <> namespaceSpec namespace
-    <> commaSep (map (name ctx) names)
+    <> commaSep (fmap (name ctx) names)
     <> breakOrSpace
     <> literalList literals
   where
@@ -143,7 +107,7 @@ warningParts = \case
   WarningTxt category _ literals ->
     ("WARNING", foldMap named category, said literals)
   where
-    said = map (fmap hsDocString)
+    said = fmap (fmap hsDocString)
     named (unLoc -> InWarningCategory {..}) =
       txt ("in \"" <> showGhc (unLoc iwc_wc) <> "\"") <> space
 
@@ -151,4 +115,4 @@ warningParts = \case
 literalList :: [LocatedE StringLiteral] -> Doc
 literalList = \case
   [l] -> outputable l
-  ls -> brackets (commaSep (map outputable ls))
+  ls -> brackets (commaSep (fmap outputable ls))

@@ -2,8 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- | Information coming from .cabal files.
-module Tilia.Package
+-- | Information coming from @.cabal@ files.
+module Tilia.Cabal.Package
   ( PackageProblem (..),
     describePackageProblem,
     PackageReader,
@@ -108,7 +108,7 @@ claiming file components =
     [] -> Nothing
   where
     covered = not . null . covering
-    nearness = maximum . map length . covering
+    nearness = maximum . fmap length . covering
     covering c = [d | d <- componentDirs c, d `covers` file]
 
 -- | Whether a file is somewhere under a directory.
@@ -171,7 +171,7 @@ componentsOf ref cabalFile = do
         Right bytes ->
           case snd (runParseResult (parseGenericPackageDescription bytes)) of
             Left (_, complaints) ->
-              pure (Left (PackageMalformed cabalFile (map said (NE.toList complaints))))
+              pure (Left (PackageMalformed cabalFile (fmap said (NE.toList complaints))))
             Right description ->
               Right
                 <$> traverse
@@ -189,7 +189,7 @@ component root bi = do
         componentExtensions = extensionsInForce bi
       }
   where
-    sourceDirsOf b = case map getSymbolicPath (hsSourceDirs b) of
+    sourceDirsOf b = case fmap getSymbolicPath (hsSourceDirs b) of
       [] -> ["."]
       ds -> ds
     quietlyCanonical d =
@@ -209,7 +209,7 @@ buildInfos described =
       named (benchmarkBuildInfo . condTreeData) (condBenchmarks described)
     ]
   where
-    named f = map (f . snd)
+    named f = fmap (f . snd)
 
 -- | The extensions a component puts in force, before any module's pragmas.
 extensionsInForce :: BuildInfo -> [Extension]

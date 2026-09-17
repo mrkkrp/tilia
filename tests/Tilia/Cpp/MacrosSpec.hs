@@ -7,7 +7,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
-import Tilia.Cpp (withoutRuledOut)
+import Tilia.Cpp.Directives (withoutRuledOut)
 import Tilia.Cpp.Macros
 
 -- | A plan with one dependency at 1.2.3 and a compiler at 9.10.3.
@@ -29,24 +29,24 @@ macros =
 
 -- | What this guard comes to, given the plan above.
 answer :: Text -> Maybe Bool
-answer = answerTo macros
+answer = guardHolds macros
 
 spec :: Spec
 spec = do
   describe "a guard about a version the plan fixed" $ do
     it "is true where the plan is at least what it asks for" $
-      map answer ["if MIN_VERSION_thing(1,2,3)", "if MIN_VERSION_thing(1,0,0)"]
+      fmap answer ["if MIN_VERSION_thing(1,2,3)", "if MIN_VERSION_thing(1,0,0)"]
         `shouldBe` [Just True, Just True]
 
     it "is false where the plan is short of it" $
-      map answer ["if MIN_VERSION_thing(1,2,4)", "if MIN_VERSION_thing(2,0,0)"]
+      fmap answer ["if MIN_VERSION_thing(1,2,4)", "if MIN_VERSION_thing(2,0,0)"]
         `shouldBe` [Just False, Just False]
 
     it "compares the parts as numbers and not as text" $
       answer "if MIN_VERSION_thing(1,10,0)" `shouldBe` Just False
 
     it "pads the shorter side with zeros" $
-      map answer ["if MIN_VERSION_thing(1,2)", "if MIN_VERSION_thing(1,2,3,1)"]
+      fmap answer ["if MIN_VERSION_thing(1,2)", "if MIN_VERSION_thing(1,2,3,1)"]
         `shouldBe` [Just True, Just False]
 
     it "says nothing about a package the plan does not name" $
@@ -54,11 +54,11 @@ spec = do
 
   describe "a guard about the compiler" $ do
     it "reads its version as the compiler spells it" $
-      map answer ["if __GLASGOW_HASKELL__ >= 902", "if __GLASGOW_HASKELL__ >= 912"]
+      fmap answer ["if __GLASGOW_HASKELL__ >= 902", "if __GLASGOW_HASKELL__ >= 912"]
         `shouldBe` [Just True, Just False]
 
     it "takes the four-part macro apart the same way" $
-      map
+      fmap
         answer
         [ "if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)",
           "if MIN_VERSION_GLASGOW_HASKELL(9,2,0,0)",
@@ -76,7 +76,7 @@ spec = do
         `shouldBe` Just True
 
     it "gives up where what is left over decides it" $
-      map
+      fmap
         answer
         [ "if defined(SOMETHING) && MIN_VERSION_thing(1,0,0)",
           "if defined(SOMETHING) || MIN_VERSION_thing(2,0,0)"
@@ -88,7 +88,7 @@ spec = do
         `shouldBe` Just True
 
     it "negates what it knows and nothing else" $
-      map answer ["if !MIN_VERSION_thing(2,0,0)", "if !defined(SOMETHING)"]
+      fmap answer ["if !MIN_VERSION_thing(2,0,0)", "if !defined(SOMETHING)"]
         `shouldBe` [Just True, Nothing]
 
     it "reads brackets" $
@@ -97,21 +97,21 @@ spec = do
 
   describe "a guard that is not about a version at all" $ do
     it "answers a bare number, which is how a branch is turned off" $
-      map answer ["if 0", "if 1"] `shouldBe` [Just False, Just True]
+      fmap answer ["if 0", "if 1"] `shouldBe` [Just False, Just True]
 
     it "says nothing about a flag" $
-      map answer ["ifdef FOO", "ifndef FOO", "if defined FOO"]
+      fmap answer ["ifdef FOO", "ifndef FOO", "if defined FOO"]
         `shouldBe` [Nothing, Nothing, Nothing]
 
     it "says a macro it has a value for is defined" $
-      map answer ["ifdef MIN_VERSION_thing", "ifndef MIN_VERSION_thing"]
+      fmap answer ["ifdef MIN_VERSION_thing", "ifndef MIN_VERSION_thing"]
         `shouldBe` [Just True, Just False]
 
     it "says nothing about arithmetic, which it does not read" $
       answer "if __GLASGOW_HASKELL__ + 1 > 900" `shouldBe` Nothing
 
     it "says nothing about a guard whose keyword asks nothing" $
-      map answer ["else", "endif", "define FOO 1"]
+      fmap answer ["else", "endif", "define FOO 1"]
         `shouldBe` [Nothing, Nothing, Nothing]
 
   describe "blanking the branches a plan rules out" $ do

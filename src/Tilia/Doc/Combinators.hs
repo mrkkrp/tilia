@@ -31,7 +31,6 @@ module Tilia.Doc.Combinators
     -- * Attachment
     Placement (..),
     attach,
-    hangingIfSingleLine,
 
     -- * Indentation
     nest,
@@ -43,7 +42,6 @@ module Tilia.Doc.Combinators
     vsep,
     sepBy,
     joinedBy,
-    punctuate,
 
     -- * Wrapping
     ClosingIndent (..),
@@ -78,7 +76,7 @@ import Tilia.Doc.Internal
     Resume (..),
     groupLayout,
   )
-import Tilia.Span (Span, isSingleLine)
+import Tilia.Span (Span)
 
 ----------------------------------------------------------------------------
 -- Atoms
@@ -119,16 +117,16 @@ blankLine = hardBreak <> hardBreak
 --
 -- Only for text that is being reproduced rather than laid out: the lines of
 -- a block comment, of a multi-line string literal, of a quasi-quotation.
--- Unlike every other break this one collapses nothing, because an empty line
--- among those is the author's and not spacing.
 verbatimBreak :: Resume -> Doc
 verbatimBreak = DVerbatimBreak
 
 -- | Text reproduced exactly, line breaks and all.
 verbatim :: Text -> Doc
-verbatim = sepBy (verbatimBreak AtMargin) . map txt . T.splitOn "\n"
+verbatim = sepBy (verbatimBreak AtMargin) . fmap txt . T.splitOn "\n"
 
--- | An anchor for a construct that contains nothing.
+-- | An empty anchor so that comments can attach to it in situations when
+-- nothing more substantial is present but the position is such that it
+-- permits comments.
 emptyAnchor :: Span -> Doc
 emptyAnchor s = located s mempty
 
@@ -151,12 +149,11 @@ broken = DGroup Broken
 -- | Choose according to the layout the enclosing 'group' settled on.
 --
 -- Reach for this only when the two layouts differ by more than where the
--- breaks fall; when they differ only in that, 'breakOrSpace' and
--- 'breakOrNothing' already say so and read better.
+-- breaks fall.
 variant ::
-  -- | When flat
+  -- | When flat.
   Doc ->
-  -- | When broken
+  -- | When broken.
   Doc ->
   Doc
 variant = DVariant
@@ -177,27 +174,29 @@ fence = DFence
 -- | Alternatives the preprocessor chooses between.
 cppChoice ::
   -- | One alternative per directive, each directive as written after its
-  -- hash
+  -- hash.
   [(Text, Doc)] ->
-  -- | What holds when none of them applies
+  -- | The else clause.
   Doc ->
   Doc
 cppChoice branches fallback
-  | all (silent . snd) branches && silent fallback = DEmpty
-  | otherwise = DCppChoice branches (if silent fallback then DEmpty else fallback)
-
--- | Does this document put nothing at all on the page?
-silent :: Doc -> Bool
-silent = \case
-  DEmpty -> True
-  DCat a b -> silent a && silent b
-  DNest _ d -> silent d
-  DAlign d -> silent d
-  DGroup _ d -> silent d
-  DLocated _ d -> silent d
-  DFence _ d -> silent d
-  DVariant flatD brokenD -> silent flatD && silent brokenD
-  _ -> False
+  | all (printsNothing . snd) branches && printsNothing fallback = DEmpty
+  | otherwise =
+      DCppChoice
+        branches
+        (if printsNothing fallback then DEmpty else fallback)
+  where
+    printsNothing = \case
+      DEmpty -> True
+      DCat a b -> printsNothing a && printsNothing b
+      DNest _ d -> printsNothing d
+      DAlign d -> printsNothing d
+      DGroup _ d -> printsNothing d
+      DLocated _ d -> printsNothing d
+      DFence _ d -> printsNothing d
+      DVariant flatD brokenD ->
+        printsNothing flatD && printsNothing brokenD
+      _ -> False
 
 ----------------------------------------------------------------------------
 -- Attachment
@@ -216,16 +215,6 @@ attach Hanging body = space <> body
 attach Normal body = breakOrSpace <> indent body
 
 -- | 'Hanging' if the span was a single line in the input, 'Normal'
--- otherwise.
---
--- A handful of constructs hang only when what comes before their own break
--- was written on one line—a lambda whose parameters ran on, for instance,
--- would leave the body indented under nothing legible. Those constructs
--- consult the input, exactly as 'group' does, and this is the shared
--- spelling of that question so that it reads as policy rather than as a
--- special case repeated in each classifier.
-hangingIfSingleLine :: Span -> Placement
-hangingIfSingleLine s = if isSingleLine s then Hanging else Normal
 
 ----------------------------------------------------------------------------
 -- Indentation
@@ -268,11 +257,6 @@ joinedBy t = space <> txt t <> breakOrSpace
 --
 -- For the cases where the separator has to travel with the element rather
 -- than sit between elements, such as a trailing comma that must stay on the
--- line above a break.
-punctuate :: Doc -> [Doc] -> [Doc]
-punctuate _ [] = []
-punctuate _ [x] = [x]
-punctuate s (x : xs) = (x <> s) : punctuate s xs
 
 ----------------------------------------------------------------------------
 -- Wrapping
@@ -280,11 +264,11 @@ punctuate s (x : xs) = (x <> s) : punctuate s xs
 -- | Surround with the given opening and closing documents, adding nothing
 -- of its own.
 enclose ::
-  -- | Opening bracket
+  -- | Opening bracket.
   Doc ->
-  -- | Closing bracket
+  -- | Closing bracket.
   Doc ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 enclose open close body = open <> body <> close
@@ -298,38 +282,28 @@ data ClosingIndent
   deriving (Eq, Show)
 
 -- | Surround with a bracket pair that opens up when broken.
---
--- Flat, this is @open body close@ with nothing added. Broken, the opening
--- bracket keeps the first line of the body company and the rest of the body
--- lines up under it, with the closing bracket alone on the last line:
---
--- > ( first,
--- >   second
--- > )
 bracket ::
-  -- | Opening bracket
+  -- | Opening bracket.
   Text ->
-  -- | Closing bracket
+  -- | Closing bracket.
   Text ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 bracket = bracketWith Outdented
 
 -- | 'bracket', with a say in where the closing bracket goes.
 bracketWith ::
-  -- | Where the closing bracket goes
+  -- | Where the closing bracket goes.
   ClosingIndent ->
-  -- | Opening bracket
+  -- | Opening bracket.
   Text ->
-  -- | Closing bracket
+  -- | Closing bracket.
   Text ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 bracketWith closing open close body =
-  -- The pair is aligned as a whole so that the closing bracket comes back
-  -- out to the column the opening one is on, wherever on its line that was.
   align $
     txt open
       <> variant body (space <> align body <> hardBreak)
@@ -342,13 +316,13 @@ bracketWith closing open close body =
 -- an operator beginning with @#@ would lex as part of the bracket. Broken,
 -- the body goes on its own indented lines.
 spacedBracket ::
-  -- | Where the closing bracket goes
+  -- | Where the closing bracket goes.
   ClosingIndent ->
-  -- | Opening bracket
+  -- | Opening bracket.
   Text ->
-  -- | Closing bracket
+  -- | Closing bracket.
   Text ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 spacedBracket closing open close body =
@@ -368,9 +342,9 @@ parens = bracket "(" ")"
 
 -- | @(@ and @)@, with a say in where the closing bracket goes.
 parensWith ::
-  -- | Where the closing parenthesis goes
+  -- | Where the closing parenthesis goes.
   ClosingIndent ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 parensWith closing = bracketWith closing "(" ")"
@@ -381,9 +355,9 @@ brackets = bracket "[" "]"
 
 -- | @[@ and @]@, with a say in where the closing bracket goes.
 bracketsWith ::
-  -- | Where the closing bracket goes
+  -- | Where the closing bracket goes.
   ClosingIndent ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 bracketsWith closing = bracketWith closing "[" "]"
@@ -395,9 +369,9 @@ braces = bracket "{" "}"
 -- | @(|@ and @|)@, from arrow notation, with a say in where the closing
 -- bracket goes.
 bananaWith ::
-  -- | Where the closing banana goes
+  -- | Where the closing banana goes.
   ClosingIndent ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 bananaWith closing = spacedBracket closing "(|" "|)"
@@ -408,9 +382,9 @@ unboxed = unboxedWith Outdented
 
 -- | @(#@ and @#)@, with a say in where the closing bracket goes.
 unboxedWith ::
-  -- | Where the closing bracket goes
+  -- | Where the closing bracket goes.
   ClosingIndent ->
-  -- | Body
+  -- | Body.
   Doc ->
   Doc
 unboxedWith closing = spacedBracket closing "(#" "#)"
@@ -430,8 +404,8 @@ comma = txt ","
 semi :: Doc
 semi = txt ";"
 
--- | Separate by a comma and a 'breakOrSpace', so that a broken list puts each
--- element on its own line with the comma left behind on the one above.
+-- | Separate by a comma and a 'breakOrSpace', so that a broken list puts
+-- each element on its own line with the comma left behind on the one above.
 commaSep :: [Doc] -> Doc
 commaSep = sepBy (comma <> breakOrSpace)
 

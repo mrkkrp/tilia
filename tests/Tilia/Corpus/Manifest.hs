@@ -121,7 +121,7 @@ readManifest path =
 writeManifest :: FilePath -> Manifest -> IO ()
 writeManifest path manifest = do
   createDirectoryIfMissing True (takeDirectory path)
-  T.writeFile path (T.unlines (header <> map line (Map.toAscList manifest)))
+  T.writeFile path (T.unlines (header <> fmap line (Map.toAscList manifest)))
   where
     header =
       [ "# What each example of this corpus does today, one line each.",
@@ -136,7 +136,7 @@ writeManifest path manifest = do
         <> T.justifyLeft 14 ' ' (entryDigest entry)
         <> T.pack name
     width =
-      2 + maximum (1 : map (T.length . outcomeName . entryOutcome) (Map.elems manifest))
+      2 + maximum (1 : fmap (T.length . outcomeName . entryOutcome) (Map.elems manifest))
 
 -- | Write the reasons beside the record.
 writeReport :: FilePath -> [(FilePath, Outcome, Text)] -> IO ()
@@ -172,7 +172,7 @@ writeReport path entries = do
       ]
         <> concatMap entry es
     entry (name, why) =
-      [T.pack name] <> map ("    " <>) (T.lines (T.strip why)) <> [""]
+      [T.pack name] <> fmap ("    " <>) (T.lines (T.strip why)) <> [""]
 
 -- | Is this run supposed to write the records rather than check against
 -- them?

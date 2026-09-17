@@ -18,10 +18,10 @@ import System.Directory (getModificationTime)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+import Tilia.Cabal.Package (PackageProblem (..))
 import Tilia.Cpp (CppError (..))
 import Tilia.Fixity (ModuleChain (..), OpName (..), Unknown (..))
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
-import Tilia.Package (PackageProblem (..))
 import Tilia.Palette (Color (Bad), Palette (..))
 import Tilia.Run
 import Tilia.Utils (lineWidth, visibleLength, wrapTo)
@@ -30,7 +30,7 @@ spec :: Spec
 spec = do
   describe "telling a refusal from a failure" $ do
     it "counts what we would not touch as a refusal" $
-      map
+      fmap
         refused
         [ PositionPragmas "A.hs",
           CppUnsupported "A.hs" UnsplittableConditional,
@@ -39,7 +39,7 @@ spec = do
         `shouldBe` [True, True, True]
 
     it "counts what we could not read or make sense of as a failure" $
-      map
+      fmap
         refused
         [ Unreadable "A.hs" "no such file",
           NoPackage "A.hs" NoPackageFile,
@@ -52,12 +52,12 @@ spec = do
 
   describe "what became of a file" $ do
     it "counts a rewrite as a difference and nothing else" $
-      map differs [Changed "a" "b", Unchanged, decline, failure]
+      fmap differs [Changed "a" "b", Unchanged, decline, failure]
         `shouldBe` [True, False, False, False]
 
     it "keeps refusals and failures apart" $ do
-      map declined [decline, failure, Unchanged] `shouldBe` [True, False, False]
-      map failed [decline, failure, Unchanged] `shouldBe` [False, True, False]
+      fmap declined [decline, failure, Unchanged] `shouldBe` [True, False, False]
+      fmap failed [decline, failure, Unchanged] `shouldBe` [False, True, False]
 
   describe "the status a run leaves behind" $ do
     it "has none to give when nothing failed" $
@@ -261,7 +261,7 @@ spec = do
 
   describe "breaking text to fit" $ do
     it "keeps every line within the room given" $
-      map T.length (wrapTo 20 (T.replicate 40 "word ")) `shouldSatisfy` all (<= 20)
+      fmap T.length (wrapTo 20 (T.replicate 40 "word ")) `shouldSatisfy` all (<= 20)
 
     it "breaks at spaces and nowhere else" $
       wrapTo 12 "one two three four" `shouldBe` ["one two", "three four"]
@@ -285,7 +285,7 @@ spec = do
     it "breaks a colored line exactly where it breaks the bare one" $ do
       let bare = "alpha beta gamma delta epsilon zeta eta theta"
           lit = T.replace "gamma" "\ESC[36mgamma\ESC[0m" bare
-      map visibleLength (wrapTo 20 lit) `shouldBe` map T.length (wrapTo 20 bare)
+      fmap visibleLength (wrapTo 20 lit) `shouldBe` fmap T.length (wrapTo 20 bare)
 
   describe "how wide anything gets" $ do
     let sprawling =
@@ -293,15 +293,15 @@ spec = do
             ("another/quite/deeply/nested/one/Module.hs", failure)
           ]
     it "never prints a line wider than it allows itself" $
-      map T.length (reportErr (inplaceReport Plain sprawling))
+      fmap T.length (reportErr (inplaceReport Plain sprawling))
         `shouldSatisfy` all (<= lineWidth)
 
     it "does the same when the reason is enormous" $
-      map T.length (reportErr (inplaceReport Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 40 "and more words ")))]))
+      fmap T.length (reportErr (inplaceReport Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 40 "and more words ")))]))
         `shouldSatisfy` all (<= lineWidth)
 
     it "wraps what it says when it gives up, too" $
-      map T.length (noted Plain ("✗", Bad) (T.replicate 40 "and more words "))
+      fmap T.length (noted Plain ("✗", Bad) (T.replicate 40 "and more words "))
         `shouldSatisfy` all (<= lineWidth)
 
   describe "reading a file" $ do
@@ -469,7 +469,7 @@ missing modName = missingIn [modName]
 
 -- | The same, where more than one module could have declared it.
 missingIn :: [Text] -> Outcome
-missingIn = missingThrough . map (ModuleChain . (:| []))
+missingIn = missingThrough . fmap (ModuleChain . (:| []))
 
 -- | Two operators with the one answer between them, which is said once.
 missingTwice :: Text -> Outcome
@@ -509,4 +509,4 @@ missingThrough chains =
 
 -- | A report as one piece of text, with the breaks it was wrapped at undone.
 flattened :: Report -> Text
-flattened = T.unwords . map T.strip . reportErr
+flattened = T.unwords . fmap T.strip . reportErr

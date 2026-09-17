@@ -3,20 +3,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | The module header, and the module as a whole.
---
--- The header is the one part of a module that is reordered rather than
--- merely re-laid-out: language pragmas are sorted, and a @{-# LANGUAGE A, B
--- #-}@ is split into one pragma per extension. That is safe because the
--- compiler reads the header as a set, with one exception—some extensions
--- turn others on, so the order within a few groups is load-bearing, and
--- 'pragmaOrder' is where that is written down.
 module Tilia.Render.Header
-  ( -- * Pragmas
-    HeaderPragma (..),
+  ( HeaderPragma (..),
     takeHeaderPragmas,
     takeStackHeader,
-
-    -- * The module
     hsModule,
   )
 where
@@ -40,12 +30,9 @@ import Tilia.Render.Haddock
 import Tilia.Render.Layout
 import Tilia.Render.Name
 import Tilia.Render.Pragma (warningTxt)
-import Tilia.Source (Source, directiveAt, sourceLines)
+import Tilia.Source (Source, directivePresentOnLine, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
-
-----------------------------------------------------------------------------
--- Pragmas
 
 -- | A pragma of the file header.
 data HeaderPragma = HeaderPragma
@@ -81,28 +68,23 @@ data PragmaOrder
 -- that matter: a pack before what it enables, an enabling before a
 -- disabling, and the stragglers that have to come last at the end.
 data ExtensionClass
-  = -- | @GHC2021@, @Haskell2010@ and the like
+  = -- | @GHC2021@, @Haskell2010@ and the like.
     Pack
-  | -- | Anything else
+  | -- | Anything else.
     Enabling
-  | -- | An extension written with a @No@ prefix
+  | -- | An extension written with a @No@ prefix.
     Disabling
-  | -- | Extensions that only work when nothing follows them
+  | -- | Extensions that only work when nothing follows them.
     Last'
   deriving (Eq, Ord, Show)
 
 -- | Pick the header pragmas out of a comment stream.
---
--- What comes back is the pragmas, in the order they were written, and the
--- comments that were not pragmas. A @{-# … #-}@ below the header is not a
--- pragma at all—the compiler never reads it—so hoisting it would give it a
--- meaning it did not have, and it is left in the stream as the comment it
--- is.
 takeHeaderPragmas ::
-  -- | The module as written
+  -- | The module as written.
   Source ->
-  -- | Where the header ends
+  -- | Where the header ends.
   Maybe Span ->
+  -- | The comment stream.
   [Comment] ->
   ([HeaderPragma], [Comment])
 takeHeaderPragmas src headerEnd comments = (pragmas, plain)
@@ -115,12 +97,12 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
       ]
     rightAbovePragma c =
       Set.member (below (spanEndLine (commentSpan c) + 1)) pragmaStarts
-    below n = if directiveAt n (sourceLines src) then below (n + 1) else n
+    below n = if directivePresentOnLine n (sourceLines src) then below (n + 1) else n
     pragmaStarts =
       Set.fromList [spanStartLine (commentSpan c) | (c, Just _) <- recognised]
     airless c = c {commentGapAbove = False, commentGapBelow = False}
     directivesAbove n =
-      length [k | k <- [1 .. n - 1], directiveAt k (sourceLines src)]
+      length [k | k <- [1 .. n - 1], directivePresentOnLine k (sourceLines src)]
     entry c p =
       HeaderPragma
         { hpSpan = commentSpan c,
@@ -150,33 +132,31 @@ inHeader headerEnd s = case headerEnd of
 
 -- | Take the Stack script header off the front of a comment stream.
 takeStackHeader ::
-  -- | Where the header ends
+  -- | Where the header ends.
   Maybe Span ->
+  -- | The comment stream.
   [Comment] ->
   (Doc, [Comment])
 takeStackHeader headerEnd = \case
   (c : cs) | isStackHeader c -> (reproduce c <> blankLine, cs)
   cs -> (mempty, cs)
   where
-    -- Being the first comment is not enough: @stack@ reads the header off
-    -- the top of the file, so a @-- stack …@ written further down is an
-    -- ordinary comment that happens to start with a word.
     isStackHeader c =
       inHeader headerEnd (commentSpan c)
         && T.isPrefixOf "stack" (T.stripStart (T.drop 2 (NE.head (commentBody c))))
     reproduce c =
-      sepBy (verbatimBreak AtMargin) (map txt (NE.toList (commentBody c)))
+      sepBy (verbatimBreak AtMargin) (fmap txt (NE.toList (commentBody c)))
 
 -- | The pragmas of a header, one per line, sorted.
 pragmaBlock :: [HeaderPragma] -> Doc
 pragmaBlock = foldMap render . dedupe . sortOn key . concatMap split
   where
     key p = (hpRun p, hpOrder p, hpBody p)
-    dedupe = map NE.head . NE.groupBy ((==) `on` key)
+    dedupe = fmap NE.head . NE.groupBy ((==) `on` key)
     split p
       | hpName p == "LANGUAGE" =
           [ p {hpBody = body, hpOrder = LanguageOrder (classifyExtension body)}
-          | body <- map T.strip (T.splitOn "," (hpBody p))
+          | body <- fmap T.strip (T.splitOn "," (hpBody p))
           ]
       | otherwise = [p]
 
@@ -205,9 +185,6 @@ namesAnEdition t = any spelledTheSame [minBound .. maxBound]
   where
     spelledTheSame edition = t == T.pack (show (edition :: Language))
 
-----------------------------------------------------------------------------
--- The module
-
 -- | A whole module.
 hsModule :: Ctx -> [HeaderPragma] -> HsModule GhcPs -> Doc
 hsModule ctx pragmas HsModule {hsmodExt = XModulePs {..}, ..} =
@@ -222,11 +199,9 @@ hsModule ctx pragmas HsModule {hsmodExt = XModulePs {..}, ..} =
   where
     exports = maybe [] unLoc hsmodExports
     headerSpan = foldMap spanOf hsmodDeprecMessage <> foldMap spanOf hsmodExports
-
     headerLayout
       | any (isDocEntry . unLoc) exports = broken
       | otherwise = layoutFrom ctx headerSpan
-
     moduleLine = case hsmodName of
       Nothing -> mempty
       Just modName ->
@@ -237,14 +212,9 @@ hsModule ctx pragmas HsModule {hsmodExt = XModulePs {..}, ..} =
           <> foldMap exports' hsmodExports
           <> txt "where"
           <> hardBreak
-
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
-
     exports' l =
       at ctx l (\xs -> indent (exportList ctx (spanOf l) xs)) <> breakOrSpace
-
-----------------------------------------------------------------------------
--- Export lists
 
 -- | The parenthesised list after a module name.
 exportList :: Ctx -> Maybe Span -> [LIE GhcPs] -> Doc
@@ -257,15 +227,11 @@ exportList ctx enclosing xs =
       | otherwise = layoutFrom ctx enclosing
 
 -- | The items of an import or export list.
---
--- The comma travels with the item rather than sitting between two of them,
--- because a list that has been broken ends with one: adding an entry then
--- touches one line rather than two.
 importExportItems :: Ctx -> [LIE GhcPs] -> Doc
 importExportItems ctx xs = variant (laidOut False) (laidOut True)
   where
     laidOut broken' =
-      sepBy breakOrSpace (zipWith (item broken') (Nothing : map Just xs) (places xs))
+      sepBy breakOrSpace (zipWith (item broken') (Nothing : fmap Just xs) (places xs))
     item broken' previous (place, x) =
       gapAbove place (unLoc <$> previous) (unLoc x)
         <> align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) (comma' broken' place)))
@@ -280,7 +246,6 @@ importExportItems ctx xs = variant (laidOut False) (laidOut True)
     isPipe = \case
       IEDoc {} -> True
       _ -> False
-    -- Documentation that takes in whatever is written directly under it.
     runsOn = \case
       IEDoc {} -> True
       IEDocNamed {} -> True
@@ -326,7 +291,7 @@ ieItem ctx here withComma = \case
       )
       <> itemDocumentation doc
     where
-      rendered = map (at_ ctx (wrappedName ctx)) members
+      rendered = fmap (at_ ctx (wrappedName ctx)) members
       withWildcard = case wildcard of
         NoIEWildcard -> rendered
         IEWildcard n' ->
@@ -337,7 +302,7 @@ ieItem ctx here withComma = \case
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
-    Just written -> sepBy (verbatimBreak AtIndent) (map txt (NE.toList written))
+    Just written -> sepBy (verbatimBreak AtIndent) (fmap txt (NE.toList written))
     Nothing -> txt (docSectionName n)
   where
     comma' = includeWhen withComma comma
@@ -346,6 +311,7 @@ ieItem ctx here withComma = \case
     itemDocumentation =
       foldMap (\d -> breakOrSpace <> haddock ctx Caret Open d)
 
+-- | The documentation written with an export list item, if any.
 itemDoc :: IE GhcPs -> Maybe (ExportDoc GhcPs)
 itemDoc = \case
   IEVar _ _ doc -> doc
@@ -355,18 +321,12 @@ itemDoc = \case
   _ -> Nothing
 
 -- | Does this export list entry carry documentation?
---
--- A list holding one cannot go on one line: the entry would swallow the rest
--- of it, closing bracket and all.
 isDocEntry :: IE GhcPs -> Bool
 isDocEntry = \case
   IEDoc {} -> True
   IEGroup {} -> True
   IEDocNamed {} -> True
   _ -> False
-
-----------------------------------------------------------------------------
--- Imports
 
 -- | One import declaration.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
@@ -395,18 +355,15 @@ importDecl ctx ImportDecl {..} =
   where
     qualifiedLast = extensionOn ctx ImportQualifiedPost
     isQualified = isImportDeclQualified ideclQualified
-
     packageQualifier = case ideclPkgQual of
       NoRawPkgQual -> mempty
       RawPkgQual literal -> outputable literal
-
     levelBefore = case ideclLevelSpec of
       LevelStylePre l -> declLevel l
       _ -> mempty
     levelAfter = case ideclLevelSpec of
       LevelStylePost l -> declLevel l
       _ -> mempty
-
     importList = case ideclImportList of
       Nothing -> mempty
       Just (interpretation, L listLoc xs) ->
@@ -422,6 +379,7 @@ importDecl ctx ImportDecl {..} =
             Exactly -> mempty
             EverythingBut -> txt "hiding"
 
+-- | The keyword an import's level is written with.
 declLevel :: ImportDeclLevel -> Doc
 declLevel = \case
   ImportDeclSplice -> txt "splice"

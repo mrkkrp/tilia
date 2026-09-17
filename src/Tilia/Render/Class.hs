@@ -1,15 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Classes, instances and families.
---
--- What these have in common is a head followed by a body of declarations,
--- and a recurring difficulty: the syntax tree keeps the body's declarations
--- in several lists—signatures here, bindings there, associated families
--- somewhere else—so the order the author wrote them in survives only in
--- their spans. Every body in this module has to be put back in order before
--- it can be printed.
 module Tilia.Render.Class
   ( classDecl,
     clsInstDecl,
@@ -21,6 +17,7 @@ module Tilia.Render.Class
   )
 where
 
+import Data.Choice (fromBool, pattern Do)
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (isNothing)
@@ -37,9 +34,6 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span.Ghc
-
-----------------------------------------------------------------------------
--- Classes
 
 -- | A type class declaration.
 classDecl ::
@@ -80,14 +74,14 @@ classDecl ctx anns ctxt tyCon HsQTvs {..} fixity fdeps sigs binds families defau
             parens
               ( insideBrackets
                   (spanOf tyCon)
-                  (commaSep (map (align . at_ ctx (tyVarBndr ctx)) hsq_explicit))
+                  (commaSep (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit))
               )
       | otherwise =
           defHead
-            (fixity == Infix)
-            True
+            (fromBool (fixity == Infix))
+            (Do #indentArgs)
             (name ctx tyCon)
-            (map (at_ ctx (tyVarBndr ctx)) hsq_explicit)
+            (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
 
     body =
       includeUnless
@@ -96,11 +90,11 @@ classDecl ctx anns ctxt tyCon HsQTvs {..} fixity fdeps sigs binds families defau
 
     members =
       inSourceOrder
-        [ map (fmap (SigD NoExtField)) sigs,
-          map (fmap (ValD NoExtField)) binds,
-          map (fmap (TyClD NoExtField . FamDecl NoExtField)) families,
-          map (fmap (InstD NoExtField . TyFamInstD NoExtField)) defaults,
-          map (fmap (DocD NoExtField)) docs
+        [ fmap (fmap (SigD NoExtField)) sigs,
+          fmap (fmap (ValD NoExtField)) binds,
+          fmap (fmap (TyClD NoExtField . FamDecl NoExtField)) families,
+          fmap (fmap (InstD NoExtField . TyFamInstD NoExtField)) defaults,
+          fmap (fmap (DocD NoExtField)) docs
         ]
 
 -- | Is this the constraint tuple of the given arity?
@@ -121,18 +115,15 @@ funDeps ctx fdeps =
   breakOrSpace
     <> txt "|"
     <> space
-    <> indent (commaSep (map (align . at_ ctx (funDep ctx)) fdeps))
+    <> indent (commaSep (fmap (align . at_ ctx (funDep ctx)) fdeps))
 
 funDep :: Ctx -> FunDep GhcPs -> Doc
 funDep ctx (FunDep _ before after) =
-  hsep (map (name ctx) before)
+  hsep (fmap (name ctx) before)
     <> space
     <> txt "->"
     <> space
-    <> hsep (map (name ctx) after)
-
-----------------------------------------------------------------------------
--- Instances
+    <> hsep (fmap (name ctx) after)
 
 -- | A class instance.
 clsInstDecl :: Ctx -> ClsInstDecl GhcPs -> Doc
@@ -163,10 +154,10 @@ clsInstDecl ctx ClsInstDecl {cid_ext = (warning, anns, _), ..} =
 
     members =
       inSourceOrder
-        [ map (fmap (SigD NoExtField)) cid_sigs,
-          map (fmap (ValD NoExtField)) cid_binds,
-          map (fmap (InstD NoExtField . TyFamInstD NoExtField)) cid_tyfam_insts,
-          map (fmap (InstD NoExtField . DataFamInstD NoExtField)) cid_datafam_insts
+        [ fmap (fmap (SigD NoExtField)) cid_sigs,
+          fmap (fmap (ValD NoExtField)) cid_binds,
+          fmap (fmap (InstD NoExtField . TyFamInstD NoExtField)) cid_tyfam_insts,
+          fmap (fmap (InstD NoExtField . DataFamInstD NoExtField)) cid_datafam_insts
         ]
 
 -- | A standalone @deriving@ declaration.
@@ -225,9 +216,6 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn {..}) =
       HsOuterExplicit _ bndrs ->
         forallBndrs ctx Invisible (tyVarBndr ctx) bndrs <> breakOrSpace
 
-----------------------------------------------------------------------------
--- Families
-
 -- | A @data family@ or @type family@ declaration.
 famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
 famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
@@ -251,10 +239,10 @@ famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
             ctx
             headSpan
             ( defHead
-                (fdFixity == Infix)
-                True
+                (fromBool (fdFixity == Infix))
+                (Do #indentArgs)
                 (name ctx fdLName)
-                (map (at_ ctx (tyVarBndr ctx)) hsq_explicit)
+                (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
             )
           <> includeUnless
             (isNothing resultSig && isNothing fdInjectivityAnn)
@@ -273,16 +261,10 @@ famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
       Just eqs ->
         indent (layoutFrom ctx headAndSigSpan (breakOrSpace <> txt "where"))
           <> case eqs of
-            -- @where ..@ is how a closed family says that its equations are
-            -- not being given here.
             Nothing -> space <> txt ".."
-            -- A closed family may be given no equations at all, and then
-            -- the @where@ is the whole of it. Breaking the line anyway
-            -- leaves the next thing along hanging under a @where@ that
-            -- opened a block nothing was put in.
             Just given ->
               includeUnless (null given) $
-                hardBreak <> indent (vsep (map (at_ ctx (tyFamInstEqn ctx)) given))
+                hardBreak <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
 
 familyResultSig :: Ctx -> LFamilyResultSig GhcPs -> Maybe Doc
 familyResultSig ctx (L _ sig) = case sig of
@@ -300,7 +282,7 @@ injectivityAnn ctx (InjectivityAnn _ from to) =
     <> space
     <> txt "->"
     <> space
-    <> hsep (map (name ctx) to)
+    <> hsep (fmap (name ctx) to)
 
 -- | One equation of a type family.
 tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc
@@ -317,16 +299,13 @@ tyFamInstEqn ctx FamEqn {..} =
     lhs =
       layoutFrom ctx (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats) $
         defHead
-          (feqn_fixity == Infix)
-          True
+          (fromBool (feqn_fixity == Infix))
+          (Do #indentArgs)
           (name ctx feqn_tycon)
-          (map (typeArgument ctx) feqn_pats)
+          (fmap (typeArgument ctx) feqn_pats)
 
     rhs =
       indent (joinedBy "=" <> hsType ctx feqn_rhs)
-
-----------------------------------------------------------------------------
--- Role annotations
 
 -- | A @type role@ declaration.
 roleAnnot :: Ctx -> RoleAnnotDecl GhcPs -> Doc
@@ -336,16 +315,13 @@ roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
     <> indent
       ( name ctx tyCon
           <> breakOrSpace
-          <> indent (align (sepBy breakOrSpace (map (align . at_ ctx role) roles)))
+          <> indent (align (sepBy breakOrSpace (fmap (align . at_ ctx role) roles)))
       )
   where
     role = maybe (txt "_") $ \case
       Nominal -> txt "nominal"
       Representational -> txt "representational"
       Phantom -> txt "phantom"
-
-----------------------------------------------------------------------------
--- Helpers
 
 -- | Merge several lists of declarations back into the order they were
 -- written in.

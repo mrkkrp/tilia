@@ -45,15 +45,14 @@ import Tilia.Utils (indent, lineWidth, wrapTo)
 data FixityNotes = FixityNotes
   { -- | What each import brought, in the order the module writes them.
     notedImports :: [ImportNote],
-    -- | What became of every operator the module uses, one entry per
-    -- operator.
+    -- | Resolutions per operator.
     notedOperators :: [OperatorNote],
-    -- | What the module declares for itself.
+    -- | What operators the module declares.
     notedDeclarations :: [(Text, Fixity)]
   }
   deriving (Eq, Show)
 
--- | One import.
+-- | One import in the module.
 data ImportNote = ImportNote
   { -- | The module imported.
     noteModule :: Text,
@@ -84,17 +83,17 @@ data OperatorNote = OperatorNote
 
 -- | Record everything that decided one module's fixities.
 fixityNotes ::
-  -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed
-  -- among the imports exactly when the module actually has it
+  -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed among
+  -- the imports exactly when the module actually has it.
   Choice "implicitPrelude" ->
-  -- | What each module in scope exports, as the resolver answers it
+  -- | What each module in scope exports, as the resolver answers it.
   (Text -> IO (Maybe (Fixities))) ->
   -- | Where reading a module went before giving up, asked only of the ones
-  -- the line above gave up on
+  -- the line above gave up on.
   (Text -> IO [Text]) ->
-  -- | The scope the module was formatted under
+  -- | The scope the module was formatted under.
   Scope ->
-  -- | The module
+  -- | The module.
   HsModule GhcPs ->
   IO FixityNotes
 fixityNotes implicitPrelude resolve chainOf scope hsModule = do
@@ -102,7 +101,7 @@ fixityNotes implicitPrelude resolve chainOf scope hsModule = do
   pure
     FixityNotes
       { notedImports = brought,
-        notedOperators = map aboutOperator used,
+        notedOperators = fmap aboutOperator used,
         notedDeclarations = here
       }
   where
@@ -119,7 +118,7 @@ fixityNotes implicitPrelude resolve chainOf scope hsModule = do
                 then Nothing
                 else Just (importAlias i),
             noteQualified = importQualified i,
-            noteBrought = Set.size . Set.fromList . map snd . Map.keys <$> answer,
+            noteBrought = Set.size . Set.fromList . fmap snd . Map.keys <$> answer,
             noteChain = below
           }
 
@@ -173,7 +172,7 @@ aboutFile palette notes =
 
     entry line = case wrapTo (lineWidth - 8) line of
       [] -> []
-      (opening : rest) -> (indent 3 <> "· " <> opening) : map (indent 4 <>) rest
+      (opening : rest) -> (indent 3 <> "· " <> opening) : fmap (indent 4 <>) rest
 
     fromImport i =
       named (noteModule i)
@@ -185,7 +184,7 @@ aboutFile palette notes =
 
     through = \case
       [] -> ""
-      below -> ", through " <> T.intercalate " → " (map named below)
+      below -> ", through " <> T.intercalate " → " (fmap named below)
 
     qualification i = case (noteQualified i, noteAlias i) of
       (True, Just alias) -> " qualified as " <> named alias
