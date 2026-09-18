@@ -120,9 +120,9 @@ readAsUtf8 path =
 
 -- | Formatting outcome for a file.
 formattingOutcome ::
-  -- | The file, as it is
+  -- | The file, as it is.
   Text ->
-  -- | Its formatted text, in newlines
+  -- | Its formatted text, in newlines.
   Text ->
   Outcome
 formattingOutcome before formatted
@@ -213,9 +213,9 @@ asides palette outcomes =
 -- | One line per extension, for the files a test picks out.
 tally ::
   Palette ->
-  -- | The mark to set the line under, and the color to set it in
+  -- | The mark to set the line under, and the color to set it in.
   (Text, Color) ->
-  -- | What became of the files being counted
+  -- | What became of the files being counted.
   Text ->
   (Outcome -> Bool) ->
   [(FilePath, Outcome)] ->
@@ -251,7 +251,7 @@ bulleted palette e = case wrapTo (lineWidth - 6) (describeFormatError palette e)
 -- | Something to say under a mark of its own, wrapped to fit beneath it.
 noted ::
   Palette ->
-  -- | The mark to set it under, and the color to set that in
+  -- | The mark to set it under, and the color to set that in.
   (Text, Color) ->
   Text ->
   [Text]

@@ -91,14 +91,14 @@ data Above
 
 -- | Every comment in a module, in source order.
 commentsOf ::
-  -- | The module's lines, which every comment is read against
+  -- | The module's lines, which every comment is read against.
   Lines ->
-  -- | Comments the tree does not carry
+  -- | Comments the tree does not carry.
   --
   -- Everything above a signature's @signature@ keyword: the parser leaves
   -- those in its own state rather than in an annotation.
   [GHC.LEpaComment] ->
-  -- | Parsed module
+  -- | Parsed module.
   HsModule GhcPs ->
   [Comment]
 commentsOf ls loose hsModule =

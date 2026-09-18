@@ -1,14 +1,11 @@
--- | Deciding where each comment goes.
+-- | Determine the placement of each 'Comment'.
 module Tilia.Comments.Place
-  ( -- * Where a comment goes
-    Position (..),
+  ( Position (..),
     Shape (..),
     shapeOf,
-
-    -- * The answers
     Placements,
     placeComments,
-    takePlaced,
+    claimPlaced,
     unplaced,
   )
 where
@@ -64,18 +61,19 @@ shapeOf position c = case position of
     | singleLine c -> HeldBack
     | otherwise -> EndsTheLine
 
--- | What each region was given, and what nothing could be found for.
+-- | Comment placements.
 data Placements = Placements
   { placedAt :: Map Span [(Position, Comment)],
     placedNowhere :: [Comment]
   }
 
--- | Give every comment to a region.
+-- | Determine comment placements.
 placeComments ::
-  -- | The regions a comment may be given to
+  -- | The regions a comment may be given to.
   [Span] ->
-  -- | The boundaries a comment printed in place may not be carried across
+  -- | The boundaries a comment printed in place may not be carried across.
   [Span] ->
+  -- | The comments to place.
   [Comment] ->
   Placements
 placeComments regions fences comments =
@@ -164,8 +162,6 @@ placeComments regions fences comments =
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next
 
-    -- Folded rather than sorted: this runs for every comment against every
-    -- region, and only the first of the order is ever wanted.
     nearest :: (Ord k) => (Span -> k) -> [Span] -> Maybe Span
     nearest key = fmap fst . foldl' closer Nothing
       where
@@ -177,9 +173,9 @@ placeComments regions fences comments =
 inside :: Span -> Span -> Bool
 inside a b = startPoint b <= startPoint a && endPoint a <= endPoint b
 
--- | Take what a region was given, so that nothing can take it again.
-takePlaced :: Span -> Placements -> ([(Position, Comment)], Placements)
-takePlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
+-- | Claim the comments that belong to the given 'Span'.
+claimPlaced :: Span -> Placements -> ([(Position, Comment)], Placements)
+claimPlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
   (found, rest) -> (concat found, p {placedAt = rest})
   where
     forget _ _ = Nothing
@@ -188,4 +184,4 @@ takePlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
 unplaced :: Placements -> [Comment]
 unplaced p =
   sortOn (startPoint . commentSpan) $
-    placedNowhere p <> [c | (_, c) <- concat (Map.elems (placedAt p))]
+    placedNowhere p <> foldMap (fmap snd) (placedAt p)

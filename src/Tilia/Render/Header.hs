@@ -99,9 +99,9 @@ data ExtensionClass
 -- meaning it did not have, and it is left in the stream as the comment it
 -- is.
 takeHeaderPragmas ::
-  -- | The module as written
+  -- | The module as written.
   Source ->
-  -- | Where the header ends
+  -- | Where the header ends.
   Maybe Span ->
   [Comment] ->
   ([HeaderPragma], [Comment])
@@ -150,7 +150,7 @@ inHeader headerEnd s = case headerEnd of
 
 -- | Take the Stack script header off the front of a comment stream.
 takeStackHeader ::
-  -- | Where the header ends
+  -- | Where the header ends.
   Maybe Span ->
   [Comment] ->
   (Doc, [Comment])

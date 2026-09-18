@@ -36,7 +36,7 @@ import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
-import Tilia.Cpp.Macros (Macros, answerTo)
+import Tilia.Cpp.Macros (Macros, guardHolds)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Doc.Internal (Doc (..), Layout (..))
@@ -67,15 +67,15 @@ import Tilia.Span (Span, covers, meets, mkSpan, spanEndLine, spanStartLine)
 -- Each configuration is formatted by the ordinary printer. The resulting
 -- documents are then merged.
 formatWithCpp ::
-  -- | What to parse each configuration with
+  -- | What to parse each configuration with.
   ParserConfig ->
-  -- | What to print each configuration with
+  -- | What to print each configuration with.
   RenderConfig ->
-  -- | The file this is, for the positions in an error
+  -- | The file this is, for the positions in an error.
   FilePath ->
-  -- | The module, directives and all
+  -- | The module, directives and all.
   Text ->
-  -- | The formatted module, or why not
+  -- | The formatted module, or why not.
   Either CppError Text
 formatWithCpp parser render path source =
   printDoc defaultRenderOptions . fst
@@ -93,15 +93,15 @@ formatWithCpp parser render path source =
 -- | Format every configuration of a module, and merge them into one
 -- document.
 formatAllConfigs ::
-  -- | What to parse a configuration with
+  -- | What to parse a configuration with.
   ParserConfig ->
-  -- | What to print it with
+  -- | What to print it with.
   RenderConfig ->
-  -- | The file this is, for the positions in a parse error
+  -- | The file this is, for the positions in a parse error.
   FilePath ->
-  -- | How this configuration was reached
+  -- | How this configuration was reached.
   Reached ->
-  -- | Formattings left to spend
+  -- | Formattings left to spend.
   Int ->
   Text ->
   Either CppError (Doc, Int)
@@ -203,17 +203,17 @@ variations source = do
 -- | Vary each conditional on its own, holding the others at their first
 -- branch.
 separately ::
-  -- | What to parse a configuration with
+  -- | What to parse a configuration with.
   ParserConfig ->
-  -- | What to print it with
+  -- | What to print it with.
   RenderConfig ->
-  -- | The file this is, for the positions in a parse error
+  -- | The file this is, for the positions in a parse error.
   FilePath ->
-  -- | How this configuration was reached
+  -- | How this configuration was reached.
   Reached ->
-  -- | Formattings left to spend
+  -- | Formattings left to spend.
   Int ->
-  -- | The conditionals to vary, and the baseline to hold them against
+  -- | The conditionals to vary, and the baseline to hold them against.
   Variation ->
   Either CppError (Doc, [Doc], Int)
 separately parser render path reached budget v = do
@@ -247,17 +247,17 @@ separately parser render path reached budget v = do
 
 -- | Vary the conditionals together, one group at a time.
 together ::
-  -- | What to parse a configuration with
+  -- | What to parse a configuration with.
   ParserConfig ->
-  -- | What to print it with
+  -- | What to print it with.
   RenderConfig ->
-  -- | The file this is, for the positions in a parse error
+  -- | The file this is, for the positions in a parse error.
   FilePath ->
-  -- | How this configuration was reached
+  -- | How this configuration was reached.
   Reached ->
-  -- | Formattings left to spend
+  -- | Formattings left to spend.
   Int ->
-  -- | The group to split on, and the branch texts to split it into
+  -- | The group to split on, and the branch texts to split it into.
   Configurations ->
   Either CppError (Doc, Int)
 together parser render path reached budget c = do
@@ -273,15 +273,15 @@ together parser render path reached budget c = do
 
 -- | Format one configuration with the ordinary printer.
 formatSingleConfig ::
-  -- | What to parse it with
+  -- | What to parse it with.
   ParserConfig ->
-  -- | What to print it with
+  -- | What to print it with.
   RenderConfig ->
-  -- | The file this is, for the positions in a parse error
+  -- | The file this is, for the positions in a parse error.
   FilePath ->
-  -- | How this configuration was reached
+  -- | How this configuration was reached.
   Reached ->
-  -- | The configuration itself, with no directives left in it
+  -- | The configuration itself, with no directives left in it.
   Text ->
   Either CppError Doc
 formatSingleConfig parser render path reached text =
@@ -918,9 +918,9 @@ data Change = Change
 -- replaced and what it put in each of their places.
 changesAgainst ::
   Varied ->
-  -- | Whether two elements stand for the same thing, which lines the spines up
+  -- | Whether two elements stand for the same thing, which lines the spines up.
   (Doc -> Doc -> Bool) ->
-  -- | Whether two elements print the same, which says nothing changed
+  -- | Whether two elements print the same, which says nothing changed.
   (Doc -> Doc -> Bool) ->
   [Doc] ->
   [Doc] ->
@@ -1197,7 +1197,7 @@ branchTaken macros = go 0 . gsGuards
   where
     go i = \case
       [] -> Just i
-      g : rest -> case answerTo macros (guardText g) of
+      g : rest -> case guardHolds macros (guardText g) of
         Just True -> Just i
         Just False -> go (i + 1) rest
         Nothing -> Nothing

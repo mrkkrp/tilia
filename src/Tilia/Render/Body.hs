@@ -1,26 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 
--- | Which constructs absorb the line break that introduces them.
---
--- A body is a node together with the site it stands at, and the one question
--- an enclosing construct has to ask of it is where to put it: on the line it
--- has already started, or on the next one indented. "Tilia.Doc.Body"
--- states that question as a class; this module answers it, for the two kinds
--- of node that can stand as a body.
---
--- The answers are a table, not an argument. Threading a @body -> Placement@
--- callback through every construct that has a body—equations, guards, @if@,
--- @let@, @case@, lambdas, statements—spreads one small piece of knowledge
--- across a dozen signatures and makes each of them carry a second parameter
--- that only ever has two possible values. Here it is written down once, and
--- what the constructs pass around is the body itself.
+-- | Hanging vs non-hanging constructs.
 module Tilia.Render.Body
-  ( -- * Bodies
-    ExprBody (..),
+  ( ExprBody (..),
     CmdBody (..),
     CmdTopBody (..),
-
-    -- * The table
     exprHangs,
     operatorName,
     cmdTopHangs,
@@ -36,9 +20,6 @@ import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Span
 import Tilia.Span.Ghc
-
-----------------------------------------------------------------------------
--- Bodies
 
 -- | An expression standing as the body of an enclosing construct.
 data ExprBody = ExprBody Ctx Site (LHsExpr GhcPs)
@@ -62,14 +43,7 @@ instance Body CmdTopBody where
     at ctx l (\(HsCmdTop _ cmd) -> knotCmd (ctxKnot ctx) ctx site cmd)
   bodyPlacement (CmdTopBody _ _ l) = cmdTopHangs (unLoc l)
 
-----------------------------------------------------------------------------
--- The table
-
 -- | Does this expression absorb the line break that introduces it?
---
--- A @do@ block, a @case@ and a lambda all begin with a keyword and continue
--- on the lines below, so @f = do@ costs nothing and saves a line. Everything
--- not named here has to start on a line of its own.
 exprHangs :: HsExpr GhcPs -> Placement
 exprHangs = \case
   HsDo _ (DoExpr _) _ -> Hanging
@@ -78,21 +52,13 @@ exprHangs = \case
   HsLam _ lamVariant mg -> case lamVariant of
     LamCase -> Hanging
     LamCases -> Hanging
-    -- A lambda whose parameters ran over several lines leaves its body
-    -- indented under nothing legible, so only a compact one hangs.
     LamSingle -> case mg of
       MG _ (L _ [L _ (Match _ _ (L _ ps@(_ : _)) _)])
         | maybe False isSingleLine (spansOf ps) -> Hanging
       _ -> Normal
   HsProc _ p _
-    -- The indentation breaks when the pattern runs over more than one line,
-    -- so hanging is only safe when it does not.
     | maybe False isSingleLine (spanOf p) -> Hanging
     | otherwise -> Normal
-  -- An application hangs on its last argument, and a chain through @$@ on
-  -- its right operand: both of those are the thing that would be introduced.
-  -- No other operator qualifies, @$@ being the one whose whole purpose is to
-  -- hand a block to what precedes it.
   HsApp _ _ y -> exprHangs (unLoc y)
   OpApp _ _ op y
     | Just n <- operatorName op,

@@ -1,11 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | The questions a module's conditionals ask that the build plan has
--- already answered.
+-- | Inferences regarding CPP macros that we can make based on the build
+-- plan.
 module Tilia.Cpp.Macros
   ( Macros (..),
-    answerTo,
+    guardHolds,
   )
 where
 
@@ -15,10 +15,10 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 
--- | What the preprocessor would have been told.
+-- | Known macro expansions.
 data Macros = Macros
   { -- | The macros that take a version apart and compare it:
-    -- @MIN_VERSION_containers@ and its like, each under the version the
+    -- @MIN_VERSION_containers@ and the like, each under the version the
     -- plan resolved that package to. @MIN_VERSION_GLASGOW_HASKELL@ is one
     -- of these, under the compiler's four-part version.
     macroVersions :: Map Text [Integer],
@@ -28,16 +28,13 @@ data Macros = Macros
   }
   deriving (Eq, Show)
 
--- | What a conditional's guard comes to, where what is known settles it.
---
--- The text is the whole directive as it was written after its hash, keyword
--- and all, because @#if@ and @#ifdef@ ask about their rest in different
--- ways.
-answerTo :: Macros -> Text -> Maybe Bool
-answerTo macros written = case T.span isNameChar (T.stripStart written) of
+-- | Does a conditional's guard hold, where what is known settles it?
+-- 'Nothing' is no answer rather than a negative one.
+guardHolds :: Macros -> Text -> Maybe Bool
+guardHolds macros written = case T.span isNameChar (T.stripStart written) of
   (keyword, rest) -> case keyword of
-    "if" -> (/= 0) <$> evaluate macros rest
-    "elif" -> (/= 0) <$> evaluate macros rest
+    "if" -> (/= 0) <$> valueOf macros rest
+    "elif" -> (/= 0) <$> valueOf macros rest
     "ifdef" -> nameIsKnown rest
     "elifdef" -> nameIsKnown rest
     "ifndef" -> not <$> nameIsKnown rest
@@ -48,21 +45,48 @@ answerTo macros written = case T.span isNameChar (T.stripStart written) of
       Just [Name n] | known macros n -> Just True
       _ -> Nothing
 
--- | Is this a macro whose value we know?
+-- | Is this a macro whose expansion we know?
 known :: Macros -> Text -> Bool
 known macros n =
   Map.member n (macroVersions macros) || Map.member n (macroNumbers macros)
 
-----------------------------------------------------------------------------
--- The expression
-
--- | What an expression came to, where it came to anything.
-evaluate :: Macros -> Text -> Maybe Integer
-evaluate macros written = case tokensOf written of
+-- | What the expression of an @#if@ or @#elif@ evaluates to, if anything.
+valueOf :: Macros -> Text -> Maybe Integer
+valueOf macros written = case tokensOf written of
   Nothing -> Nothing
   Just ts -> case orExpr macros ts of
     Just (value, []) -> value
     _ -> Nothing
+
+-- | One piece of a guard.
+data Token
+  = Name Text
+  | Number Integer
+  | Punct Text
+  deriving (Eq, Show)
+
+-- | Take a guard apart, or refuse it whole.
+tokensOf :: Text -> Maybe [Token]
+tokensOf = go . T.stripStart
+  where
+    go t
+      | T.null t = Just []
+      | Just (c, _) <- T.uncons t,
+        isNameStart c =
+          let (n, rest) = T.span isNameChar t in (Name n :) <$> next rest
+      | Just (c, _) <- T.uncons t,
+        isDigit c =
+          let (digits, rest) = T.span isDigit t
+              rest' = T.dropWhile (`T.elem` "uUlL") rest
+           in case T.uncons rest' of
+                Just (c', _) | isNameChar c' || c' == '.' -> Nothing
+                _ -> (Number (readDigits digits) :) <$> next rest'
+      | Just punct <- firstThat (`T.stripPrefix` t) punctuation =
+          (Punct (T.take (T.length t - T.length punct) t) :) <$> next punct
+      | otherwise = Nothing
+    next = go . T.stripStart
+    firstThat f = foldr (\x acc -> maybe acc Just (f x)) Nothing
+    readDigits = T.foldl' (\n c -> n * 10 + toInteger (fromEnum c - fromEnum '0')) 0
 
 -- | An expression, and what is left of the tokens after it.
 --
@@ -152,12 +176,6 @@ unary macros = \case
         width = max (length held) (length wanted)
         pad v = take width (v <> repeat 0)
 
--- | What an application was given, and what follows its closing bracket.
---
--- Every argument has to be a plain number. One written as an expression is
--- not something to work out—a module that writes one is not asking the
--- question this can answer—but its brackets are still counted through, so
--- that the rest of the guard can be read and go on deciding what it can.
 argumentList :: [Token] -> Maybe (Maybe [Integer], [Token])
 argumentList ts = do
   (inside, rest) <- upToClose (0 :: Int) [] ts
@@ -174,43 +192,6 @@ argumentList ts = do
       [Number n] -> Just [n]
       Number n : Punct "," : rest -> (n :) <$> numbersOf rest
       _ -> Nothing
-
-----------------------------------------------------------------------------
--- The tokens
-
--- | One piece of a guard.
-data Token
-  = Name Text
-  | Number Integer
-  | Punct Text
-  deriving (Eq, Show)
-
--- | Take a guard apart, or refuse it whole.
---
--- Refusing is not a failure. A guard with arithmetic in it, or a character
--- literal, or a hexadecimal constant, is one this does not read, and a
--- guard it does not read is a question left open.
-tokensOf :: Text -> Maybe [Token]
-tokensOf = go . T.stripStart
-  where
-    go t
-      | T.null t = Just []
-      | Just (c, _) <- T.uncons t,
-        isNameStart c =
-          let (n, rest) = T.span isNameChar t in (Name n :) <$> next rest
-      | Just (c, _) <- T.uncons t,
-        isDigit c =
-          let (digits, rest) = T.span isDigit t
-              rest' = T.dropWhile (`T.elem` "uUlL") rest
-           in case T.uncons rest' of
-                Just (c', _) | isNameChar c' || c' == '.' -> Nothing
-                _ -> (Number (readDigits digits) :) <$> next rest'
-      | Just punct <- firstThat (`T.stripPrefix` t) punctuation =
-          (Punct (T.take (T.length t - T.length punct) t) :) <$> next punct
-      | otherwise = Nothing
-    next = go . T.stripStart
-    firstThat f = foldr (\x acc -> maybe acc Just (f x)) Nothing
-    readDigits = T.foldl' (\n c -> n * 10 + toInteger (fromEnum c - fromEnum '0')) 0
 
 -- | The punctuation of the expressions we read, longest first so that @<=@
 -- is never taken for @<@.

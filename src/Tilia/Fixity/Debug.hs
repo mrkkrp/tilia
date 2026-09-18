@@ -45,15 +45,14 @@ import Tilia.Utils (indent, lineWidth, wrapTo)
 data FixityNotes = FixityNotes
   { -- | What each import brought, in the order the module writes them.
     notedImports :: [ImportNote],
-    -- | What became of every operator the module uses, one entry per
-    -- operator.
+    -- | Resolutions per operator.
     notedOperators :: [OperatorNote],
-    -- | What the module declares for itself.
+    -- | What operators the module declares.
     notedDeclarations :: [(Text, Fixity)]
   }
   deriving (Eq, Show)
 
--- | One import.
+-- | One import in the module.
 data ImportNote = ImportNote
   { -- | The module imported.
     noteModule :: Text,
@@ -84,17 +83,17 @@ data OperatorNote = OperatorNote
 
 -- | Record everything that decided one module's fixities.
 fixityNotes ::
-  -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed
-  -- among the imports exactly when the module actually has it
+  -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed among
+  -- the imports exactly when the module actually has it.
   Choice "implicitPrelude" ->
-  -- | What each module in scope exports, as the resolver answers it
+  -- | What each module in scope exports, as the resolver answers it.
   (Text -> IO (Maybe (Fixities))) ->
   -- | Where reading a module went before giving up, asked only of the ones
-  -- the line above gave up on
+  -- the line above gave up on.
   (Text -> IO [Text]) ->
-  -- | The scope the module was formatted under
+  -- | The scope the module was formatted under.
   Scope ->
-  -- | The module
+  -- | The module.
   HsModule GhcPs ->
   IO FixityNotes
 fixityNotes implicitPrelude resolve chainOf scope hsModule = do

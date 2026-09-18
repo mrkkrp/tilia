@@ -123,9 +123,9 @@ heldOff haddocks = map holdOff
 -- | Hold the first comment of the header off the module's own Haddock.
 heldOffModuleDoc ::
   HsModule GhcPs ->
-  -- | The Haddocks of the module, the module's own among them
+  -- | The Haddocks of the module, the module's own among them.
   [Comment] ->
-  -- | The pragmas the header is about to hoist
+  -- | The pragmas the header is about to hoist.
   [HeaderPragma] ->
   [Comment] ->
   [Comment]
@@ -171,9 +171,9 @@ knot =
 -- | Separate the comments the syntax tree also knows about from the rest.
 splitHaddocks ::
   HsModule GhcPs ->
-  -- | Every comment in the module
+  -- | Every comment in the module.
   [Comment] ->
-  -- | The ones the tree carries, and the ones it does not
+  -- | The ones the tree carries, and the ones it does not.
   ([Comment], [Comment])
 splitHaddocks hsMod = foldr sort' ([], [])
   where

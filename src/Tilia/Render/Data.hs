@@ -3,14 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Data types and type synonyms.
---
--- One declaration form covers a great deal of ground here—@data@,
--- @newtype@, @type data@, ordinary constructors, record constructors, GADT
--- constructors, and instances of all of them—which is why this reads as a
--- series of decisions rather than as a single shape. The decisions are:
--- whether the constructors are written in GADT style, whether there is
--- exactly one and it is a record, and whether anything is documented with a
--- Haddock that takes whole lines.
 module Tilia.Render.Data
   ( dataDecl,
     synDecl,
@@ -36,19 +28,21 @@ import Tilia.Span.Ghc
 
 -- | A @data@, @newtype@ or @type data@ declaration, or an instance of one.
 --
--- The type variables are left abstract because a data instance is applied to
--- types rather than to variables, and the two are otherwise printed
+-- The type variables are left abstract because a data instance is applied
+-- to types rather than to variables, and the two are otherwise printed
 -- identically.
 dataDecl ::
+  -- | The context.
   Ctx ->
+  -- | The family style.
   FamilyStyle ->
-  -- | The type constructor
+  -- | The type constructor.
   LocatedN RdrName ->
-  -- | What it is applied to
+  -- | What it is applied to.
   [tyVar] ->
-  -- | Where each of those was
+  -- | Where each of those was.
   (tyVar -> Maybe Span) ->
-  -- | How to print one
+  -- | How to print one.
   (tyVar -> Doc) ->
   -- | Was the head written infix?
   LexicalFixity ->
@@ -169,11 +163,6 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
       | otherwise = breakOrSpace
 
 -- | The documentation a constructor's own layout has to make room for.
---
--- Which is its Haddock and the ones on its prefix arguments, and nothing
--- deeper. A field of a record gets a line of its own wherever the @=@ ends
--- up, so a Haddock on one of those settles nothing about the constructor
--- around it and is left out of the question.
 visibleDocs :: ConDecl GhcPs -> [LHsDoc GhcPs]
 visibleDocs = \case
   ConDeclH98 {..} ->
@@ -187,17 +176,12 @@ isGadtCon = \case
   ConDeclGADT {} -> True
   ConDeclH98 {} -> False
 
-----------------------------------------------------------------------------
--- Constructors
-
 -- | One constructor.
 conDecl :: Ctx -> Bool -> ConDecl GhcPs -> Doc
 conDecl ctx _ ConDeclGADT {..} =
   foldMap (haddock ctx Pipe Closed) con_doc
     <> layoutFrom ctx declSpan (brokenIfDocumented ctx documented body)
   where
-    -- Every part of the signature shares one layout decision, so a Haddock
-    -- anywhere in it puts the whole of it on several lines.
     documented = (con_g_args, con_res_ty)
 
     c :| cs = con_names
@@ -339,9 +323,6 @@ leftContext ctx = \case
   L _ [] -> mempty
   ctxt -> context ctx ctxt <> joinedBy "=>"
 
-----------------------------------------------------------------------------
--- Deriving clauses
-
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
 derivingClause ctx HsDerivingClause {..} =
   brokenIfDocumented ctx deriv_clause_tys $
@@ -371,9 +352,6 @@ derivingClause ctx HsDerivingClause {..} =
               )
       where
         named kw = txt kw <> breakOrSpace <> indent what
-
-----------------------------------------------------------------------------
--- Type synonyms
 
 -- | @type T a = …@.
 synDecl ::

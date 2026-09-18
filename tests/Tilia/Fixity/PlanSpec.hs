@@ -69,19 +69,21 @@ spec = do
 tokens :: Spec
 tokens = describe "the token a plan is cached under" $ do
   it "differs between environments over the same plan" $
-    planToken "/one/bin/ghc-pkg" onePackage
-      `shouldNotBe` planToken "/another/bin/ghc-pkg" onePackage
+    tokenForEnvAndBuildPlan "/one/bin/ghc-pkg" onePackage
+      `shouldNotBe` tokenForEnvAndBuildPlan "/another/bin/ghc-pkg" onePackage
 
   it "differs between plans in the same environment" $
-    planToken here onePackage `shouldNotBe` planToken here noPackages
+    tokenForEnvAndBuildPlan here onePackage
+      `shouldNotBe` tokenForEnvAndBuildPlan here noPackages
 
   it "is the same twice over for the same plan and environment" $
-    planToken here onePackage `shouldBe` planToken here onePackage
+    tokenForEnvAndBuildPlan here onePackage
+      `shouldBe` tokenForEnvAndBuildPlan here onePackage
 
   it "asks the environment it is actually going to read in" $ do
-    asked <- tokenFor onePackage
+    asked <- tokenForBuildPlan onePackage
     environment <- compilerIdentity
-    asked `shouldBe` planToken environment onePackage
+    asked `shouldBe` tokenForEnvAndBuildPlan environment onePackage
   where
     here = "/somewhere/bin/ghc-pkg"
     noPackages = BuildPlan {bpCompiler = "ghc-9.10.3", bpPackages = []}
@@ -112,7 +114,7 @@ preparation = describe "preparing a project" $ do
             when (args == solving) (writePlan dir wantingATarball)
             pure (Right ())
       checkReadiness [] dir `shouldReturn` PlanMissing
-      prepareWith cabal forgetfulSolves [] dir PlanMissing `shouldReturn` Right ()
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Right ()
       readIORef steps
         `shouldReturn` [solving, fetching]
 
@@ -121,19 +123,19 @@ preparation = describe "preparing a project" $ do
       steps <- newIORef []
       readiness <- checkReadiness [] dir
       readiness `shouldBe` SourcesMissing ["tilia-phantom"]
-      prepareWith (obliging steps) forgetfulSolves [] dir readiness `shouldReturn` Right ()
+      prepareWith (obliging steps) undiscoveredFutility [] dir readiness `shouldReturn` Right ()
       readIORef steps `shouldReturn` [fetching]
 
   it "runs nothing at all when nothing is missing" $ do
     steps <- newIORef []
-    prepareWith (obliging steps) forgetfulSolves [] "." Ready `shouldReturn` Right ()
+    prepareWith (obliging steps) undiscoveredFutility [] "." Ready `shouldReturn` Right ()
     readIORef steps `shouldReturn` []
 
   it "does not go on to fetch when the solve fails" $
     withTempProject Nothing $ \dir -> do
       steps <- newIORef []
       let cabal args = record steps args >> pure (Left "cabal said no")
-      prepareWith cabal forgetfulSolves [] dir PlanMissing `shouldReturn` Left "cabal said no"
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Left "cabal said no"
       readIORef steps `shouldReturn` [solving, narrowSolve]
 
   it "asks about the test suites and the benchmarks, not the library alone" $
@@ -143,7 +145,7 @@ preparation = describe "preparing a project" $ do
             record steps args
             when (args == solving) (writePlan dir wantingATarball)
             pure (Right ())
-      _ <- prepareWith cabal forgetfulSolves [] dir PlanMissing
+      _ <- prepareWith cabal undiscoveredFutility [] dir PlanMissing
       asked <- readIORef steps
       asked `shouldSatisfy` all (\args -> wholeProject `Data.List.isSuffixOf` args)
 
@@ -157,7 +159,7 @@ preparation = describe "preparing a project" $ do
               else do
                 when (args == narrowSolve) (writePlan dir wantingATarball)
                 pure (Right ())
-      prepareWith cabal forgetfulSolves [] dir PlanMissing `shouldReturn` Right ()
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Right ()
       readIORef steps
         `shouldReturn` [solving, narrowSolve, fetching, narrowFetch]
 
@@ -188,7 +190,7 @@ preparation = describe "preparing a project" $ do
               record steps args
               when (args == solving) (writePlan dir twoComponents)
               pure (Right ())
-        prepareWith cabal forgetfulSolves [component "test:tests"] dir (PlanNarrow ["thing:test:tests"])
+        prepareWith cabal undiscoveredFutility [component "test:tests"] dir (PlanNarrow ["thing:test:tests"])
           `shouldReturn` Right ()
         readIORef steps `shouldReturn` [solving]
 
@@ -208,13 +210,13 @@ preparation = describe "preparing a project" $ do
               record steps args
               when (args == solving) (writePlan dir twoComponents)
               pure (Right ())
-            solves =
-              forgetfulSolves
+            futility =
+              undiscoveredFutility
                 { solveWasFutile = readIORef futile,
                   rememberFutileSolve = writeIORef futile True
                 }
             narrow = PlanNarrow ["thing:test:tests"]
-            once = prepareWith cabal solves [component "test:tests"] dir narrow
+            once = prepareWith cabal futility [component "test:tests"] dir narrow
         once `shouldReturn` Right ()
         readIORef futile `shouldReturn` True
         once `shouldReturn` Right ()
@@ -228,7 +230,7 @@ preparation = describe "preparing a project" $ do
               when (args == solving) (writePlan dir narrowAndWanting)
               pure (Right ())
             narrow = PlanNarrow ["thing:test:tests"]
-        prepareWith cabal forgetfulSolves [component "test:tests"] dir narrow
+        prepareWith cabal undiscoveredFutility [component "test:tests"] dir narrow
           `shouldReturn` Right ()
         readIORef steps
           `shouldReturn` [solving, fetching]
@@ -237,13 +239,13 @@ preparation = describe "preparing a project" $ do
       withTempProject (Just narrowAndWanting) $ \dir -> do
         steps <- newIORef []
         futile <- newIORef True
-        let solves =
-              forgetfulSolves
+        let futility =
+              undiscoveredFutility
                 { solveWasFutile = readIORef futile,
                   rememberFutileSolve = writeIORef futile True
                 }
             narrow = PlanNarrow ["thing:test:tests"]
-        prepareWith (obliging steps) solves [component "test:tests"] dir narrow
+        prepareWith (obliging steps) futility [component "test:tests"] dir narrow
           `shouldReturn` Right ()
         readIORef steps `shouldReturn` [fetching]
 
@@ -251,14 +253,14 @@ preparation = describe "preparing a project" $ do
       withTempProject (Just narrowAndWanting) $ \dir -> do
         steps <- newIORef []
         refused <- newIORef []
-        let solves =
-              forgetfulSolves
+        let futility =
+              undiscoveredFutility
                 { solveWasFutile = pure True,
                   fetchWasFutileFor = readIORef refused,
                   rememberFutileFetch = writeIORef refused
                 }
             narrow = PlanNarrow ["thing:test:tests"]
-            again = prepareWith (obliging steps) solves [component "test:tests"] dir narrow
+            again = prepareWith (obliging steps) futility [component "test:tests"] dir narrow
         again `shouldReturn` Right ()
         readIORef refused `shouldReturn` ["tilia-phantom"]
         again `shouldReturn` Right ()
@@ -272,12 +274,12 @@ preparation = describe "preparing a project" $ do
               record steps args
               when (args == solving) (writePlan dir threeComponents)
               pure (Right ())
-            solves =
-              forgetfulSolves
+            futility =
+              undiscoveredFutility
                 { solveWasFutile = readIORef futile,
                   rememberFutileSolve = writeIORef futile True
                 }
-        prepareWith cabal solves [component "test:tests"] dir (PlanNarrow ["thing:test:tests"])
+        prepareWith cabal futility [component "test:tests"] dir (PlanNarrow ["thing:test:tests"])
           `shouldReturn` Right ()
         readIORef futile `shouldReturn` False
         readIORef steps `shouldReturn` [solving]
@@ -464,9 +466,9 @@ withIndexIn root = do
 -- | Run something on where @plannedTarballs@ looked, against a package
 -- cache holding the entries given.
 withCache ::
-  -- | Repository directory, package, version — one per cached tarball
+  -- | Repository directory, package, version — one per cached tarball.
   [(FilePath, Text, Text)] ->
-  -- | The plan to read it against
+  -- | The plan to read it against.
   Text ->
   (FilePath -> Expectation) ->
   Expectation

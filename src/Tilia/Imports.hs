@@ -39,15 +39,15 @@ data PreludeImport
 -- | Sort a module's imports and fold together the ones that say the same
 -- thing.
 normalizeImports ::
-  -- | Whether @ImplicitPrelude@ is on
+  -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | Source lines the block must not be sorted across
+  -- | Source lines the block must not be sorted across.
   [Int] ->
-  -- | The module's comments
+  -- | The module's comments.
   [Comment] ->
-  -- | Original imports
+  -- | Original imports.
   [LImportDecl GhcPs] ->
-  -- | Normalized imports
+  -- | Normalized imports.
   [LImportDecl GhcPs]
 normalizeImports implicitPrelude barriers written imports =
   concatMap stretch (segmented (dividing imports barriers) tidied)
