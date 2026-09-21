@@ -3,7 +3,7 @@
 -- | Finding the project a file belongs to.
 module Tilia.Cabal.ProjectSpec (spec) where
 
-import System.Directory (createDirectoryIfMissing, withCurrentDirectory)
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
@@ -103,18 +103,12 @@ spec = do
 
   describe "no project" $
     it "gives up rather than guessing" $
-      withTree [("lonely/Thing.hs", "module Thing where")] $ \dir ->
-        -- A temporary directory has no project above it, so this walks to
-        -- the filesystem root and finds nothing.
-        withCurrentDirectory dir $ do
-          root <- findProjectRoot "lonely"
-          case root of
-            Nothing -> pure ()
-            Just found ->
-              -- Some machines have a stray marker in a parent of the
-              -- system temporary directory; only a genuine find inside the
-              -- tree would be a failure.
-              prPath found `shouldNotBe` (dir </> "lonely")
+      withTree [("lonely/Thing.hs", "module Thing where")] $ \dir -> do
+        root <- findProjectRoot (dir </> "lonely")
+        case root of
+          Nothing -> pure ()
+          Just found ->
+            prPath found `shouldNotBe` (dir </> "lonely")
 
 -- | Build a throwaway tree of files and run an action on its root.
 withTree :: [(FilePath, String)] -> (FilePath -> IO a) -> IO a
