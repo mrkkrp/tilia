@@ -25,6 +25,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as T
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Fields.Parser (readFields)
@@ -44,12 +45,14 @@ import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError)
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Utils.Path (getSymbolicPath)
-import System.Directory
-  ( doesDirectoryExist,
-    doesFileExist,
-    listDirectory,
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath
+  ( normalise,
+    splitDirectories,
+    takeDirectory,
+    takeExtension,
+    (</>),
   )
-import System.FilePath (normalise, takeDirectory, takeExtension, (</>))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
 import Tilia.Fixity.Plan (PlanComponent (..))
 import Tilia.Utils (attempted, quietly)
@@ -197,12 +200,27 @@ spellTarget = \case
   Qualified package kind name ->
     T.intercalate ":" (foldMap pure package <> [spellKind kind, name])
 
--- | Every Haskell file in a component, in a settled order.
-filesOfComponent :: Component -> IO [FilePath]
-filesOfComponent c =
-  sort . Set.toList . Set.fromList . fmap normalise . concat
-    <$> traverse (walk . (componentRoot c </>)) (componentDirs c)
+-- | Every Haskell file a set of components holds, each named once, less
+-- the ones the project's @.tiliaignore@ excludes.
+filesOfComponents :: ProjectRoot -> [Component] -> IO [FilePath]
+filesOfComponents root components = do
+  ignored <- ignoredPaths (prPath root)
+  sort . Set.toList . Set.fromList . concat
+    <$> traverse (filesOfComponent ignored) components
+
+-- | Every Haskell file in a component that is not excluded, in a settled
+-- order.
+filesOfComponent ::
+  -- | The excluded paths, as 'ignoredPaths' gives them.
+  [[FilePath]] ->
+  -- | The component whose source directories to walk.
+  Component ->
+  IO [FilePath]
+filesOfComponent ignored c =
+  sort . Set.toList . Set.fromList . concat
+    <$> traverse walk (filter (not . excluded) sourceDirs)
   where
+    sourceDirs = fmap (normalise . (componentRoot c </>)) (componentDirs c)
     walk directory =
       quietly [] $
         doesDirectoryExist directory >>= \case
@@ -213,18 +231,31 @@ filesOfComponent c =
     below directory entry
       | "." `isPrefixOf` entry = pure []
       | entry == "dist-newstyle" = pure []
+      | excluded path = pure []
       | otherwise = do
-          let path = directory </> entry
           isDirectory <- quietly False (doesDirectoryExist path)
           if isDirectory
             then walk path
             else pure [path | takeExtension path `elem` formattableFileExtensions]
+      where
+        path = directory </> entry
+    excluded path = any (`isPrefixOf` splitDirectories path) ignored
 
--- | Every Haskell file a set of components holds, each named once.
-filesOfComponents :: [Component] -> IO [FilePath]
-filesOfComponents components =
-  sort . Set.toList . Set.fromList . concat
-    <$> traverse filesOfComponent components
+-- | What a project's @.tiliaignore@ excludes, each path as its segments.
+--
+-- An entry is a literal file or directory path relative to the project
+-- root, and a directory stands for everything below it. Blank lines and
+-- lines beginning with @#@ are ignored.
+ignoredPaths :: FilePath -> IO [[FilePath]]
+ignoredPaths root = do
+  exists <- doesFileExist file
+  if exists
+    then fmap entryPath . filter meant . fmap T.strip . T.lines <$> T.readFile file
+    else pure []
+  where
+    file = root </> ".tiliaignore"
+    meant entry = not (T.null entry) && not ("#" `T.isPrefixOf` entry)
+    entryPath = splitDirectories . normalise . (root </>) . T.unpack
 
 -- | The extensions a Haskell source file can have.
 formattableFileExtensions :: [String]

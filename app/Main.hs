@@ -26,7 +26,7 @@ import System.IO
     stderr,
     stdout,
   )
-import Tilia.Cabal.Project (findProjectRoot)
+import Tilia.Cabal.Project (ProjectRoot, findProjectRoot)
 import Tilia.Cabal.Target
   ( Component,
     Target,
@@ -70,10 +70,10 @@ main = do
       (die usageExitCode palette)
       pure
       (maybe (parseTarget "all") parseTarget optTarget)
-  components <- componentsFor palette target
+  (root, components) <- componentsFor palette target
   files <-
     traverse makeRelativeToCurrentDirectory
-      =<< filesOfComponents components
+      =<< filesOfComponents root components
   session <-
     newSession
       "."
@@ -124,8 +124,9 @@ printReport report = do
   traverse_ (T.hPutStrLn stderr) (reportErr report)
   hFlush stderr
 
--- | Every component the target asks for.
-componentsFor :: Palette -> Target -> IO [Component]
+-- | Every component the target asks for, and the project they were found
+-- in, which is where the run's settings are read from as well.
+componentsFor :: Palette -> Target -> IO (ProjectRoot, [Component])
 componentsFor palette target =
   findProjectRoot "." >>= \case
     Nothing ->
@@ -135,7 +136,7 @@ componentsFor palette target =
         Left problem ->
           die usageExitCode palette (describeTargetProblem problem)
         Right components ->
-          pure components
+          pure (root, components)
 
 -- | What @sysexits.h@ has called a usage error since 4.3BSD, and well clear
 -- of the codes 'formatErrorExitCode' returns.

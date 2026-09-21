@@ -54,7 +54,8 @@ repository resolves to the repository. It is worth pointing out that a
 package in the tree that neither `packages` nor `optional-packages` names
 is not part of the project and will not be visited. Within a package, a
 component's `hs-source-dirs` say which files belong to it, and every `.hs`,
-`.hs-boot`, and `.hsig` under them gets formatted.
+`.hs-boot`, and `.hsig` under them gets formatted unless it is excluded,
+as described below.
 
 If there is no build plan yet, or it is older than the `.cabal` and
 `cabal.project` files, or it says nothing about a component you asked for,
@@ -84,6 +85,22 @@ Finally, here are some other flags that may be of interest:
 There is nothing you need to know about it or do to make it work. It will
 just happen, no matter where your operators come from: Hackage, Nix, private
 repos, or the modules of the project you are formatting.
+
+## Excluding files
+
+You can tell Tilia to skip certain files and/or directories. To do so, list
+their paths in a `.tiliaignore` file at the project root:
+
+```text
+# Fixtures compiled by a separate driver
+tests/shouldwork/
+tests/shouldfail/
+```
+
+Entries are literal file or directory paths relative to the project root,
+and a directory excludes everything below it. Blank lines, surrounding
+whitespace, and lines beginning with `#` are ignored. Wildcards and
+re-inclusion patterns are not supported.
 
 ## Formatting CPP
 
