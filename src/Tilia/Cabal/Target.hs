@@ -254,7 +254,7 @@ packagesInCabalProjectContents contents = case readFields contents of
   where
     packagesIn = concatMap $ \case
       Field (Name _ name) ls
-        | BS8.map toLower name == "packages" ->
+        | BS8.map toLower name `elem` ["packages", "optional-packages"] ->
             [T.unwords [T.decodeUtf8Lenient value | FieldLine _ value <- ls]]
         | otherwise -> []
       Section _ _ inner -> packagesIn inner

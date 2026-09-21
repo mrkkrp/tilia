@@ -234,6 +234,17 @@ spec = do
           Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
           Left problem -> describeTargetProblem problem `shouldSatisfy` T.isInfixOf "no packages"
 
+    it "includes optional packages that exist, ignoring absent ones"
+      $ withProject
+        [ ("cabal.project", "packages: main\noptional-packages: optional absent\n"),
+          ("main/main.cabal", package "main" "src"),
+          ("optional/optional.cabal", package "optional" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> sort (map componentPackage cs) `shouldBe` ["main", "optional"]
+
     it "says so when a .cabal file will not parse"
       $ withProject
         [ ("cabal.project", "packages: .\n"),
