@@ -13,7 +13,8 @@ module Tilia.Doc.Combinators
     breakOrNothing,
     hardBreak,
     blankLine,
-    Resume (..),
+    LineStart (..),
+    TrailingWhitespace (..),
     verbatimBreak,
     verbatim,
     emptyAnchor,
@@ -73,7 +74,8 @@ import Data.Text qualified as T
 import Tilia.Doc.Internal
   ( Doc (..),
     Layout (..),
-    Resume (..),
+    LineStart (..),
+    TrailingWhitespace (..),
     groupLayout,
   )
 import Tilia.Span (Span)
@@ -117,12 +119,15 @@ blankLine = hardBreak <> hardBreak
 --
 -- Only for text that is being reproduced rather than laid out: the lines of
 -- a block comment, of a multi-line string literal, of a quasi-quotation.
-verbatimBreak :: Resume -> Doc
+verbatimBreak :: LineStart -> TrailingWhitespace -> Doc
 verbatimBreak = DVerbatimBreak
 
 -- | Text reproduced exactly, line breaks and all.
 verbatim :: Text -> Doc
-verbatim = sepBy (verbatimBreak AtMargin) . fmap txt . T.splitOn "\n"
+verbatim =
+  sepBy (verbatimBreak AtMargin KeepWhitespace)
+    . fmap txt
+    . T.splitOn "\n"
 
 -- | An empty anchor so that comments can attach to it in situations when
 -- nothing more substantial is present but the position is such that it

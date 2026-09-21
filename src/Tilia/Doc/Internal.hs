@@ -6,7 +6,8 @@ module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
     Layout (..),
-    Resume (..),
+    LineStart (..),
+    TrailingWhitespace (..),
     groupLayout,
 
     -- * Rendering
@@ -52,7 +53,7 @@ data Doc
     DCloseLine
   | -- | A line break between two lines of text that is being reproduced
     -- rather than laid out.
-    DVerbatimBreak !Resume
+    DVerbatimBreak !LineStart !TrailingWhitespace
   | -- | Concatenation. See the 'Semigroup' instance.
     DCat !Doc !Doc
   | -- | Indent the enclosed document by the given number of steps, relative
@@ -110,11 +111,19 @@ data Layout
   deriving (Eq, Show)
 
 -- | Where the line after a 'DVerbatimBreak' begins.
-data Resume
+data LineStart
   = -- | At the indentation in force, as any other break would.
     AtIndent
   | -- | At column zero, whatever the indentation.
     AtMargin
+  deriving (Eq, Show)
+
+-- | What do to with the whitespace a finished line ends in.
+data TrailingWhitespace
+  = -- | Trim it.
+    TrimWhitespace
+  | -- | Keep it.
+    KeepWhitespace
   deriving (Eq, Show)
 
 -- | Decide how to lay a group out.
@@ -209,7 +218,7 @@ go env = \case
   DHoldBack t -> putHeldBack (envIndent env) t
   DCloseLine -> closeLine (envIndent env)
   DHardBreak -> breakLine (envIndent env)
-  DVerbatimBreak resume -> verbatimBreakLine resume
+  DVerbatimBreak lineStart trailing -> verbatimBreakLine lineStart trailing
   DCat a b -> go env b . go env a
   DNest n d -> go env {envIndent = envIndent env + n * envIndentStep env} d
   DAlign d -> \out ->
@@ -286,7 +295,10 @@ breakLine indent out
   | outClosed out = out {outClosed = False}
   | atStart out = out
   | not (hasContent out), repeatsBlank out || opensABlock indent out = discarded
-  | otherwise = discarded {outLines = overflow indent out <> outLines out}
+  | otherwise =
+      discarded
+        { outLines = overflow TrimWhitespace indent out <> outLines out
+        }
   where
     discarded =
       out {outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
@@ -308,16 +320,18 @@ closeLine indent out
 
 -- | Every line the break that has just happened produces.
 overflow ::
+  -- | What to do with whitespace the lines end in.
+  TrailingWhitespace ->
   -- | Where the line after these would begin, used only if there is no line
   -- to take the indentation from.
   Int ->
   Out ->
   [Text]
-overflow indent out = reverse (finished : fmap below spilled)
+overflow trailing indent out = reverse (finished : fmap below spilled)
   where
-    finished = currentLine out
+    finished = currentLine trailing out
     spilled = drop 1 (outHeldBack out)
-    below t = T.replicate column " " <> T.stripEnd t
+    below t = T.replicate column " " <> adjustTrailingWhitespace trailing t
     column
       | T.null finished = indent
       | otherwise = T.length (T.takeWhile (== ' ') finished)
@@ -329,13 +343,13 @@ opensABlock indent out = case outLines out of
   [] -> False
 
 -- | Finish the current line between two lines of reproduced text.
-verbatimBreakLine :: Resume -> Out -> Out
-verbatimBreakLine resume out =
+verbatimBreakLine :: LineStart -> TrailingWhitespace -> Out -> Out
+verbatimBreakLine lineStart trailing out =
   out
-    { outLines = overflow 0 out <> outLines out,
+    { outLines = overflow trailing 0 out <> outLines out,
       outCurrent = [],
       outColumn = 0,
-      outStarted = resume == AtMargin,
+      outStarted = lineStart == AtMargin,
       outHeldBack = [],
       outClosed = False
     }
@@ -355,15 +369,28 @@ hasContent :: Out -> Bool
 hasContent out = outStarted out || not (null (outHeldBack out))
 
 -- | The current line: what was written to it, then whatever was held back
--- for its end, with one space between them and no trailing whitespace.
-currentLine :: Out -> Text
-currentLine out
+-- for its end, with one space between them.
+currentLine :: TrailingWhitespace -> Out -> Text
+currentLine trailingWhitespace out
   | T.null written = heldBack
   | T.null heldBack = written
   | otherwise = written <> " " <> heldBack
   where
-    written = T.stripEnd (T.concat (reverse (outCurrent out)))
-    heldBack = maybe "" T.stripEnd (listToMaybe (outHeldBack out))
+    written =
+      adjustTrailingWhitespace
+        trailingWhitespace
+        (T.concat (reverse (outCurrent out)))
+    heldBack =
+      maybe
+        ""
+        (adjustTrailingWhitespace trailingWhitespace)
+        (listToMaybe (outHeldBack out))
+
+-- | Handle the given line according to the 'TrailingWhitespace' style.
+adjustTrailingWhitespace :: TrailingWhitespace -> Text -> Text
+adjustTrailingWhitespace = \case
+  TrimWhitespace -> T.stripEnd
+  KeepWhitespace -> id
 
 -- | Assemble the final text: one trailing newline, no blank lines at the
 -- end, no trailing whitespace anywhere.

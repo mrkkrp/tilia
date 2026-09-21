@@ -145,7 +145,7 @@ takeStackHeader headerEnd = \case
       inHeader headerEnd (commentSpan c)
         && T.isPrefixOf "stack" (T.stripStart (T.drop 2 (NE.head (commentBody c))))
     reproduce c =
-      sepBy (verbatimBreak AtMargin) (fmap txt (NE.toList (commentBody c)))
+      sepBy (verbatimBreak AtMargin TrimWhitespace) (fmap txt (NE.toList (commentBody c)))
 
 -- | The pragmas of a header, one per line, sorted.
 pragmaBlock :: [HeaderPragma] -> Doc
@@ -302,7 +302,7 @@ ieItem ctx here withComma = \case
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
-    Just written -> sepBy (verbatimBreak AtIndent) (fmap txt (NE.toList written))
+    Just written -> sepBy (verbatimBreak AtIndent TrimWhitespace) (fmap txt (NE.toList written))
     Nothing -> txt (docSectionName n)
   where
     comma' = includeWhen withComma comma

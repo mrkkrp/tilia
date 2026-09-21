@@ -8,6 +8,7 @@
   than matching the order or number of distinct source strings.
 * Preserve error-only CPP alternatives without parsing them as Haskell.
 * Exclude the files and directories named by a project's `.tiliaignore`.
+* Keep the whitespace a line of a multi-line string literal ends in.
 
 ## Tilia 0.0.1.0
 

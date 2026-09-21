@@ -161,7 +161,10 @@ commentDoc = located . commentSpan
 -- | The text of a comment, laid out as it was written.
 commentText :: Comment -> Doc
 commentText c =
-  align $ sepBy (verbatimBreak AtIndent) (fmap txt (NE.toList (commentBody c)))
+  align $
+    sepBy
+      (verbatimBreak AtIndent TrimWhitespace)
+      (fmap txt (NE.toList (commentBody c)))
 
 -- | Put this text at the end of the line this position falls on.
 holdBack :: Text -> Doc
