@@ -20,6 +20,7 @@ module Tilia.Cpp.Directives
     untouched,
     leaves,
     branchLeaves,
+    correspondingBranches,
     linearLeaves,
     countLeaves,
     answeredLeaves,
@@ -46,6 +47,7 @@ module Tilia.Cpp.Directives
   )
 where
 
+import Data.Char (isSpace)
 import Data.List (unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -276,6 +278,73 @@ nesting level ds = traverse one (groupsAtLevel level ds)
       gs <- groupSpec group
       Nest gs <$> traverse (\r -> nesting (level + 1) (inside r ds)) (gsBranches gs)
     inside (from, to) = filter (\d -> from <= dLine d && dLine d <= to)
+
+-- | Read both spellings under the same CPP choices.
+--
+-- Sorting or deduplicating the resulting source text separately loses the
+-- association with the guards: formatting can change that order or make two
+-- formerly different strings identical. Cover every branch of either
+-- spelling, including its ancestors. 'Nothing' denotes a configuration
+-- deliberately rejected by @#error@.
+correspondingBranches ::
+  -- | Before.
+  Text ->
+  -- | After.
+  Text ->
+  Either CppError [(Maybe Text, Maybe Text)]
+correspondingBranches before after = do
+  left <- forest before
+  right <- forest after
+  let defaults = Map.fromList [(gsGuards gs, 0) | (_, gs) <- reachable Map.empty (left <> right)]
+      choices = Map.keys (Map.fromList [(Map.union a defaults, ()) | a <- assignments left <> assignments right])
+  traverse (\a -> (,) <$> reading before a <*> reading after a) choices
+  where
+    forest source = do
+      ds <- maybe (Left (UnhandledDirective (unhandledIn source))) Right (scanDirectives source)
+      maybe (Left UnsplittableConditional) Right (nesting 0 ds)
+    reachable :: Answers -> [Nest] -> [(Answers, GroupSpec)]
+    reachable asked ns =
+      concat
+        [ (asked, gs)
+            : concat
+              [ reachable (Map.insert (gsGuards gs) i asked) nested
+              | (i, nested) <- zip [0 ..] branches
+              ]
+        | Nest gs branches <- ns
+        ]
+    assignments nodes =
+      Map.empty
+        : [ Map.insert (gsGuards gs) i asked
+          | (asked, gs) <- reachable Map.empty nodes,
+            i <- [0 .. gsCount gs - 1]
+          ]
+    reading source answers =
+      let selected =
+            blanking
+              [ r
+              | ds <- maybeToList (scanDirectives source),
+                grp <- allGroups ds,
+                Just gs <- [groupSpec grp],
+                r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) answers)
+              ]
+              source
+       in if null (unconditionalErrors selected)
+            then Just <$> resolved selected
+            else Right Nothing
+
+-- | An unconditional @#error@ means this configuration has no Haskell
+-- program to parse. Conditional errors are only considered after choosing a
+-- branch.
+unconditionalErrors :: Text -> [Opaque]
+unconditionalErrors source =
+  [ d
+  | d <- opaqueDirectives source,
+    T.takeWhile (not . isSpace) (opText d) == "error",
+    not (any (encloses (opLine d)) groups)
+  ]
+  where
+    groups = [gsWhole g | ds <- maybeToList (scanDirectives source), grp <- allGroups ds, Just g <- [groupSpec grp]]
+    encloses n (from, to) = from < n && n < to
 
 -- | The configurations reached by varying one conditional at a time.
 linearLeaves :: Text -> Either CppError [Text]

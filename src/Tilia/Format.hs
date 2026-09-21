@@ -38,7 +38,7 @@ import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cpp
   ( CppError (..),
     blankCpp,
-    branchLeaves,
+    correspondingBranches,
     describeCppError,
     formatWithCpp,
     usesCpp,
@@ -392,22 +392,13 @@ rewritten config cpp path (before, printedFrom') after
           (comments (pmSource b'))
           (comments (pmSource a'))
     whatParsed = either (const Nothing) Just
-    underCpp = case (branchLeaves before, branchLeaves after) of
-      (Left _, _) -> Just "the input could not be split into configurations"
-      (_, Left _) -> Just "the output could not be split into configurations"
-      (Right went, Right came)
-        | length went /= length came ->
-            Just
-              ( "the output has "
-                  <> tshow (length came)
-                  <> " configurations where the input had "
-                  <> tshow (length went)
-              )
-        | otherwise ->
-            firstJust
-              [ ("in one configuration, " <>) <$> difference b a
-              | (b, a) <- zip went came
-              ]
+    underCpp = case correspondingBranches before after of
+      Left _ -> Just "the input or output could not be split into configurations"
+      Right pairs -> firstJust [compareBranch b a | (b, a) <- pairs]
+    compareBranch Nothing Nothing = Nothing
+    compareBranch Nothing (Just _) = Just "a configuration no longer aborts preprocessing"
+    compareBranch (Just _) Nothing = Just "a configuration now aborts preprocessing"
+    compareBranch (Just b) (Just a) = ("in one configuration, " <>) <$> difference b a
     difference b a = case (parseModule config path b, parseModule config path a) of
       (Left _, _) -> Nothing
       (_, Left e) ->

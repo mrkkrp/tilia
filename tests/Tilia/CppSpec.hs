@@ -20,6 +20,19 @@ formatCpp = said . formatWithCpp defaultParserConfig defaultRenderConfig "exampl
 
 spec :: Spec
 spec = do
+  describe "matching configurations before and after formatting" $ do
+    it "does not mistake different whitespace for another configuration" $ do
+      let input = "module M where\n#if FLAG\nf=1\n#else\nf = 1\n#endif\n"
+      (said (correspondingBranches input "module M where\nf = 1\n") >>= mapM_ sameBranch)
+        `shouldBe` Right ()
+    it "keeps branch identity when sorting the source text would swap it" $ do
+      let input = "module M where\n#if FLAG\nf=1\n#else\nf = 2\n#endif\n"
+          output = "module M where\n#if FLAG\nf = 1\n#else\nf = 2\n#endif\n"
+      (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldBe` Right ()
+    it "detects moving an error to a different branch" $ do
+      let input = "module M where\n#if FLAG\n#error no\n#else\nf = 1\n#endif\n"
+          output = "module M where\n#if FLAG\nf = 1\n#else\n#error no\n#endif\n"
+      (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldSatisfy` isLeft
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       cfgGuards <$> configurations atDeclarations
@@ -763,11 +776,12 @@ isRight = either (const False) (const True)
 roundTrip :: Text -> Either Text ()
 roundTrip source = do
   formatted <- formatCpp source
-  went <- said (leaves source)
-  came <- said (leaves formatted)
-  if length went == length came
-    then mapM_ (uncurry sameProgram) (zip went came)
-    else Left ("the number of configurations changed: " <> T.pack (show (length went, length came)))
+  pairs <- said (correspondingBranches source formatted)
+  mapM_ sameBranch pairs
+
+sameBranch :: (Maybe Text, Maybe Text) -> Either Text ()
+sameBranch (Nothing, Nothing) = Right ()
+sameBranch (Just input, Just output) = sameProgram input output
   where
     sameProgram before' after' = do
       a <- moduleOf before'
@@ -778,6 +792,7 @@ roundTrip source = do
     moduleOf text = case parseModule defaultParserConfig "<cpp>" text of
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
+sameBranch _ = Left "preprocessing changed between succeeding and failing"
 
 -- | Whether formatting what was formatted changes anything.
 --

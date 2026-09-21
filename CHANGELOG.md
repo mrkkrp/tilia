@@ -4,6 +4,8 @@
 * Discover existing `optional-packages` in Cabal projects.
 * Choose component settings using declared modules and entry points.
 * Inherit component settings for conditional source directories.
+* Compare formatted CPP configurations under matching branch choices rather
+  than matching the order or number of distinct source strings.
 
 ## Tilia 0.0.1.0
 

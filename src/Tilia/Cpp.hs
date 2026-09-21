@@ -21,6 +21,7 @@ module Tilia.Cpp
     configurations,
     leaves,
     branchLeaves,
+    correspondingBranches,
     linearLeaves,
     countLeaves,
     answeredLeaves,
