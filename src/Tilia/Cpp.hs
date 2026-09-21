@@ -427,7 +427,7 @@ replacing written answers opaque doc = foldl step (Right doc) opaque
       _ -> []
 
     reproduced = \case
-      DVerbatimBreak _ -> True
+      DVerbatimBreak _ _ -> True
       DNest _ x -> reproduced x
       DAlign x -> reproduced x
       DGroup _ x -> reproduced x
@@ -814,7 +814,7 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
       (DText s, DText t) -> s == t
       (DCppDirective s u, DCppDirective t v) -> s == t && u == v
       (DHoldBack s, DHoldBack t) -> s == t
-      (DVerbatimBreak r, DVerbatimBreak q) -> r == q
+      (DVerbatimBreak r e, DVerbatimBreak q f) -> r == q && e == f
       (DSpace, DSpace) -> True
       (DBreak, DBreak) -> True
       (DSoftBreak, DSoftBreak) -> True
@@ -1160,7 +1160,7 @@ anchoring = \case
   DSoftBreak -> False
   DHardBreak -> False
   DCloseLine -> False
-  DVerbatimBreak _ -> False
+  DVerbatimBreak _ _ -> False
   _ -> True
 
 -- | A spine cut at the elements it shares with the others: one stretch

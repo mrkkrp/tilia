@@ -74,8 +74,11 @@ docBody :: Ctx -> DocStyle -> LHsDoc GhcPs -> (Doc, Bool)
 docBody ctx style doc@(L l str) =
   case reusableText ctx style doc of
     Just written ->
-      ( maybe id located (spanOfSrcSpan l) $
-          align (sepBy (verbatimBreak AtIndent) (fmap txt (NE.toList written))),
+      ( maybe id located (spanOfSrcSpan l)
+          $ align
+          $ sepBy
+            (verbatimBreak AtIndent TrimWhitespace)
+            (fmap txt (NE.toList written)),
         selfClosing written
       )
     Nothing
@@ -99,7 +102,7 @@ docBody ctx style doc@(L l str) =
       align $
         txt (blockOpener style)
           <> space
-          <> sepBy (verbatimBreak AtIndent) (fmap txt written')
+          <> sepBy (verbatimBreak AtIndent TrimWhitespace) (fmap txt written')
           <> space
           <> txt "-}"
     asBlock = writtenAsBlock ctx doc

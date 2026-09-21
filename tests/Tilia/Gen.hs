@@ -145,7 +145,7 @@ shrinkDoc = \case
   DBreak -> [DEmpty, DSpace]
   DSoftBreak -> [DEmpty]
   DHardBreak -> [DEmpty]
-  DVerbatimBreak _ -> [DEmpty]
+  DVerbatimBreak _ _ -> [DEmpty]
   DCloseLine -> [DEmpty]
   DHoldBack t -> DHoldBack <$> filter (not . T.null) (T.inits t)
   DCat a b -> [DEmpty, a, b] <> [DCat a' b | a' <- shrinkDoc a] <> [DCat a b' | b' <- shrinkDoc b]
@@ -171,7 +171,7 @@ docTexts = \case
   DBreak -> []
   DSoftBreak -> []
   DHardBreak -> []
-  DVerbatimBreak _ -> []
+  DVerbatimBreak _ _ -> []
   DCloseLine -> []
   DHoldBack t -> [t]
   DCat a b -> docTexts a <> docTexts b
