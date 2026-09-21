@@ -52,6 +52,12 @@ spec = do
         (has ImportQualifiedPost <$> asked (root </> "M.hs"))
           `shouldReturn` False
 
+    it "prefers the component that names a module in a shared source directory" $
+      inPackage sharedTests ["tests"] $ \root -> do
+        unit <- asked (root </> "tests" </> "Unit.hs")
+        driver <- asked (root </> "tests" </> "Doctests.hs")
+        (has BangPatterns unit, has BangPatterns driver) `shouldBe` (True, False)
+
   describe "the extensions a component puts in force" $ do
     it "are the language edition's" $
       inPackage twoComponents ["src"] $ \root -> do
@@ -184,6 +190,26 @@ refusesAnEdition =
 
 ----------------------------------------------------------------------------
 -- Running one
+
+sharedTests :: Text
+sharedTests =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "test-suite doctests",
+      "  type: exitcode-stdio-1.0",
+      "  main-is: Doctests.hs",
+      "  hs-source-dirs: tests",
+      "  default-language: Haskell2010",
+      "test-suite unittests",
+      "  type: exitcode-stdio-1.0",
+      "  main-is: Unittests.hs",
+      "  other-modules: Unit",
+      "  hs-source-dirs: tests",
+      "  default-language: Haskell2010",
+      "  default-extensions: BangPatterns"
+    ]
 
 -- | Write a @.cabal@ file and the given directories, and hand back the root.
 inPackage :: Text -> [FilePath] -> (FilePath -> IO a) -> IO a

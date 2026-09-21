@@ -31,6 +31,7 @@ import GHC.Hs.Extension (GhcPs)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeDirectory, (</>))
 import Test.Hspec
+import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
 import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.Interface (Interface (..), readInterface)
@@ -328,7 +329,7 @@ ownModules = do
       source <- T.decodeUtf8Lenient <$> BS.readFile path
       pure
         ( path,
-          case parseModule defaultParserConfig path source of
+          case parseModule defaultParserConfig path (blankCpp source) of
             Left _ -> Nothing
             Right pm -> Just (pmModule pm)
         )

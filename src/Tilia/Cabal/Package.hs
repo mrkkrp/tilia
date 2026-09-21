@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -21,14 +22,17 @@ import Data.Ord (Down (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Distribution.Fields.ParseResult (runParseResult)
+import Distribution.ModuleName qualified as ModuleName
 import Distribution.PackageDescription
   ( Benchmark (..),
+    BenchmarkInterface (..),
     BuildInfo (..),
     CondTree (..),
     Executable (..),
     GenericPackageDescription (..),
     Library (..),
     TestSuite (..),
+    TestSuiteInterface (..),
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError)
@@ -37,7 +41,14 @@ import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
 import System.Directory (canonicalizePath, doesDirectoryExist, listDirectory)
-import System.FilePath (equalFilePath, splitDirectories, takeDirectory, (</>))
+import System.FilePath
+  ( equalFilePath,
+    joinPath,
+    splitDirectories,
+    takeDirectory,
+    (<.>),
+    (</>),
+  )
 import Tilia.Pragma (lookupExtension)
 import Tilia.Utils (attempted, quietly)
 
@@ -96,6 +107,10 @@ startingDirectory path = do
 data Component = Component
   { -- | Its source directories, absolute and canonical.
     componentDirs :: [FilePath],
+    -- | The files this component names, each relative to whichever of its
+    -- source directories holds it. Directory overlap alone does not make a
+    -- unit test a module of the doctest driver beside it.
+    componentFiles :: [FilePath],
     -- | The extensions it puts in force.
     componentExtensions :: [Extension]
   }
@@ -103,11 +118,14 @@ data Component = Component
 -- | Which component holds the file, of those whose directories cover it.
 claiming :: FilePath -> [Component] -> Maybe Component
 claiming file components =
-  case sortOn (Down . fst) [(nearness c, c) | c <- components, covered c] of
+  case sortOn (Down . fst) [((named c, nearness c), c) | c <- components, covered c] of
     ((_, c) : _) -> Just c
     [] -> Nothing
   where
     covered = not . null . covering
+    named c = any (declares c) (covering c)
+    declares c d = any (equalFilePath (under d)) (componentFiles c)
+    under d = joinPath (drop (length (splitDirectories d)) (splitDirectories file))
     nearness = maximum . fmap length . covering
     covering c = [d | d <- componentDirs c, d `covers` file]
 
@@ -180,12 +198,13 @@ componentsOf ref cabalFile = do
     said = T.pack . showPError cabalFile
 
 -- | One component, with its directories resolved and its extensions settled.
-component :: FilePath -> BuildInfo -> IO Component
-component root bi = do
+component :: FilePath -> (BuildInfo, [FilePath]) -> IO Component
+component root (bi, files) = do
   dirs <- traverse (quietlyCanonical . (root </>)) (sourceDirsOf bi)
   pure
     Component
       { componentDirs = concat dirs,
+        componentFiles = files,
         componentExtensions = extensionsInForce bi
       }
   where
@@ -199,17 +218,35 @@ component root bi = do
           False -> pure []
 
 -- | Every component's build settings, in the order they are declared.
-buildInfos :: GenericPackageDescription -> [BuildInfo]
+buildInfos :: GenericPackageDescription -> [(BuildInfo, [FilePath])]
 buildInfos described =
   concat
-    [ foldMap (pure . libBuildInfo . condTreeData) (condLibrary described),
-      named (libBuildInfo . condTreeData) (condSubLibraries described),
-      named (buildInfo . condTreeData) (condExecutables described),
-      named (testBuildInfo . condTreeData) (condTestSuites described),
-      named (benchmarkBuildInfo . condTreeData) (condBenchmarks described)
+    [ foldMap (pure . library . condTreeData) (condLibrary described),
+      named library (condSubLibraries described),
+      named executable (condExecutables described),
+      named suite (condTestSuites described),
+      named benchmark (condBenchmarks described)
     ]
   where
-    named f = fmap (f . snd)
+    named f = fmap (f . condTreeData . snd)
+    modules = concatMap (\m -> [ModuleName.toFilePath m <.> ext | ext <- ["hs", "hs-boot", "hsig"]])
+    with bi files = (bi, files <> modules (otherModules bi))
+    library l = with (libBuildInfo l) (modules (exposedModules l))
+    executable e = with (buildInfo e) [entryPoint (modulePath e)]
+    suite s = with (testBuildInfo s) $ case testInterface s of
+      TestSuiteExeV10 _ path -> [entryPoint path]
+      TestSuiteLibV09 _ modName -> modules [modName]
+      _ -> []
+    benchmark b = with (benchmarkBuildInfo b) $ case benchmarkInterface b of
+      BenchmarkExeV10 _ path -> [entryPoint path]
+      _ -> []
+    -- Cabal 3.14 made a component's entry point a symbolic path; before
+    -- that it was already the plain path we want.
+#if MIN_VERSION_Cabal_syntax(3, 14, 0)
+    entryPoint = getSymbolicPath
+#else
+    entryPoint = id
+#endif
 
 -- | The extensions a component puts in force, before any module's pragmas.
 extensionsInForce :: BuildInfo -> [Extension]
