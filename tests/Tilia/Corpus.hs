@@ -152,7 +152,7 @@ ormoluExamples =
 ghcTestSuite :: Corpus
 ghcTestSuite =
   Corpus
-    { corpusName = "ghc-9.10.1-testsuite",
+    { corpusName = "ghc-9.14.1-testsuite",
       corpusSource =
         Fetched
           ( https "codeload.github.com"
@@ -161,7 +161,7 @@ ghcTestSuite =
               /: "tar.gz"
               /: "refs"
               /: "tags"
-              /: "ghc-9.10.1-release",
+              /: "ghc-9.14.1-release",
             mempty
           )
           ("testsuite" </> "tests"),
@@ -496,6 +496,9 @@ ghcUnreadable =
     "parser" </> "should_compile" </> "read058.hs",
     "parser" </> "should_fail" </> "ExportCommaComma.hs",
     "parser" </> "should_fail" </> "InfixAppPatErr.hs",
+    "parser" </> "should_fail" </> "MultilineStringsInnerTab.hs",
+    "parser" </> "should_fail" </> "MultilineStringsSmartQuotes.hs",
+    "parser" </> "should_fail" </> "MultilineStringsUnterminated.hs",
     "parser" </> "should_fail" </> "NoBlockArgumentsFail.hs",
     "parser" </> "should_fail" </> "NoBlockArgumentsFail2.hs",
     "parser" </> "should_fail" </> "NoBlockArgumentsFail3.hs",
@@ -507,6 +510,8 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "OpaqueParseFail1.hs",
     "parser" </> "should_fail" </> "OpaqueParseFail2.hs",
     "parser" </> "should_fail" </> "OpaqueParseFail3.hs",
+    "parser" </> "should_fail" </> "Or1.hs",
+    "parser" </> "should_fail" </> "OrPatInExprErr.hs",
     "parser" </> "should_fail" </> "ParserNoLambdaCase.hs",
     "parser" </> "should_fail" </> "ParserNoMultiWayIf.hs",
     "parser" </> "should_fail" </> "ParserNoTH1.hs",
@@ -559,6 +564,10 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "T21843e.hs",
     "parser" </> "should_fail" </> "T21843f.hs",
     "parser" </> "should_fail" </> "T22070.hs",
+    "parser" </> "should_fail" </> "T25258a.hs",
+    "parser" </> "should_fail" </> "T25258b.hs",
+    "parser" </> "should_fail" </> "T25258c.hs",
+    "parser" </> "should_fail" </> "T25530.hs",
     "parser" </> "should_fail" </> "T3095.hs",
     "parser" </> "should_fail" </> "T3153.hs",
     "parser" </> "should_fail" </> "T3751.hs",
@@ -583,6 +592,8 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "cmdFail007.hs",
     "parser" </> "should_fail" </> "cmdFail008.hs",
     "parser" </> "should_fail" </> "cmdFail009.hs",
+    "parser" </> "should_fail" </> "cmdFail010.hs",
+    "parser" </> "should_fail" </> "cmdFail011.hs",
     "parser" </> "should_fail" </> "patFail001.hs",
     "parser" </> "should_fail" </> "patFail002.hs",
     "parser" </> "should_fail" </> "patFail003.hs",
@@ -714,8 +725,11 @@ ghcUnreadable =
     "simplCore" </> "T9646" </> "Type.hs",
     "simplCore" </> "should_compile" </> "T13658.hs",
     "simplCore" </> "should_compile" </> "T21694.hs",
+    "simplCore" </> "should_compile" </> "T5821.hs",
     "simplCore" </> "should_compile" </> "T8832.hs",
+    "simplCore" </> "should_fail" </> "T25117b.hs",
     "simplCore" </> "should_run" </> "T21575.hs",
+    "splice-imports" </> "SI27.hs",
     "stage1" </> "T2632.hs",
     "th" </> "T10279.hs",
     "th" </> "T10638.hs",
@@ -790,7 +804,14 @@ ghcUnreadable =
     "typecheck" </> "should_run" </> "T4809.hs",
     "unboxedsums" </> "UnboxedSumsTH_Fail.hs",
     "unboxedsums" </> "unboxedsums4.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_1.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_2.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_3.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_4.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_5.hs",
+    "vdq-rta" </> "should_fail" </> "T24159_pat_parse_error_6.hs",
     "warnings" </> "should_fail" </> "CaretDiagnostics2.hs",
+    "warnings" </> "should_fail" </> "SpecEMultipleTys.hs",
     "wcompat-warnings" </> "WCompatWarningsOff.hs",
     "wcompat-warnings" </> "WCompatWarningsOn.hs",
     "wcompat-warnings" </> "WCompatWarningsOnOff.hs"
