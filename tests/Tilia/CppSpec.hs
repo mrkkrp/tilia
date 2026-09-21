@@ -33,6 +33,14 @@ spec = do
       let input = "module M where\n#if FLAG\n#error no\n#else\nf = 1\n#endif\n"
           output = "module M where\n#if FLAG\nf = 1\n#else\n#error no\n#endif\n"
       (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldSatisfy` isLeft
+  describe "branches which deliberately abort preprocessing" $ do
+    it "formats the valid branches and preserves the error directive" $
+      case formatCpp errorAlternative of
+        Left why -> expectationFailure (T.unpack why)
+        Right formatted -> formatted `shouldSatisfy` T.isInfixOf "#error Unsupported word size"
+    it "checks only valid configurations and is idempotent" $ do
+      roundTrip errorAlternative `shouldBe` Right ()
+      settles errorAlternative `shouldBe` Right ()
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       cfgGuards <$> configurations atDeclarations
@@ -329,6 +337,23 @@ spec = do
 
 ----------------------------------------------------------------------------
 -- The modules the question is asked of
+
+errorAlternative :: Text
+errorAlternative =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module M where",
+      "value :: Int",
+      "value = if True then",
+      "#if WORD_SIZE_IN_BITS == 64",
+      "  64",
+      "#elif WORD_SIZE_IN_BITS == 32",
+      "  32",
+      "#else",
+      "#error Unsupported word size",
+      "#endif",
+      "  else 0"
+    ]
 
 -- | Everything that is meant to come out the other side, for the properties
 -- that should hold of all of it.

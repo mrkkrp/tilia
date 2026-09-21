@@ -46,7 +46,11 @@ spec = modifyMaxSuccess (const 5000) $
               (Right went, Right came) ->
                 let had = Set.fromList (fmap snd went)
                  in conjoin $
-                      counterexample "nothing was left to read" (not (null came))
+                      -- Selecting a branch with #error may intentionally
+                      -- leave no compilable configuration.
+                      counterexample
+                        "nothing was left to read"
+                        (not (null came) || "#error" `T.isInfixOf` source)
                         : [ counterexample
                               (T.unpack ("not a configuration the module had:\n" <> t))
                               (Set.member t had)

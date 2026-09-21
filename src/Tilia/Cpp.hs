@@ -279,15 +279,60 @@ together ::
   Configurations ->
   Either CppError (Doc, Int)
 together parser render path reached budget c = do
-  (docs, budget') <- eachBranch budget (zip [0 ..] (cfgTexts c))
+  (formatted, budget') <- eachBranch budget (zip [0 ..] (cfgTexts c))
+  docs <- traverse (complete formatted) (zip [0 ..] (cfgTexts c))
   pure (merge (freeOf reached) (cfgGuards c) (cfgWholes c) docs, budget')
   where
     inside = reached
     eachBranch b [] = Right ([], b)
+    eachBranch b ((_, t) : ts) | not (null (unconditionalErrors t)) = eachBranch b ts
     eachBranch b ((i, t) : ts) = do
       (d, b') <- formatAllConfigs parser render path (answering c i inside) b t
       (ds, b'') <- eachBranch b' ts
-      pure (d : ds, b'')
+      pure ((i, d) : ds, b'')
+    complete formatted (i, t) = case lookup i formatted of
+      Just d -> Right d
+      Nothing -> case listToMaybe formatted >>= errorBranch (cfgWholes c) t . snd of
+        Just d -> Right d
+        Nothing -> Left UnsplittableConditional
+
+-- | Preserve an error-only alternative without asking the Haskell parser to
+-- parse its missing expression or declaration. A successful sibling supplies
+-- the surrounding syntax; only nodes wholly inside the conditional are
+-- replaced. More complicated aborting alternatives are left unsupported.
+errorBranch :: Varied -> Text -> Doc -> Maybe Doc
+errorBranch (Varied ranges) source reference = foldl step (Just reference) ranges
+  where
+    sourceLines' = zip [1 ..] (T.lines source)
+    errors = unconditionalErrors source
+    step acc (from, to) = do
+      doc <- acc
+      let inside n = from <= n && n <= to
+          here = filter (inside . opLine) errors
+          errorLine n = any (\d -> opLine d <= n && n <= opLastLine d) here
+          onlyErrors =
+            all
+              (\(n, l) -> not (inside n) || errorLine n || T.null (T.strip l))
+              sourceLines'
+          body = mconcat [DCppDirective (opSpan d) (opText d) | d <- here]
+          contained s = inside (spanStartLine s) && inside (spanEndLine s)
+          walk seen d = case d of
+            DLocated s _ | contained s -> (True, if seen then mempty else body)
+            DCppDirective s _ | contained s -> (True, if seen then mempty else body)
+            DLocated s x -> fmap (DLocated s) (walk seen x)
+            DFence s x -> fmap (DFence s) (walk seen x)
+            DNest k x -> fmap (DNest k) (walk seen x)
+            DAlign x -> fmap DAlign (walk seen x)
+            DGroup l x -> fmap (DGroup l) (walk seen x)
+            DVariant a b ->
+              let (sa, a') = walk seen a; (sb, b') = walk seen b
+               in (sa || sb, DVariant a' b')
+            DCat a b ->
+              let (sa, a') = walk seen a; (sb, b') = walk sa b
+               in (sb, a' <> b')
+            _ -> (seen, d)
+          (placed, result) = walk False doc
+      if not (null here) && onlyErrors && placed then Just result else Nothing
 
 -- | Format one configuration with the ordinary printer.
 formatSingleConfig ::
