@@ -212,6 +212,7 @@ test-suite tests
     Tilia.RenderSpec
     Tilia.RunSpec
     Tilia.TestConfig
+    Tilia.WithProjectPlan
 
   default-language: GHC2021
   build-depends:

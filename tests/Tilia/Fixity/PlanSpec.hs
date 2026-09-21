@@ -44,6 +44,7 @@ import Tilia.Fixity.PackageDb (compilerIdentity)
 import Tilia.Fixity.Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
+import Tilia.WithProjectPlan (withProjectPlan)
 
 spec :: Spec
 spec = do
@@ -55,10 +56,7 @@ spec = do
   gitDependencies
   repositories
   packageCache
-  plan <- runIO (readBuildPlan (planPathFor "."))
-  case plan of
-    Left _ -> unavailable "no build plan; run cabal build first"
-    Right p -> withPlan p
+  withProjectPlan withPlan
 
 -- | What a cached failure is filed under.
 --
@@ -1512,8 +1510,3 @@ withEnvironment vars act = bracket set restore (const act)
 -- with nothing below it.
 unreadOnly :: Text -> NonEmpty ModuleChain
 unreadOnly m = ModuleChain (m :| []) :| []
-
--- | Say why nothing could be tested, once, instead of failing repeatedly.
-unavailable :: String -> Spec
-unavailable reason =
-  it "needs a built project" $ pendingWith reason

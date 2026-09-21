@@ -21,7 +21,6 @@ import Data.Choice (pattern Is)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (listToMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -29,7 +28,7 @@ import Data.Text.Encoding qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath ((</>))
 import Test.Hspec
 import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
@@ -38,15 +37,10 @@ import Tilia.Fixity.Interface (Interface (..), readInterface)
 import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 import Tilia.Parser
+import Tilia.WithProjectPlan (compilerShipped, withProjectPlan)
 
 spec :: Spec
-spec = do
-  plan <- runIO (readBuildPlan (planPathFor "."))
-  case plan of
-    Left _ ->
-      it "needs a built project" $
-        pendingWith "no build plan; run cabal build first"
-    Right p -> withPlan p
+spec = withProjectPlan withPlan
 
 withPlan :: BuildPlan -> Spec
 withPlan plan = do
@@ -59,21 +53,8 @@ withPlan plan = do
   let isShippedModule m = Map.member m builtinFixities
   dependencies <- runIO (dependenciesOf (not . isShippedModule) plan installed)
   preloaded <- runIO (dependenciesOf isShippedModule plan installed)
+  shippedPackages <- runIO compilerShipped
   let modules = concatMap depModules dependencies
-      compilerDir =
-        listToMaybe
-          [ takeDirectory dir
-          | p <- installedPackages installed,
-            ipName p == "ghc",
-            dir <- take 1 (ipImportDirs p)
-          ]
-      shippedPackages =
-        Set.fromList
-          [ ipName p
-          | p <- installedPackages installed,
-            dir <- take 1 (ipImportDirs p),
-            Just (takeDirectory dir) == compilerDir
-          ]
       readFromSourcePackages =
         Set.fromList (fmap depPackage dependencies)
           `Set.difference` shippedPackages
@@ -100,7 +81,7 @@ withPlan plan = do
           expectationFailure $
             "no source for "
               <> unwords names
-              <> "; fetch them with nix run .#sources"
+              <> "; the test suite fetches these itself, so something stopped it"
 
   describe "the operators the compiler ships with" $
     parallel $

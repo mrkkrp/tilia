@@ -138,36 +138,6 @@
           exactDeps = false;
         };
 
-        sources = pkgs.writeShellApplication {
-          name = "tilia-sources";
-          runtimeInputs = [ pkgs.cabal-install pkgs.jq ];
-          text = ''
-            export LANG=C.UTF-8
-            plan=dist-newstyle/cache/plan.json
-            if [ ! -f "$plan" ]; then
-              echo "no $plan to read; run cabal build --dry-run first" >&2
-              exit 1
-            fi
-            fetched=0
-            asked=0
-            while read -r package; do
-              asked=$((asked + 1))
-              if cabal fetch --no-dependencies "$package" >/dev/null 2>&1; then
-                fetched=$((fetched + 1))
-              else
-                echo "not on Hackage, left alone: $package" >&2
-              fi
-            done < <(jq -r '.["install-plan"][]
-                              | select(.style != "local")
-                              | "\(.["pkg-name"])-\(.["pkg-version"])"' "$plan" | sort -u)
-            if [ "$asked" -gt 0 ] && [ "$fetched" -eq 0 ]; then
-              echo "fetched none of the $asked packages; is there an index? try cabal update" >&2
-              exit 1
-            fi
-            echo "fetched $fetched of $asked packages"
-          '';
-        };
-
         format = pkgs.writeShellApplication {
           name = "tilia-format";
           runtimeInputs = [
@@ -202,10 +172,6 @@
           format = {
             type = "app";
             program = "${format}/bin/tilia-format";
-          };
-          sources = {
-            type = "app";
-            program = "${sources}/bin/tilia-sources";
           };
         };
 

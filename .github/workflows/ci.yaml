@@ -69,9 +69,7 @@ jobs:
       - name: Test
         run: |
           tests="$(nix build --no-link --print-out-paths .#${{ matrix.ghc }}.tests-exe)"
-          nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && cabal build --dry-run"
-          nix run .#sources
-          nix develop -L .#${{ matrix.ghc }} -c bash -c "TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
+          nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
   format:
     needs: build
     name: Self-format
