@@ -80,12 +80,6 @@ Finally, here are some other flags that may be of interest:
 * `--debug-fixity` prints information that is useful for debugging
   formatting of operator chains.
 
-## Formatting operator chains
-
-There is nothing you need to know about it or do to make it work. It will
-just happen, no matter where your operators come from: Hackage, Nix, private
-repos, or the modules of the project you are formatting.
-
 ## Excluding files
 
 You can tell Tilia to skip certain files and/or directories. To do so, list
@@ -101,6 +95,12 @@ Entries are literal file or directory paths relative to the project root,
 and a directory excludes everything below it. Blank lines, surrounding
 whitespace, and lines beginning with `#` are ignored. Wildcards and
 re-inclusion patterns are not supported.
+
+## Formatting operator chains
+
+There is nothing you need to know about it or do to make it work. It will
+just happen, no matter where your operators come from: Hackage, Nix, private
+repos, or the modules of the project you are formatting.
 
 ## Formatting CPP
 
