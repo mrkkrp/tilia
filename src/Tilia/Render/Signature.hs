@@ -160,16 +160,7 @@ specialiseSigE ::
 specialiseSigE ctx binders e =
   specialiseSig ctx (Just binders) target (maybeToList sigTy)
   where
-    (_, target, sigTy) = takeApartSpecExpr e
-
--- | Pull a @SPECIALIZE@ expression apart into the name, the application and
--- the signature.
-takeApartSpecExpr ::
-  LHsExpr GhcPs ->
-  (LocatedN RdrName, LHsExpr GhcPs, Maybe (LHsSigType GhcPs))
-takeApartSpecExpr expr = (specHead applied, applied, signature)
-  where
-    (applied, signature) = specBody expr
+    (target, sigTy) = specBody e
 
 -- | A @SPECIALIZE@ expression without the type ascription it may carry.
 specBody :: LHsExpr GhcPs -> (LHsExpr GhcPs, Maybe (LHsSigType GhcPs))
@@ -177,19 +168,23 @@ specBody = \case
   L _ (ExprWithTySig _ e HsWC {hswc_body}) -> (e, Just hswc_body)
   e -> (e, Nothing)
 
--- | The function a @SPECIALIZE@ expression applies.
-specHead :: LHsExpr GhcPs -> LocatedN RdrName
+-- | The function a @SPECIALIZE@ expression applies, if it applies one.
+--
+-- The parser takes any expression at all here and leaves it to the renamer
+-- to insist on a head variable, so a module on its way to being rejected
+-- reaches us with expressions like @let x = 2 in f x@ in this position.
+specHead :: LHsExpr GhcPs -> Maybe (LocatedN RdrName)
 specHead (L _ e) = case e of
-  HsVar _ n -> n
+  HsVar _ n -> Just n
   HsApp _ f _ -> specHead f
   HsAppType _ f _ -> specHead f
-  _ -> error "Tilia: a SPECIALIZE expression always has a head variable"
+  _ -> Nothing
 
 -- | The name a @SPECIALIZE@ pragma is about, for grouping declarations.
 specialisedName :: Sig GhcPs -> Maybe RdrName
 specialisedName = \case
   SpecSig _ (L _ n) _ _ -> Just n
-  SpecSigE _ _ e _ -> Just (unLoc (specHead (fst (specBody e))))
+  SpecSigE _ _ e _ -> unLoc <$> specHead (fst (specBody e))
   _ -> Nothing
 
 -- | The formula a @MINIMAL@ pragma is written with.
