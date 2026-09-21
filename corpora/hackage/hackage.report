@@ -6,7 +6,7 @@ file is the work list, and it is free to say as much as it likes.
 5202 examples, 5137 formatted.
 
 ==========================================================================
-broken (7)
+broken (8)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -63,6 +63,60 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
      import Agda.TypeChecking.Constraints
      import Agda.TypeChecking.Conversion.Pure (pureCompareAs, runPureConversion)
     +import Agda.TypeChecking.Da
+
+ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
+    comments, in one configuration: `{-\ntypedef struct _KEY_EVENT_RECORD {\n	BOOL bKeyDown;\n	WORD wRepeatCount;\n	WORD wVirtualKeyCode;\n	WORD wVirtualScanCode;\n	union {\n		WCHAR UnicodeChar;\n		CHAR AsciiChar;\n	} uChar;\n	DWORD dwControlKeyState;\n}\n\n/* gcc's alignment is not what win32 expects */\n PACKED\n\nKEY_EVENT_RECORD;\n-}` became `{-\ntypedef struct _KEY_EVENT_RECORD {\n	BOOL bKeyDown;\n	WORD wRepeatCount;\n	WORD wVirtualKeyCode;\n	WORD wVirtualScanCode;\n	union {\n		WCHAR UnicodeChar;\n		CHAR AsciiChar;\n	} uChar;\n	DWORD dwControlKeyState;\n}\n\n\n/* gcc's alignment is not what win32 expects */\n PACKED\n\n\n\n\n\n\n\nKEY_EVENT_RECORD;\n-}`
+    --- input
+    +++ output
+    @@ -1,51 +1,62 @@
+     {-# LANGUAGE DeriveDataTypeable #-}
+    -{-# LANGUAGE RankNTypes         #-}
+    -{-# LANGUAGE Trustworthy        #-}
+    +{-# LANGUAGE RankNTypes #-}
+    +{-# LANGUAGE Trustworthy #-}
+     
+     module System.Console.ANSI.Windows.Foreign
+    -  (
+    -    INPUT_RECORD (..)
+    -  , INPUT_RECORD_EVENT (..)
+    -  , KEY_EVENT_RECORD (..)
+    -  , getNumberOfConsoleInputEvents
+    -  , readConsoleInput
+    -  , cWcharsToChars
+    -  , unicodeAsciiChar
+    -  , eNABLE_VIRTUAL_TERMINAL_PROCESSING
+    -  , iNVALID_HANDLE_VALUE
+    -  , nullHANDLE
+    -  , getConsoleMode
+    -  , setConsoleMode
+    -  ) where
+    +  ( INPUT_RECORD (..),
+    +    INPUT_RECORD_EVENT (..),
+    +    KEY_EVENT_RECORD (..),
+    +    getNumberOfConsoleInputEvents,
+    +    readConsoleInput,
+    +    cWcharsToChars,
+    +    unicodeAsciiChar,
+    +    eNABLE_VIRTUAL_TERMINAL_PROCESSING,
+    +    iNVALID_HANDLE_VALUE,
+    +    nullHANDLE,
+    +    getConsoleMode,
+    +    setConsoleMode,
+    +  )
+    +where
+     
+    -import Control.Exception ( Exception )
+    -import Data.Char ( chr )
+    -import Data.Typeable ( Typeable )
+    -import Data.Word ( Word32 )
+    -import Foreign.C.Types ( CWchar (..) )
+    -import Foreign.Marshal.Alloc ( alloca )
+    -import Foreign.Marshal.Array ( allocaArray, peekArray, pokeArray )
+    -import Foreign.Ptr ( Ptr, castPtr, plusPtr, nullPtr )
+    -import Foreign.Storable ( Storable (..) )
+    +import Control.Exception (Exception)
+    +import Data.Char (chr)
+    +
 
 dlist-1.0/Data/DList.hs
     a configuration of the input does not parse: 54:13: parse error on input `Nil'
@@ -292,11 +346,8 @@ lens-5.3.6/src/Control/Exception/Lens.hs
     -  -- ** Arithmetic Exception
 
 ==========================================================================
-does-not-parse (2)
+does-not-parse (1)
 ==========================================================================
-
-ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
-    49:1: parse error on input `#'
 
 leksah-0.16.2.2/src/IDE/Find.hs
     615:36: Bang pattern in expression context: !matchIndex

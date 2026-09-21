@@ -27,6 +27,7 @@ import Distribution.PackageDescription
   ( Benchmark (..),
     BenchmarkInterface (..),
     BuildInfo (..),
+    CondBranch (..),
     CondTree (..),
     Executable (..),
     GenericPackageDescription (..),
@@ -221,14 +222,21 @@ component root (bi, files) = do
 buildInfos :: GenericPackageDescription -> [(BuildInfo, [FilePath])]
 buildInfos described =
   concat
-    [ foldMap (pure . library . condTreeData) (condLibrary described),
+    [ foldMap (tree library) (condLibrary described),
       named library (condSubLibraries described),
       named executable (condExecutables described),
       named suite (condTestSuites described),
       named benchmark (condBenchmarks described)
     ]
   where
-    named f = fmap (f . condTreeData . snd)
+    named f = concatMap (tree f . snd)
+    tree f = go mempty
+      where
+        go inherited node =
+          let settings = inherited <> f (condTreeData node)
+           in settings : concatMap (branches settings) (condTreeComponents node)
+        branches inherited (CondBranch _ yes no) =
+          go inherited yes <> foldMap (go inherited) no
     modules = concatMap (\m -> [ModuleName.toFilePath m <.> ext | ext <- ["hs", "hs-boot", "hsig"]])
     with bi files = (bi, files <> modules (otherModules bi))
     library l = with (libBuildInfo l) (modules (exposedModules l))

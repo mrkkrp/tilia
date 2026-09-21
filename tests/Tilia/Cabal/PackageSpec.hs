@@ -58,6 +58,11 @@ spec = do
         driver <- asked (root </> "tests" </> "Doctests.hs")
         (has BangPatterns unit, has BangPatterns driver) `shouldBe` (True, False)
 
+    it "inherits settings in conditional source directories" $
+      inPackage conditionalLibrary ["src", "new"] $ \root ->
+        (has BangPatterns <$> asked (root </> "new" </> "M.hs"))
+          `shouldReturn` True
+
   describe "the extensions a component puts in force" $ do
     it "are the language edition's" $
       inPackage twoComponents ["src"] $ \root -> do
@@ -209,6 +214,21 @@ sharedTests =
       "  hs-source-dirs: tests",
       "  default-language: Haskell2010",
       "  default-extensions: BangPatterns"
+    ]
+
+conditionalLibrary :: Text
+conditionalLibrary =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "  default-extensions: BangPatterns",
+      "  if impl(ghc >= 9.10)",
+      "    hs-source-dirs: new"
     ]
 
 -- | Write a @.cabal@ file and the given directories, and hand back the root.

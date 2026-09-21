@@ -614,8 +614,8 @@ formatted       444d34793bf4  ansi-terminal-1.1.5/app/Example.hs
 formatted       64edb10877a8  ansi-terminal-1.1.5/src/System/Console/ANSI.hs
 formatted       0cc59e71668d  ansi-terminal-1.1.5/unix/System/Console/ANSI/Internal.hs
 formatted       2ee987b3a95a  ansi-terminal-1.1.5/win/System/Console/ANSI/Internal.hs
-formatted       1aaa3e2316a9  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
-does-not-parse  -             ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
+broken          5c7d30c5b6fe  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
+formatted       43caa81ccd09  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
 formatted       9e25d9947df5  async-2.2.6/Control/Concurrent/Async.hs
 partly-checked  539941d64e62  async-2.2.6/Control/Concurrent/Async/Internal.hs
 formatted       68777666410b  async-2.2.6/Control/Concurrent/Async/Warden.hs
