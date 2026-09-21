@@ -842,8 +842,9 @@ matchGroup ::
   MatchStyle ->
   MatchGroup GhcPs (LocatedA body) ->
   Doc
-matchGroup ctx bracing mkBody style MG {..} =
-  items blockBracing (fmap rendered (places (unLoc mg_alts)))
+matchGroup ctx bracing mkBody style MG {..}
+  | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
+  | otherwise = items blockBracing (fmap rendered (places (unLoc mg_alts)))
   where
     blockBracing = case style of
       CaseStyle -> ifEmpty
