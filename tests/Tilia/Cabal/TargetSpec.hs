@@ -71,7 +71,9 @@ spec = do
         it "narrows to one component when asked for one" $
           componentsOfTarget here (Qualified Nothing Lib "tilia") >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-            Right cs -> fmap componentDirs cs `shouldBe` [["src"]]
+            Right cs -> do
+              files <- filesOfComponents here cs
+              files `shouldSatisfy` any ("src/Tilia/Cabal/Target.hs" `isSuffixOf`)
 
         it "takes the package name as all of its components" $
           componentsOfTarget here (Called "tilia") >>= \case
@@ -176,9 +178,9 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
-    it "walks every source directory a component names"
+    it "looks in every source directory a component names"
       $ withProject
-        [ ("only.cabal", packageWith "only" ["src", "gen"]),
+        [ ("only.cabal", packageWith "only" ["src", "gen"] ["A", "B"]),
           ("src/A.hs", "module A where\n"),
           ("gen/B.hs", "module B where\n")
         ]
@@ -191,9 +193,9 @@ spec = do
 
     it "spells a path through a dot source directory without the dot"
       $ withProject
-        [ ("only.cabal", packageWith "only" ["."]),
+        [ ("only.cabal", packageWith "only" ["."] ["A", "Nested.B"]),
           ("A.hs", "module A where\n"),
-          ("nested/B.hs", "module B where\n")
+          ("Nested/B.hs", "module Nested.B where\n")
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
@@ -202,10 +204,24 @@ spec = do
             files <- filesOfComponents root cs
             filter (T.isInfixOf "/./" . T.pack) files `shouldBe` []
 
+    it "spells a path through a dot-slash source directory without the dot"
+      $ withProject
+        [ ("only.cabal", packageWith "only" ["./"] ["A"]),
+          ("A.hs", "module A where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            files `shouldBe` [prPath root </> "A.hs"]
+
     it "names a file once even when two components reach it"
       $ withProject
         [ ("both.cabal", twoComponents),
-          ("bench/Main.hs", "module Main where\n")
+          ("app/One.hs", "module Main where\n"),
+          ("app/Two.hs", "module Main where\n"),
+          ("app/Shared.hs", "module Shared where\n")
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
@@ -213,13 +229,69 @@ spec = do
           Right cs -> do
             files <- filesOfComponents root cs
             length cs `shouldBe` 2
-            fmap takeFileName files `shouldBe` ["Main.hs"]
+            fmap takeFileName files `shouldBe` ["One.hs", "Shared.hs", "Two.hs"]
 
-    it "leaves hidden directories alone"
+    it "leaves out files no component declares"
       $ withProject
-        [ ("only.cabal", package "only" "src"),
+        [ ("only.cabal", packageWith "only" ["."] ["A"]),
+          ("A.hs", "module A where\n"),
+          ("Stray.hs", "module Stray where\n"),
+          ("data/Example.hs", "main = pure ()\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            fmap takeFileName files `shouldBe` ["A.hs"]
+
+    it "takes the boot file and signature of a declared module"
+      $ withProject
+        [ ("only.cabal", packageWith "only" ["src"] ["A", "B"]),
           ("src/A.hs", "module A where\n"),
-          ("src/.hidden/B.hs", "module B where\n")
+          ("src/A.hs-boot", "module A where\n"),
+          ("src/B.hsig", "signature B where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            fmap takeFileName files `shouldBe` ["A.hs", "A.hs-boot", "B.hsig"]
+
+    it "takes what every conditional branch declares"
+      $ withProject
+        [ ("only.cabal", conditional),
+          ("src/A.hs", "module A where\n"),
+          ("unix/B.hs", "module B where\n"),
+          ("windows/C.hs", "module C where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            fmap takeFileName files `shouldBe` ["A.hs", "B.hs", "C.hs"]
+
+    it "looks for inherited modules in the directories a branch adds"
+      $ withProject
+        [ ("only.cabal", platformSpecific),
+          ("src/A.hs", "module A where\n"),
+          ("unix/B.hs", "module B where\n"),
+          ("windows/B.hs", "module B where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            files
+              `shouldBe` fmap (prPath root </>) ["src/A.hs", "unix/B.hs", "windows/B.hs"]
+
+    it "passes over a declared module with no source, such as a generated one"
+      $ withProject
+        [ ("only.cabal", packageWith "only" ["src"] ["A", "Paths_only"]),
+          ("src/A.hs", "module A where\n")
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
@@ -230,13 +302,18 @@ spec = do
 
     it "excludes literal files and directory trees from .tiliaignore"
       $ withProject
-        [ ("only.cabal", package "only" "src"),
-          (".tiliaignore", "  # Generated sources and runtime fixtures\r\n\r\n ./src/fixtures/ \r\nsrc/Generated.hs\r\n"),
+        [ ( "only.cabal",
+            packageWith
+              "only"
+              ["src"]
+              ["Runner", "Generated", "Fixtures.Input", "Fixtures.Nested.Other", "FixturesOther.Keep"]
+          ),
+          (".tiliaignore", "  # Generated sources and runtime fixtures\r\n\r\n ./src/Fixtures/ \r\nsrc/Generated.hs\r\n"),
           ("src/Runner.hs", "module Runner where\n"),
           ("src/Generated.hs", "module Generated where\n"),
-          ("src/fixtures/Input.hs", "module Input where\n"),
-          ("src/fixtures/nested/Other.hs", "module Other where\n"),
-          ("src/fixtures-other/Keep.hs", "module Keep where\n")
+          ("src/Fixtures/Input.hs", "module Fixtures.Input where\n"),
+          ("src/Fixtures/Nested/Other.hs", "module Fixtures.Nested.Other where\n"),
+          ("src/FixturesOther/Keep.hs", "module FixturesOther.Keep where\n")
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
@@ -249,10 +326,10 @@ spec = do
       $ withProject
         [ ("cabal.project", "packages: one two\n"),
           (".tiliaignore", "one/fixtures\n"),
-          ("one/one.cabal", packageWith "one" ["src", "fixtures"]),
+          ("one/one.cabal", packageWith "one" ["src", "fixtures"] ["A", "Input"]),
           ("one/src/A.hs", "module A where\n"),
           ("one/fixtures/Input.hs", "module Input where\n"),
-          ("two/two.cabal", package "two" "fixtures"),
+          ("two/two.cabal", packageWith "two" ["fixtures"] ["B"]),
           ("two/fixtures/B.hs", "module B where\n")
         ]
       $ \root ->
@@ -264,7 +341,7 @@ spec = do
 
     it "can exclude every file of an explicitly selected component"
       $ withProject
-        [ ("only.cabal", package "only" "fixtures"),
+        [ ("only.cabal", packageWith "only" ["fixtures"] ["Input"]),
           (".tiliaignore", "fixtures/\n"),
           ("fixtures/Input.hs", "module Input where\n")
         ]
@@ -311,12 +388,21 @@ failed = \case
 haskell :: FilePath -> Bool
 haskell path = any (`isSuffixOf` path) [".hs", ".hs-boot", ".hsig"]
 
--- | A @.cabal@ file for a package with one library.
+-- | A @.cabal@ file for a package with one library that declares no
+-- modules.
 package :: Text -> Text -> Text
-package name dir = packageWith name [dir]
+package name dir = packageWith name [dir] []
 
-packageWith :: Text -> [Text] -> Text
-packageWith name dirs =
+-- | A @.cabal@ file for a package with one library.
+packageWith ::
+  -- | The name of the package.
+  Text ->
+  -- | Its source directories.
+  [Text] ->
+  -- | The modules it exposes.
+  [Text] ->
+  Text
+packageWith name dirs modules =
   T.unlines
     [ "cabal-version: 2.4",
       "name: " <> name,
@@ -324,6 +410,7 @@ packageWith name dirs =
       "",
       "library",
       "  hs-source-dirs: " <> T.intercalate ", " dirs,
+      "  exposed-modules: " <> T.intercalate ", " modules,
       "  default-language: Haskell2010"
     ]
 
@@ -343,8 +430,7 @@ withProject files act =
       | (named : _) <- [p | (p, _) <- fs, ".cabal" `isSuffixOf` p] = PackageFile named
       | otherwise = ProjectFile
 
--- | A package whose library sweeps the whole directory and whose benchmark
--- names a directory inside it, so that the two overlap.
+-- | A package with two executables that share a module.
 twoComponents :: Text
 twoComponents =
   T.unlines
@@ -352,12 +438,55 @@ twoComponents =
       "name: both",
       "version: 0.1.0.0",
       "",
-      "library",
+      "executable one",
+      "  main-is: One.hs",
+      "  hs-source-dirs: app",
+      "  other-modules: Shared",
       "  default-language: Haskell2010",
       "",
-      "benchmark speed",
-      "  type: exitcode-stdio-1.0",
-      "  main-is: Main.hs",
-      "  hs-source-dirs: bench",
+      "executable two",
+      "  main-is: Two.hs",
+      "  hs-source-dirs: app",
+      "  other-modules: Shared",
       "  default-language: Haskell2010"
+    ]
+
+-- | A package whose library declares its modules once and finds one of
+-- them in a directory that depends on the platform.
+platformSpecific :: Text
+platformSpecific =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: only",
+      "version: 0.1.0.0",
+      "",
+      "library",
+      "  hs-source-dirs: src",
+      "  exposed-modules: A, B",
+      "  default-language: Haskell2010",
+      "  if os(windows)",
+      "    hs-source-dirs: windows",
+      "  else",
+      "    hs-source-dirs: unix"
+    ]
+
+-- | A package whose library declares a module in each branch of a
+-- conditional, each from a source directory of its own.
+conditional :: Text
+conditional =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: only",
+      "version: 0.1.0.0",
+      "",
+      "library",
+      "  hs-source-dirs: src",
+      "  exposed-modules: A",
+      "  default-language: Haskell2010",
+      "  if os(windows)",
+      "    hs-source-dirs: windows",
+      "    other-modules: C",
+      "  else",
+      "    hs-source-dirs: unix",
+      "    other-modules: B"
     ]
