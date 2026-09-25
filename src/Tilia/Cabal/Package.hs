@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Information coming from @.cabal@ files.
@@ -9,6 +10,15 @@ module Tilia.Cabal.Package
     describePackageProblem,
     PackageReader,
     newPackageReader,
+    ComponentSection (..),
+    BranchSections,
+    libraryBranches,
+    executableBranches,
+    suiteBranches,
+    benchmarkBranches,
+    addedSources,
+    sourceExtensions,
+    joined,
   )
 where
 
@@ -19,6 +29,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..))
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Distribution.Fields.ParseResult (runParseResult)
@@ -37,17 +49,23 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError)
+#if MIN_VERSION_Cabal_syntax(3, 14, 0)
+import Distribution.Utils.Path (SymbolicPathX, getSymbolicPath)
+#else
 import Distribution.Utils.Path (getSymbolicPath)
+#endif
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
 import System.Directory (canonicalizePath, doesDirectoryExist, listDirectory)
 import System.FilePath
-  ( equalFilePath,
+  ( dropExtension,
+    equalFilePath,
     joinPath,
+    normalise,
     splitDirectories,
     takeDirectory,
-    (<.>),
+    takeExtension,
     (</>),
   )
 import Tilia.Pragma (lookupExtension)
@@ -104,20 +122,23 @@ startingDirectory path = do
   isDirectory <- quietly False (doesDirectoryExist path)
   pure (if isDirectory then path else takeDirectory path)
 
--- | A component of a package, with everything about it already worked out.
-data Component = Component
+-- | One branch of a component, with everything in force in it already
+-- worked out.
+data ComponentBranch = ComponentBranch
   { -- | Its source directories, absolute and canonical.
     componentDirs :: [FilePath],
-    -- | The files this component names, each relative to whichever of its
-    -- source directories holds it. Directory overlap alone does not make a
-    -- unit test a module of the doctest driver beside it.
-    componentFiles :: [FilePath],
+    -- | The modules this branch names, each as a path without an
+    -- extension relative to whichever of its source directories holds it.
+    componentModules :: Set FilePath,
+    -- | Its entry points, relative to its source directories in the same
+    -- way but with their extensions.
+    componentEntries :: Set FilePath,
     -- | The extensions it puts in force.
     componentExtensions :: [Extension]
   }
 
--- | Which component holds the file, of those whose directories cover it.
-claiming :: FilePath -> [Component] -> Maybe Component
+-- | Which branch holds the file, of those whose directories cover it.
+claiming :: FilePath -> [ComponentBranch] -> Maybe ComponentBranch
 claiming file components =
   case sortOn (Down . fst) [((named c, nearness c), c) | c <- components, covered c] of
     ((_, c) : _) -> Just c
@@ -125,7 +146,12 @@ claiming file components =
   where
     covered = not . null . covering
     named c = any (declares c) (covering c)
-    declares c d = any (equalFilePath (under d)) (componentFiles c)
+    declares c d =
+      let path = under d
+       in Set.member path (componentEntries c)
+            || ( takeExtension path `elem` sourceExtensions
+                   && Set.member (dropExtension path) (componentModules c)
+               )
     under d = joinPath (drop (length (splitDirectories d)) (splitDirectories file))
     nearness = maximum . fmap length . covering
     covering c = [d | d <- componentDirs c, d `covers` file]
@@ -172,9 +198,9 @@ findCabalFile ref = climb []
 
 -- | What a @.cabal@ file amounts to.
 componentsOf ::
-  IORef (Map FilePath (Either PackageProblem [Component])) ->
+  IORef (Map FilePath (Either PackageProblem [ComponentBranch])) ->
   FilePath ->
-  IO (Either PackageProblem [Component])
+  IO (Either PackageProblem [ComponentBranch])
 componentsOf ref cabalFile = do
   known <- readIORef ref
   case Map.lookup cabalFile known of
@@ -194,67 +220,170 @@ componentsOf ref cabalFile = do
             Right description ->
               Right
                 <$> traverse
-                  (component (takeDirectory cabalFile))
-                  (buildInfos description)
+                  (componentBranch (takeDirectory cabalFile))
+                  (sectionsInForce description)
     said = T.pack . showPError cabalFile
 
--- | One component, with its directories resolved and its extensions settled.
-component :: FilePath -> (BuildInfo, [FilePath]) -> IO Component
-component root (bi, files) = do
-  dirs <- traverse (quietlyCanonical . (root </>)) (sourceDirsOf bi)
+-- | One branch, with its directories resolved and its extensions settled.
+componentBranch :: FilePath -> ComponentSection -> IO ComponentBranch
+componentBranch root ComponentSection{..} = do
+  dirs <- traverse (quietlyCanonical . (root </>)) (sourceDirsOf sectionInfo)
   pure
-    Component
+    ComponentBranch
       { componentDirs = concat dirs,
-        componentFiles = files,
-        componentExtensions = extensionsInForce bi
+        componentModules = Set.fromList (fmap (uncurry joined) sectionModules),
+        componentEntries = Set.fromList (fmap (uncurry joined) sectionEntries),
+        componentExtensions = extensionsInForce sectionInfo
       }
   where
-    sourceDirsOf b = case fmap getSymbolicPath (hsSourceDirs b) of
-      [] -> ["."]
-      ds -> ds
     quietlyCanonical d =
       quietly [] $
         doesDirectoryExist d >>= \case
           True -> pure <$> canonicalizePath d
           False -> pure []
 
--- | Every component's build settings, in the order they are declared.
-buildInfos :: GenericPackageDescription -> [(BuildInfo, [FilePath])]
-buildInfos described =
-  concat
-    [ foldMap (tree library) (condLibrary described),
-      named library (condSubLibraries described),
-      named executable (condExecutables described),
-      named suite (condTestSuites described),
-      named benchmark (condBenchmarks described)
-    ]
+-- | What is in force in each branch of every component, in the order they
+-- are declared.
+sectionsInForce :: GenericPackageDescription -> [ComponentSection]
+sectionsInForce described =
+  (\BranchSections{..} -> inheritedSection <> ownSection)
+    <$> concat
+      [ foldMap libraryBranches (condLibrary described),
+        concatMap (libraryBranches . snd) (condSubLibraries described),
+        concatMap (executableBranches . snd) (condExecutables described),
+        concatMap (suiteBranches . snd) (condTestSuites described),
+        concatMap (benchmarkBranches . snd) (condBenchmarks described)
+      ]
+
+-- | What one branch of a component declares.
+data ComponentSection = ComponentSection
+  { -- | Its build settings.
+    sectionInfo :: BuildInfo,
+    -- | Its modules, each as the directory that holds it relative to a
+    -- source directory and its file name without an extension.
+    sectionModules :: [(FilePath, FilePath)],
+    -- | Its entry points, each as the directory that holds it relative to a
+    -- source directory and its file name.
+    sectionEntries :: [(FilePath, FilePath)]
+  }
+
+instance Semigroup ComponentSection where
+  ComponentSection i m e <> ComponentSection i' m' e' =
+    ComponentSection (i <> i') (m <> m') (e <> e')
+
+instance Monoid ComponentSection where
+  mempty = ComponentSection mempty [] []
+
+-- | The sections of one branch of a component.
+data BranchSections = BranchSections
+  { -- | What it inherits from the branches around it.
+    inheritedSection :: ComponentSection,
+    -- | What it declares itself.
+    ownSection :: ComponentSection
+  }
+
+-- | Every branch of a library.
+libraryBranches :: CondTree v c Library -> [BranchSections]
+libraryBranches = branchesOf $ \l ->
+  declaring (libBuildInfo l) (exposedModules l <> signatures l) []
+
+-- | Every branch of an executable.
+executableBranches :: CondTree v c Executable -> [BranchSections]
+executableBranches = branchesOf $ \e ->
+  declaring (buildInfo e) [] [entryPoint (modulePath e)]
+
+-- | Every branch of a test suite.
+suiteBranches :: CondTree v c TestSuite -> [BranchSections]
+suiteBranches = branchesOf $ \s ->
+  case testInterface s of
+    TestSuiteExeV10 _ path -> declaring (testBuildInfo s) [] [entryPoint path]
+    TestSuiteLibV09 _ modName -> declaring (testBuildInfo s) [modName] []
+    _ -> declaring (testBuildInfo s) [] []
+
+-- | Every branch of a benchmark.
+benchmarkBranches :: CondTree v c Benchmark -> [BranchSections]
+benchmarkBranches = branchesOf $ \b ->
+  case benchmarkInterface b of
+    BenchmarkExeV10 _ path -> declaring (benchmarkBuildInfo b) [] [entryPoint path]
+    _ -> declaring (benchmarkBuildInfo b) [] []
+
+-- | Every branch of a component.
+branchesOf :: (a -> ComponentSection) -> CondTree v c a -> [BranchSections]
+branchesOf f = go mempty
   where
-    named f = concatMap (tree f . snd)
-    tree f = go mempty
-      where
-        go inherited node =
-          let settings = inherited <> f (condTreeData node)
-           in settings : concatMap (branches settings) (condTreeComponents node)
-        branches inherited (CondBranch _ yes no) =
-          go inherited yes <> foldMap (go inherited) no
-    modules = concatMap (\m -> [ModuleName.toFilePath m <.> ext | ext <- ["hs", "hs-boot", "hsig"]])
-    with bi files = (bi, files <> modules (otherModules bi))
-    library l = with (libBuildInfo l) (modules (exposedModules l))
-    executable e = with (buildInfo e) [entryPoint (modulePath e)]
-    suite s = with (testBuildInfo s) $ case testInterface s of
-      TestSuiteExeV10 _ path -> [entryPoint path]
-      TestSuiteLibV09 _ modName -> modules [modName]
-      _ -> []
-    benchmark b = with (benchmarkBuildInfo b) $ case benchmarkInterface b of
-      BenchmarkExeV10 _ path -> [entryPoint path]
-      _ -> []
-    -- Cabal 3.14 made a component's entry point a symbolic path; before
-    -- that it was already the plain path we want.
+    go inherited node =
+      let own = f (condTreeData node)
+       in BranchSections inherited own
+            : concatMap (branches (inherited <> own)) (condTreeComponents node)
+    branches inherited (CondBranch _ yes no) =
+      go inherited yes <> foldMap (go inherited) no
+
+-- | Where the files a branch adds to its component may be: each source
+-- directory, with what it may hold.
+--
+-- Only what the branches around it have not already paired, which is its
+-- own declarations in every directory in force and what it inherits in the
+-- directories it adds. A pair made for one branch is thus never made again
+-- for the branches inside it.
+addedSources :: BranchSections -> [(FilePath, ComponentSection)]
+addedSources BranchSections{..} =
+  [ (d, ownSection)
+  | d <- sourceDirsOf (sectionInfo inheritedSection <> sectionInfo ownSection)
+  ]
+    <> [ (d, inheritedSection)
+       | d <- fmap getSymbolicPath (hsSourceDirs (sectionInfo ownSection))
+       ]
+
+-- | What a component's own section declares, modules together with the
+-- ones its build settings name.
+declaring ::
+  BuildInfo ->
+  [ModuleName.ModuleName] ->
+  [FilePath] ->
+  ComponentSection
+declaring bi ms entries =
+  ComponentSection
+    { sectionInfo = bi,
+      sectionModules = fmap split (ms <> otherModules bi),
+      sectionEntries = fmap splitPath entries
+    }
+  where
+    split m = case ModuleName.components m of
+      [] -> ("", "")
+      cs -> (joinPath (init cs), last cs)
+    splitPath path = case splitDirectories path of
+      [] -> ("", "")
+      ps -> (joinPath (init ps), last ps)
+
+-- | The extensions a Haskell source file can have.
+sourceExtensions :: [String]
+sourceExtensions = [".hs", ".hs-boot", ".hsig"]
+
+-- | Two relative paths one after the other, where either may be empty or
+-- @.@.
+joined :: FilePath -> FilePath -> FilePath
+joined a b
+  | a `elem` ["", "."] = b
+  | b `elem` ["", "."] = a
+  | otherwise = a </> b
+
+-- | The path of an entry point.
+--
+-- Cabal 3.14 made a component's entry point a symbolic path; before that
+-- it was already the plain path we want.
 #if MIN_VERSION_Cabal_syntax(3, 14, 0)
-    entryPoint = getSymbolicPath
+entryPoint :: SymbolicPathX allowAbsolute from to -> FilePath
+entryPoint = normalise . getSymbolicPath
 #else
-    entryPoint = id
+entryPoint :: FilePath -> FilePath
+entryPoint = normalise
 #endif
+
+-- | The @hs-source-dirs@ of a component, @.@ where it names none.
+sourceDirsOf :: BuildInfo -> [FilePath]
+sourceDirsOf bi = case fmap getSymbolicPath (hsSourceDirs bi) of
+  [] -> ["."]
+  ds -> ds
 
 -- | The extensions a component puts in force, before any module's pragmas.
 extensionsInForce :: BuildInfo -> [Extension]

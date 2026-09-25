@@ -12,6 +12,8 @@
 * Do not fail on a `SPECIALIZE` expression with no head variable.
 * Put no space between a record and its braces on one line, as in
   `T{a = 1}`, `x{a = 1}`, and `data T = T{a :: Int}`.
+* Format only the modules components declare rather than every Haskell
+  file under their source directories.
 
 ## Tilia 0.0.1.0
 

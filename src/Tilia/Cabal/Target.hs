@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Handling Cabal targets in order to figure out what to format.
 module Tilia.Cabal.Target
@@ -7,6 +8,7 @@ module Tilia.Cabal.Target
     Kind (..),
     parseTarget,
     Component (..),
+    Wanted (..),
     TargetProblem (..),
     describeTargetProblem,
     componentsOfTarget,
@@ -21,6 +23,9 @@ import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
 import Data.List (isPrefixOf, isSuffixOf, sort)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -30,28 +35,33 @@ import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Fields.Parser (readFields)
 import Distribution.PackageDescription
-  ( Benchmark (..),
-    BuildInfo (..),
-    CondTree (..),
-    Executable (..),
-    GenericPackageDescription (..),
-    Library (..),
+  ( GenericPackageDescription (..),
     PackageDescription (..),
-    TestSuite (..),
     unPackageName,
     unUnqualComponentName,
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError)
 import Distribution.Types.PackageId (PackageIdentifier (..))
-import Distribution.Utils.Path (getSymbolicPath)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.Directory (doesFileExist, listDirectory)
 import System.FilePath
-  ( normalise,
+  ( dropExtension,
+    dropTrailingPathSeparator,
+    normalise,
     splitDirectories,
     takeDirectory,
     takeExtension,
     (</>),
+  )
+import Tilia.Cabal.Package
+  ( ComponentSection (..),
+    addedSources,
+    benchmarkBranches,
+    executableBranches,
+    joined,
+    libraryBranches,
+    sourceExtensions,
+    suiteBranches,
   )
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
 import Tilia.Fixity.Plan (PlanComponent (..))
@@ -114,10 +124,31 @@ data Component = Component
     componentName :: Text,
     -- | The directory its @.cabal@ file sits in.
     componentRoot :: FilePath,
-    -- | Its @hs-source-dirs@, relative to 'componentRoot'.
-    componentDirs :: [FilePath]
+    -- | The directories its declared files may be in, relative to
+    -- 'componentRoot', across all of its conditional branches.
+    componentSources :: Map FilePath Wanted
   }
   deriving (Eq, Show)
+
+-- | What may be in one directory.
+data Wanted = Wanted
+  { -- | Modules, by file name without an extension.
+    wantedModules :: Set FilePath,
+    -- | Entry points, by file name.
+    wantedEntries :: Set FilePath
+  }
+  deriving (Eq, Show)
+
+instance Semigroup Wanted where
+  Wanted m e <> Wanted m' e' = Wanted (m <> m') (e <> e')
+
+-- | Is a directory entry one of the files wanted there?
+admits :: Wanted -> FilePath -> Bool
+admits Wanted{..} entry =
+  takeExtension entry `elem` sourceExtensions
+    && ( Set.member entry wantedEntries
+           || Set.member (dropExtension entry) wantedModules
+       )
 
 -- | Why a run could not work out what to format.
 data TargetProblem
@@ -205,41 +236,21 @@ spellTarget = \case
 filesOfComponents :: ProjectRoot -> [Component] -> IO [FilePath]
 filesOfComponents root components = do
   ignored <- ignoredPaths (prPath root)
-  sort . Set.toList . Set.fromList . concat
-    <$> traverse (filesOfComponent ignored) components
-
--- | Every Haskell file in a component that is not excluded, in a settled
--- order.
-filesOfComponent ::
-  -- | The excluded paths, as 'ignoredPaths' gives them.
-  [[FilePath]] ->
-  -- | The component whose source directories to walk.
-  Component ->
-  IO [FilePath]
-filesOfComponent ignored c =
-  sort . Set.toList . Set.fromList . concat
-    <$> traverse walk (filter (not . excluded) sourceDirs)
+  let excluded path = any (`isPrefixOf` splitDirectories path) ignored
+  sort . filter (not . excluded) . concat
+    <$> traverse present (Map.toList directories)
   where
-    sourceDirs = fmap (normalise . (componentRoot c </>)) (componentDirs c)
-    walk directory =
-      quietly [] $
-        doesDirectoryExist directory >>= \case
-          False -> pure []
-          True -> do
-            entries <- listDirectory directory
-            concat <$> traverse (below directory) (sort entries)
-    below directory entry
-      | "." `isPrefixOf` entry = pure []
-      | entry == "dist-newstyle" = pure []
-      | excluded path = pure []
-      | otherwise = do
-          isDirectory <- quietly False (doesDirectoryExist path)
-          if isDirectory
-            then walk path
-            else pure [path | takeExtension path `elem` formattableFileExtensions]
-      where
-        path = directory </> entry
-    excluded path = any (`isPrefixOf` splitDirectories path) ignored
+    directories =
+      Map.unionsWith
+        (<>)
+        [ Map.mapKeys (joined (directoryOf (componentRoot c))) (componentSources c)
+        | c <- components
+        ]
+    present (directory, wanted) = do
+      entries <- quietly [] (listDirectory directory)
+      filterM
+        (quietly False . doesFileExist)
+        [joined directory entry | entry <- entries, admits wanted entry]
 
 -- | What a project's @.tiliaignore@ excludes, each path as its segments.
 --
@@ -257,9 +268,10 @@ ignoredPaths root = do
     meant entry = not (T.null entry) && not ("#" `T.isPrefixOf` entry)
     entryPath = splitDirectories . normalise . (root </>) . T.unpack
 
--- | The extensions a Haskell source file can have.
-formattableFileExtensions :: [String]
-formattableFileExtensions = [".hs", ".hs-boot", ".hsig"]
+-- | A directory spelled so that a path can be appended to it without
+-- further normalisation.
+directoryOf :: FilePath -> FilePath
+directoryOf = dropTrailingPathSeparator . normalise
 
 -- | The @.cabal@ files the project is made of.
 --
@@ -355,38 +367,44 @@ componentsInCabalFile cabalFile =
         Right described ->
           pure (Right (declaredComponents (takeDirectory cabalFile) described))
 
+-- | The directories a branch's declarations may be found in under one
+-- source directory.
+sourcesIn :: FilePath -> ComponentSection -> Map FilePath Wanted
+sourcesIn d ComponentSection{..} =
+  Map.fromListWith
+    (<>)
+    ( [(joined d sub, Wanted (Set.singleton name) Set.empty) | (sub, name) <- sectionModules]
+        <> [(joined d sub, Wanted Set.empty (Set.singleton name)) | (sub, name) <- sectionEntries]
+    )
+
 -- | The components of a parsed @.cabal@ file, in the order declared.
 declaredComponents :: FilePath -> GenericPackageDescription -> [Component]
 declaredComponents root described =
   concat
     [ foldMap
-        (pure . made Lib package . libBuildInfo . condTreeData)
+        (pure . made Lib package . libraryBranches)
         (condLibrary described),
-      [ made Lib (nameOf n) (libBuildInfo (condTreeData t))
-      | (n, t) <- condSubLibraries described
-      ],
-      [ made Exe (nameOf n) (buildInfo (condTreeData t))
-      | (n, t) <- condExecutables described
-      ],
-      [ made Test (nameOf n) (testBuildInfo (condTreeData t))
-      | (n, t) <- condTestSuites described
-      ],
-      [ made Bench (nameOf n) (benchmarkBuildInfo (condTreeData t))
-      | (n, t) <- condBenchmarks described
-      ]
+      [made Lib (nameOf n) (libraryBranches t) | (n, t) <- condSubLibraries described],
+      [made Exe (nameOf n) (executableBranches t) | (n, t) <- condExecutables described],
+      [made Test (nameOf n) (suiteBranches t) | (n, t) <- condTestSuites described],
+      [made Bench (nameOf n) (benchmarkBranches t) | (n, t) <- condBenchmarks described]
     ]
   where
     package =
       T.pack (unPackageName (pkgName (package' described)))
     package' = Distribution.PackageDescription.package . packageDescription
     nameOf = T.pack . unUnqualComponentName
-    made kind name bi =
+    made kind name branches =
       Component
         { componentPackage = package,
           componentKind = kind,
           componentName = name,
           componentRoot = root,
-          componentDirs = case fmap getSymbolicPath (hsSourceDirs bi) of
-            [] -> ["."]
-            ds -> ds
+          componentSources =
+            Map.unionsWith
+              (<>)
+              [ sourcesIn (directoryOf d) declared
+              | branch <- branches,
+                (d, declared) <- addedSources branch
+              ]
         }

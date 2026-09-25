@@ -51,11 +51,11 @@ the project by starting at the working directory and walking upwards for a
 `cabal.project` or a `.cabal` file. A `cabal.project` anywhere above wins
 over a `.cabal` file that is nearer, so a package inside a multi-package
 repository resolves to the repository. It is worth pointing out that a
-package in the tree that neither `packages` nor `optional-packages` names
-is not part of the project and will not be visited. Within a package, a
-component's `hs-source-dirs` say which files belong to it, and every `.hs`,
-`.hs-boot`, and `.hsig` under them gets formatted unless it is excluded,
-as described below.
+package in the tree that neither `packages` nor `optional-packages` names is
+not part of the project and will not be visited. Within a package, only the
+modules a component declares get formatted: its `exposed-modules`,
+`other-modules`, `signatures`, and `main-is`, in every conditional branch,
+found under its `hs-source-dirs` as `.hs`, `.hs-boot`, or `.hsig` files.
 
 If there is no build plan yet, or it is older than the `.cabal` and
 `cabal.project` files, or it says nothing about a component you asked for,
