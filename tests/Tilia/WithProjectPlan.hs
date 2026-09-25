@@ -9,7 +9,7 @@ module Tilia.WithProjectPlan
 where
 
 import Control.Monad (filterM, unless)
-import Data.Maybe (isNothing, listToMaybe)
+import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -60,7 +60,7 @@ prepare =
       componentsOfTarget root Everything >>= \case
         Left problem -> pure (Left (describeTargetProblem problem))
         Right components ->
-          loadPlan (componentInPlan <$> components) "." >>= \case
+          loadPlan (mapMaybe componentInPlan components) "." >>= \case
             Left why -> pure (Left why)
             Right plan -> Right plan <$ fetchMissingSources plan
 

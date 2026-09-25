@@ -19,6 +19,7 @@ module Tilia.Cabal.Package
     addedSources,
     sourceExtensions,
     joined,
+    setupScript,
   )
 where
 
@@ -112,9 +113,12 @@ newPackageReader = do
       Just cabalFile ->
         componentsOf described cabalFile >>= \case
           Left problem -> pure (Left problem)
-          Right components -> pure $ case claiming file components of
-            Just c -> Right (componentExtensions c)
-            Nothing -> Left (FileUnclaimed cabalFile)
+          Right components
+            | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
+                pure (Right (extensionsInForce mempty))
+            | otherwise -> pure $ case claiming file components of
+                Just c -> Right (componentExtensions c)
+                Nothing -> Left (FileUnclaimed cabalFile)
 
 -- | Where to start looking for a @.cabal@ file.
 startingDirectory :: FilePath -> IO FilePath
@@ -378,6 +382,13 @@ entryPoint = normalise . getSymbolicPath
 entryPoint :: FilePath -> FilePath
 entryPoint = normalise
 #endif
+
+-- | The setup script of a package, beside its @.cabal@ file.
+--
+-- @cabal@ compiles it with no language or extensions of its own, whatever
+-- the components around it put in force.
+setupScript :: FilePath
+setupScript = "Setup.hs"
 
 -- | The @hs-source-dirs@ of a component, @.@ where it names none.
 sourceDirsOf :: BuildInfo -> [FilePath]

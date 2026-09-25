@@ -60,6 +60,7 @@ import Tilia.Cabal.Package
     executableBranches,
     joined,
     libraryBranches,
+    setupScript,
     sourceExtensions,
     suiteBranches,
   )
@@ -77,8 +78,9 @@ data Target
     Qualified (Maybe Text) Kind Text
   deriving (Eq, Show)
 
--- | The kinds of component a @.cabal@ file can declare.
-data Kind = Lib | Exe | Test | Bench
+-- | The kinds of component a @.cabal@ file can declare, and the setup
+-- script beside it.
+data Kind = Lib | Exe | Test | Bench | Setup
   deriving (Eq, Ord, Show)
 
 -- | Read a target as it was written on the command line.
@@ -108,7 +110,9 @@ parseTarget written = case T.splitOn ":" (T.strip (T.pack written)) of
 targetSelectsComponent :: Target -> Component -> Bool
 targetSelectsComponent target c = case target of
   Everything -> True
-  Called name -> name == componentName c || name == componentPackage c
+  Called name
+    | Setup <- componentKind c -> name == componentPackage c
+    | otherwise -> name == componentName c || name == componentPackage c
   Qualified package kind name ->
     all (== componentPackage c) package
       && kind == componentKind c
@@ -190,8 +194,12 @@ componentsOfTarget root target = do
               let found = concat [cs | Right cs <- results]
               pure $ case filter (targetSelectsComponent target) found of
                 [] | Everything <- target -> Right []
-                [] -> Left (NoSuchTarget (spellTarget target) (fmap spellComponent found))
+                [] -> Left (NoSuchTarget (spellTarget target) (spellComponent <$> filter targetable found))
                 wanted -> Right wanted
+
+-- | Can a component be asked for on its own?
+targetable :: Component -> Bool
+targetable c = componentKind c /= Setup
 
 -- | How a component would have to be named to be asked for on its own.
 spellComponent :: Component -> Text
@@ -202,18 +210,23 @@ spellComponent c =
     <> ":"
     <> componentName c
 
--- | How a build plan names this component.
+-- | How a build plan names this component, if it has an entry of its own.
 --
 -- A plan writes a library as @lib@ and everything else as its kind and
 -- name, which is not quite how a target is written: see 'spellComponent'.
-componentInPlan :: Component -> PlanComponent
-componentInPlan c =
-  PlanComponent
-    { pcPackage = componentPackage c,
-      pcName = case componentKind c of
-        Lib -> "lib"
-        kind -> spellKind kind <> ":" <> componentName c
-    }
+-- A setup script has an entry only when the build type is @Custom@, so a
+-- plan is never expected to say anything about it.
+componentInPlan :: Component -> Maybe PlanComponent
+componentInPlan c = case componentKind c of
+  Setup -> Nothing
+  kind ->
+    Just
+      PlanComponent
+        { pcPackage = componentPackage c,
+          pcName = case kind of
+            Lib -> "lib"
+            _ -> spellKind kind <> ":" <> componentName c
+        }
 
 -- | Render 'Kind' the way it would be accepted on the command line.
 spellKind :: Kind -> Text
@@ -222,6 +235,7 @@ spellKind = \case
   Exe -> "exe"
   Test -> "test"
   Bench -> "bench"
+  Setup -> "setup"
 
 -- | A target, written the way it would have been given.
 spellTarget :: Target -> Text
@@ -364,8 +378,27 @@ componentsInCabalFile cabalFile =
           pure (Left (Unparseable cabalFile (fmap said (NE.toList complaints))))
           where
             said = T.pack . showPError cabalFile
-        Right described ->
-          pure (Right (declaredComponents (takeDirectory cabalFile) described))
+        Right described -> do
+          let root = takeDirectory cabalFile
+              declared = declaredComponents root described
+          hasSetup <- quietly False (doesFileExist (root </> setupScript))
+          pure . Right $
+            declared
+              <> [ Component
+                     { componentPackage = packageOf described,
+                       componentKind = Setup,
+                       componentName = "setup",
+                       componentRoot = root,
+                       componentSources =
+                         Map.singleton "." (Wanted Set.empty (Set.singleton setupScript))
+                     }
+                 | hasSetup
+                 ]
+
+-- | The name of a package.
+packageOf :: GenericPackageDescription -> Text
+packageOf =
+  T.pack . unPackageName . pkgName . Distribution.PackageDescription.package . packageDescription
 
 -- | The directories a branch's declarations may be found in under one
 -- source directory.
@@ -390,9 +423,7 @@ declaredComponents root described =
       [made Bench (nameOf n) (benchmarkBranches t) | (n, t) <- condBenchmarks described]
     ]
   where
-    package =
-      T.pack (unPackageName (pkgName (package' described)))
-    package' = Distribution.PackageDescription.package . packageDescription
+    package = packageOf described
     nameOf = T.pack . unUnqualComponentName
     made kind name branches =
       Component
