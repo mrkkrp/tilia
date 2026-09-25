@@ -111,14 +111,14 @@ groupDecls ctx isSignatureFile (d : ds)
 -- list reads better without gaps in it.
 isSignatureSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 isSignatureSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
-  (SigD _ TypeSig {}, SigD _ TypeSig {}) ->
+  (SigD _ TypeSig{}, SigD _ TypeSig{}) ->
     not (commentBetween ctx (spanOf x) (spanOf y))
   _ -> False
 
 -- | Two standalone @deriving@ declarations the author ran together.
 isDerivingSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 isDerivingSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
-  (DerivD {}, DerivD {}) ->
+  (DerivD{}, DerivD{}) ->
     not (separatedByBlank ctx (spanOf x) (spanOf y))
   _ -> False
 
@@ -160,7 +160,7 @@ declKind = \case
   WarningD _ (Warnings _ ws) ->
     (PragmaDeclaration, [unLoc n | L _ (Warning _ ns _) <- ws, n <- ns])
   TyClD _ (DataDecl _ (L _ n) _ _ _) -> (DataDeclaration, [n])
-  TyClD _ (ClassDecl {tcdLName = L _ n}) -> (ClassDeclaration, [n])
+  TyClD _ (ClassDecl{tcdLName = L _ n}) -> (ClassDeclaration, [n])
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) -> (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
@@ -261,8 +261,8 @@ hsDecl ctx style = \case
 tyClDecl :: Ctx -> FamilyStyle -> TyClDecl GhcPs -> Doc
 tyClDecl ctx style = \case
   FamDecl _ x -> famDecl ctx style x
-  SynDecl {..} -> synDecl ctx tcdLName tcdFixity tcdTyVars tcdRhs
-  DataDecl {..} ->
+  SynDecl{..} -> synDecl ctx tcdLName tcdFixity tcdTyVars tcdRhs
+  DataDecl{..} ->
     dataDecl
       ctx
       Associated
@@ -273,7 +273,7 @@ tyClDecl ctx style = \case
       tcdFixity
       mempty
       tcdDataDefn
-  ClassDecl {tcdCExt = (anns, _, _), ..} ->
+  ClassDecl{tcdCExt = (anns, _, _), ..} ->
     classDecl
       ctx
       anns
@@ -317,8 +317,8 @@ annDecl ctx (HsAnnotation _ provenance e) =
 -- | A foreign import or export.
 foreignDecl :: Ctx -> ForeignDecl GhcPs -> Doc
 foreignDecl ctx = \case
-  fd@ForeignImport {fd_fi} -> foreignImport ctx fd_fi <> foreignSig ctx fd
-  fd@ForeignExport {fd_fe} -> foreignExport ctx fd_fe <> foreignSig ctx fd
+  fd@ForeignImport{fd_fi} -> foreignImport ctx fd_fi <> foreignSig ctx fd
+  fd@ForeignExport{fd_fe} -> foreignExport ctx fd_fe <> foreignSig ctx fd
 
 -- | The name and type that end a foreign declaration.
 foreignSig :: Ctx -> ForeignDecl GhcPs -> Doc

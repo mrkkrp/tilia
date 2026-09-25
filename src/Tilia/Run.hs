@@ -72,19 +72,19 @@ data Outcome
 -- | Was the file declined?
 declined :: Outcome -> Bool
 declined = \case
-  Declined {} -> True
+  Declined{} -> True
   _ -> False
 
 -- | Did the file fail to format?
 failed :: Outcome -> Bool
 failed = \case
-  Failed {} -> True
+  Failed{} -> True
   _ -> False
 
 -- | Would formatting change the file?
 differs :: Outcome -> Bool
 differs = \case
-  Changed {} -> True
+  Changed{} -> True
   _ -> False
 
 -- | Determine the exit code based on the set of outcomes. 'Nothing' means

@@ -77,8 +77,8 @@ typeBody ctx documented here = \case
       <> txt "=>"
       <> betweenArgs
       <> case unLoc t of
-        HsQualTy {} -> recur (unLoc t)
-        HsFunTy {} -> hsType ctx t
+        HsQualTy{} -> recur (unLoc t)
+        HsFunTy{} -> hsType ctx t
         _ -> at ctx t recur
   HsTyVar _ promoted n -> promotion promoted n <> name ctx n
   HsAppTy _ f x ->
@@ -97,7 +97,7 @@ typeBody ctx documented here = \case
       <> txt "->"
       <> betweenArgs
       <> case unLoc y of
-        HsFunTy {} -> recur (unLoc y)
+        HsFunTy{} -> recur (unLoc y)
         _ -> at ctx y recur
   HsListTy _ t ->
     layoutWithin ctx here (spanOf t) $
@@ -208,9 +208,9 @@ startsWithTick :: HsType GhcPs -> Bool
 startsWithTick = \case
   HsAppTy _ (L _ f) _ -> startsWithTick f
   HsTyVar _ IsPromoted _ -> True
-  HsExplicitTupleTy {} -> True
-  HsExplicitListTy {} -> True
-  HsTyLit _ HsCharTy {} -> True
+  HsExplicitTupleTy{} -> True
+  HsExplicitListTy{} -> True
+  HsTyLit _ HsCharTy{} -> True
   _ -> False
 
 -- | The pragma asking for a field to be unpacked, or not to be.
@@ -232,7 +232,7 @@ typeIsDocumented :: HsType GhcPs -> Bool
 typeIsDocumented = any documented . spine
   where
     documented = \case
-      HsDocTy {} -> True
+      HsDocTy{} -> True
       _ -> False
 
 -- | The pieces of a type that a signature would put on lines of their own:
@@ -301,7 +301,7 @@ instance TyVarBndrFlag (HsBndrVis GhcPs) where
 
 -- | One type variable binder.
 tyVarBndr :: (TyVarBndrFlag flag) => Ctx -> HsTyVarBndr flag GhcPs -> Doc
-tyVarBndr ctx HsTvb {..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
+tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
   where
     binder = case tvb_var of
       HsBndrVar _ x -> name ctx x
@@ -365,11 +365,11 @@ hsSigType ctx = at_ ctx (hsSigTypeBody ctx)
 
 -- | A signature type whose location the caller has already entered.
 hsSigTypeBody :: Ctx -> HsSigType GhcPs -> Doc
-hsSigTypeBody ctx HsSig {..} =
+hsSigTypeBody ctx HsSig{..} =
   outerBndrs ctx sig_bndrs
     <> ( case sig_bndrs of
-           HsOuterImplicit {} -> mempty
-           HsOuterExplicit {} -> afterBinders
+           HsOuterImplicit{} -> mempty
+           HsOuterExplicit{} -> afterBinders
        )
     <> hsType ctx sig_body
   where
@@ -402,7 +402,7 @@ recordFields ctx enclosing xs =
 
 -- | One field of a record, documentation and multiplicity included.
 recordField :: Ctx -> HsConDeclRecField GhcPs -> Doc
-recordField ctx HsConDeclRecField {..} =
+recordField ctx HsConDeclRecField{..} =
   foldMap (haddockInline ctx Pipe) (cdf_doc cdrf_spec)
     <> align (commaSep (fmap (at_ ctx (name ctx . foLabel)) cdrf_names))
     <> space
@@ -412,7 +412,7 @@ recordField ctx HsConDeclRecField {..} =
 
 -- | A constructor field, without its documentation or its multiplicity.
 conDeclField :: Ctx -> HsConDeclField GhcPs -> Doc
-conDeclField ctx CDF {..} =
+conDeclField ctx CDF{..} =
   unpackPragma cdf_unpack
     <> at
       ctx

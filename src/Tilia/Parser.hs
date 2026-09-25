@@ -111,7 +111,7 @@ parseConfiguration config path written source =
 
     whyNot pstate =
       case sortOn at (toList (GHC.getMessages (GHC.getPsErrorMessages pstate))) of
-        m : _ -> ParseError {peSpan = GHC.errMsgSpan m, peProblem = saying m}
+        m : _ -> ParseError{peSpan = GHC.errMsgSpan m, peProblem = saying m}
         [] ->
           ParseError
             { peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate),
@@ -152,7 +152,7 @@ withImplied = settle . nub
 
 -- | Options to parse with.
 parserOpts :: ParserConfig -> GHC.ParserOpts
-parserOpts ParserConfig {pcExtensions} =
+parserOpts ParserConfig{pcExtensions} =
   GHC.mkParserOpts
     (EnumSet.fromList pcExtensions)
     quietDiagnostics

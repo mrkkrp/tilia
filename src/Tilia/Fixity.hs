@@ -125,7 +125,7 @@ declaredFixities hsModule =
 
     fromDecl = \case
       SigD _ sig -> fromSig sig
-      TyClD _ ClassDecl {tcdSigs} -> concatMap (fromSig . unLoc) tcdSigs
+      TyClD _ ClassDecl{tcdSigs} -> concatMap (fromSig . unLoc) tcdSigs
       _ -> []
     fromSig = \case
       FixSig _ (FixitySig specifier names fixity) ->
@@ -143,10 +143,10 @@ declaredNamespaces hsModule =
     decls = hsmodDecls hsModule
     types = \case
       TyClD _ d -> case d of
-        FamDecl _ FamilyDecl {fdLName} -> [opName (unLoc fdLName)]
-        SynDecl {tcdLName} -> [opName (unLoc tcdLName)]
-        DataDecl {tcdLName} -> [opName (unLoc tcdLName)]
-        ClassDecl {tcdLName, tcdATs} ->
+        FamDecl _ FamilyDecl{fdLName} -> [opName (unLoc fdLName)]
+        SynDecl{tcdLName} -> [opName (unLoc tcdLName)]
+        DataDecl{tcdLName} -> [opName (unLoc tcdLName)]
+        ClassDecl{tcdLName, tcdATs} ->
           opName (unLoc tcdLName)
             : [opName (unLoc (fdLName (unLoc f))) | f <- tcdATs]
       _ -> []
@@ -154,8 +154,8 @@ declaredNamespaces hsModule =
       ValD _ b -> boundNames b
       SigD _ sig -> signedNames sig
       ForD _ f -> [opName (unLoc (fd_name f))]
-      TyClD _ d@DataDecl {} -> membersOf d
-      TyClD _ ClassDecl {tcdSigs} -> concatMap (classMethods . unLoc) tcdSigs
+      TyClD _ d@DataDecl{} -> membersOf d
+      TyClD _ ClassDecl{tcdSigs} -> concatMap (classMethods . unLoc) tcdSigs
       _ -> []
 
 -- | The methods a class signature declares.
@@ -173,8 +173,8 @@ classMethods = \case
 -- its own—@:|@ is a constructor and @infixr 5@ all the same.
 membersOf :: TyClDecl GhcPs -> [OpName]
 membersOf = \case
-  DataDecl {tcdDataDefn} -> concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn))
-  ClassDecl {tcdSigs, tcdATs} ->
+  DataDecl{tcdDataDefn} -> concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn))
+  ClassDecl{tcdSigs, tcdATs} ->
     concatMap (classMethods . unLoc) tcdSigs
       <> [opName (unLoc (fdLName (unLoc f))) | f <- tcdATs]
   _ -> []
@@ -184,8 +184,8 @@ membersOf = \case
 
     fromCon :: ConDecl GhcPs -> [OpName]
     fromCon = \case
-      ConDeclGADT {con_names} -> fmap (opName . unLoc) (toList con_names)
-      ConDeclH98 {con_name, con_args} ->
+      ConDeclGADT{con_names} -> fmap (opName . unLoc) (toList con_names)
+      ConDeclH98{con_name, con_args} ->
         opName (unLoc con_name) : fieldNames con_args
 
     fieldNames :: HsConDeclH98Details GhcPs -> [OpName]
@@ -243,10 +243,10 @@ declaredNames = Set.fromList . concatMap (fromDecl . unLoc) . hsmodDecls
       sig -> signedNames sig
 
     fromTyCl = \case
-      FamDecl _ (FamilyDecl {fdLName}) -> [opName (unLoc fdLName)]
-      SynDecl {tcdLName} -> [opName (unLoc tcdLName)]
-      d@DataDecl {tcdLName} -> opName (unLoc tcdLName) : membersOf d
-      d@ClassDecl {tcdLName} -> opName (unLoc tcdLName) : membersOf d
+      FamDecl _ (FamilyDecl{fdLName}) -> [opName (unLoc fdLName)]
+      SynDecl{tcdLName} -> [opName (unLoc tcdLName)]
+      d@DataDecl{tcdLName} -> opName (unLoc tcdLName) : membersOf d
+      d@ClassDecl{tcdLName} -> opName (unLoc tcdLName) : membersOf d
 
 -- | The names a binding brings into being.
 boundNames :: HsBind GhcPs -> [OpName]
@@ -258,7 +258,7 @@ boundNames = \case
   where
     isVarPat :: Pat GhcPs -> Bool
     isVarPat = \case
-      VarPat {} -> True
+      VarPat{} -> True
       _ -> False
 
 -- | The module's own name, if it declares one.
@@ -310,8 +310,8 @@ declaredChildren =
   Map.fromListWith Set.union . concatMap (fromDecl . unLoc) . hsmodDecls
   where
     fromDecl = \case
-      TyClD _ d@DataDecl {tcdLName} -> [entry tcdLName d]
-      TyClD _ d@ClassDecl {tcdLName} -> [entry tcdLName d]
+      TyClD _ d@DataDecl{tcdLName} -> [entry tcdLName d]
+      TyClD _ d@ClassDecl{tcdLName} -> [entry tcdLName d]
       _ -> []
     entry name d = (opName (unLoc name), Set.fromList (membersOf d))
 
@@ -565,7 +565,7 @@ resolveScope implicitPrelude known hsModule =
       scopeUnread = unread
     }
   where
-    KnownModules {knownFixities = exportsOf, knownChildren, knownExportNames, knownChain} = known
+    KnownModules{knownFixities = exportsOf, knownChildren, knownExportNames, knownChain} = known
     exportNamesOf = knownExportNames
     imports = moduleImports implicitPrelude hsModule
     declared = declaredFixities hsModule

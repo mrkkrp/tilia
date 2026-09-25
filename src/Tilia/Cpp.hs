@@ -93,7 +93,7 @@ formatWithCpp parser render path source =
       source
   where
     knowing c =
-      c {rcImportBarriers = maybe [] (fmap dLine) (scanDirectives source)}
+      c{rcImportBarriers = maybe [] (fmap dLine) (scanDirectives source)}
 
 -- | Format every configuration of a module, and merge them into one
 -- document.
@@ -385,7 +385,7 @@ answering c i reached =
 -- which question is being varied is not settled until 'answering'.
 without :: [(Int, Int)] -> Reached -> Reached
 without gone reached =
-  reached {reachedLines = dropping gone (reachedLines reached)}
+  reached{reachedLines = dropping gone (reachedLines reached)}
 
 -- | How many whole formattings of a module one call may spend.
 configurationBudget :: Int
@@ -975,7 +975,7 @@ changesAgainst varied lining plain bs xs = go 0 bs xs (lcs lining bs xs)
 
     held j (Just b') (Just x')
       | not (plain b' x') =
-          [Change {chFrom = j, chTo = j + 1, chWith = [x'], chVaried = varied}]
+          [Change{chFrom = j, chTo = j + 1, chWith = [x'], chVaried = varied}]
     held _ _ _ = []
 
     between i b x =

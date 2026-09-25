@@ -127,29 +127,29 @@ exprBody ctx site here = \case
     bracketsWith
       (closingFor site)
       (insideBrackets here (commaSep (fmap (align . hsExpr ctx) xs)))
-  RecordCon {..} ->
+  RecordCon{..} ->
     name ctx rcon_con
-      <> breakOrSpace
+      <> breakOrNothing
       <> indent (braces (insideBrackets here (commaSep (fmap align (fields <> wildcard)))))
     where
-      HsRecFields {..} = rcon_flds
+      HsRecFields{..} = rcon_flds
       fields = fmap (at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel)))) rec_flds
       wildcard = case rec_dotdot of
         Just l -> [at ctx l (const (txt ".."))]
         Nothing -> []
-  RecordUpd {..} ->
-    hsExpr ctx rupd_expr <> breakOrSpace <> indent (braces (insideBrackets here updates))
+  RecordUpd{..} ->
+    hsExpr ctx rupd_expr <> breakOrNothing <> indent (braces (insideBrackets here updates))
     where
       updates = case rupd_flds of
-        RegularRecUpdFields {..} ->
+        RegularRecUpdFields{..} ->
           commaSep (fmap (align . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx)))) recUpdFields)
-        OverloadedRecUpdFields {..} ->
+        OverloadedRecUpdFields{..} ->
           commaSep (fmap (align . at_ ctx (fieldBind ctx (at_ ctx labelChain))) olRecUpdFields)
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
-  HsGetField {..} ->
+  HsGetField{..} ->
     hsExpr ctx gf_expr <> txt "." <> at ctx gf_field (dotField ctx)
-  HsProjection {..} -> parens (txt "." <> dotFields ctx proj_flds)
-  ExprWithTySig _ x HsWC {hswc_body} ->
+  HsProjection{..} -> parens (txt "." <> dotFields ctx proj_flds)
+  ExprWithTySig _ x HsWC{hswc_body} ->
     align $
       hsExpr ctx x
         <> joinedBy "::"
@@ -159,8 +159,8 @@ exprBody ctx site here = \case
     txt opener <> breakOrNothing <> hsExpr ctx e <> breakOrNothing <> txt "||]"
     where
       opener = case bracketAnn of
-        BracketNoE {} -> "[||"
-        BracketHasE {} -> "[e||"
+        BracketNoE{} -> "[||"
+        BracketHasE{} -> "[e||"
   HsUntypedBracket _ q -> quotation ctx q
   HsTypedSplice _ (HsTypedSpliceExpr _ e) -> spliceTH ctx (Is #typed) e DollarSplice
   HsUntypedSplice _ splice -> untypedSplice ctx DollarSplice splice
@@ -177,7 +177,7 @@ exprBody ctx site here = \case
         <> txt " #-}"
         <> breakOrSpace
         <> nest (if siteInBlock site then 1 else 0) (hsExpr ctx x)
-  HsEmbTy _ HsWC {hswc_body} -> txt "type" <> space <> hsType ctx hswc_body
+  HsEmbTy _ HsWC{hswc_body} -> txt "type" <> space <> hsType ctx hswc_body
   HsHole holeKind -> case holeKind of
     HoleVar n -> name ctx n
     HoleError -> error "Tilia: a nameless hole cannot come from a successful parse"
@@ -192,7 +192,7 @@ exprBody ctx site here = \case
       <> multiplicity (hsExpr ctx) multAnn
       <> joinedBy "->"
       <> case unLoc y of
-        HsFunArr {} -> exprBody ctx plainSite (spanOf y) (unLoc y)
+        HsFunArr{} -> exprBody ctx plainSite (spanOf y) (unLoc y)
         _ -> hsExpr ctx y
 
 -- | The body of an equation, as the enclosing construct will hand it on.
@@ -209,8 +209,8 @@ negationGap ctx e =
   includeWhen (extensionOn ctx NegativeLiterals && isLiteral) space
   where
     isLiteral = case unLoc e of
-      HsLit {} -> True
-      HsOverLit {} -> True
+      HsLit{} -> True
+      HsOverLit{} -> True
       _ -> False
 
 -- | A function applied to arguments.
@@ -232,7 +232,7 @@ application ctx site f x =
       | maybe False isSingleLine initSpan = exprHangs (unLoc lastArg)
       | otherwise = Normal
     headAndInit bracing =
-      hsExprIn ctx site {siteApplicand = True, siteBracing = bracing} func
+      hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
         <> breakOrSpace
         <> nest
           (if placement == Hanging then 0 else 1)
@@ -292,7 +292,7 @@ fieldBind ::
   (GenLocated l a -> Doc) ->
   HsFieldBind (GenLocated l a) (LHsExpr GhcPs) ->
   Doc
-fieldBind ctx label HsFieldBind {..} =
+fieldBind ctx label HsFieldBind{..} =
   label hfbLHS
     <> includeUnless hfbPun (space <> txt "=" <> attach placement (hsExpr ctx hfbRHS))
   where
@@ -453,9 +453,9 @@ stmtBody ctx site mkBody = \case
       bound = \case
         EmptyLocalBinds _ -> txt "{}"
         bs -> localBinds ctx (siteBracing site) bs
-  ParStmt {} ->
+  ParStmt{} ->
     error "Tilia: ParStmt should have been unpacked"
-  TransStmt {..} -> case (trS_form, trS_by) of
+  TransStmt{..} -> case (trS_form, trS_by) of
     (ThenForm, Nothing) ->
       txt "then" <> breakOrSpace <> indent (hsExpr ctx trS_using)
     (ThenForm, Just e) ->
@@ -476,7 +476,7 @@ stmtBody ctx site mkBody = \case
         <> txt "using"
         <> breakOrSpace
         <> indent (hsExpr ctx trS_using)
-  RecStmt {..} ->
+  RecStmt{..} ->
     txt "rec"
       <> space
       <> align
@@ -517,7 +517,7 @@ statements ctx site mkBody es =
         rendered bracing =
           at_ ctx (stmtBody ctx (blockSite bracing) mkBody) stmt
     blockSite bracing =
-      plainSite {siteInBlock = True, siteBracing = bracing}
+      plainSite{siteInBlock = True, siteBracing = bracing}
 
 -- | A list comprehension.
 comprehension :: Ctx -> Site -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
@@ -548,8 +548,8 @@ comprehensionSections = fmap unnest . branches
         [run | ParStmtBlock _ run _ _ <- NE.toList blocks]
       run -> [run]
     unnest = concatMap $ \case
-      L _ ParStmt {} -> error "Tilia: parallel blocks do not nest"
-      stmt@(L _ TransStmt {trS_stmts}) -> unnest trS_stmts <> [stmt]
+      L _ ParStmt{} -> error "Tilia: parallel blocks do not nest"
+      stmt@(L _ TransStmt{trS_stmts}) -> unnest trS_stmts <> [stmt]
       stmt -> [stmt]
 
 -- | A @case@ expression or command.
@@ -605,7 +605,7 @@ ifThenElse ::
   LocatedA body ->
   LocatedA body ->
   Doc
-ifThenElse ctx bodyOf AnnsIf {aiThen, aiElse} condition thenBody elseBody =
+ifThenElse ctx bodyOf AnnsIf{aiThen, aiElse} condition thenBody elseBody =
   txt "if"
     <> space
     <> hsExpr ctx condition
@@ -677,7 +677,7 @@ localBinds ctx bracing = \case
         <> joinedBy "="
         <> indent (hsExprIn ctx (withBracing MayBrace plainSite) e)
     anchored ann d = case ann of
-      EpAnn {anns = AnnList {al_anchor}}
+      EpAnn{anns = AnnList{al_anchor}}
         | not (isZeroWidthSpan (locA al_anchor)) ->
             atSpan ctx (spanOfSrcSpan (locA al_anchor)) d
       _ -> d
@@ -690,8 +690,8 @@ doKeywordSpan = spanOfSrcSpan . locA . al_rest
 whereKeywordSpan :: HsLocalBinds GhcPs -> Maybe Span
 whereKeywordSpan =
   spanOfSrcSpan . \case
-    HsValBinds EpAnn {anns = AnnList {al_rest}} _ -> locA al_rest
-    HsIPBinds EpAnn {anns = AnnList {al_rest}} _ -> locA al_rest
+    HsValBinds EpAnn{anns = AnnList{al_rest}} _ -> locA al_rest
+    HsIPBinds EpAnn{anns = AnnList{al_rest}} _ -> locA al_rest
     EmptyLocalBinds _ -> noSrcSpan
 
 -- | Does this @let@ or @where@ bind nothing at all?
@@ -711,7 +711,7 @@ cmdBody ctx site = \case
   HsCmdArrApp _ body input arrow rightToLeft ->
     let writtenFirst = if rightToLeft then body else input
         writtenSecond = if rightToLeft then input else body
-     in hsExprIn ctx site {siteApplicand = False} writtenFirst
+     in hsExprIn ctx site{siteApplicand = False} writtenFirst
           <> breakOrSpace
           <> indent
             ( txt (arrowText arrow rightToLeft)
@@ -733,7 +733,7 @@ cmdBody ctx site = \case
   HsCmdArrForm _ _ Infix _ ->
     error "Tilia: an infix command form always has exactly two operands"
   HsCmdApp _ cmd e ->
-    hsCmd ctx site {siteApplicand = True} cmd
+    hsCmd ctx site{siteApplicand = True} cmd
       <> breakOrSpace
       <> indent (hsExpr ctx e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
@@ -807,7 +807,7 @@ valDecl ctx bracing = \case
   PatBind _ p multAnn grhss ->
     match ctx bracing (ExprBody ctx) PatternBindStyle False multAnn NoSrcStrict [p] grhss
   PatSynBind _ psb -> patSynBind ctx psb
-  VarBind {} -> error "Tilia: VarBind is introduced by the type checker"
+  VarBind{} -> error "Tilia: VarBind is introduced by the type checker"
 
 -- | Which shape a group of equations takes.
 data MatchStyle
@@ -842,7 +842,7 @@ matchGroup ::
   MatchStyle ->
   MatchGroup GhcPs (LocatedA body) ->
   Doc
-matchGroup ctx bracing mkBody style MG {..}
+matchGroup ctx bracing mkBody style MG{..}
   | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
   | otherwise = items blockBracing (fmap rendered (places (unLoc mg_alts)))
   where
@@ -857,7 +857,7 @@ matchGroup ctx bracing mkBody style MG {..}
       _ -> mayBraceWhenFlat bracing written
       where
         written b = at_ ctx (renderMatch b) m
-    renderMatch b m@Match {..} =
+    renderMatch b m@Match{..} =
       match
         ctx
         b
@@ -873,13 +873,13 @@ matchGroup ctx bracing mkBody style MG {..}
 -- style that carries no name is left as it is.
 adjustStyle :: Match GhcPs body -> MatchStyle -> MatchStyle
 adjustStyle m = \case
-  FunctionStyle _ | FunRhs {mc_fun = f} <- m_ctxt m -> FunctionStyle f
+  FunctionStyle _ | FunRhs{mc_fun = f} <- m_ctxt m -> FunctionStyle f
   style -> style
 
 -- | Was a @!@ written in front of the name this equation defines?
 bangBeforeName :: Match id body -> SrcStrictness
 bangBeforeName = \case
-  Match {m_ctxt = FunRhs {mc_strictness}} -> mc_strictness
+  Match{m_ctxt = FunRhs{mc_strictness}} -> mc_strictness
   _ -> NoSrcStrict
 
 -- | One equation: a head, a body, and possibly a @where@.
@@ -896,7 +896,7 @@ match ::
   [LPat GhcPs] ->
   GRHSs GhcPs (LocatedA body) ->
   Doc
-match ctx bracing mkBody style isInfix multAnn strict pats GRHSs {..} =
+match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
   multiplicity (hsType ctx) multAnn
     <> multAnnGap
     <> strictness strict
@@ -909,7 +909,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs {..} =
       )
   where
     multAnnGap = case multAnn of
-      HsUnannotated {} -> mempty
+      HsUnannotated{} -> mempty
       _ -> space
 
     indentBody = case pats of
@@ -942,10 +942,10 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs {..} =
 
     lambdaGap p = includeWhen (needsGap (unLoc p)) space
     needsGap = \case
-      LazyPat {} -> True
-      BangPat {} -> True
-      SplicePat {} -> True
-      InvisPat {} -> True
+      LazyPat{} -> True
+      BangPat{} -> True
+      SplicePat{} -> True
+      InvisPat{} -> True
       _ -> False
 
     endOfPats = case pats of
@@ -1013,7 +1013,7 @@ containsOrPat :: LPat GhcPs -> Bool
 containsOrPat = any isOrPat . listify (const True :: Pat GhcPs -> Bool)
   where
     isOrPat = \case
-      OrPat {} -> True
+      OrPat{} -> True
       _ -> False
 
 -- | Where an alternative was written, guards and all.
@@ -1072,7 +1072,7 @@ guardedRhs ctx parentPlacement bracing mkBody style (GRHS _ guards body) = case 
 
 -- | A pattern synonym binding.
 patSynBind :: Ctx -> PatSynBind GhcPs GhcPs -> Doc
-patSynBind ctx PSB {..} =
+patSynBind ctx PSB{..} =
   txt "pattern" <> case psb_args of
     PrefixCon args ->
       space
@@ -1088,7 +1088,7 @@ patSynBind ctx PSB {..} =
           ( layoutAcross
               ctx
               (vars args)
-              ( includeUnless (null args) breakOrSpace
+              ( includeUnless (null args) breakOrNothing
                   <> braces (commaSep (fmap (name ctx) (vars args)))
               )
               <> definition (spansOf (vars args))
@@ -1145,8 +1145,8 @@ quotation ctx = \case
   ExpBr (bracketAnn, _) e -> quoted (flavour bracketAnn) (hsExpr ctx e)
     where
       flavour = \case
-        BracketNoE {} -> ""
-        BracketHasE {} -> "e"
+        BracketNoE{} -> ""
+        BracketHasE{} -> "e"
   PatBr _ p -> quoted "p" (hsPat ctx p)
   DecBrL _ decls ->
     quoted "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx Free decls))
@@ -1168,7 +1168,7 @@ quotation ctx = \case
           any isStar (listify (const True :: HsType GhcPs -> Bool) x)
             || any isAbstract (listify (const True :: FamilyInfo GhcPs -> Bool) x)
     isStar = \case
-      HsStarTy {} -> True
+      HsStarTy{} -> True
       _ -> False
     isAbstract = \case
       ClosedTypeFamily Nothing -> True

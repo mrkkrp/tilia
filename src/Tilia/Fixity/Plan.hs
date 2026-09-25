@@ -305,12 +305,12 @@ readBuildPlan path =
 checkedOutIn :: FilePath -> BuildPlan -> IO BuildPlan
 checkedOutIn distDir plan = do
   packages <- traverse locate (bpPackages plan)
-  pure plan {bpPackages = packages}
+  pure plan{bpPackages = packages}
   where
     locate p = case ppSource p of
       SourceRepo ->
         clonesOf p >>= \case
-          (dir : _) -> pure p {ppSource = CheckedOut dir}
+          (dir : _) -> pure p{ppSource = CheckedOut dir}
           [] -> pure p
       _ -> pure p
     clonesOf p = quietly [] $ do
@@ -913,7 +913,7 @@ newResolverVia routes plan = do
 -- supply.
 exportNamesOfModule :: Workings -> Set Text -> Text -> IO (Maybe (Set OpName))
 exportNamesOfModule
-  Workings {wkCache, wkLocal, wkIndex, wkReachChildren, wkReachExports, wkMacros}
+  Workings{wkCache, wkLocal, wkIndex, wkReachChildren, wkReachExports, wkMacros}
   visiting
   modName
     | Just path <- Map.lookup modName wkLocal,

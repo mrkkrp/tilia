@@ -178,7 +178,7 @@ notesThrough chains world source =
     scope =
       resolveScope
         (Is #implicitPrelude)
-        noKnownModules {knownFixities = exportsOf, knownChain = chainFor}
+        noKnownModules{knownFixities = exportsOf, knownChain = chainFor}
         hsModule
     chainFor m = maybe [] id (lookup m chains)
     chainOf = pure . chainFor

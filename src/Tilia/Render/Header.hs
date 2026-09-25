@@ -100,7 +100,7 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
     below n = if directivePresentOnLine n (sourceLines src) then below (n + 1) else n
     pragmaStarts =
       Set.fromList [spanStartLine (commentSpan c) | (c, Just _) <- recognised]
-    airless c = c {commentGapAbove = False, commentGapBelow = False}
+    airless c = c{commentGapAbove = False, commentGapBelow = False}
     directivesAbove n =
       length [k | k <- [1 .. n - 1], directivePresentOnLine k (sourceLines src)]
     entry c p =
@@ -155,7 +155,7 @@ pragmaBlock = foldMap render . dedupe . sortOn key . concatMap split
     dedupe = fmap NE.head . NE.groupBy ((==) `on` key)
     split p
       | hpName p == "LANGUAGE" =
-          [ p {hpBody = body, hpOrder = LanguageOrder (classifyExtension body)}
+          [ p{hpBody = body, hpOrder = LanguageOrder (classifyExtension body)}
           | body <- fmap T.strip (T.splitOn "," (hpBody p))
           ]
       | otherwise = [p]
@@ -187,7 +187,7 @@ namesAnEdition t = any spelledTheSame [minBound .. maxBound]
 
 -- | A whole module.
 hsModule :: Ctx -> [HeaderPragma] -> HsModule GhcPs -> Doc
-hsModule ctx pragmas HsModule {hsmodExt = XModulePs {..}, ..} =
+hsModule ctx pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
   headerLayout $
     pragmaBlock pragmas
       <> hardBreak
@@ -241,14 +241,14 @@ importExportItems ctx xs = variant (laidOut False) (laidOut True)
       | isPipe here, maybe False runsOn previous = hardBreak
       | otherwise = mempty
     isSection = \case
-      IEGroup {} -> True
+      IEGroup{} -> True
       _ -> False
     isPipe = \case
-      IEDoc {} -> True
+      IEDoc{} -> True
       _ -> False
     runsOn = \case
-      IEDoc {} -> True
-      IEDocNamed {} -> True
+      IEDoc{} -> True
+      IEDocNamed{} -> True
       _ -> False
     comma' broken' place
       | broken' = True
@@ -323,14 +323,14 @@ itemDoc = \case
 -- | Does this export list entry carry documentation?
 isDocEntry :: IE GhcPs -> Bool
 isDocEntry = \case
-  IEDoc {} -> True
-  IEGroup {} -> True
-  IEDocNamed {} -> True
+  IEDoc{} -> True
+  IEGroup{} -> True
+  IEDocNamed{} -> True
   _ -> False
 
 -- | One import declaration.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
-importDecl ctx ImportDecl {..} =
+importDecl ctx ImportDecl{..} =
   txt "import"
     <> space
     <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")

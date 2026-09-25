@@ -54,7 +54,7 @@ exampleRenderConfig package source hsModule =
           )
     }
   where
-    known = noKnownModules {knownFixities = exportsOf}
+    known = noKnownModules{knownFixities = exportsOf}
     underEveryQualifier scope =
       scope
         { scopeInTypes = alsoQualified (scopeInTypes scope),

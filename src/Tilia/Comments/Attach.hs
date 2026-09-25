@@ -104,7 +104,7 @@ heldOffFrom d cs = case unsnoc cs of
   Just (earlier, c)
     | not (bracketed c),
       opensWithHaddock d ->
-        earlier <> [c {commentGapBelow = True}]
+        earlier <> [c{commentGapBelow = True}]
   _ -> cs
 
 -- | Does this region begin its first line with a Haddock?
