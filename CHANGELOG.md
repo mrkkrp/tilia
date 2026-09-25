@@ -14,6 +14,7 @@
   `T{a = 1}`, `x{a = 1}`, and `data T = T{a :: Int}`.
 * Format only the modules components declare rather than every Haskell
   file under their source directories.
+* Format a package's `Setup.hs` with the compiler's default extensions.
 
 ## Tilia 0.0.1.0
 

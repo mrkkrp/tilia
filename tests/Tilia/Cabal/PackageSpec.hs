@@ -63,6 +63,21 @@ spec = do
         (has BangPatterns <$> asked (root </> "new" </> "M.hs"))
           `shouldReturn` True
 
+  describe "the setup script" $ do
+    it "takes the compiler's defaults, not those of a component around it" $
+      inPackage aroundTheSetupScript [] $ \root -> do
+        library <- asked (root </> "M.hs")
+        setup <- asked (root </> "Setup.hs")
+        (has OverloadedStrings library, has OverloadedStrings setup)
+          `shouldBe` (True, False)
+        (has ImportQualifiedPost library, has ImportQualifiedPost setup)
+          `shouldBe` (False, True)
+
+    it "is settled when no component covers it" $
+      inPackage twoComponents ["src", "test"] $ \root ->
+        (has ImportQualifiedPost <$> asked (root </> "Setup.hs"))
+          `shouldReturn` True
+
   describe "the extensions a component puts in force" $ do
     it "are the language edition's" $
       inPackage twoComponents ["src"] $ \root -> do
@@ -153,6 +168,21 @@ besideTheCabalFile =
       "library",
       "  exposed-modules: M",
       "  default-language: GHC2021"
+    ]
+
+-- | A library beside the @.cabal@ file with settings a setup script there
+-- does not share.
+aroundTheSetupScript :: Text
+aroundTheSetupScript =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "",
+      "library",
+      "  exposed-modules: M",
+      "  default-language: Haskell2010",
+      "  default-extensions: OverloadedStrings"
     ]
 
 -- | A library that spreads over the whole tree, and a suite inside it.

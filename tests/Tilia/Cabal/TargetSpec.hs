@@ -350,6 +350,31 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> filesOfComponents root cs `shouldReturn` []
 
+    it "takes the setup script under all and the package name, not under a component"
+      $ withProject
+        [ ("only.cabal", packageWith "only" ["src"] ["A"]),
+          ("Setup.hs", "import Distribution.Simple\nmain = defaultMain\n"),
+          ("src/A.hs", "module A where\n")
+        ]
+      $ \root -> do
+        let filesFor target =
+              componentsOfTarget root target >>= \case
+                Left problem -> fail (T.unpack (describeTargetProblem problem))
+                Right cs -> fmap takeFileName <$> filesOfComponents root cs
+        filesFor Everything `shouldReturn` ["Setup.hs", "A.hs"]
+        filesFor (Called "only") `shouldReturn` ["Setup.hs", "A.hs"]
+        filesFor (Qualified Nothing Lib "only") `shouldReturn` ["A.hs"]
+
+    it "does not offer the setup script as a target"
+      $ withProject
+        [ ("only.cabal", packageWith "only" ["src"] ["A"]),
+          ("Setup.hs", "import Distribution.Simple\nmain = defaultMain\n")
+        ]
+      $ \root ->
+        componentsOfTarget root (Called "setup") >>= \case
+          Right cs -> expectationFailure ("matched " <> show (length cs) <> " components")
+          Left problem -> describeTargetProblem problem `shouldNotSatisfy` T.isInfixOf ":setup"
+
     it "says so when a cabal.project names nothing that exists" $
       withProject [("cabal.project", "packages: nowhere\n")] $ \root ->
         componentsOfTarget root Everything >>= \case

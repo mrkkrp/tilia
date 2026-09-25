@@ -8,6 +8,7 @@ module Main (main) where
 import Control.Monad (when)
 import Data.Choice (Choice, fromBool)
 import Data.Foldable (traverse_)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
 import Data.Version (showVersion)
@@ -77,7 +78,7 @@ main = do
   session <-
     newSession
       "."
-      (componentInPlan <$> components)
+      (mapMaybe componentInPlan components)
       optCheckAst
       optCheckIdempotence
       optDebugFixity
