@@ -144,7 +144,7 @@ ormoluExamples =
           ("data" </> "examples"),
       corpusReference = ReferenceMarked "-out",
       corpusExpectations =
-        Listed Lists {expectSkip = ormoluSkip, expectDeclined = []},
+        Listed Lists{expectSkip = ormoluSkip, expectDeclined = []},
       corpusInPackages = False
     }
 
@@ -328,7 +328,26 @@ ormoluSkip =
     "declaration" </> "deriving" </> "overlapping.hs",
     "declaration" </> "warning" </> "warning-single-line.hs"
   ]
+    <> ormoluRecordBraces
     <> ormoluUnreadable
+
+-- | Ormolu examples with a space between a record and its braces.
+ormoluRecordBraces :: [FilePath]
+ormoluRecordBraces =
+  [ "declaration" </> "data" </> "linear.hs",
+    "declaration" </> "data" </> "record-singleline.hs",
+    "declaration" </> "data" </> "simple-broken.hs",
+    "declaration" </> "data" </> "strictness.hs",
+    "declaration" </> "value" </> "function" </> "lambda-case.hs",
+    "declaration" </> "value" </> "function" </> "operator-comments-3.hs",
+    "declaration" </> "value" </> "function" </> "pattern" </> "record-patterns.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "constructors.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "record-dot.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "updaters.hs",
+    "declaration" </> "value" </> "function" </> "record" </> "wildcards.hs",
+    "declaration" </> "value" </> "pattern-synonyms" </> "bidirectional.hs",
+    "declaration" </> "value" </> "pattern-synonyms" </> "unidirectional.hs"
+  ]
 
 -- | Ormolu examples GHC's own parser cannot read.
 ormoluUnreadable :: [FilePath]

@@ -176,7 +176,7 @@ inside a b = startPoint b <= startPoint a && endPoint a <= endPoint b
 -- | Claim the comments that belong to the given 'Span'.
 claimPlaced :: Span -> Placements -> ([(Position, Comment)], Placements)
 claimPlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
-  (found, rest) -> (concat found, p {placedAt = rest})
+  (found, rest) -> (concat found, p{placedAt = rest})
   where
     forget _ _ = Nothing
 

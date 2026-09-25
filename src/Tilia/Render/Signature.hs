@@ -106,7 +106,7 @@ fixitySig ctx (FixitySig namespace names (Fixity precedence direction)) =
 
 -- | An @INLINE@ or @NOINLINE@ pragma.
 inlineSig :: Ctx -> LocatedN RdrName -> InlinePragma -> Doc
-inlineSig ctx n InlinePragma {..} =
+inlineSig ctx n InlinePragma{..} =
   pragmaBrackets $
     inlineSpec inl_inline
       <> space
@@ -128,7 +128,7 @@ specialiseSig ::
   [LHsSigType GhcPs] ->
   InlinePragma ->
   Doc
-specialiseSig ctx binders target types InlinePragma {..} =
+specialiseSig ctx binders target types InlinePragma{..} =
   pragmaBrackets $
     txt "SPECIALIZE"
       <> space
@@ -165,7 +165,7 @@ specialiseSigE ctx binders e =
 -- | A @SPECIALIZE@ expression without the type ascription it may carry.
 specBody :: LHsExpr GhcPs -> (LHsExpr GhcPs, Maybe (LHsSigType GhcPs))
 specBody = \case
-  L _ (ExprWithTySig _ e HsWC {hswc_body}) -> (e, Just hswc_body)
+  L _ (ExprWithTySig _ e HsWC{hswc_body}) -> (e, Just hswc_body)
   e -> (e, Nothing)
 
 -- | The function a @SPECIALIZE@ expression applies, if it applies one.
@@ -257,7 +257,7 @@ ruleNameLiteral n = outputable (HsString NoSourceText n :: HsLit GhcPs)
 
 -- | The @forall@s a rule or a @SPECIALIZE@ pragma binds.
 ruleBinders :: Ctx -> RuleBndrs GhcPs -> Doc
-ruleBinders ctx (RuleBndrs HsRuleBndrsAnn {..} tyvars binders) =
+ruleBinders ctx (RuleBndrs HsRuleBndrsAnn{..} tyvars binders) =
   foldMap
     (\xs -> forallBndrs ctx Invisible (tyVarBndr ctx) xs <> space)
     tyvars
@@ -269,5 +269,5 @@ ruleBinders ctx (RuleBndrs HsRuleBndrsAnn {..} tyvars binders) =
 ruleBinder :: Ctx -> RuleBndr GhcPs -> Doc
 ruleBinder ctx = \case
   RuleBndr _ n -> name ctx n
-  RuleBndrSig _ n HsPS {..} ->
+  RuleBndrSig _ n HsPS{..} ->
     parens (name ctx n <> typeAscription ctx (asSigType hsps_body))

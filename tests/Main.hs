@@ -25,7 +25,7 @@ main =
   shardFrom <$> lookupEnv "TILIA_SHARD" >>= \case
     Everything -> Spec.main
     Share i n ->
-      hspecWith defaultConfig {configFilterPredicate = Just (taking i n)} Spec.spec
+      hspecWith defaultConfig{configFilterPredicate = Just (taking i n)} Spec.spec
 
 -- | Which share of the suite a run is for.
 data Shard

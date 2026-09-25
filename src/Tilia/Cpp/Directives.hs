@@ -173,7 +173,7 @@ unhandledIn source =
 -- Splitting
 
 -- | One conditional directive, as written after its hash.
-newtype Guard = Guard {guardText :: Text}
+newtype Guard = Guard{guardText :: Text}
   deriving (Eq, Ord, Show)
 
 -- | What one conditional splits a module into.
@@ -219,7 +219,7 @@ sameGuard gs ds =
   ]
 
 -- | The lines one conditional could have printed differently.
-newtype Varied = Varied {variedLines :: [(Int, Int)]}
+newtype Varied = Varied{variedLines :: [(Int, Int)]}
   deriving (Eq, Show)
 
 -- | Was this region printed from lines the conditional left alone?

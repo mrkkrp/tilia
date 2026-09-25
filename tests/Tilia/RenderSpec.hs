@@ -263,10 +263,10 @@ format = formatWith Nothing
 
 -- | Format with the given extensions in force, as a package would put them.
 formatUnder :: [Extension] -> [Text] -> [Text]
-formatUnder exts = withSettings defaultRenderConfig {rcExtensions = Set.fromList exts}
+formatUnder exts = withSettings defaultRenderConfig{rcExtensions = Set.fromList exts}
 
 formatWith :: Maybe Scope -> [Text] -> [Text]
-formatWith scope = withSettings defaultRenderConfig {rcScope = scope}
+formatWith scope = withSettings defaultRenderConfig{rcScope = scope}
 
 withSettings :: RenderConfig -> [Text] -> [Text]
 withSettings settings input =

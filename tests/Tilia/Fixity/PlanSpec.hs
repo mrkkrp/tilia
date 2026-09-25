@@ -84,7 +84,7 @@ tokens = describe "the token a plan is cached under" $ do
     asked `shouldBe` tokenForEnvAndBuildPlan environment onePackage
   where
     here = "/somewhere/bin/ghc-pkg"
-    noPackages = BuildPlan {bpCompiler = "ghc-9.10.3", bpPackages = []}
+    noPackages = BuildPlan{bpCompiler = "ghc-9.10.3", bpPackages = []}
     onePackage =
       BuildPlan
         { bpCompiler = "ghc-9.10.3",

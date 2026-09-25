@@ -223,7 +223,7 @@ namedSections =
   mapMaybe anchorSpan . listify (const True :: LIE GhcPs -> Bool)
   where
     anchorSpan l = case unLoc l of
-      IEDocNamed {} -> spanOfSrcSpan (getHasLoc (getLoc l))
+      IEDocNamed{} -> spanOfSrcSpan (getHasLoc (getLoc l))
       _ -> Nothing
 
 -- | Every doc string in a fragment, even one no 'LHsDoc' holds.

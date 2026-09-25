@@ -59,10 +59,10 @@ overlapMode mode = txt . braced <$> (spelled . unLoc =<< mode)
   where
     braced keyword = "{-# " <> keyword <> " #-}"
     spelled = \case
-      Overlappable {} -> Just "OVERLAPPABLE"
-      Overlapping {} -> Just "OVERLAPPING"
-      Overlaps {} -> Just "OVERLAPS"
-      Incoherent {} -> Just "INCOHERENT"
+      Overlappable{} -> Just "OVERLAPPABLE"
+      Overlapping{} -> Just "OVERLAPPING"
+      Overlaps{} -> Just "OVERLAPS"
+      Incoherent{} -> Just "INCOHERENT"
       _ -> Nothing
 
 -- | A @WARNING@ or @DEPRECATED@ declaration.
@@ -108,7 +108,7 @@ warningParts = \case
     ("WARNING", foldMap named category, said literals)
   where
     said = fmap (fmap hsDocString)
-    named (unLoc -> InWarningCategory {..}) =
+    named (unLoc -> InWarningCategory{..}) =
       txt ("in \"" <> showGhc (unLoc iwc_wc) <> "\"") <> space
 
 -- | One message is written bare; several go in a list.

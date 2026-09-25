@@ -146,7 +146,7 @@ newtype RenderOptions = RenderOptions
 
 -- | Two columns per step.
 defaultRenderOptions :: RenderOptions
-defaultRenderOptions = RenderOptions {roIndentStep = 2}
+defaultRenderOptions = RenderOptions{roIndentStep = 2}
 
 -- | What the engine carries while walking a document.
 data Env = Env
@@ -220,10 +220,10 @@ go env = \case
   DHardBreak -> breakLine (envIndent env)
   DVerbatimBreak lineStart trailing -> verbatimBreakLine lineStart trailing
   DCat a b -> go env b . go env a
-  DNest n d -> go env {envIndent = envIndent env + n * envIndentStep env} d
+  DNest n d -> go env{envIndent = envIndent env + n * envIndentStep env} d
   DAlign d -> \out ->
-    go env {envIndent = max (envIndent env) (outColumn out)} d out
-  DGroup l d -> go env {envLayout = l} d
+    go env{envIndent = max (envIndent env) (outColumn out)} d out
+  DGroup l d -> go env{envLayout = l} d
   DVariant flatD brokenD -> case envLayout env of
     Flat -> go env flatD
     Broken -> go env brokenD
@@ -259,13 +259,13 @@ putText indent t out0
           outStarted = True
         }
   where
-    out = out0 {outClosed = False}
+    out = out0{outClosed = False}
 
 -- | Hold a fragment back until the line ends.
 putHeldBack :: Int -> Text -> Out -> Out
 putHeldBack indent t out
   | outStarted out || not (null (outHeldBack out)) =
-      out {outHeldBack = outHeldBack out <> [t], outClosed = False}
+      out{outHeldBack = outHeldBack out <> [t], outClosed = False}
   | otherwise = closeLine indent (putText indent t out)
 
 -- | Append a space, unless the line has not started or already ends in one.
@@ -292,7 +292,7 @@ breakLine ::
   Out ->
   Out
 breakLine indent out
-  | outClosed out = out {outClosed = False}
+  | outClosed out = out{outClosed = False}
   | atStart out = out
   | not (hasContent out), repeatsBlank out || opensABlock indent out = discarded
   | otherwise =
@@ -301,7 +301,7 @@ breakLine indent out
         }
   where
     discarded =
-      out {outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
+      out{outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
 
 -- | Close the current line, if there is anything on it.
 --
@@ -315,7 +315,7 @@ closeLine ::
   Out ->
   Out
 closeLine indent out
-  | hasContent out = (breakLine indent out) {outClosed = True}
+  | hasContent out = (breakLine indent out){outClosed = True}
   | otherwise = out
 
 -- | Every line the break that has just happened produces.

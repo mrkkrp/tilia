@@ -63,7 +63,7 @@ import Tilia.Utils (lineWidth, quietly)
 main :: IO ()
 main = do
   traverse_ transliterateUnprintable [stdout, stderr]
-  Opts {..} <- customExecParser (prefs (columns lineWidth)) optsParserInfo
+  Opts{..} <- customExecParser (prefs (columns lineWidth)) optsParserInfo
   palette <- paletteFor
   target <-
     either

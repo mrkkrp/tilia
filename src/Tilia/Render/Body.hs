@@ -48,7 +48,7 @@ exprHangs :: HsExpr GhcPs -> Placement
 exprHangs = \case
   HsDo _ (DoExpr _) _ -> Hanging
   HsDo _ (MDoExpr _) _ -> Hanging
-  HsCase {} -> Hanging
+  HsCase{} -> Hanging
   HsLam _ lamVariant mg -> case lamVariant of
     LamCase -> Hanging
     LamCases -> Hanging
@@ -69,9 +69,9 @@ exprHangs = \case
 -- | Does this command absorb the line break that introduces it?
 cmdHangs :: HsCmd GhcPs -> Placement
 cmdHangs = \case
-  HsCmdDo {} -> Hanging
-  HsCmdCase {} -> Hanging
-  HsCmdLam {} -> Hanging
+  HsCmdDo{} -> Hanging
+  HsCmdCase{} -> Hanging
+  HsCmdLam{} -> Hanging
   _ -> Normal
 
 cmdTopHangs :: HsCmdTop GhcPs -> Placement

@@ -161,40 +161,40 @@ describeFormatError palette = \case
 -- | The exit status a failure should leave behind.
 formatErrorExitCode :: FormatError -> Int
 formatErrorExitCode = \case
-  NoProject {} -> 2
-  NoBuildPlan {} -> 3
-  NotParsed {} -> 4
-  PositionPragmas {} -> 5
+  NoProject{} -> 2
+  NoBuildPlan{} -> 3
+  NotParsed{} -> 4
+  PositionPragmas{} -> 5
   NoPackage _ problem -> case problem of
     NoPackageFile -> 6
-    PackageUnreadable {} -> 6
-    PackageMalformed {} -> 7
-    FileUnclaimed {} -> 8
-  UnknownFixity {} -> 15
-  Unreadable {} -> 16
-  NotEquivalent {} -> 17
-  NotIdempotent {} -> 18
+    PackageUnreadable{} -> 6
+    PackageMalformed{} -> 7
+    FileUnclaimed{} -> 8
+  UnknownFixity{} -> 15
+  Unreadable{} -> 16
+  NotEquivalent{} -> 17
+  NotIdempotent{} -> 18
   CppUnsupported _ why -> case why of
-    UnhandledDirective {} -> 9
+    UnhandledDirective{} -> 9
     UnsplittableConditional -> 10
     TooManyConfigurations -> 11
-    ConfigurationNotParsed {} -> 12
-    DirectiveUnplaceable {} -> 13
-    DirectiveInQuotedText {} -> 14
+    ConfigurationNotParsed{} -> 12
+    DirectiveUnplaceable{} -> 13
+    DirectiveInQuotedText{} -> 14
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
 refused = \case
-  PositionPragmas {} -> True
-  CppUnsupported {} -> True
-  UnknownFixity {} -> True
-  NotParsed {} -> False
-  NoPackage {} -> False
-  Unreadable {} -> False
-  NotEquivalent {} -> False
-  NotIdempotent {} -> False
-  NoProject {} -> False
-  NoBuildPlan {} -> False
+  PositionPragmas{} -> True
+  CppUnsupported{} -> True
+  UnknownFixity{} -> True
+  NotParsed{} -> False
+  NoPackage{} -> False
+  Unreadable{} -> False
+  NotEquivalent{} -> False
+  NotIdempotent{} -> False
+  NoProject{} -> False
+  NoBuildPlan{} -> False
 
 -- | What a run works out once and then uses for every file.
 --
@@ -311,7 +311,7 @@ formatSource session path source = runExceptT $ do
       formatting (extensions, cpp) already text
         | cpp = do
             render <- case parseModule config path (reading text) of
-              Left _ -> pure defaultRenderConfig {rcExtensions = extensions}
+              Left _ -> pure defaultRenderConfig{rcExtensions = extensions}
               Right whole -> renderConfigFor extensions (pmModule whole)
             printed <-
               orElse

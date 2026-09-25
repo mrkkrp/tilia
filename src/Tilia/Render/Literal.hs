@@ -75,7 +75,7 @@ takeApart s = do
   let split = case litKind literal of
         Regular -> runsBetweenGaps
         Multiline -> splitMultiline
-  pure literal {litParts = concatMap split (litParts literal)}
+  pure literal{litParts = concatMap split (litParts literal)}
 
 -- | Peel the quotes off, allowing for the @#@ that marks an unlifted
 -- literal.
@@ -84,7 +84,7 @@ stripMarkers litKind marker s = do
   inner <- T.stripPrefix marker s
   litClose <- find (`T.isSuffixOf` inner) [marker <> "#", marker]
   body <- T.stripSuffix litClose inner
-  pure Literal {litOpen = marker, litParts = [body], ..}
+  pure Literal{litOpen = marker, litParts = [body], ..}
 
 -- | The runs of a literal either side of its string gaps.
 runsBetweenGaps :: Text -> [Text]

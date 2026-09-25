@@ -475,7 +475,7 @@ commentDifference (moduleBefore, moduleAfter) before0 after0
     explode c = case commentStyle c of
       DocComment
         | "--" `T.isPrefixOf` NE.head (commentBody c) ->
-            [ c {commentBody = l :| [], commentCodeBeforeStopsAt = before'}
+            [ c{commentBody = l :| [], commentCodeBeforeStopsAt = before'}
             | (n, l) <- zip [0 :: Int ..] (NE.toList (body (escapeTrigger c))),
               let before' =
                     if n == 0 then commentCodeBeforeStopsAt c else Nothing

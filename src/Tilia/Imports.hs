@@ -213,8 +213,8 @@ combineImports ::
   LImportDecl GhcPs
 combineImports written (L ann kept) (L other folded) =
   L
-    ann {entry = EpaSpan (combineSrcSpans (locA ann) (locA other))}
-    kept {ideclImportList = both (ideclImportList kept) (ideclImportList folded)}
+    ann{entry = EpaSpan (combineSrcSpans (locA ann) (locA other))}
+    kept{ideclImportList = both (ideclImportList kept) (ideclImportList folded)}
   where
     both (Just (interpretation, L l xs)) (Just (_, L l' ys)) =
       Just (interpretation, L (widened written l l') (tidyImportItems written (xs <> ys)))
@@ -242,16 +242,16 @@ tidyImportItems written items
         [(nameIdentity (unLoc i), fmap sortSubnames i) | i <- items]
   where
     unnameable = \case
-      IEVar {} -> False
-      IEThingAbs {} -> False
-      IEThingAll {} -> False
-      IEThingWith {} -> False
+      IEVar{} -> False
+      IEThingAbs{} -> False
+      IEThingAll{} -> False
+      IEThingWith{} -> False
       _ -> True
 
 -- | Cover both of these regions, if anything was written between them.
 widened :: [Comment] -> EpAnn ann -> EpAnn ann -> EpAnn ann
 widened written a b
-  | any holdsComment (spanOfSrcSpan combined) = a {entry = EpaSpan combined}
+  | any holdsComment (spanOfSrcSpan combined) = a{entry = EpaSpan combined}
   | otherwise = a
   where
     combined = combineSrcSpans (locA a) (locA b)

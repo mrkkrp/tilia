@@ -67,15 +67,15 @@ bareName = \case
 adorn :: Ctx -> Maybe Span -> RdrName -> EpAnn NameAnn -> Doc -> Doc
 adorn ctx here x = go
   where
-    go EpAnn {anns} = case anns of
-      NameAnnQuote {nann_quoted} -> (txt "'" <>) . go nann_quoted
-      NameAnnOnly {nann_adornment = NameParensHash {}} -> const (txt "(# #)")
-      NameAnnOnly {nann_adornment = NameSquare {}} ->
+    go EpAnn{anns} = case anns of
+      NameAnnQuote{nann_quoted} -> (txt "'" <>) . go nann_quoted
+      NameAnnOnly{nann_adornment = NameParensHash{}} -> const (txt "(# #)")
+      NameAnnOnly{nann_adornment = NameSquare{}} ->
         const (txt "[" <> insideBrackets here mempty <> txt "]")
-      NameAnnRArrow {nann_mopen = Just _} -> inParens
-      NameAnn {nann_adornment, nann_name} -> case nann_adornment of
-        NameParens {} -> inParens . spaceOutHash . itsOwn nann_name
-        NameBackquotes {} -> backticks . itsOwn nann_name
+      NameAnnRArrow{nann_mopen = Just _} -> inParens
+      NameAnn{nann_adornment, nann_name} -> case nann_adornment of
+        NameParens{} -> inParens . spaceOutHash . itsOwn nann_name
+        NameBackquotes{} -> backticks . itsOwn nann_name
         _ -> itsOwn nann_name
       _ -> id
     itsOwn = atSpan ctx . annSpan

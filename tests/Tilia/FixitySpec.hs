@@ -581,7 +581,7 @@ fullScope =
 
 -- | What is known in a world made of 'exportsOf' alone.
 knowingExports :: KnownModules
-knowingExports = noKnownModules {knownFixities = exportsOf}
+knowingExports = noKnownModules{knownFixities = exportsOf}
 
 -- | The one import blamed for an operator, unread on its own account and so
 -- with nothing below it. What every answer here was before a chain could be
@@ -606,7 +606,7 @@ scopeKnowing :: [(Text, [Text])] -> Text -> Scope
 scopeKnowing said =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports {knownExportNames = exportNamesOf}
+    knowingExports{knownExportNames = exportNamesOf}
     . pmModule
     . parsed
   where
@@ -631,7 +631,7 @@ scopeCarrying :: Text -> Scope
 scopeCarrying source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports {knownChildren = childrenOf}
+    knowingExports{knownChildren = childrenOf}
     (pmModule (parsed ("module M where\n" <> source)))
   where
     childrenOf = \case
@@ -654,7 +654,7 @@ scopeSuspecting :: [(Text, [(Text, [Text])])] -> Text -> Scope
 scopeSuspecting carries source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports {knownChildren = childrenOf}
+    knowingExports{knownChildren = childrenOf}
     (pmModule (parsed ("module M where\n" <> source <> "f a b = a <??> b\n")))
   where
     childrenOf m =
@@ -688,7 +688,7 @@ usingItBothWays = takesItsPreludeElsewhere <> "f a b = a <%> b\n"
 -- Kept out of 'exportsOf' so that a Prelude which declares something does
 -- not have to be reckoned with by every other test in the file.
 disagreeingAboutPrelude :: KnownModules
-disagreeingAboutPrelude = noKnownModules {knownFixities = said}
+disagreeingAboutPrelude = noKnownModules{knownFixities = said}
   where
     said = \case
       "Prelude" -> whichever [(OpName "<%>", Fixity RightAssoc 6)]

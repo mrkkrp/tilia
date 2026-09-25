@@ -50,7 +50,7 @@ classDecl ::
   [LTyFamDefltDecl GhcPs] ->
   [LDocDecl GhcPs] ->
   Doc
-classDecl ctx anns ctxt tyCon HsQTvs {..} fixity fdeps sigs binds families defaults docs =
+classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaults docs =
   txt "class" <> layoutFrom ctx wholeHeadSpan head' <> body
   where
     headSpan = spanOf tyCon <> spansOf hsq_explicit
@@ -127,7 +127,7 @@ funDep ctx (FunDep _ before after) =
 
 -- | A class instance.
 clsInstDecl :: Ctx -> ClsInstDecl GhcPs -> Doc
-clsInstDecl ctx ClsInstDecl {cid_ext = (warning, anns, _), ..} =
+clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
   txt "instance" <> layoutFrom ctx headSpan head' <> body
   where
     headSpan = foldMap spanOf warning <> spanOf cid_poly_ty
@@ -162,7 +162,7 @@ clsInstDecl ctx ClsInstDecl {cid_ext = (warning, anns, _), ..} =
 
 -- | A standalone @deriving@ declaration.
 standaloneDerivDecl :: Ctx -> DerivDecl GhcPs -> Doc
-standaloneDerivDecl ctx DerivDecl {deriv_ext = (warning, _), ..} =
+standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
   txt "deriving" <> space <> strategy
   where
     instanceHead indented =
@@ -188,7 +188,7 @@ standaloneDerivDecl ctx DerivDecl {deriv_ext = (warning, _), ..} =
 
 -- | A type family instance.
 tyFamInstDecl :: Ctx -> FamilyStyle -> TyFamInstDecl GhcPs -> Doc
-tyFamInstDecl ctx style TyFamInstDecl {..} =
+tyFamInstDecl ctx style TyFamInstDecl{..} =
   txt keyword <> breakOrSpace <> indent (tyFamInstEqn ctx tfid_eqn)
   where
     keyword = case style of
@@ -197,7 +197,7 @@ tyFamInstDecl ctx style TyFamInstDecl {..} =
 
 -- | A data family instance.
 dataFamInstDecl :: Ctx -> FamilyStyle -> DataFamInstDecl GhcPs -> Doc
-dataFamInstDecl ctx style (DataFamInstDecl FamEqn {..}) =
+dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
   dataDecl
     ctx
     style
@@ -218,7 +218,7 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn {..}) =
 
 -- | A @data family@ or @type family@ declaration.
 famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
-famDecl ctx style FamilyDecl {fdTyVars = HsQTvs {..}, ..} =
+famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
   txt keyword <> txt familyWord <> head' <> equations
   where
     (keyword, closedEqns) = case fdInfo of
@@ -286,7 +286,7 @@ injectivityAnn ctx (InjectivityAnn _ from to) =
 
 -- | One equation of a type family.
 tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc
-tyFamInstEqn ctx FamEqn {..} =
+tyFamInstEqn ctx FamEqn{..} =
   binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
   where
     (binders, hasBinders) = case feqn_bndrs of

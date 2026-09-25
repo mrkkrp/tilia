@@ -89,7 +89,7 @@ patBody ctx bracing inAsPat here = \case
       name ctx n
         <> breakOrSpace
         <> indent (txt "+" <> space <> at ctx k (outputable . ol_val))
-  SigPat _ p HsPS {..} ->
+  SigPat _ p HsPS{..} ->
     recur p <> typeAscription ctx (asSigType hsps_body)
   EmbTyPat _ (HsTP _ ty) -> txt "type" <> space <> hsType ctx ty
   InvisPat _ (HsTP _ ty) -> txt "@" <> hsType ctx ty
@@ -119,7 +119,7 @@ conPattern ctx bracing inAsPat here con = \case
         <> indent (align (sepBy breakOrSpace (fmap (align . recur) args)))
   RecCon (HsRecFields _ fields dotdot) ->
     name ctx con
-      <> breakOrSpace
+      <> breakOrNothing
       <> indent (braces (insideBrackets here (commaSep (fmap field (visibleFields dotdot fields)))))
   InfixCon l r ->
     layoutFrom ctx (spanOf l <> spanOf r) $
@@ -137,7 +137,7 @@ conPattern ctx bracing inAsPat here con = \case
 
 -- | One field of a record pattern.
 patFieldBind :: Ctx -> HsRecField GhcPs (LPat GhcPs) -> Doc
-patFieldBind ctx HsFieldBind {..} =
+patFieldBind ctx HsFieldBind{..} =
   at ctx hfbLHS (fieldOcc ctx)
     <> includeUnless
       hfbPun
@@ -145,7 +145,7 @@ patFieldBind ctx HsFieldBind {..} =
 
 -- | The name of a record field.
 fieldOcc :: Ctx -> FieldOcc GhcPs -> Doc
-fieldOcc ctx FieldOcc {..} = name ctx foLabel
+fieldOcc ctx FieldOcc{..} = name ctx foLabel
 
 -- | An unboxed sum: the one alternative that is present, with a bar for each
 -- one that is not.

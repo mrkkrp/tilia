@@ -55,7 +55,7 @@ dataDecl ::
   Doc ->
   HsDataDefn GhcPs ->
   Doc
-dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn {..} =
+dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
   txt keyword <> txt instanceWord <> header <> constructors <> derivings
   where
     keyword = case dd_cons of
@@ -125,13 +125,13 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
               beforeEquals <> txt "=" <> space <> alternatives
         where
           singleRecCon = case cons of
-            [L _ ConDeclH98 {con_args = RecCon {}}] -> True
+            [L _ ConDeclH98{con_args = RecCon{}}] -> True
             _ -> False
           compactAroundEquals =
             sameLine (spanOf tyCon) (conNamesSpan (unLoc firstCon))
           conNamesSpan = \case
-            ConDeclGADT {..} -> spansOf (NE.toList con_names)
-            ConDeclH98 {..} -> spanOf con_name
+            ConDeclGADT{..} -> spansOf (NE.toList con_names)
+            ConDeclH98{..} -> spanOf con_name
 
           lineHaddocks = any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
 
@@ -165,21 +165,21 @@ dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsData
 -- | The documentation a constructor's own layout has to make room for.
 visibleDocs :: ConDecl GhcPs -> [LHsDoc GhcPs]
 visibleDocs = \case
-  ConDeclH98 {..} ->
+  ConDeclH98{..} ->
     maybeToList con_doc <> case con_args of
       PrefixCon xs -> mapMaybe cdf_doc xs
       _ -> []
-  ConDeclGADT {} -> []
+  ConDeclGADT{} -> []
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
 isGadtCon = \case
-  ConDeclGADT {} -> True
-  ConDeclH98 {} -> False
+  ConDeclGADT{} -> True
+  ConDeclH98{} -> False
 
 -- | One constructor.
 conDecl :: Ctx -> Choice "singleRecCon" -> ConDecl GhcPs -> Doc
-conDecl ctx _ ConDeclGADT {..} =
+conDecl ctx _ ConDeclGADT{..} =
   foldMap (haddock ctx Pipe Closed) con_doc
     <> layoutFrom ctx declSpan (brokenIfDocumented ctx documented body)
   where
@@ -197,8 +197,8 @@ conDecl ctx _ ConDeclGADT {..} =
     signature =
       outerBndrs ctx (unLoc con_outer_bndrs)
         <> ( case unLoc con_outer_bndrs of
-               HsOuterImplicit {} -> mempty
-               HsOuterExplicit {} -> breakOrSpace
+               HsOuterImplicit{} -> mempty
+               HsOuterExplicit{} -> breakOrSpace
            )
         <> foldMap (\tele -> forallTelescope ctx tele <> breakOrSpace) con_inner_bndrs
         <> foldMap
@@ -214,12 +214,12 @@ conDecl ctx _ ConDeclGADT {..} =
     -- second signature on the constructor rather than as a kind on its
     -- result, and does not parse at all.
     resultType = case unLoc con_res_ty of
-      HsKindSig {} -> parens (hsType ctx con_res_ty)
-      HsForAllTy {} | standsAlone -> parens (hsType ctx con_res_ty)
-      HsQualTy {} | standsAlone -> parens (hsType ctx con_res_ty)
+      HsKindSig{} -> parens (hsType ctx con_res_ty)
+      HsForAllTy{} | standsAlone -> parens (hsType ctx con_res_ty)
+      HsQualTy{} | standsAlone -> parens (hsType ctx con_res_ty)
       _ -> hsType ctx con_res_ty
     standsAlone = case (unLoc con_outer_bndrs, con_g_args) of
-      (HsOuterImplicit {}, PrefixConGADT _ []) ->
+      (HsOuterImplicit{}, PrefixConGADT _ []) ->
         null con_inner_bndrs && null con_mb_cxt
       _ -> False
     arguments = case con_g_args of
@@ -238,7 +238,7 @@ conDecl ctx _ ConDeclGADT {..} =
       spanOf con_res_ty <> case con_g_args of
         PrefixConGADT NoExtField xs -> spansOf (fmap cdf_type xs)
         RecConGADT _ x -> spanOf x
-conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
+conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
   PrefixCon xs ->
     ownDoc
       <> existentials
@@ -257,7 +257,7 @@ conDecl ctx singleRecCon ConDeclH98 {..} = case con_args of
         ctx
         declSpan
         ( name ctx con_name
-            <> breakOrSpace
+            <> breakOrNothing
             <> nest (if isTrue singleRecCon then 0 else 1) (recordFieldsAt ctx l)
         )
   InfixCon l r ->
@@ -320,7 +320,7 @@ leftContext ctx = \case
 
 -- | One @deriving@ clause, with the strategy it was written with.
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
-derivingClause ctx HsDerivingClause {..} =
+derivingClause ctx HsDerivingClause{..} =
   brokenIfDocumented ctx deriv_clause_tys $
     txt "deriving" <> space <> strategy
   where
@@ -357,7 +357,7 @@ synDecl ::
   LHsQTyVars GhcPs ->
   LHsType GhcPs ->
   Doc
-synDecl ctx tyCon fixity HsQTvs {..} rhs =
+synDecl ctx tyCon fixity HsQTvs{..} rhs =
   txt "type"
     <> space
     <> layoutFrom

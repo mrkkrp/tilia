@@ -19,7 +19,7 @@ wildcardWithARemarkAbove =
       .. -- so they need no mention
     }
 
-wildcardInAPattern Shape {..} = name -- bound by the wildcard
+wildcardInAPattern Shape{..} = name -- bound by the wildcard
 
 wildcardInAPatternWithFields
   Shape

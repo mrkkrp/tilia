@@ -140,7 +140,7 @@ plainSite =
 
 -- | The same site, with a different answer about braces.
 withBracing :: Bracing -> Site -> Site
-withBracing bracing site = site {siteBracing = bracing}
+withBracing bracing site = site{siteBracing = bracing}
 
 -- | Indent a hanging body, one step further when it hangs off an applicand.
 underSite :: Site -> Doc -> Doc

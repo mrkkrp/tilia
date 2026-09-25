@@ -131,7 +131,7 @@ heldOffModuleDoc hsMod haddocks pragmas cs
   | Just ended <- endOfModuleDoc,
     Just began <- startOfModuleLine,
     (before', c : after') <- break (uncoveredBetween ended began) cs =
-      before' <> (c {commentGapAbove = True} : after')
+      before' <> (c{commentGapAbove = True} : after')
   | otherwise = cs
   where
     uncoveredBetween ended began c =
@@ -146,7 +146,7 @@ heldOffModuleDoc hsMod haddocks pragmas cs
       c <- lookup (startPoint s) [(startPoint (commentSpan h), h) | h <- haddocks]
       if bracketed c then Nothing else Just (spanEndLine s)
     moduleDoc = case hsmodExt hsMod of
-      XModulePs {hsmodHaddockModHeader = Just d} -> spanOfSrcSpan (getLoc d)
+      XModulePs{hsmodHaddockModHeader = Just d} -> spanOfSrcSpan (getLoc d)
       _ -> Nothing
     startOfModuleLine = spanStartLine <$> (spanOf =<< hsmodName hsMod)
 
