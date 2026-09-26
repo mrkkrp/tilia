@@ -5,6 +5,7 @@
 * [Formatting operator chains](#formatting-operator-chains)
 * [Formatting CPP](#formatting-cpp)
 * [Comparison with other formatters](#comparison-with-other-formatters)
+* [Suggested setup per use-case](#suggested-setup-per-use-case)
 * [Development](#development)
 * [Contribution](#contribution)
 * [License](#license)
@@ -82,21 +83,10 @@ are often not enabled by default and that would be confusing. Where a
 project will not solve with those flags, Tilia settles for what Cabal builds
 by default, so you get a narrower plan rather than none.
 
-Where the plan and every dependency are there already, as in a Nix build,
-`--build-plan FILE` points Tilia at the plan to use instead. The plan is
-taken as it is and dependencies are read from what `ghc-pkg` can see, so
-Cabal is never run and need not be installed. With
-[haskell.nix](https://github.com/input-output-hk/haskell.nix) this makes a
-formatting check that runs before a component is compiled:
-
-```nix
-preBuild = ''
-  ${tilia}/bin/tilia check --build-plan ${project.plan-nix}/plan.json
-'';
-```
-
 Finally, here are some other flags that may be of interest:
 
+* `--build-plan FILE` takes a build plan as it is and never runs Cabal, see
+  [Haskell.nix](#haskellnix);
 * `--check-ast` performs an AST-equivalence check;
 * `--check-idempotence` performs an idempotence check;
 * `--debug-fixity` prints information that is useful for debugging
@@ -171,10 +161,75 @@ of the module is a valid Haskell module.
     with the current trends in software development.
   * Ormolu is self-contained and makes no assumption about tools on the
     system where it is run. Tilia needs Cabal: it shells out to it and may
-    download packages. Ormolu does none of this, which may be an advantage
-    in some situations.
+    download packages, unless given a build plan with `--build-plan`.
+    Ormolu does none of this, which may be an advantage in some situations.
 * Fourmolu is a configurable fork of Ormolu which shares the same
   architecture, strengths, and weaknesses.
+
+## Suggested setup per use-case
+
+### Local development
+
+Have `cabal` and the compiler your project is built with on `PATH`, as you
+would to build it, and nothing else needs setting up. Tilia gets the build
+plan and the sources of dependencies through Cabal as described above, and
+remembers what it works out about each package's operators in the user's
+cache directory: `~/.cache/tilia`, or `%LOCALAPPDATA%\tilia` on Windows.
+Both that and Cabal's package cache are shared between projects, so a
+package is read once per machine rather than once per project.
+
+### CI with Cabal
+
+On GitHub Actions, [setup-tilia](https://github.com/mrkkrp/setup-tilia)
+installs Tilia and carries both of those directories from one run to the
+next, keyed on the version of Tilia and on your `.cabal` and
+`cabal.project` files:
+
+```yaml
+- uses: haskell-actions/setup@v2
+  with:
+    ghc-version: '9.10.3'
+- uses: actions/checkout@v7
+- uses: mrkkrp/setup-tilia@v1
+- run: tilia check
+```
+
+Nothing has to be built before the check. Where a dependency is not built,
+Tilia reads its operators out of its source tarball instead.
+
+### Haskell.nix
+
+[haskell.nix](https://github.com/input-output-hk/haskell.nix) builds each
+component with every dependency already installed and keeps the plan it
+solved in `plan-nix`. `--build-plan FILE` points Tilia at such a plan rather
+than having Cabal solve one. The plan is taken as it is and dependencies
+are read from what `ghc-pkg` can see, so Cabal is never run and need not be
+installed.
+
+This makes a formatting check that runs as part of the build, before a
+component is compiled, with no development shell to set up for it. Each
+component is built from its own sources alone, so the check goes into every
+component of yours:
+
+```nix
+project = pkgs.haskell-nix.cabalProject {
+  # ...
+  modules = [{
+    packages.my-package.components = {
+      library.preBuild = tiliaCheck;
+      exes.my-exe.preBuild = tiliaCheck;
+    };
+  }];
+};
+tiliaCheck = ''
+  ${tilia.packages.${system}.default}/bin/tilia check \
+    --build-plan ${project.plan-nix}/plan.json
+'';
+```
+
+Here `tilia` is this repository as a flake input. There is nowhere to keep
+a cache between Nix builds, so every check reads the interfaces it needs
+again, which on a small project takes a couple of seconds per component.
 
 ## Development
 
