@@ -9,6 +9,7 @@ module Tilia.Format
     formatErrorExitCode,
     refused,
     Session,
+    PlanSource (..),
     newSession,
     fixityNotesOf,
     formatSource,
@@ -58,9 +59,12 @@ import Tilia.Fixity.Debug (FixityNotes, fixityNotes)
 import Tilia.Fixity.Plan
   ( PlanComponent,
     Resolver (..),
+    Route (FromInterface),
     loadPlan,
     macrosOf,
     newResolver,
+    newResolverVia,
+    readGivenPlan,
     scopeFor,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
@@ -83,8 +87,7 @@ import Tilia.Utils (tshow)
 data FormatError
   = -- | No @cabal.project@ or @.cabal@ file above it.
     NoProject FilePath
-  | -- | A project, but no build plan we could read or produce. The text is
-    -- whatever @cabal@ had to say about it.
+  | -- | A project, but no build plan we could read or produce, and why.
     NoBuildPlan FilePath Text
   | -- | We failed to read .cabal file.
     NoPackage FilePath PackageProblem
@@ -219,13 +222,22 @@ data Session = Session
     sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes))
   }
 
+-- | Where a session's build plan comes from.
+data PlanSource
+  = -- | The project's own, solved again or fetched for with @cabal@ where
+    -- it says nothing about the components about to be formatted or is
+    -- short of their dependencies' sources.
+    SolvedPlan [PlanComponent]
+  | -- | A plan file taken as it is, with every dependency installed
+    -- already, so that @cabal@ is never run.
+    GivenPlan FilePath
+
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
   -- | Where to start looking for the project.
   FilePath ->
-  -- | The components about to be formatted, so that a plan which says
-  -- nothing about them can be solved again rather than trusted.
-  [PlanComponent] ->
+  -- | Where the build plan comes from.
+  PlanSource ->
   -- | Check AST equivalence.
   Choice "checkAst" ->
   -- | Check idempotence.
@@ -234,10 +246,15 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession start components checkAst checkIdempotence debugFixity = runExceptT $ do
+newSession start planSource checkAst checkIdempotence debugFixity = runExceptT $ do
   root <- prPath <$> (need (NoProject start) =<< liftIO (findProjectRoot start))
-  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan components root)
-  resolver <- liftIO (newResolver plan)
+  (plan, resolver) <- case planSource of
+    SolvedPlan components -> do
+      plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan components root)
+      (,) plan <$> liftIO (newResolver plan)
+    GivenPlan path -> do
+      plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
+      (,) plan <$> liftIO (newResolverVia [FromInterface] plan)
   askPackage <- liftIO newPackageReader
   notes <-
     if isTrue debugFixity

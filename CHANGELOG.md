@@ -30,6 +30,9 @@
   20](https://github.com/mrkkrp/tilia/pull/20).
 * Read the interfaces of dependencies concurrently, and each one once. [PR
   23](https://github.com/mrkkrp/tilia/pull/23).
+* Add `--build-plan` to take a build plan as it is, with every dependency
+  installed, without running Cabal. [Issue
+  4](https://github.com/mrkkrp/tilia/issues/4).
 
 ## Tilia 0.0.1.0
 
