@@ -45,6 +45,9 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Applicative ((<|>))
+import Control.Concurrent (getNumCapabilities, newEmptyMVar, putMVar, readMVar)
+import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
+import Control.Exception (bracket_)
 import Control.Monad (filterM, foldM, join)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson
@@ -123,7 +126,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly)
+import Tilia.Utils (inParallel, quietly)
 
 ----------------------------------------------------------------------------
 -- The plan
@@ -807,14 +810,21 @@ newResolverVia routes plan = do
   extensionsRead <- newIORef Map.empty
   exportsRead <- newIORef Map.empty
   interfacesRead <- newIORef Map.empty
+  reading <- newQSem =<< getNumCapabilities
   let interfaceOf modName = do
-        seen <- readIORef interfacesRead
-        case Map.lookup modName seen of
-          Just interface -> pure interface
-          Nothing -> do
+        slot <- newEmptyMVar
+        claimed <-
+          atomicModifyIORef' interfacesRead $ \m -> case Map.lookup modName m of
+            Just other -> (m, Left other)
+            Nothing -> (Map.insert modName slot m, Right slot)
+        case claimed of
+          Left other -> readMVar other
+          Right mine -> do
             found <- case Map.lookup modName interfaces of
               Nothing -> pure Nothing
-              Just (_, path) -> readInterface modName path
+              Just (_, path) ->
+                bracket_ (waitQSem reading) (signalQSem reading) $
+                  readInterface modName path
             -- Being listed is not the same as being readable: @ghc-pkg@
             -- names @GHC.Prim@ among @ghc-prim@'s modules and there is no
             -- file at the path that implies. So the table answers for a
@@ -822,7 +832,7 @@ newResolverVia routes plan = do
             let interface = case found of
                   Just _ -> found
                   Nothing -> asInterface <$> Map.lookup modName builtinFixities
-            atomicModifyIORef' interfacesRead (\m -> (Map.insert modName interface m, ()))
+            putMVar mine interface
             pure interface
   let workings =
         Workings
@@ -1048,14 +1058,14 @@ scopeFor ::
   IO Scope
 scopeFor resolver implicitPrelude hsModule = do
   let imports = moduleImports implicitPrelude hsModule
-  answers <- traverse (\m -> (m,) <$> askFixities resolver m) (fmap importModule imports)
+  answers <- inParallel (\m -> (m,) <$> askFixities resolver m) (fmap importModule imports)
   let table = Map.fromList answers
       unread = [m | (m, Nothing) <- answers]
-  names <- Map.fromList <$> traverse (\m -> (m,) <$> askExportNames resolver m) unread
-  chains <- Map.fromList <$> traverse (\m -> (m,) <$> askChain resolver m) unread
+  names <- Map.fromList <$> inParallel (\m -> (m,) <$> askExportNames resolver m) unread
+  chains <- Map.fromList <$> inParallel (\m -> (m,) <$> askChain resolver m) unread
   kept <-
     Map.fromList
-      <$> traverse
+      <$> inParallel
         (\m -> (m,) <$> askChildren resolver m)
         (Set.toList (Set.fromList (fmap importModule (filter expands imports))))
   pure $
@@ -1285,7 +1295,7 @@ fromInterface interfaceOf modName =
   interfaceOf modName >>= \case
     Nothing -> pure (Unreadable Nothing)
     Just iface -> do
-      declarers <- traverse asked (distinct (fmap fst (interfaceReexports iface)))
+      declarers <- inParallel asked (distinct (fmap fst (interfaceReexports iface)))
       pure $ case [m | (m, Nothing) <- declarers] of
         (m : _) -> Unreadable (Just m)
         [] ->

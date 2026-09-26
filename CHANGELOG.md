@@ -28,6 +28,8 @@
   3](https://github.com/mrkkrp/tilia/issues/3).
 * Format a package's `Setup.hs` with the compiler's default extensions. [PR
   20](https://github.com/mrkkrp/tilia/pull/20).
+* Read the interfaces of dependencies concurrently, and each one once. [PR
+  23](https://github.com/mrkkrp/tilia/pull/23).
 
 ## Tilia 0.0.1.0
 

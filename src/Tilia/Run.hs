@@ -25,17 +25,7 @@ module Tilia.Run
   )
 where
 
-import Control.Concurrent
-  ( forkIO,
-    getNumCapabilities,
-    newEmptyMVar,
-    putMVar,
-    takeMVar,
-  )
-import Control.Monad (replicateM)
 import Data.ByteString qualified as BS
-import Data.Foldable (for_, traverse_)
-import Data.IORef
 import Data.List (sortOn)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -53,7 +43,7 @@ import Tilia.Format
   )
 import Tilia.Newline (NewlineStyle (Lf), getNewlineStyle, setNewlineStyle)
 import Tilia.Palette (Color (Bad, Good, Middling, Place), Palette, marker, paint)
-import Tilia.Utils (attempted, indent, lineWidth, wrapTo)
+import Tilia.Utils (attempted, inParallel, indent, lineWidth, wrapTo)
 
 ----------------------------------------------------------------------------
 -- Outcomes
@@ -139,27 +129,6 @@ writeBack :: (FilePath, Outcome) -> IO ()
 writeBack (path, outcome) = case outcome of
   Changed _ after -> BS.writeFile path (T.encodeUtf8 after)
   _ -> pure ()
-
--- | Run an action over every element at once, as far as the machine allows.
-inParallel :: (a -> IO b) -> [a] -> IO [b]
-inParallel act xs = do
-  capabilities <- getNumCapabilities
-  queue <- newIORef (zip [0 :: Int ..] xs)
-  answers <- newIORef Map.empty
-  let worker =
-        atomicModifyIORef'
-          queue
-          (\case [] -> ([], Nothing); (y : ys) -> (ys, Just y))
-          >>= \case
-            Nothing -> pure ()
-            Just (i, x) -> do
-              y <- act x
-              atomicModifyIORef' answers (\m -> (Map.insert i y m, ()))
-              worker
-  done <- replicateM (max 1 (min capabilities (length xs))) newEmptyMVar
-  for_ done $ \signal -> forkIO (worker >> putMVar signal ())
-  traverse_ takeMVar done
-  Map.elems <$> readIORef answers
 
 ----------------------------------------------------------------------------
 -- Report
