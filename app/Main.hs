@@ -40,6 +40,7 @@ import Tilia.Cabal.Target
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
   ( FormatError,
+    PlanSource (..),
     describeFormatError,
     fixityNotesOf,
     formatErrorExitCode,
@@ -79,7 +80,10 @@ main = do
   session <-
     newSession
       "."
-      (mapMaybe componentInPlan components)
+      ( case optBuildPlan of
+          Nothing -> PlanFromCabal (mapMaybe componentInPlan components)
+          Just givenPlan -> GivenPlan givenPlan
+      )
       optUseCache
       optDownload
       optCheckAst
@@ -178,6 +182,8 @@ data Opts = Opts
     optCheckIdempotence :: Choice "checkIdempotence",
     -- | Whether to print debugging information about fixities.
     optDebugFixity :: Choice "debugFixity",
+    -- | A build plan to trust as up to date.
+    optBuildPlan :: Maybe FilePath,
     -- | Whether to read from and write to the cache.
     optUseCache :: Choice "useCache",
     -- | Whether to download sources that are missing.
@@ -220,6 +226,7 @@ optsParser =
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
+        <*> optional buildPlanOption
         <*> noCacheSwitch
         <*> noDownloadsSwitch
         <*> mustNotDeclineSwitch
@@ -241,6 +248,12 @@ optsParser =
           [ long "debug-fixity",
             help "Print debugging information about fixities"
           ]
+    buildPlanOption =
+      (strOption . mconcat)
+        [ long "build-plan",
+          metavar "PLAN",
+          help "Trust this plan.json as up to date rather than have Cabal solve one"
+        ]
     noCacheSwitch =
       fromBool . not
         <$> (switch . mconcat)

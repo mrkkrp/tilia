@@ -84,14 +84,16 @@ by default, so you get a narrower plan rather than none.
 
 Finally, here are some other flags that may be of interest:
 
-* `--check-ast` performs an AST-equivalence check;
-* `--check-idempotence` performs an idempotence check;
+* `--check-ast` performs an AST-equivalence check.
+* `--check-idempotence` performs an idempotence check.
 * `--debug-fixity` prints information that is useful for debugging
-  formatting of operator chains;
-* `--no-cache` neither reads from nor writes to the cache;
+  formatting of operator chains.
+* `--build-plan PLAN` trusts a given build plan as up to date rather than
+  having Cabal solve one.
+* `--no-cache` neither reads from nor writes to the cache.
 * `--no-downloads` does not download sources that are missing, and a file
   whose operators come from a dependency that could not be read is then
-  declined;
+  declined.
 * `--must-not-decline` turns declined files into failures.
 
 ## Excluding files
