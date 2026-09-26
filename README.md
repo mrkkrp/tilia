@@ -109,6 +109,51 @@ enclosed in a conditional branch will format, and it does not even need to
 be self-contained valid Haskell on its own, as long as every configuration
 of the module is a valid Haskell module.
 
+## Comparison with other formatters
+
+* Ormolu.
+  * Ormolu formats operator chains by consulting a hardcoded library of
+    operator fixities which it builds partly by running a rudimentary
+    analysis over some hand-picked packages and partly by consuming a Hoogle
+    dump. That hardcoded fixity library is built during development and then
+    bundled into the executable. The library is necessarily both incomplete
+    and prone to going out of date. Furthermore, Ormolu does not
+    automatically account for custom operators that occur in the code it is
+    asked to format. For that you need to write `.ormolu` files in which you
+    redeclare the fixities of your custom operators and any relevant
+    re-exports. Tilia guarantees resolution of operator fixities
+    automatically at all times.
+  * Ormolu's CPP support is rudimentary. It splits the input file into
+    sections that must be parseable on their own, then preserves CPP
+    conditional blocks verbatim. First, the requirement for the sections to
+    be parseable on their own is only sometimes satisfied in practice—CPP
+    usually breaks code in arbitrary places, which makes Ormolu choke.
+    Second, preserving CPP conditional blocks verbatim often breaks the
+    code. For example, if Ormolu changes the indentation of the surrounding
+    code, but the CPP conditional block does not adjust accordingly, you get
+    broken code.
+  * Ormolu has a very different CLI focused on explicit file names, so that
+    its users find themselves running invocations like
+    `ormolu -i $(git ls-files '*.hs' '*.hs-boot')`. Tilia focuses on Cabal
+    components, which is arguably better ergonomics.
+  * Ormolu supports magic comments `{- ORMOLU_DISABLE -}` and
+    `{- ORMOLU_ENABLE -}` while Tilia has no equivalent to those. The
+    comments were introduced to work around the weaknesses of Ormolu's CPP
+    support as well as its inability to respect grouping of certain types of
+    definitions that the users wanted to preserve. Tilia both respects
+    grouping in more situations and has first-class support for CPP, so
+    these comments are not needed.
+  * Ormolu can be asked to format regions in a file with `--start-line` and
+    `--end-line` options. Tilia has no such functionality since it operates
+    at a higher level (Cabal components or whole projects), which is aligned
+    with the current trends in software development.
+  * Ormolu is self-contained and makes no assumption about tools on the
+    system where it is run. Tilia needs Cabal: it shells out to it and may
+    download packages. Ormolu does none of this, which may be an advantage
+    in some situations.
+* Fourmolu is a configurable fork of Ormolu which shares the same
+  architecture, strengths, and weaknesses.
+
 ## Development
 
 Enter the development shell by either running `direnv allow` or `nix
