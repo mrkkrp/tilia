@@ -1,5 +1,14 @@
 # Tilia
 
+* [Getting started](#getting-started)
+* [Excluding files](#excluding-files)
+* [Formatting operator chains](#formatting-operator-chains)
+* [Formatting CPP](#formatting-cpp)
+* [Comparison with other formatters](#comparison-with-other-formatters)
+* [Development](#development)
+* [Contribution](#contribution)
+* [License](#license)
+
 Tilia is a formatter for Haskell source code. Its primary design choices
 are:
 
