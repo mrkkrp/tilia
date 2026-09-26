@@ -11,10 +11,22 @@ module Tilia.Utils
     wrapTo,
     visibleLength,
     tshow,
+    inParallel,
   )
 where
 
+import Control.Concurrent
+  ( forkIO,
+    getNumCapabilities,
+    newEmptyMVar,
+    putMVar,
+    takeMVar,
+  )
 import Control.Exception (SomeException, displayException, try)
+import Control.Monad (replicateM)
+import Data.Foldable (for_, traverse_)
+import Data.IORef (atomicModifyIORef', newIORef, readIORef)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -66,3 +78,24 @@ visibleLength = go 0
         | Just after <- T.stripPrefix "[" rest ->
             go n (T.drop 1 (T.dropWhile (/= 'm') after))
       Just (_, rest) -> go (n + 1) rest
+
+-- | Run an action over every element at once, as far as the machine allows.
+inParallel :: (a -> IO b) -> [a] -> IO [b]
+inParallel act xs = do
+  capabilities <- getNumCapabilities
+  queue <- newIORef (zip [0 :: Int ..] xs)
+  answers <- newIORef Map.empty
+  let worker =
+        atomicModifyIORef'
+          queue
+          (\case [] -> ([], Nothing); (y : ys) -> (ys, Just y))
+          >>= \case
+            Nothing -> pure ()
+            Just (i, x) -> do
+              y <- act x
+              atomicModifyIORef' answers (\m -> (Map.insert i y m, ()))
+              worker
+  done <- replicateM (max 1 (min capabilities (length xs))) newEmptyMVar
+  for_ done $ \signal -> forkIO (worker >> putMVar signal ())
+  traverse_ takeMVar done
+  Map.elems <$> readIORef answers
