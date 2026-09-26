@@ -82,6 +82,19 @@ are often not enabled by default and that would be confusing. Where a
 project will not solve with those flags, Tilia settles for what Cabal builds
 by default, so you get a narrower plan rather than none.
 
+Where the plan and every dependency are there already, as in a Nix build,
+`--build-plan FILE` points Tilia at the plan to use instead. The plan is
+taken as it is and dependencies are read from what `ghc-pkg` can see, so
+Cabal is never run and need not be installed. With
+[haskell.nix](https://github.com/input-output-hk/haskell.nix) this makes a
+formatting check that runs before a component is compiled:
+
+```nix
+preBuild = ''
+  ${tilia}/bin/tilia check --build-plan ${project.plan-nix}/plan.json
+'';
+```
+
 Finally, here are some other flags that may be of interest:
 
 * `--check-ast` performs an AST-equivalence check;

@@ -13,6 +13,7 @@ module Tilia.Fixity.Plan
     sourceHashOf,
     BuildPlan (..),
     readBuildPlan,
+    readGivenPlan,
     tokenForEnvAndBuildPlan,
     tokenForBuildPlan,
     macrosOf,
@@ -93,7 +94,7 @@ import System.Directory
   )
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath (isRelative, takeDirectory, (</>))
 import System.IO (hFlush, stderr)
 import System.Info qualified
 import System.Process
@@ -303,6 +304,29 @@ readBuildPlan path =
       eitherDecodeFileStrict path >>= \case
         Left why -> pure (Left (T.pack why))
         Right plan -> Right <$> checkedOutIn (takeDirectory (takeDirectory path)) plan
+
+-- | Read a plan that is to be taken as it is.
+--
+-- A local package's directory is taken from the project root where the
+-- plan gives it relatively, as @haskell.nix@ writes it, since the plan need
+-- not sit in the project at all.
+readGivenPlan ::
+  -- | The project root.
+  FilePath ->
+  -- | The plan.
+  FilePath ->
+  IO (Either Text BuildPlan)
+readGivenPlan root path =
+  doesFileExist path >>= \case
+    False -> pure (Left ("no build plan at " <> T.pack path))
+    True ->
+      eitherDecodeFileStrict path >>= \case
+        Left why -> pure (Left (T.pack why))
+        Right plan -> pure (Right plan{bpPackages = fmap rooted (bpPackages plan)})
+  where
+    rooted p = case ppSource p of
+      LocalPackage dir | isRelative dir -> p{ppSource = LocalPackage (root </> dir)}
+      _ -> p
 
 -- | Find where @cabal@ unpacked each @source-repository-package@.
 checkedOutIn :: FilePath -> BuildPlan -> IO BuildPlan
@@ -791,6 +815,8 @@ newResolver ::
 newResolver = newResolverVia [FromInterface, FromSource]
 
 -- | 'newResolver', restricted to the routes given.
+--
+-- Without 'FromSource' no tarball is looked for, so @cabal@ is not run.
 newResolverVia ::
   -- | Which readings to try, in order.
   [Route] ->
@@ -798,7 +824,10 @@ newResolverVia ::
   BuildPlan ->
   IO Resolver
 newResolverVia routes plan = do
-  tarballs <- plannedTarballs plan
+  tarballs <-
+    if FromSource `elem` routes
+      then plannedTarballs plan
+      else pure []
   cache <- openCache =<< tokenForBuildPlan plan
   installed <- getInstalledPackages cache
   index <- buildModuleIndex cache installed tarballs

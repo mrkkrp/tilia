@@ -40,6 +40,7 @@ import Tilia.Cabal.Target
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
   ( FormatError,
+    PlanSource (..),
     describeFormatError,
     fixityNotesOf,
     formatErrorExitCode,
@@ -78,7 +79,7 @@ main = do
   session <-
     newSession
       "."
-      (mapMaybe componentInPlan components)
+      (maybe (SolvedPlan (mapMaybe componentInPlan components)) GivenPlan optBuildPlan)
       optCheckAst
       optCheckIdempotence
       optDebugFixity
@@ -167,6 +168,8 @@ data Opts = Opts
     optMode :: Mode,
     -- | Which component to work on, if not all of them.
     optTarget :: Maybe String,
+    -- | A build plan to take as it is, with every dependency installed.
+    optBuildPlan :: Maybe FilePath,
     -- | Whether to check AST equivalence.
     optCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
@@ -206,9 +209,16 @@ optsParser =
     parser mode =
       Opts mode
         <$> optional targetArgument
+        <*> optional buildPlanOption
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
+    buildPlanOption =
+      (strOption . mconcat)
+        [ long "build-plan",
+          metavar "FILE",
+          help "Take this plan.json as it is, with every dependency installed, and never run cabal"
+        ]
     checkAstSwitch =
       fromBool
         <$> (switch . mconcat)

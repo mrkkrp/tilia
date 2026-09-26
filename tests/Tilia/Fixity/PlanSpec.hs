@@ -34,10 +34,17 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
-import System.Directory (createDirectoryIfMissing)
+import System.Directory
+  ( createDirectoryIfMissing,
+    doesFileExist,
+    getPermissions,
+    setOwnerExecutable,
+    setPermissions,
+  )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
-import System.FilePath (dropExtension, takeBaseName, takeDirectory, (</>))
+import System.FilePath (dropExtension, searchPathSeparator, takeBaseName, takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
+import System.Info qualified
 import Test.Hspec
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (compilerIdentity)
@@ -56,6 +63,7 @@ spec = do
   gitDependencies
   repositories
   packageCache
+  givenPlans
   withProjectPlan withPlan
 
 -- | What a cached failure is filed under.
@@ -442,6 +450,78 @@ packageCache = describe "where the package cache is looked for" $ do
     it "is the platform's own default where there is no index anywhere" $
       withLayouts $
         \xdg _ -> guessedPackageCacheRoot `shouldReturn` xdg
+
+-- | A plan handed over to be taken as it is.
+givenPlans :: Spec
+givenPlans = describe "a plan taken as it is" $ do
+  it "finds a local package it names relatively under the project" $
+    withGivenPlan $ \project planFile ->
+      readGivenPlan project planFile >>= \case
+        Left why -> expectationFailure (T.unpack why)
+        Right plan -> do
+          resolver <- newResolverVia [FromInterface] plan
+          fixities <- askFixities resolver "Ops"
+          (Map.lookup (InTerms, OpName "<+>") =<< fixities)
+            `shouldBe` Just (Fixity LeftAssoc 6)
+
+  it "does not run cabal" $
+    withGivenPlan $ \project planFile ->
+      runsCabal (readGivenPlan project planFile >>= traverse_ (newResolverVia [FromInterface]))
+        `shouldReturn` False
+
+  -- Without this the one above would pass for a stand-in that never runs.
+  it "differs in that from a resolver that may read sources" $
+    withGivenPlan $ \project planFile ->
+      runsCabal (readGivenPlan project planFile >>= traverse_ newResolver)
+        `shouldReturn` True
+
+-- | A project with one local module declaring @infixl 6 <+>@, and a plan
+-- for it kept outside of it that names the project relatively, as
+-- @haskell.nix@ writes it.
+withGivenPlan :: (FilePath -> FilePath -> Expectation) -> Expectation
+withGivenPlan act =
+  withSystemTempDirectory "tilia-given" $ \dir -> do
+    let project = dir </> "project"
+        planFile = dir </> "elsewhere" </> "plan.json"
+    createDirectoryIfMissing True (project </> "src")
+    createDirectoryIfMissing True (takeDirectory planFile)
+    T.writeFile (project </> "fake.cabal") $
+      T.unlines
+        [ "cabal-version: 2.4",
+          "name: fake",
+          "version: 0.1.0.0",
+          "library",
+          "  exposed-modules: Ops",
+          "  hs-source-dirs: src",
+          "  default-language: Haskell2010"
+        ]
+    T.writeFile (project </> "src" </> "Ops.hs") $
+      T.unlines
+        [ "module Ops ((<+>)) where",
+          "infixl 6 <+>",
+          "(<+>) :: a -> a -> a",
+          "(<+>) = const"
+        ]
+    T.writeFile planFile $
+      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
+      \[{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
+      \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}]}"
+    withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act project planFile)
+
+-- | Whether something runs @cabal@, as told by a stand-in put first on the
+-- path.
+runsCabal :: IO a -> IO Bool
+runsCabal act
+  | System.Info.os == "mingw32" = pendingWith "the stand-in is a shell script" >> pure False
+  | otherwise =
+      withSystemTempDirectory "tilia-cabal" $ \bin -> do
+        let stand = bin </> "cabal"
+            marker = bin </> "ran"
+        writeFile stand ("#!/bin/sh\ntouch '" <> marker <> "'\nexit 1\n")
+        setPermissions stand . setOwnerExecutable True =<< getPermissions stand
+        path <- maybe "" (searchPathSeparator :) <$> lookupEnv "PATH"
+        _ <- withEnvironment [("PATH", bin <> path)] act
+        doesFileExist marker
 
 -- | Run something against a home and an XDG cache directory of its own,
 -- handing it both of the places a cache could then be in.
