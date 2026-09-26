@@ -15,6 +15,8 @@ module Tilia.Fixity.Plan
     sourceHashOf,
     BuildPlan (..),
     readBuildPlan,
+    readGivenPlan,
+    fetchUninstalled,
     tokenForEnvAndBuildPlan,
     tokenForBuildPlan,
     macrosOf,
@@ -50,7 +52,7 @@ import Control.Applicative ((<|>))
 import Control.Concurrent (getNumCapabilities, newEmptyMVar, putMVar, readMVar)
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.Exception (bracket_)
-import Control.Monad (filterM, foldM, join)
+import Control.Monad (filterM, foldM, join, void)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson
   ( FromJSON (..),
@@ -95,7 +97,7 @@ import System.Directory
   )
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath (isRelative, takeDirectory, (</>))
 import System.IO (hFlush, stderr)
 import System.Info qualified
 import System.Process
@@ -306,6 +308,26 @@ readBuildPlan path =
         Left why -> pure (Left (T.pack why))
         Right plan -> Right <$> checkedOutIn (takeDirectory (takeDirectory path)) plan
 
+-- | Read a plan that is to be trusted as up to date.
+readGivenPlan ::
+  -- | The project root.
+  FilePath ->
+  -- | The plan.
+  FilePath ->
+  IO (Either Text BuildPlan)
+readGivenPlan root path = do
+  exists <- doesFileExist path
+  if exists
+    then
+      eitherDecodeFileStrict path >>= \case
+        Left why -> pure (Left (T.pack why))
+        Right plan -> pure (Right plan{bpPackages = fmap rooted (bpPackages plan)})
+    else pure (Left ("no build plan at " <> T.pack path))
+  where
+    rooted p = case ppSource p of
+      LocalPackage dir | isRelative dir -> p{ppSource = LocalPackage (root </> dir)}
+      _ -> p
+
 -- | Find where @cabal@ unpacked each @source-repository-package@.
 checkedOutIn :: FilePath -> BuildPlan -> IO BuildPlan
 checkedOutIn distDir plan = do
@@ -463,10 +485,10 @@ checkReadiness caching wanted projectDir =
         ([], []) ->
           sourcesShortOf caching plan >>= \case
             [] -> pure Ready
-            ns -> pure (SourcesMissing ns)
+            ps -> pure (SourcesMissing (fmap ppName ps))
 
 -- | The packages the plan expects to fetch whose sources are not here.
-sourcesShortOf :: Choice "useCache" -> BuildPlan -> IO [Text]
+sourcesShortOf :: Choice "useCache" -> BuildPlan -> IO [PlanPackage]
 sourcesShortOf caching plan = do
   tarballs <- filter (isFetchable . fst) <$> plannedTarballs plan
   absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
@@ -477,7 +499,7 @@ sourcesShortOf caching plan = do
         cache <- openCache caching =<< tokenForBuildPlan plan
         installed <- getInstalledPackages cache
         pure (filter (not . builtAlready installed) absent)
-  pure (fmap ppName short)
+  pure short
 
 -- | Has the compiler got this package already?
 builtAlready :: [InstalledPackage] -> PlanPackage -> Bool
@@ -612,7 +634,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure (Right ())
         Right plan -> do
-          short <- sourcesShortOf caching plan
+          short <- fmap ppName <$> sourcesShortOf caching plan
           refused <- fetchWasFutileFor futility
           if null short || all (`elem` refused) short
             then pure (Right ())
@@ -621,7 +643,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
                 Left err -> pure (Left err)
                 Right () -> do
                   left <- sourcesShortOf caching plan
-                  rememberFutileFetch futility left
+                  rememberFutileFetch futility (fmap ppName left)
                   pure (Right ())
     solveThenFetch =
       tryWholeProject ["build", "all", "--dry-run"] >>= \case
@@ -651,6 +673,25 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
   pure $ case code of
     ExitSuccess -> Right ()
     _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
+
+-- | Fetch the sources of a trusted plan's dependencies that are neither
+-- installed nor fetched already, at the versions the plan names.
+fetchUninstalled ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
+  -- | The project the plan is for.
+  FilePath ->
+  -- | The build plan to use.
+  BuildPlan ->
+  IO ()
+fetchUninstalled caching projectDir plan =
+  sourcesShortOf caching plan >>= \case
+    [] -> pure ()
+    short ->
+      void . runCabal projectDir $
+        "fetch"
+          : "--no-dependencies"
+          : [T.unpack (ppName p <> "-" <> ppVersion p) | p <- short]
 
 -- | Get a plan that is safe to use, doing whatever @cabal@ work is needed.
 loadPlan ::
@@ -831,7 +872,10 @@ newResolverVia ::
   BuildPlan ->
   IO Resolver
 newResolverVia caching routes plan = do
-  tarballs <- plannedTarballs plan
+  tarballs <-
+    if FromSource `elem` routes
+      then plannedTarballs plan
+      else pure []
   cache <- openCache caching =<< tokenForBuildPlan plan
   installed <- getInstalledPackages cache
   index <- buildModuleIndex cache installed tarballs

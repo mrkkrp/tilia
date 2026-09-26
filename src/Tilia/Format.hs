@@ -9,6 +9,7 @@ module Tilia.Format
     formatErrorExitCode,
     refused,
     Session,
+    PlanSource (..),
     newSession,
     fixityNotesOf,
     formatSource,
@@ -59,9 +60,11 @@ import Tilia.Fixity.Plan
   ( PlanComponent,
     Resolver (..),
     Route (FromInterface, FromSource),
+    fetchUninstalled,
     loadPlan,
     macrosOf,
     newResolverVia,
+    readGivenPlan,
     scopeFor,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
@@ -84,8 +87,7 @@ import Tilia.Utils (tshow)
 data FormatError
   = -- | No @cabal.project@ or @.cabal@ file above it.
     NoProject FilePath
-  | -- | A project, but no build plan we could read or produce. The text is
-    -- whatever @cabal@ had to say about it.
+  | -- | A project, but no build plan we could read or produce, and why.
     NoBuildPlan FilePath Text
   | -- | We failed to read .cabal file.
     NoPackage FilePath PackageProblem
@@ -220,13 +222,20 @@ data Session = Session
     sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes))
   }
 
+-- | Where a session's build plan comes from.
+data PlanSource
+  = -- | The project's own, solved again or fetched for with Cabal.
+    PlanFromCabal [PlanComponent]
+  | -- | A plan file trusted as up to date, so that we can avoid running
+    -- Cabal to solve it.
+    GivenPlan FilePath
+
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
   -- | Where to start looking for the project.
   FilePath ->
-  -- | The components about to be formatted, so that a plan which says
-  -- nothing about them can be solved again rather than trusted.
-  [PlanComponent] ->
+  -- | Where the build plan comes from.
+  PlanSource ->
   -- | Whether to read from and write to the cache.
   Choice "useCache" ->
   -- | Whether to download sources that are missing.
@@ -239,10 +248,19 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession start components caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
+newSession start planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   root <- prPath <$> (need (NoProject start) =<< liftIO (findProjectRoot start))
-  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
-  resolver <- liftIO (newResolverVia caching [FromInterface, FromSource] plan)
+  (plan, resolver) <- case planSource of
+    PlanFromCabal components -> do
+      plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
+      (,) plan <$> liftIO (newResolverVia caching [FromInterface, FromSource] plan)
+    GivenPlan path -> do
+      plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
+      routes <-
+        if isTrue downloading
+          then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
+          else pure [FromInterface]
+      (,) plan <$> liftIO (newResolverVia caching routes plan)
   askPackage <- liftIO newPackageReader
   notes <-
     if isTrue debugFixity

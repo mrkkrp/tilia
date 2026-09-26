@@ -41,6 +41,8 @@
   missing. [PR 26](https://github.com/mrkkrp/tilia/pull/26).
 * Add `--must-not-decline` to turn declined files into failures. [PR
   27](https://github.com/mrkkrp/tilia/pull/27).
+* Add `--build-plan` to trust a given build plan as up to date rather than
+  have Cabal solve one. [Issue 4](https://github.com/mrkkrp/tilia/issues/4).
 
 ## Tilia 0.0.1.0
 
