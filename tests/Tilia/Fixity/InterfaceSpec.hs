@@ -92,6 +92,25 @@ spec = do
     it "leaves a capitalised name this module declared alone" $
       passesOn "exports:\n  Value\n" `shouldBe` []
 
+  describe "operators with a vertical bar in them" $ do
+    -- A bar also marks a type exported without itself, as in T|{...}, so
+    -- these are read in the same text as that mark.
+    it "reads one made of bars alone" $
+      passesOn "exports:\n  GHC.Internal.Data.Type.Bool.||\n"
+        `shouldBe` [("GHC.Internal.Data.Type.Bool", OpName "||")]
+
+    it "reads them among the members of a type exported without itself" $
+      passesOn "exports:\n  GHC.Internal.Bits.Bits|{GHC.Internal.Bits..&. GHC.Internal.Bits..|. GHC.Internal.Bits.complement}\n"
+        `shouldBe` [ ("GHC.Internal.Bits", OpName "Bits"),
+                     ("GHC.Internal.Bits", OpName ".&."),
+                     ("GHC.Internal.Bits", OpName ".|."),
+                     ("GHC.Internal.Bits", OpName "complement")
+                   ]
+
+    it "takes them as what such a type carries" $
+      carries "exports:\n  GHC.Internal.Base.Alternative|{GHC.Internal.Base.<|> GHC.Internal.Base.empty}\n"
+        `shouldBe` [(OpName "Alternative", [OpName "<|>", OpName "empty"])]
+
   describe "which namespace a fixity governs" $ do
     it "gives one to types where the module declares a type of that name" $
       declaresIn "fixities infix 4 :~:\nab12\n  data (:~:) a b where\n"

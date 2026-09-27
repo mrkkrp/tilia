@@ -67,7 +67,11 @@ parseInterface modName out
     holdsModule l = case T.words l of
       ("interface" : m : _) -> m == modName
       _ -> False
-    sectionsNamed name = [body | (heading, body) <- sections out, heading == name]
+    sectionsNamed name =
+      [ T.replace "|{" "{" body
+      | (heading, body) <- sections out,
+        heading == name
+      ]
     declared = mapMaybe fixityEntry . T.splitOn ","
     reexports = concatMap reexportsIn . T.words
     childrenIn section =
@@ -149,7 +153,7 @@ exportEntries = go
                 let (kids, after) = T.break (== '}') inside
                  in (bare name, T.words kids) : go (T.drop 1 after)
               _ -> (bare name, []) : go rest
-    bare = T.dropWhileEnd (`elem` ("|," :: String))
+    bare = T.dropWhileEnd (== ',')
 
 -- | An exported name without the module that declared it.
 nameOnly :: Text -> OpName
@@ -158,7 +162,7 @@ nameOnly t = OpName (maybe t snd (moduleOf t))
 -- | The names an export entry reexports, with the module that declared
 -- each.
 reexportsIn :: Text -> [(Text, OpName)]
-reexportsIn = mapMaybe qualified . T.split (`elem` ("{}|," :: String))
+reexportsIn = mapMaybe qualified . T.split (`elem` ("{}," :: String))
   where
     qualified name = case moduleOf name of
       Just (m, n) | not (T.null n) -> Just (m, OpName n)
