@@ -30,6 +30,8 @@
   20](https://github.com/mrkkrp/tilia/pull/20).
 * Read the interfaces of dependencies concurrently, and each one once. [PR
   23](https://github.com/mrkkrp/tilia/pull/23).
+* Read re-exported operators that contain a vertical bar, such as `.|.`. [PR
+  24](https://github.com/mrkkrp/tilia/pull/24).
 
 ## Tilia 0.0.1.0
 
