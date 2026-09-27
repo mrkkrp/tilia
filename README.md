@@ -94,7 +94,7 @@ Finally, here are some other flags that may be of interest:
 You can tell Tilia to skip certain files and/or directories. To do so, list
 their paths in a `.tiliaignore` file at the project root:
 
-```text
+```gitignore
 # Fixtures compiled by a separate driver
 tests/shouldwork/
 tests/shouldfail/
