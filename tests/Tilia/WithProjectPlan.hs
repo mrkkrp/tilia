@@ -5,6 +5,9 @@
 module Tilia.WithProjectPlan
   ( withProjectPlan,
     compilerShipped,
+    Dependency (..),
+    dependenciesOf,
+    testsFor,
   )
 where
 
@@ -15,7 +18,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Directory (doesFileExist)
-import System.FilePath (takeDirectory)
+import System.FilePath (takeDirectory, (</>))
 import System.IO.Unsafe (unsafePerformIO)
 import Test.Hspec (Spec)
 import Tilia.Cabal.Project (findProjectRoot)
@@ -31,7 +34,8 @@ import Tilia.Fixity.PackageDb
     readInstalledPackages,
   )
 import Tilia.Fixity.Plan
-  ( BuildPlan,
+  ( BuildPlan (..),
+    PackageSource (..),
     PlanPackage (..),
     loadPlan,
     plannedTarballs,
@@ -104,3 +108,53 @@ shippedIn installed = case compilerDir of
 modulelessIn :: Installed -> Set Text
 modulelessIn installed =
   Set.fromList [ipName p | p <- installedPackages installed, null (ipModules p)]
+
+-- | A package this project is built against, as the compiler holds it.
+data Dependency = Dependency
+  { -- | The package name
+    depPackage :: Text,
+    -- | Each module the package holds, with the interface file the compiler
+    -- wrote for it.
+    depModules :: [(Text, FilePath)]
+  }
+
+-- | The modules of every package in the plan that the compiler can also
+-- see, keeping the ones the predicate wants.
+dependenciesOf :: (Text -> Bool) -> BuildPlan -> Installed -> IO [Dependency]
+dependenciesOf wanted plan installed =
+  filter (not . null . depModules) <$> traverse ofPackage candidates
+  where
+    candidates =
+      [ (package, dir)
+      | package <- installedPackages installed,
+        Set.member (ipName package) planned,
+        dir <- take 1 (ipImportDirs package)
+      ]
+    ofPackage (package, dir) =
+      Dependency (ipName package)
+        <$> filterM
+          (doesFileExist . snd)
+          [ (m, dir </> T.unpack (T.replace "." "/" m) <> ".hi")
+          | m <- ipModules package,
+            wanted m
+          ]
+    planned = Set.fromList [ppName p | p <- bpPackages plan, not (isLocal p)]
+    isLocal p = case ppSource p of
+      LocalPackage _ -> True
+      _ -> False
+
+-- | One test per package, splitting the large ones up.
+testsFor :: Dependency -> [(String, [(Text, FilePath)])]
+testsFor dependency = case chunksOf 32 (depModules dependency) of
+  [whole] -> [(name, whole)]
+  pieces ->
+    [ (name <> " (" <> show i <> " of " <> show (length pieces) <> ")", piece)
+    | (i, piece) <- zip [1 :: Int ..] pieces
+    ]
+  where
+    name = T.unpack (depPackage dependency)
+
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf n = \case
+  [] -> []
+  xs -> let (chunk, rest) = splitAt n xs in chunk : chunksOf n rest

@@ -77,6 +77,7 @@ leansOnCompiler (groups, _) = case groups of
 compilerBound :: [String]
 compilerBound =
   [ "Tilia.Fixity.Dependencies",
+    "Tilia.Fixity.HiFile",
     "Tilia.Fixity.PackageDb",
     "Tilia.Fixity.Plan"
   ]
