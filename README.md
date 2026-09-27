@@ -135,12 +135,11 @@ of the module is a valid Haskell module.
   * Ormolu's CPP support is rudimentary. It splits the input file into
     sections that must be parseable on their own, then preserves CPP
     conditional blocks verbatim. First, the requirement for the sections to
-    be parseable on their own is only sometimes satisfied in practice—CPP
-    usually breaks code in arbitrary places, which makes Ormolu choke.
-    Second, preserving CPP conditional blocks verbatim often breaks the
-    code. For example, if Ormolu changes the indentation of the surrounding
-    code, but the CPP conditional block does not adjust accordingly, you get
-    broken code.
+    be parseable on their own is only sometimes satisfied—CPP directives
+    tend to fall at arbitrary points in the code, which makes Ormolu choke.
+    Second, preserving CPP conditional blocks verbatim is not good enough.
+    For example, if Ormolu re-indents the surrounding code and the CPP
+    conditional block stays as it was, the result is broken code.
   * Ormolu has a very different CLI focused on explicit file names, so that
     its users find themselves running invocations like
     `ormolu -i $(git ls-files '*.hs' '*.hs-boot')`. Tilia focuses on Cabal
