@@ -1,14 +1,18 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Reading a module's operators out of interface files.
 module Tilia.Fixity.Interface
   ( Interface (..),
     readInterface,
     parseInterface,
+    fromHiFile,
   )
 where
 
+import Control.Monad ((<=<))
+import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -19,6 +23,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Read qualified as T
 import Tilia.Fixity
+import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (quietly)
 
@@ -36,6 +41,9 @@ data Interface = Interface
   deriving (Eq, Show)
 
 -- | Read a module's interface file.
+--
+-- The file is decoded directly where it can be, and put to @ghc
+-- --show-iface@ otherwise.
 readInterface ::
   -- | The module the file is supposed to hold.
   Text ->
@@ -44,9 +52,48 @@ readInterface ::
   IO (Maybe Interface)
 readInterface modName path =
   quietly Nothing $
-    readProgramOutput "ghc" ["--show-iface", path] >>= \case
-      Nothing -> pure Nothing
-      Just out -> pure (parseInterface modName out)
+    (fromHiFile modName <=< decodeHiFile) <$> BS.readFile path >>= \case
+      Right interface -> pure (Just interface)
+      Left _ ->
+        readProgramOutput "ghc" ["--show-iface", path] >>= \case
+          Nothing -> pure Nothing
+          Just out -> pure (parseInterface modName out)
+
+-- | What a decoded interface file says, if it is this module's and names
+-- nothing only GHC can resolve.
+fromHiFile :: Text -> HiFile -> Either Text Interface
+fromHiFile modName HiFile{..}
+  | hiModule /= modName = Left ("the interface of " <> hiModule)
+  | otherwise = do
+      exports <- traverse resolved hiExports
+      pure
+        Interface
+          { interfaceDeclares =
+              Map.fromList [((namespace, op), fixity) | (namespace, op, fixity) <- hiFixities],
+            interfaceReexports =
+              [ (m, op)
+              | names <- exports,
+                (m, _, op) <- names,
+                m /= hiModule
+              ],
+            interfaceChildren =
+              Map.fromListWith
+                Set.union
+                [ (op, Set.fromList [kid | (_, _, kid) <- kids])
+                | parent@(_, _, op) : named <- exports,
+                  let kids = case named of
+                        first : rest | first == parent -> rest
+                        _ -> named,
+                  not (null kids)
+                ]
+          }
+  where
+    resolved = \case
+      Avail n -> pure <$> known n
+      AvailTC p ns -> (:) <$> known p <*> traverse known ns
+    known = \case
+      HiName m namespace op -> Right (m, namespace, op)
+      KnownKey _ -> Left "a name only GHC can resolve"
 
 -- | Read what @ghc --show-iface@ printed, if it is this module's interface.
 parseInterface :: Text -> Text -> Maybe Interface

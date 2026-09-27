@@ -32,6 +32,9 @@
   23](https://github.com/mrkkrp/tilia/pull/23).
 * Read re-exported operators that contain a vertical bar, such as `.|.`. [PR
   24](https://github.com/mrkkrp/tilia/pull/24).
+* Read the exports and fixities of dependencies straight out of their
+  interface files rather than through `ghc --show-iface`. [PR
+  24](https://github.com/mrkkrp/tilia/pull/24).
 
 ## Tilia 0.0.1.0
 
