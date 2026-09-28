@@ -54,6 +54,7 @@ jobs:
           path: |
             ~/.cache/cabal/packages/*/*
             !~/.cache/cabal/packages/*/01-index.*
+            !~/.cache/cabal/packages/*/*.json
           key: cabal-${{ matrix.ghc }}-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-${{ matrix.ghc }}-
@@ -89,6 +90,7 @@ jobs:
           path: |
             ~/.cache/cabal/packages/*/*
             !~/.cache/cabal/packages/*/01-index.*
+            !~/.cache/cabal/packages/*/*.json
           key: cabal-format-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-format-
