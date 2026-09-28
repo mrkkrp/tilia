@@ -79,6 +79,7 @@ main = do
     newSession
       "."
       (mapMaybe componentInPlan components)
+      optUseCache
       optCheckAst
       optCheckIdempotence
       optDebugFixity
@@ -167,6 +168,8 @@ data Opts = Opts
     optMode :: Mode,
     -- | Which component to work on, if not all of them.
     optTarget :: Maybe String,
+    -- | Whether to read from and write to the cache.
+    optUseCache :: Choice "useCache",
     -- | Whether to check AST equivalence.
     optCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
@@ -206,9 +209,16 @@ optsParser =
     parser mode =
       Opts mode
         <$> optional targetArgument
+        <*> noCacheSwitch
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
+    noCacheSwitch =
+      fromBool . not
+        <$> (switch . mconcat)
+          [ long "no-cache",
+            help "Neither read from nor write to the cache"
+          ]
     checkAstSwitch =
       fromBool
         <$> (switch . mconcat)

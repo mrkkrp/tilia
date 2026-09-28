@@ -1,11 +1,15 @@
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | The on-disk cache of what was read out of a package.
 module Tilia.Fixity.CacheSpec (spec) where
 
+import Data.Choice (pattern Do, pattern Don't)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isNothing)
 import Data.Set qualified as Set
-import System.Directory (getModificationTime, setModificationTime)
+import System.Directory (getModificationTime, listDirectory, setModificationTime)
 import System.Environment (setEnv, unsetEnv)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
@@ -18,6 +22,14 @@ spec :: Spec
 spec = do
   tokens
   database
+  describe "a cache not to be used" $
+    it "is not opened, and nothing is made on disk for it" $
+      withIsolatedDirectory $ \dir -> do
+        setEnv "XDG_CACHE_HOME" dir
+        opened <- openCache (Don't #useCache) (PlanToken "plan")
+        unsetEnv "XDG_CACHE_HOME"
+        isNothing opened `shouldBe` True
+        listDirectory dir `shouldReturn` []
   around withIsolatedCache $ do
     describe "modules" $ do
       it "remembers a package's module list" $ \cache -> do
@@ -314,7 +326,7 @@ withIsolatedDirectory = withSystemTempDirectory "tilia-cache"
 open :: FilePath -> PlanToken -> IO Cache
 open dir token = do
   setEnv "XDG_CACHE_HOME" dir
-  opened <- openCache token
+  opened <- openCache (Do #useCache) token
   unsetEnv "XDG_CACHE_HOME"
   case opened of
     Nothing -> fail "could not open a cache in a temporary directory"

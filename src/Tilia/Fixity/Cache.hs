@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -24,6 +25,7 @@ module Tilia.Fixity.Cache
 where
 
 import Control.Monad (join)
+import Data.Choice (Choice, isFalse)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -68,15 +70,17 @@ formatVersion = "v1"
 
 -- | Open, creating the directory if need be.
 --
--- 'Nothing' if there is nowhere to write, in which case everything still
--- works and is merely slower.
-openCache :: PlanToken -> IO (Maybe Cache)
-openCache token = quietly Nothing $ do
-  root <- (</> formatVersion) <$> getXdgDirectory XdgCache "tilia"
-  createDirectoryIfMissing True (root </> "modules")
-  createDirectoryIfMissing True (root </> "fixities")
-  createDirectoryIfMissing True (root </> "installed")
-  pure (Just (Cache root token))
+-- 'Nothing' if the cache is not to be used or there is nowhere to write,
+-- in which case everything still works and is merely slower.
+openCache :: Choice "useCache" -> PlanToken -> IO (Maybe Cache)
+openCache use token
+  | isFalse use = pure Nothing
+  | otherwise = quietly Nothing $ do
+      root <- (</> formatVersion) <$> getXdgDirectory XdgCache "tilia"
+      createDirectoryIfMissing True (root </> "modules")
+      createDirectoryIfMissing True (root </> "fixities")
+      createDirectoryIfMissing True (root </> "installed")
+      pure (Just (Cache root token))
 
 -- | The modules a package exposes, if that was worked out before.
 cachedModules :: Cache -> Text -> IO (Maybe [Text])

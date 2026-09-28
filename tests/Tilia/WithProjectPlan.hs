@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | This project, prepared the way the specs that read it need it.
 module Tilia.WithProjectPlan
@@ -12,6 +14,7 @@ module Tilia.WithProjectPlan
 where
 
 import Control.Monad (filterM, unless)
+import Data.Choice (pattern Do)
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -64,7 +67,7 @@ prepare =
       componentsOfTarget root Everything >>= \case
         Left problem -> pure (Left (describeTargetProblem problem))
         Right components ->
-          loadPlan (mapMaybe componentInPlan components) "." >>= \case
+          loadPlan (Do #useCache) (mapMaybe componentInPlan components) "." >>= \case
             Left why -> pure (Left why)
             Right plan -> Right plan <$ fetchMissingSources plan
 
