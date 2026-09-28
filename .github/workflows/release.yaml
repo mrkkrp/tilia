@@ -242,16 +242,11 @@ jobs:
           set -uo pipefail
           cabal update
 
-          "$TILIA" check 2>&1 | tee said.txt
-          status=${PIPESTATUS[0]}
+          "$TILIA" check --must-not-decline
+          status=$?
 
           if [ "$status" -ne 0 ]; then
             echo "::error::tilia check exited $status against its own source" >&2
-            exit 1
-          fi
-
-          if grep -qE 'Declined|Failed' said.txt; then
-            echo "::error::it would not format some of this project" >&2
             exit 1
           fi
 

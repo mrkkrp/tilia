@@ -6,7 +6,7 @@
 module Main (main) where
 
 import Control.Monad (when)
-import Data.Choice (Choice, fromBool)
+import Data.Choice (Choice, fromBool, isTrue)
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -53,6 +53,7 @@ import Tilia.Run
     checkReport,
     differs,
     exitCodeOf,
+    failIfDeclined,
     inplaceReport,
     noted,
     runOver,
@@ -85,7 +86,9 @@ main = do
       optCheckIdempotence
       optDebugFixity
       >>= either (dieFormatting palette) pure
-  outcomes <- runOver session files
+  outcomes <-
+    (if isTrue optMustNotDecline then fmap (fmap failIfDeclined) else id)
+      <$> runOver session files
   fixityNotesOf session
     >>= traverse_ (T.hPutStrLn stderr) . renderFixityNotes palette
   case optMode of
@@ -178,7 +181,9 @@ data Opts = Opts
     -- | Whether to check idempotence.
     optCheckIdempotence :: Choice "checkIdempotence",
     -- | Whether to print debugging information about fixities.
-    optDebugFixity :: Choice "debugFixity"
+    optDebugFixity :: Choice "debugFixity",
+    -- | Whether to count declined files as failed.
+    optMustNotDecline :: Choice "mustNotDecline"
   }
 
 optsParserInfo :: ParserInfo Opts
@@ -217,6 +222,7 @@ optsParser =
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
+        <*> mustNotDeclineSwitch
     noCacheSwitch =
       fromBool . not
         <$> (switch . mconcat)
@@ -246,6 +252,12 @@ optsParser =
         <$> (switch . mconcat)
           [ long "debug-fixity",
             help "Print debugging information about fixities"
+          ]
+    mustNotDeclineSwitch =
+      fromBool
+        <$> (switch . mconcat)
+          [ long "must-not-decline",
+            help "Fail on files that would otherwise be declined"
           ]
     targetArgument =
       (strArgument . mconcat)

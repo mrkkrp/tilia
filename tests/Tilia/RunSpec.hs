@@ -79,6 +79,10 @@ spec = do
     it "is not swayed by a refusal, however many there are" $
       exitCodeOf [("A.hs", decline), ("B.hs", decline)] `shouldBe` Nothing
 
+    it "gives the code of a refusal once refusing is not allowed" $
+      exitCodeOf [("A.hs", failIfDeclined decline), ("B.hs", failIfDeclined Unchanged)]
+        `shouldBe` Just (formatErrorExitCode (PositionPragmas "A.hs"))
+
   describe "the summary an inplace run prints" $ do
     it "counts the files it formatted, indented, by extension" $
       reportOut (inplaceReport Plain [("A.hs", Unchanged), ("B.hs", Changed "a" "b")])

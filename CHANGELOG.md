@@ -39,6 +39,8 @@
   25](https://github.com/mrkkrp/tilia/pull/25).
 * Add `--no-downloads` to not download the sources of dependencies that are
   missing. [PR 26](https://github.com/mrkkrp/tilia/pull/26).
+* Add `--must-not-decline` to turn declined files into failures. [PR
+  27](https://github.com/mrkkrp/tilia/pull/27).
 
 ## Tilia 0.0.1.0
 

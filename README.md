@@ -91,7 +91,8 @@ Finally, here are some other flags that may be of interest:
 * `--no-cache` neither reads from nor writes to the cache;
 * `--no-downloads` does not download sources that are missing, and a file
   whose operators come from a dependency that could not be read is then
-  declined.
+  declined;
+* `--must-not-decline` turns declined files into failures.
 
 ## Excluding files
 

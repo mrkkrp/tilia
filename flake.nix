@@ -149,7 +149,7 @@
           ];
           text = ''
             export LANG=C.UTF-8
-            tilia inplace all --check-ast --check-idempotence
+            tilia inplace all --check-ast --check-idempotence --must-not-decline
             cabal-gild --io=tilia.cabal --mode=format
             nixpkgs-fmt ./*.nix
           '';
