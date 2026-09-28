@@ -172,16 +172,16 @@ data Opts = Opts
     optMode :: Mode,
     -- | Which component to work on, if not all of them.
     optTarget :: Maybe String,
-    -- | Whether to read from and write to the cache.
-    optUseCache :: Choice "useCache",
-    -- | Whether to download sources that are missing.
-    optDownload :: Choice "download",
     -- | Whether to check AST equivalence.
     optCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
     optCheckIdempotence :: Choice "checkIdempotence",
     -- | Whether to print debugging information about fixities.
     optDebugFixity :: Choice "debugFixity",
+    -- | Whether to read from and write to the cache.
+    optUseCache :: Choice "useCache",
+    -- | Whether to download sources that are missing.
+    optDownload :: Choice "download",
     -- | Whether to count declined files as failed.
     optMustNotDecline :: Choice "mustNotDecline"
   }
@@ -217,24 +217,12 @@ optsParser =
     parser mode =
       Opts mode
         <$> optional targetArgument
-        <*> noCacheSwitch
-        <*> noDownloadsSwitch
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
+        <*> noCacheSwitch
+        <*> noDownloadsSwitch
         <*> mustNotDeclineSwitch
-    noCacheSwitch =
-      fromBool . not
-        <$> (switch . mconcat)
-          [ long "no-cache",
-            help "Neither read from nor write to the cache"
-          ]
-    noDownloadsSwitch =
-      fromBool . not
-        <$> (switch . mconcat)
-          [ long "no-downloads",
-            help "Do not download sources that are missing"
-          ]
     checkAstSwitch =
       fromBool
         <$> (switch . mconcat)
@@ -252,6 +240,18 @@ optsParser =
         <$> (switch . mconcat)
           [ long "debug-fixity",
             help "Print debugging information about fixities"
+          ]
+    noCacheSwitch =
+      fromBool . not
+        <$> (switch . mconcat)
+          [ long "no-cache",
+            help "Neither read from nor write to the cache"
+          ]
+    noDownloadsSwitch =
+      fromBool . not
+        <$> (switch . mconcat)
+          [ long "no-downloads",
+            help "Do not download sources that are missing"
           ]
     mustNotDeclineSwitch =
       fromBool
