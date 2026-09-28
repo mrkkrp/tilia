@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | "Tilia.Fixity" resolves a module's operators exactly, given a function
 -- that says what each imported module exports. This is that function, built
@@ -63,7 +65,7 @@ import Data.Aeson.Types (parseMaybe)
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
-import Data.Choice (Choice, fromBool)
+import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Foldable (toList, traverse_)
 import Data.IORef
 import Data.List (isSuffixOf)
@@ -447,8 +449,8 @@ planPathFor projectDir = projectDir </> "dist-newstyle" </> "cache" </> "plan.js
 --
 -- One read of the plan and one @stat@ per package, so this is fast enough
 -- to run before every format.
-checkReadiness :: [PlanComponent] -> FilePath -> IO Readiness
-checkReadiness wanted projectDir =
+checkReadiness :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
+checkReadiness caching wanted projectDir =
   readBuildPlan (planPathFor projectDir) >>= \case
     Left _ -> pure PlanMissing
     Right plan -> do
@@ -459,20 +461,20 @@ checkReadiness wanted projectDir =
         (_ : _, _) -> pure (PlanStale newer)
         ([], _ : _) -> pure (PlanNarrow missing)
         ([], []) ->
-          sourcesShortOf plan >>= \case
+          sourcesShortOf caching plan >>= \case
             [] -> pure Ready
             ns -> pure (SourcesMissing ns)
 
 -- | The packages the plan expects to fetch whose sources are not here.
-sourcesShortOf :: BuildPlan -> IO [Text]
-sourcesShortOf plan = do
+sourcesShortOf :: Choice "useCache" -> BuildPlan -> IO [Text]
+sourcesShortOf caching plan = do
   tarballs <- filter (isFetchable . fst) <$> plannedTarballs plan
   absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
   short <-
     if null absent
       then pure []
       else do
-        cache <- openCache =<< tokenForBuildPlan plan
+        cache <- openCache caching =<< tokenForBuildPlan plan
         installed <- getInstalledPackages cache
         pure (filter (not . builtAlready installed) absent)
   pure (fmap ppName short)
@@ -508,11 +510,12 @@ filesNewerThanPlan plan projectDir = quietly [] $ do
       pure (if t > planTime then Just path else Nothing)
 
 -- | Do whatever is missing, by asking @cabal@.
-prepare :: [PlanComponent] -> FilePath -> Readiness -> IO (Either Text ())
-prepare wanted projectDir readiness =
+prepare :: Choice "useCache" -> [PlanComponent] -> FilePath -> Readiness -> IO (Either Text ())
+prepare caching wanted projectDir readiness =
   prepareWith
+    caching
     (runCabal projectDir)
-    (futilityFor projectDir)
+    (futilityFor caching projectDir)
     wanted
     projectDir
     readiness
@@ -541,8 +544,8 @@ undiscoveredFutility =
     }
 
 -- | A memory kept in the cache, under the plan the project has now.
-futilityFor :: FilePath -> Futility
-futilityFor projectDir =
+futilityFor :: Choice "useCache" -> FilePath -> Futility
+futilityFor caching projectDir =
   Futility
     { solveWasFutile = withCache False cachedFutileSolve,
       rememberFutileSolve = withCache () storeFutileSolve,
@@ -554,12 +557,14 @@ futilityFor projectDir =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure fallback
         Right plan -> do
-          opened <- openCache =<< tokenForBuildPlan plan
+          opened <- openCache caching =<< tokenForBuildPlan plan
           maybe (pure fallback) use opened
 
 -- | 'prepare', given a way to run @cabal@ and a memory of what earlier
 -- attempts came to.
 prepareWith ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
   -- | Run @cabal@ with these arguments.
   ([String] -> IO (Either Text ())) ->
   -- | What earlier attempts came to.
@@ -571,7 +576,7 @@ prepareWith ::
   -- | What it was found to be short of.
   Readiness ->
   IO (Either Text ())
-prepareWith cabal futility wanted projectDir = \case
+prepareWith caching cabal futility wanted projectDir = \case
   Ready -> pure (Right ())
   SourcesMissing _ -> fetch
   PlanMissing -> solveThenFetch
@@ -591,7 +596,7 @@ prepareWith cabal futility wanted projectDir = \case
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure (Right ())
         Right plan -> do
-          short <- sourcesShortOf plan
+          short <- sourcesShortOf caching plan
           refused <- fetchWasFutileFor futility
           if null short || all (`elem` refused) short
             then pure (Right ())
@@ -599,14 +604,14 @@ prepareWith cabal futility wanted projectDir = \case
               fetch >>= \case
                 Left err -> pure (Left err)
                 Right () -> do
-                  left <- sourcesShortOf plan
+                  left <- sourcesShortOf caching plan
                   rememberFutileFetch futility left
                   pure (Right ())
     solveThenFetch =
       tryWholeProject ["build", "all", "--dry-run"] >>= \case
         Left err -> pure (Left err)
         Right () ->
-          checkReadiness wanted projectDir >>= \case
+          checkReadiness caching wanted projectDir >>= \case
             SourcesMissing _ -> fetch
             PlanNarrow _ -> rememberFutileSolve futility >> fetchWhatIsShort
             _ -> pure (Right ())
@@ -632,10 +637,10 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
     _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
 
 -- | Get a plan that is safe to use, doing whatever @cabal@ work is needed.
-loadPlan :: [PlanComponent] -> FilePath -> IO (Either Text BuildPlan)
-loadPlan wanted projectDir = do
-  readiness <- checkReadiness wanted projectDir
-  prepare wanted projectDir readiness >>= \case
+loadPlan :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO (Either Text BuildPlan)
+loadPlan caching wanted projectDir = do
+  readiness <- checkReadiness caching wanted projectDir
+  prepare caching wanted projectDir readiness >>= \case
     Left err -> pure (Left err)
     _ -> readBuildPlan (planPathFor projectDir)
 
@@ -788,18 +793,20 @@ newResolver ::
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolver = newResolverVia [FromInterface, FromSource]
+newResolver = newResolverVia (Do #useCache) [FromInterface, FromSource]
 
 -- | 'newResolver', restricted to the routes given.
 newResolverVia ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
   -- | Which readings to try, in order.
   [Route] ->
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolverVia routes plan = do
+newResolverVia caching routes plan = do
   tarballs <- plannedTarballs plan
-  cache <- openCache =<< tokenForBuildPlan plan
+  cache <- openCache caching =<< tokenForBuildPlan plan
   installed <- getInstalledPackages cache
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed

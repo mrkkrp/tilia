@@ -35,6 +35,8 @@
 * Read the exports and fixities of dependencies straight out of their
   interface files rather than through `ghc --show-iface`. [PR
   24](https://github.com/mrkkrp/tilia/pull/24).
+* Add `--no-cache` to neither read from nor write to the cache. [PR
+  25](https://github.com/mrkkrp/tilia/pull/25).
 
 ## Tilia 0.0.1.0
 

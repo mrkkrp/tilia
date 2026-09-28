@@ -87,7 +87,8 @@ Finally, here are some other flags that may be of interest:
 * `--check-ast` performs an AST-equivalence check;
 * `--check-idempotence` performs an idempotence check;
 * `--debug-fixity` prints information that is useful for debugging
-  formatting of operator chains.
+  formatting of operator chains;
+* `--no-cache` neither reads from nor writes to the cache.
 
 ## Excluding files
 

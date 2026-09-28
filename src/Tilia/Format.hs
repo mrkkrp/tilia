@@ -58,9 +58,10 @@ import Tilia.Fixity.Debug (FixityNotes, fixityNotes)
 import Tilia.Fixity.Plan
   ( PlanComponent,
     Resolver (..),
+    Route (FromInterface, FromSource),
     loadPlan,
     macrosOf,
-    newResolver,
+    newResolverVia,
     scopeFor,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
@@ -226,6 +227,8 @@ newSession ::
   -- | The components about to be formatted, so that a plan which says
   -- nothing about them can be solved again rather than trusted.
   [PlanComponent] ->
+  -- | Whether to read from and write to the cache.
+  Choice "useCache" ->
   -- | Check AST equivalence.
   Choice "checkAst" ->
   -- | Check idempotence.
@@ -234,10 +237,10 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession start components checkAst checkIdempotence debugFixity = runExceptT $ do
+newSession start components caching checkAst checkIdempotence debugFixity = runExceptT $ do
   root <- prPath <$> (need (NoProject start) =<< liftIO (findProjectRoot start))
-  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan components root)
-  resolver <- liftIO (newResolver plan)
+  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching components root)
+  resolver <- liftIO (newResolverVia caching [FromInterface, FromSource] plan)
   askPackage <- liftIO newPackageReader
   notes <-
     if isTrue debugFixity

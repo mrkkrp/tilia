@@ -22,7 +22,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Data.ByteString.Lazy qualified as BL
-import Data.Choice (pattern Is)
+import Data.Choice (pattern Do, pattern Is)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.List (isInfixOf)
@@ -41,7 +41,8 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (compilerIdentity)
-import Tilia.Fixity.Plan
+import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
+import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
 import Tilia.WithProjectPlan (withProjectPlan)
@@ -97,6 +98,20 @@ tokens = describe "the token a plan is cached under" $ do
                 }
             ]
         }
+
+-- | 'Plan.checkReadiness', with the cache in use as it is by default.
+checkReadiness :: [PlanComponent] -> FilePath -> IO Readiness
+checkReadiness = Plan.checkReadiness (Do #useCache)
+
+-- | 'Plan.prepareWith', with the cache in use as it is by default.
+prepareWith ::
+  ([String] -> IO (Either Text ())) ->
+  Futility ->
+  [PlanComponent] ->
+  FilePath ->
+  Readiness ->
+  IO (Either Text ())
+prepareWith = Plan.prepareWith (Do #useCache)
 
 -- | What a run does before it trusts the plan.
 --
