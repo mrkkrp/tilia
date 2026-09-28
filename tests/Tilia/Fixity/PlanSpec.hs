@@ -22,7 +22,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Data.ByteString.Lazy qualified as BL
-import Data.Choice (pattern Do, pattern Is)
+import Data.Choice (pattern Do, pattern Don't, pattern Is)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.List (isInfixOf)
@@ -111,7 +111,7 @@ prepareWith ::
   FilePath ->
   Readiness ->
   IO (Either Text ())
-prepareWith = Plan.prepareWith (Do #useCache)
+prepareWith = Plan.prepareWith (Do #useCache) (Do #download)
 
 -- | What a run does before it trusts the plan.
 --
@@ -138,6 +138,15 @@ preparation = describe "preparing a project" $ do
       readiness `shouldBe` SourcesMissing ["tilia-phantom"]
       prepareWith (obliging steps) undiscoveredFutility [] dir readiness `shouldReturn` Right ()
       readIORef steps `shouldReturn` [fetching]
+
+  it "fetches nothing when told not to download" $
+    withTempProject (Just wantingATarball) $ \dir -> do
+      steps <- newIORef []
+      readiness <- checkReadiness [] dir
+      readiness `shouldBe` SourcesMissing ["tilia-phantom"]
+      Plan.prepareWith (Do #useCache) (Don't #download) (obliging steps) undiscoveredFutility [] dir readiness
+        `shouldReturn` Right ()
+      readIORef steps `shouldReturn` []
 
   it "runs nothing at all when nothing is missing" $ do
     steps <- newIORef []

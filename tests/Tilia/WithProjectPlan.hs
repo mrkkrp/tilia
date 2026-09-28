@@ -67,7 +67,7 @@ prepare =
       componentsOfTarget root Everything >>= \case
         Left problem -> pure (Left (describeTargetProblem problem))
         Right components ->
-          loadPlan (Do #useCache) (mapMaybe componentInPlan components) "." >>= \case
+          loadPlan (Do #useCache) (Do #download) (mapMaybe componentInPlan components) "." >>= \case
             Left why -> pure (Left why)
             Right plan -> Right plan <$ fetchMissingSources plan
 

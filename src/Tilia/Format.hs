@@ -229,6 +229,8 @@ newSession ::
   [PlanComponent] ->
   -- | Whether to read from and write to the cache.
   Choice "useCache" ->
+  -- | Whether to download sources that are missing.
+  Choice "download" ->
   -- | Check AST equivalence.
   Choice "checkAst" ->
   -- | Check idempotence.
@@ -237,9 +239,9 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession start components caching checkAst checkIdempotence debugFixity = runExceptT $ do
+newSession start components caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   root <- prPath <$> (need (NoProject start) =<< liftIO (findProjectRoot start))
-  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching components root)
+  plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
   resolver <- liftIO (newResolverVia caching [FromInterface, FromSource] plan)
   askPackage <- liftIO newPackageReader
   notes <-
