@@ -1,4 +1,4 @@
-## Unreleased
+## Tilia 0.0.2.0
 
 * Keep explicit braces on empty cases in both single-line and multiline
   layouts. [PR 13](https://github.com/mrkkrp/tilia/pull/13).
