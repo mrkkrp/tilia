@@ -103,6 +103,32 @@
         releaseBinary =
           release.projectCross.musl64.hsPkgs.tilia.components.exes.tilia;
 
+        selfFormat =
+          let
+            project = projects.${baseCompiler};
+            inherit (project.tilia.components) library exes tests;
+            checked = target: component: component.overrideAttrs (_: {
+              buildPhase = ''
+                ${base.tilia}/bin/tilia check ${target} \
+                  --build-plan ${project.plan-nix}/plan.json \
+                  --no-cache \
+                  --no-downloads \
+                  --must-not-decline
+              '';
+              installPhase = ''
+                for output in $outputs; do mkdir -p "''${!output}"; done
+              '';
+              doCheck = false;
+              doInstallCheck = false;
+              dontFixup = true;
+            });
+          in
+          pkgs.linkFarm "tilia-self-format" {
+            library = checked "lib:tilia" library;
+            exe = checked "exe:tilia" exes.tilia;
+            tests = checked "test:tests" tests.tests;
+          };
+
         checking = name: tools: run:
           pkgs.runCommand "tilia-${name}" { nativeBuildInputs = tools; } ''
             ${run}
@@ -159,10 +185,11 @@
         packages = {
           default = base.tilia;
           lint = pkgs.linkFarm "tilia-lint" tidy;
+          self-format = selfFormat;
           release = releaseBinary;
         };
 
-        checks = { inherit weeder; } // tidy;
+        checks = { inherit weeder; self-format = selfFormat; } // tidy;
 
         apps = {
           default = {
