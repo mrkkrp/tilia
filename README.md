@@ -5,6 +5,7 @@
 * [Formatting operator chains](#formatting-operator-chains)
 * [Formatting CPP](#formatting-cpp)
 * [Comparison with other formatters](#comparison-with-other-formatters)
+* [Suggested setup per use-case](#suggested-setup-per-use-case)
 * [Development](#development)
 * [Contribution](#contribution)
 * [License](#license)
@@ -89,7 +90,7 @@ Finally, here are some other flags that may be of interest:
 * `--debug-fixity` prints information that is useful for debugging
   formatting of operator chains.
 * `--build-plan PLAN` trusts a given build plan as up to date rather than
-  having Cabal solve one.
+  having Cabal solve one, see [Haskell.nix](#haskellnix).
 * `--no-cache` neither reads from nor writes to the cache.
 * `--no-downloads` does not download sources that are missing, and a file
   whose operators come from a dependency that could not be read is then
@@ -164,10 +165,77 @@ of the module is a valid Haskell module.
     with the current trends in software development.
   * Ormolu is self-contained and makes no assumption about tools on the
     system where it is run. Tilia needs Cabal: it shells out to it and may
-    download packages. Ormolu does none of this, which may be an advantage
-    in some situations.
+    download packages, unless the build plan is given with `--build-plan`
+    and downloads are ruled out with `--no-downloads`. Ormolu does none of
+    this, which may be an advantage in some situations.
 * Fourmolu is a configurable fork of Ormolu which shares the same
   architecture, strengths, and weaknesses.
+
+## Suggested setup per use-case
+
+### Local development
+
+Have `cabal` and the compiler your project is built with on `PATH`, as you
+would to build it, and nothing else needs setting up. Tilia gets the build
+plan and the sources of dependencies through Cabal as described above, and
+maintains its cache in the user's cache directory: `~/.cache/tilia`, or
+`%LOCALAPPDATA%\tilia` on Windows.
+
+### CI with Cabal
+
+On GitHub Actions, [setup-tilia](https://github.com/mrkkrp/setup-tilia)
+installs Tilia and maintains its caches automatically, keyed on the version
+of Tilia and on your `.cabal` and `cabal.project` files:
+
+```yaml
+- uses: haskell-actions/setup@v2
+  with:
+    ghc-version: '9.10.3'
+- uses: actions/checkout@v7
+- uses: mrkkrp/setup-tilia@v1
+- run: tilia check
+```
+
+Nothing has to be built before the check.
+
+### Haskell.nix
+
+[haskell.nix](https://github.com/input-output-hk/haskell.nix) builds each
+component with every dependency already installed and keeps the plan it
+solved in `plan-nix`. `--build-plan` points Tilia at that plan, so Cabal is
+not asked to solve one, and with `--no-downloads` nothing is fetched either:
+only the interfaces of what is installed are read. Cabal is then not run at
+all and need not be installed.
+
+This makes a formatting check that runs as part of the build, before a
+component is compiled, with no development shell to set up for it. Each
+component is built from the whole package source, so each checks the
+component it builds:
+
+```nix
+project = pkgs.haskell-nix.cabalProject {
+  # ...
+  modules = [{
+    packages.my-package.components = {
+      library.preBuild = tiliaCheck "lib:my-package";
+      exes.my-exe.preBuild = tiliaCheck "exe:my-exe";
+    };
+  }];
+};
+tiliaCheck = target: ''
+  ${tilia.packages.${system}.default}/bin/tilia check ${target} \
+    --build-plan ${project.plan-nix}/plan.json \
+    --no-cache \
+    --no-downloads \
+    --must-not-decline
+'';
+```
+
+Here `tilia` is this repository as a flake input. There is nowhere to keep a
+cache between Nix builds, hence `--no-cache`, so every check reads the
+interfaces it needs again, which has been optimized to perform nearly as
+fast as a cached run outside of Nix (a fraction of a second on a project the
+size of Tilia).
 
 ## Development
 
