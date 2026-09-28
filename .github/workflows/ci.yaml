@@ -52,8 +52,8 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: |
-            ~/.cache/cabal/packages
-            !~/.cache/cabal/packages/hackage.haskell.org/01-index.*
+            ~/.cache/cabal/packages/*/*
+            !~/.cache/cabal/packages/*/01-index.*
           key: cabal-${{ matrix.ghc }}-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-${{ matrix.ghc }}-
@@ -87,8 +87,8 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: |
-            ~/.cache/cabal/packages
-            !~/.cache/cabal/packages/hackage.haskell.org/01-index.*
+            ~/.cache/cabal/packages/*/*
+            !~/.cache/cabal/packages/*/01-index.*
           key: cabal-format-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-format-
@@ -103,6 +103,7 @@ jobs:
 
       - name: Self-format
         run: |
+          nix shell --inputs-from . nixpkgs#cabal-install -c cabal update
           nix run .#format
           git diff --exit-code --color=always
   pure-format:
