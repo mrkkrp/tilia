@@ -80,6 +80,7 @@ main = do
       "."
       (mapMaybe componentInPlan components)
       optUseCache
+      optDownload
       optCheckAst
       optCheckIdempotence
       optDebugFixity
@@ -170,6 +171,8 @@ data Opts = Opts
     optTarget :: Maybe String,
     -- | Whether to read from and write to the cache.
     optUseCache :: Choice "useCache",
+    -- | Whether to download sources that are missing.
+    optDownload :: Choice "download",
     -- | Whether to check AST equivalence.
     optCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
@@ -210,6 +213,7 @@ optsParser =
       Opts mode
         <$> optional targetArgument
         <*> noCacheSwitch
+        <*> noDownloadsSwitch
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
@@ -218,6 +222,12 @@ optsParser =
         <$> (switch . mconcat)
           [ long "no-cache",
             help "Neither read from nor write to the cache"
+          ]
+    noDownloadsSwitch =
+      fromBool . not
+        <$> (switch . mconcat)
+          [ long "no-downloads",
+            help "Do not download sources that are missing"
           ]
     checkAstSwitch =
       fromBool

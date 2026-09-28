@@ -65,7 +65,7 @@ import Data.Aeson.Types (parseMaybe)
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
-import Data.Choice (Choice, fromBool, pattern Do)
+import Data.Choice (Choice, fromBool, isTrue, pattern Do)
 import Data.Foldable (toList, traverse_)
 import Data.IORef
 import Data.List (isSuffixOf)
@@ -510,10 +510,22 @@ filesNewerThanPlan plan projectDir = quietly [] $ do
       pure (if t > planTime then Just path else Nothing)
 
 -- | Do whatever is missing, by asking @cabal@.
-prepare :: Choice "useCache" -> [PlanComponent] -> FilePath -> Readiness -> IO (Either Text ())
-prepare caching wanted projectDir readiness =
+prepare ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
+  -- | Whether to download what is missing.
+  Choice "download" ->
+  -- | The components the run is about to format.
+  [PlanComponent] ->
+  -- | The project being prepared.
+  FilePath ->
+  -- | What it was found to be short of.
+  Readiness ->
+  IO (Either Text ())
+prepare caching downloading wanted projectDir readiness =
   prepareWith
     caching
+    downloading
     (runCabal projectDir)
     (futilityFor caching projectDir)
     wanted
@@ -565,6 +577,8 @@ futilityFor caching projectDir =
 prepareWith ::
   -- | Whether to use the cache.
   Choice "useCache" ->
+  -- | Whether to download what is missing.
+  Choice "download" ->
   -- | Run @cabal@ with these arguments.
   ([String] -> IO (Either Text ())) ->
   -- | What earlier attempts came to.
@@ -576,7 +590,7 @@ prepareWith ::
   -- | What it was found to be short of.
   Readiness ->
   IO (Either Text ())
-prepareWith caching cabal futility wanted projectDir = \case
+prepareWith caching downloading cabal futility wanted projectDir = \case
   Ready -> pure (Right ())
   SourcesMissing _ -> fetch
   PlanMissing -> solveThenFetch
@@ -591,7 +605,9 @@ prepareWith caching cabal futility wanted projectDir = \case
       cabal (args <> wholeProject) >>= \case
         Right () -> pure (Right ())
         Left _ -> cabal args
-    fetch = tryWholeProject ["build", "all", "--only-download"]
+    fetch
+      | isTrue downloading = tryWholeProject ["build", "all", "--only-download"]
+      | otherwise = pure (Right ())
     fetchWhatIsShort =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure (Right ())
@@ -637,10 +653,20 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
     _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
 
 -- | Get a plan that is safe to use, doing whatever @cabal@ work is needed.
-loadPlan :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO (Either Text BuildPlan)
-loadPlan caching wanted projectDir = do
+loadPlan ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
+  -- | Whether to download what is missing.
+  Choice "download" ->
+  -- | The components the run is about to format, so that a plan which says
+  -- nothing about them is solved again rather than trusted.
+  [PlanComponent] ->
+  -- | The project whose plan it is.
+  FilePath ->
+  IO (Either Text BuildPlan)
+loadPlan caching downloading wanted projectDir = do
   readiness <- checkReadiness caching wanted projectDir
-  prepare caching wanted projectDir readiness >>= \case
+  prepare caching downloading wanted projectDir readiness >>= \case
     Left err -> pure (Left err)
     _ -> readBuildPlan (planPathFor projectDir)
 

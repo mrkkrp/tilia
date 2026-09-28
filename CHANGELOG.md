@@ -37,6 +37,8 @@
   24](https://github.com/mrkkrp/tilia/pull/24).
 * Add `--no-cache` to neither read from nor write to the cache. [PR
   25](https://github.com/mrkkrp/tilia/pull/25).
+* Add `--no-downloads` to not download the sources of dependencies that are
+  missing. [PR 26](https://github.com/mrkkrp/tilia/pull/26).
 
 ## Tilia 0.0.1.0
 
