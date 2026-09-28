@@ -8,6 +8,7 @@ module Tilia.Run
     declined,
     failed,
     differs,
+    failIfDeclined,
     exitCodeOf,
 
     -- * Execution
@@ -76,6 +77,12 @@ differs :: Outcome -> Bool
 differs = \case
   Changed{} -> True
   _ -> False
+
+-- | Count a declined file as failed.
+failIfDeclined :: Outcome -> Outcome
+failIfDeclined = \case
+  Declined e -> Failed e
+  outcome -> outcome
 
 -- | Determine the exit code based on the set of outcomes. 'Nothing' means
 -- success.
