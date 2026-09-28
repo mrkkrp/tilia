@@ -72,7 +72,7 @@ jobs:
           nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
   format:
     needs: build
-    name: Self-format
+    name: Self-format with Cabal
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -105,3 +105,20 @@ jobs:
         run: |
           nix run .#format
           git diff --exit-code --color=always
+  pure-format:
+    needs: build
+    name: Self-format in a pure Nix build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+      - uses: cachix/cachix-action@v17
+        with:
+          name: tilia
+          authToken: '${{ secrets.CACHIX_TIILA_AUTH_TOKEN }}'
+      - name: Self-format
+        run: |
+          nix build -L .#self-format
