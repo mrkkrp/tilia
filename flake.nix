@@ -110,6 +110,8 @@
             checked = target: component: component.overrideAttrs (_: {
               buildPhase = ''
                 ${base.tilia}/bin/tilia check ${target} \
+                  --check-ast \
+                  --check-idempotence \
                   --build-plan ${project.plan-nix}/plan.json \
                   --no-cache \
                   --no-downloads \
