@@ -72,11 +72,13 @@ import Data.List (intersperse)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Doc.Internal
-  ( Doc (..),
+  ( Conditional (..),
+    Doc (..),
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
     groupLayout,
+    printsNothing,
   )
 import Tilia.Span (Span)
 
@@ -178,30 +180,21 @@ fence = DFence
 
 -- | Alternatives the preprocessor chooses between.
 cppChoice ::
+  -- | The conditionals of the input the alternatives were printed from.
+  [Conditional] ->
   -- | One alternative per directive, each directive as written after its
   -- hash.
   [(Text, Doc)] ->
   -- | The else clause.
   Doc ->
   Doc
-cppChoice branches fallback
+cppChoice conditionals branches fallback
   | all (printsNothing . snd) branches && printsNothing fallback = DEmpty
   | otherwise =
       DCppChoice
+        conditionals
         branches
         (if printsNothing fallback then DEmpty else fallback)
-  where
-    printsNothing = \case
-      DEmpty -> True
-      DCat a b -> printsNothing a && printsNothing b
-      DNest _ d -> printsNothing d
-      DAlign d -> printsNothing d
-      DGroup _ d -> printsNothing d
-      DLocated _ d -> printsNothing d
-      DFence _ d -> printsNothing d
-      DVariant flatD brokenD ->
-        printsNothing flatD && printsNothing brokenD
-      _ -> False
 
 ----------------------------------------------------------------------------
 -- Attachment

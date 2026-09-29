@@ -43,7 +43,6 @@ module Tilia.Cpp.Directives
     Opaque (..),
     opaqueDirectives,
     opSpan,
-    gapUnder,
     gapWritten,
   )
 where
@@ -61,8 +60,6 @@ import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source
   ( Lines,
     blankAt,
-    blankBelow,
-    closesABranch,
     directiveOnLine,
   )
 import Tilia.Span
@@ -186,7 +183,9 @@ data Configurations = Configurations
     -- | What each of those branches leaves out, in the same order.
     cfgDropped :: [[(Int, Int)]],
     -- | From each tied group's @#if@ to its @#endif@, inclusive.
-    cfgWholes :: Varied
+    cfgWholes :: Varied,
+    -- | The lines of each tied group's directives, in the same order.
+    cfgDirectiveLines :: [[Int]]
   }
   deriving (Eq, Show)
 
@@ -206,7 +205,8 @@ configurations source = do
           ],
         cfgDropped =
           [concatMap (`droppedFor` i) tied | i <- [0 .. gsCount gs - 1]],
-        cfgWholes = Varied (fmap gsWhole tied)
+        cfgWholes = Varied (fmap gsWhole tied),
+        cfgDirectiveLines = fmap gsOwnLines tied
       }
 
 -- | Every group in a module written behind the same directives as this one.
@@ -623,13 +623,6 @@ opaqueDirectives source =
 -- | The lines a directive was written on, as a span.
 opSpan :: Opaque -> Span
 opSpan d = mkSpan (opLine d, 1) (opLastLine d, 1)
-
--- | Did the author leave an empty line under this directive?
-gapUnder :: Lines -> Opaque -> Bool
-gapUnder written d =
-  (blankAt n written || blankBelow n written) && not (closesABranch n written)
-  where
-    n = opLastLine d
 
 -- | Did the author leave an empty line anywhere between these two lines?
 gapWritten :: Lines -> Int -> Int -> Bool

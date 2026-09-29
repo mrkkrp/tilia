@@ -322,8 +322,11 @@ spec = do
     it "is refused when the module is not Haskell without expanding it" $
       formatCpp macroDeclaration `shouldSatisfy` isLeft
 
-    xit "does not run a Haddock into the comment under it" $
+    it "does not run a Haddock into the comment under it" $
       roundTrip defineBetweenConditionals `shouldBe` Right ()
+
+    it "stays between the conditionals it was written between" $
+      formatCpp defineBetweenConditionals `shouldBe` Right defineBetweenConditionals
 
   describe "directives the prototype cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
@@ -375,11 +378,12 @@ everyFixture =
   ]
 
 -- | A directive that asks nothing, between two conditionals that ask the
--- same question.
+-- same question, with a Haddock above the first and a comment in each.
 --
--- The merge has no answer for this and wraps the module in a conditional
--- rather than the conditionals in the module. See the held-back example that
--- names it.
+-- Merging the comments along with the code gave every configuration its own
+-- idea of where they went, and the module came out wrapped in a conditional
+-- rather than the conditionals in the module, with the Haddock run into the
+-- comment under it.
 defineBetweenConditionals :: Text
 defineBetweenConditionals =
   T.unlines

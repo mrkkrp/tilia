@@ -7,6 +7,7 @@ module Tilia.Comments
     CommentStyle (..),
     Above (..),
     commentsOf,
+    transcendentComment,
     renderComment,
     closesItself,
     bracketed,
@@ -35,7 +36,7 @@ import GHC.Hs.Extension (GhcPs)
 import GHC.Parser.Annotation qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Source.Lines (Lines, blankAt, lineAt, lineTexts)
-import Tilia.Span (Span, endPoint, startPoint)
+import Tilia.Span (Span (..), endPoint, startPoint)
 import Tilia.Span.Ghc (spanOfReal)
 
 -- | One comment.
@@ -149,6 +150,34 @@ mkComment ls spn tok =
     followed = case lineAt (GHC.srcSpanEndLine spn) ls of
       Just l -> not (T.all isSpace (T.drop (offsetOf l (GHC.srcSpanEndCol spn)) l))
       Nothing -> False
+
+-- | A comment, with its text read from the module as written rather than
+-- from the configuration it was found in.
+--
+-- The two differ for a block comment with a conditional inside it: the
+-- preprocessor does not know what a Haskell comment is, so each
+-- configuration has the comment with only its own branch left in.
+transcendentComment :: Lines -> Comment -> Comment
+transcendentComment ls c = case commentStyle c of
+  BlockComment ->
+    c
+      { commentBody =
+          normalizeBody
+            startColumn
+            BlockComment
+            (T.intercalate "\n" (zipWith clip [startLine ..] covered))
+      }
+  _ -> c
+  where
+    s = commentSpan c
+    startLine = spanStartLine s
+    endLine = spanEndLine s
+    covered = take (endLine - startLine + 1) (drop (startLine - 1) (lineTexts ls))
+    clip n l =
+      (if n == startLine then T.drop (offsetOf l (spanStartColumn s)) else id)
+        . (if n == endLine then T.take (offsetOf l (spanEndColumn s)) else id)
+        $ l
+    startColumn = maybe 0 (`offsetOf` spanStartColumn s) (lineAt startLine ls)
 
 -- | Apply the normalizations, in the only order that works: dedent before
 -- stripping, since a line of nothing but spaces has to still count as

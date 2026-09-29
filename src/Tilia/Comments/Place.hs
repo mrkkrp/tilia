@@ -6,6 +6,7 @@ module Tilia.Comments.Place
     Placements,
     placeComments,
     claimPlaced,
+    unclaimedByEither,
     unplaced,
   )
 where
@@ -61,11 +62,24 @@ shapeOf position c = case position of
     | singleLine c -> HeldBack
     | otherwise -> EndsTheLine
 
--- | Comment placements.
+-- | Comment placements not yet written: all of them when placement is
+-- decided, fewer as a walk writes them.
 data Placements = Placements
-  { placedAt :: Map Span [(Position, Comment)],
+  { -- | The comments to write around each region.
+    placedAt :: Map Span [(Position, Comment)],
+    -- | The comments no region was found for.
     placedNowhere :: [Comment]
   }
+
+instance Semigroup Placements where
+  a <> b =
+    Placements
+      { placedAt = Map.unionWith (<>) (placedAt a) (placedAt b),
+        placedNowhere = placedNowhere a <> placedNowhere b
+      }
+
+instance Monoid Placements where
+  mempty = Placements Map.empty []
 
 -- | Determine comment placements.
 placeComments ::
@@ -179,6 +193,14 @@ claimPlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
   (found, rest) -> (concat found, p{placedAt = rest})
   where
     forget _ _ = Nothing
+
+-- | The placements neither of two walks from the same placements claimed.
+unclaimedByEither ::
+  Placements ->
+  Placements ->
+  Placements
+unclaimedByEither a b =
+  a{placedAt = Map.intersection (placedAt a) (placedAt b)}
 
 -- | The comments no region ever came to collect.
 unplaced :: Placements -> [Comment]

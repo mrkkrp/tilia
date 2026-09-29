@@ -44,6 +44,7 @@ library
     Tilia.Cpp
     Tilia.Cpp.Directives
     Tilia.Cpp.Macros
+    Tilia.Cpp.Place
     Tilia.Diff
     Tilia.Doc
     Tilia.Doc.Body

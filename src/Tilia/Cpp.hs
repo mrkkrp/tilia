@@ -32,28 +32,30 @@ module Tilia.Cpp
   )
 where
 
-import Data.List (maximumBy, sortOn, transpose, unsnoc)
+import Data.Function (on)
+import Data.List (groupBy, maximumBy, sortOn, transpose, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives
+import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Doc.Combinators qualified as Doc
-import Tilia.Doc.Internal (Doc (..), Layout (..))
+import Tilia.Doc.Internal (Conditional (..), Doc (..), Layout (..), printsNothing)
 import Tilia.Parser
   ( ParserConfig,
     parseConfiguration,
+    pmSource,
   )
-import Tilia.Render (RenderConfig (..), renderModule)
+import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
   ( Lines,
     Written (..),
-    directiveOnLine,
+    comments,
     dropping,
-    lineTexts,
     linesOf,
   )
 import Tilia.Span
@@ -69,8 +71,9 @@ import Tilia.Span
 
 -- | Format a module which uses the C preprocessor.
 --
--- Each configuration is formatted by the ordinary printer. The resulting
--- documents are then merged.
+-- Each configuration's code is formatted by the ordinary printer, and the
+-- resulting documents are merged. The conditionals, the comments, and the
+-- directives are then injected into the merged document.
 formatWithCpp ::
   -- | What to parse each configuration with.
   ParserConfig ->
@@ -82,21 +85,22 @@ formatWithCpp ::
   Text ->
   -- | The formatted module, or why not.
   Either CppError Text
-formatWithCpp parser render path source =
-  printDoc defaultRenderOptions . fst
-    <$> formatAllConfigs
+formatWithCpp parser render path source = do
+  (document, found, _) <-
+    formatAllConfigs
       parser
       (knowing render)
       path
       (noAnswers source)
       configurationBudget
       source
+  printDoc defaultRenderOptions <$> restoreUnprinted source found document
   where
     knowing c =
       c{rcImportBarriers = maybe [] (fmap dLine) (scanDirectives source)}
 
 -- | Format every configuration of a module, and merge them into one
--- document.
+-- document, with what they found besides their code.
 formatAllConfigs ::
   -- | What to parse a configuration with.
   ParserConfig ->
@@ -110,7 +114,7 @@ formatAllConfigs ::
   Int ->
   -- | Input text.
   Text ->
-  Either CppError (Doc, Int)
+  Either CppError (Doc, CommentSummary, Int)
 formatAllConfigs parser render path reached budget source =
   case variations source of
     Nothing
@@ -118,19 +122,21 @@ formatAllConfigs parser render path reached budget source =
           Left (UnhandledDirective (unhandledIn left))
       | budget <= 0 -> Left TooManyConfigurations
       | otherwise -> do
-          document <-
+          (document, found) <-
             formatSingleConfig
               parser
               render
               path
               reached
               left
-          (,budget - 1)
-            <$> replacing
-              (reachedLines reached)
-              (reachedAnswers reached)
-              opaque
-              document
+          case filter (quotedAt document . opLine) opaque of
+            d : _ ->
+              Left
+                ( DirectiveInQuotedText
+                    (reachedAnswers reached)
+                    (T.takeWhile (/= ' ') (opText d))
+                )
+            [] -> Right (document, found, budget - 1)
       where
         opaque = opaqueDirectives source
         left = withoutOpaque source
@@ -151,9 +157,9 @@ formatAllConfigs parser render path reached budget source =
     linearly v =
       case separately parser render path reached budget v of
         Left why -> Left (Refused why, budget)
-        Right (baseDoc, merged, budget') ->
+        Right (baseDoc, merged, found, budget') ->
           case combine Broken baseDoc (zip (fmap cfgWholes (vaGroups v)) merged) of
-            Just d -> Right (d, budget')
+            Just d -> Right (d, found, budget')
             Nothing -> Left (InOneConstruct, budget')
 
 -- | Why the linear form did not work.
@@ -212,7 +218,8 @@ variations source = do
                           [ gone (\j -> if j == k then i else 0)
                           | i <- [0 .. gsCount gs - 1]
                           ],
-                        cfgWholes = Varied (fmap gsWhole dim)
+                        cfgWholes = Varied (fmap gsWhole dim),
+                        cfgDirectiveLines = fmap gsOwnLines dim
                       }
                   | (k, dim@(gs : _)) <- zip [0 :: Int ..] dimensions
                   ]
@@ -233,9 +240,9 @@ separately ::
   Int ->
   -- | The conditionals to vary, and the baseline to hold them against.
   Variation ->
-  Either CppError (Doc, [Doc], Int)
+  Either CppError (Doc, [Doc], CommentSummary, Int)
 separately parser render path reached budget v = do
-  (baseDoc, spent) <-
+  (baseDoc, baseFound, spent) <-
     formatAllConfigs
       parser
       render
@@ -243,25 +250,23 @@ separately parser render path reached budget v = do
       (without (vaBaselineDropped v) reached)
       budget
       (vaBaseline v)
-  (merged, left) <- eachGroup baseDoc spent (vaGroups v)
-  pure (baseDoc, merged, left)
+  (merged, found, left) <- eachGroup baseDoc spent (vaGroups v)
+  pure (baseDoc, merged, baseFound <> found, left)
   where
-    free = freeOf reached
-
-    eachGroup _ b [] = Right ([], b)
+    eachGroup _ b [] = Right ([], mempty, b)
     eachGroup baseDoc b (c : cs) = do
-      (docs, b') <- eachBranch c baseDoc b (zip [0 ..] (cfgTexts c))
-      (rest, b'') <- eachGroup baseDoc b' cs
-      pure (merge free (cfgGuards c) (cfgWholes c) docs : rest, b'')
+      (docs, found, b') <- eachBranch c baseDoc b (zip [0 ..] (cfgTexts c))
+      (rest, found', b'') <- eachGroup baseDoc b' cs
+      pure (mergeOf c docs : rest, found <> found', b'')
 
-    eachBranch _ _ b [] = Right ([], b)
+    eachBranch _ _ b [] = Right ([], mempty, b)
     eachBranch c baseDoc b ((i, t) : ts) = do
-      (d, b') <-
+      (d, found, b') <-
         if t == vaBaseline v
-          then Right (baseDoc, b)
+          then Right (baseDoc, mempty, b)
           else formatAllConfigs parser render path (answering c i reached) b t
-      (ds, b'') <- eachBranch c baseDoc b' ts
-      pure (d : ds, b'')
+      (ds, found', b'') <- eachBranch c baseDoc b' ts
+      pure (d : ds, found <> found', b'')
 
 -- | Vary the conditionals together, one group at a time.
 together ::
@@ -277,19 +282,19 @@ together ::
   Int ->
   -- | The group to split on, and the branch texts to split it into.
   Configurations ->
-  Either CppError (Doc, Int)
+  Either CppError (Doc, CommentSummary, Int)
 together parser render path reached budget c = do
-  (formatted, budget') <- eachBranch budget (zip [0 ..] (cfgTexts c))
+  (formatted, found, budget') <- eachBranch budget (zip [0 ..] (cfgTexts c))
   docs <- traverse (complete formatted) (zip [0 ..] (cfgTexts c))
-  pure (merge (freeOf reached) (cfgGuards c) (cfgWholes c) docs, budget')
+  pure (mergeOf c docs, found, budget')
   where
     inside = reached
-    eachBranch b [] = Right ([], b)
+    eachBranch b [] = Right ([], mempty, b)
     eachBranch b ((_, t) : ts) | not (null (unconditionalErrors t)) = eachBranch b ts
     eachBranch b ((i, t) : ts) = do
-      (d, b') <- formatAllConfigs parser render path (answering c i inside) b t
-      (ds, b'') <- eachBranch b' ts
-      pure ((i, d) : ds, b'')
+      (d, found, b') <- formatAllConfigs parser render path (answering c i inside) b t
+      (ds, found', b'') <- eachBranch b' ts
+      pure ((i, d) : ds, found <> found', b'')
     complete formatted (i, t) = case lookup i formatted of
       Just d -> Right d
       Nothing -> case listToMaybe formatted >>= errorBranch (cfgWholes c) t . snd of
@@ -299,7 +304,9 @@ together parser render path reached budget c = do
 -- | Preserve an error-only alternative without asking the Haskell parser to
 -- parse its missing expression or declaration. A successful sibling supplies
 -- the surrounding syntax; only nodes wholly inside the conditional are
--- replaced. More complicated aborting alternatives are left unsupported.
+-- taken out, and the @#error@ is put back into the space they leave with
+-- every other directive. More complicated aborting alternatives are left
+-- unsupported.
 errorBranch :: Varied -> Text -> Doc -> Maybe Doc
 errorBranch (Varied ranges) source reference = foldl step (Just reference) ranges
   where
@@ -314,11 +321,13 @@ errorBranch (Varied ranges) source reference = foldl step (Just reference) range
             all
               (\(n, l) -> not (inside n) || errorLine n || T.null (T.strip l))
               sourceLines'
-          body = mconcat [DCppDirective (opSpan d) (opText d) | d <- here]
           contained s = inside (spanStartLine s) && inside (spanEndLine s)
           walk seen d = case d of
-            DLocated s _ | contained s -> (True, if seen then mempty else body)
-            DCppDirective s _ | contained s -> (True, if seen then mempty else body)
+            DLocated s _ | contained s -> (True, mempty)
+            DCppChoice{}
+              | lines'@(_ : _) <- printedFrom d,
+                all (\(a, b) -> inside a && inside b) lines' ->
+                  (True, mempty)
             DLocated s x -> fmap (DLocated s) (walk seen x)
             DFence s x -> fmap (DFence s) (walk seen x)
             DNest k x -> fmap (DNest k) (walk seen x)
@@ -334,7 +343,8 @@ errorBranch (Varied ranges) source reference = foldl step (Just reference) range
           (placed, result) = walk False doc
       if not (null here) && onlyErrors && placed then Just result else Nothing
 
--- | Format one configuration with the ordinary printer.
+-- | Format one configuration's code with the ordinary printer, and gather
+-- what else it holds.
 formatSingleConfig ::
   -- | What to parse it with.
   ParserConfig ->
@@ -346,11 +356,13 @@ formatSingleConfig ::
   Reached ->
   -- | The configuration itself, with no directives left in it.
   Text ->
-  Either CppError Doc
+  Either CppError (Doc, CommentSummary)
 formatSingleConfig parser render path reached text =
   case parseConfiguration parser path (reachedLines reached) text of
     Left e -> Left (ConfigurationNotParsed (reachedAnswers reached) e)
-    Right parsed -> Right (renderModule render parsed)
+    Right parsed ->
+      let (document, loose) = renderConfiguration render parsed
+       in Right (document, summarizeComments loose (comments (pmSource parsed)))
 
 -- | How a configuration was reached, and what to call it.
 data Reached = Reached
@@ -396,25 +408,12 @@ configurationBudget = 64
 configurationsWorthTrying :: Integer
 configurationsWorthTrying = 4096
 
--- | Put the directives that do not introduce new configurations back where
--- they were written.
-replacing :: Lines -> [([Guard], Int)] -> [Opaque] -> Doc -> Either CppError Doc
-replacing written answers opaque doc = foldl step (Right doc) opaque
+-- | Is this line inside something the document reproduces verbatim, such
+-- as a quasi-quotation, where a directive cannot be put back?
+quotedAt :: Doc -> Int -> Bool
+quotedAt doc n = any inside (located doc)
   where
-    step acc d
-      | reproducedAt n doc = Left (DirectiveInQuotedText answers (keyword t))
-      | otherwise =
-          acc
-            >>= maybe (Left (DirectiveUnplaceable answers (keyword t))) Right
-              . place d
-      where
-        n = opLine d
-        t = opText d
-    keyword = T.takeWhile (/= ' ')
-    reproducedAt n = any inside . located
-      where
-        inside (s, x) =
-          spanStartLine s < n && n <= spanEndLine s && reproduced x
+    inside (s, x) = spanStartLine s < n && n <= spanEndLine s && reproduced x
 
     located = \case
       DLocated s x -> (s, x) : located x
@@ -435,67 +434,29 @@ replacing written answers opaque doc = foldl step (Right doc) opaque
       DCat a b -> reproduced a || reproduced b
       _ -> False
 
-    place directive = go
-      where
-        n = opLine directive
-
-        body =
-          DCppDirective (opSpan directive) (opText directive)
-            <> if gapUnder written directive then Doc.blankLine else mempty
-
-        go d = case d of
-          DNest k x -> DNest k <$> go x
-          DAlign x -> DAlign <$> go x
-          DGroup l x -> DGroup l <$> go x
-          DVariant a b -> DVariant <$> go a <*> go b
-          DLocated s x | spanEndLine s >= n -> DLocated s <$> go x
-          DFence s x | spanEndLine s >= n -> DFence s <$> go x
-          DCat _ _ -> inSpine (spine d)
-          _ -> Nothing
-
-        inSpine parts = case break startsAfter parts of
-          (before, after)
-            | Just (earlier, holder, spacing) <- holding before,
-              maybe False (>= n) (endOf holder) ->
-                (\x -> mconcat (earlier <> [x] <> spacing <> after)) <$> go holder
-            | Just (printed, anchor, spacing) <- tight before,
-              Just from <- endOf anchor,
-              not (gapWritten written (from + 1) (n - 1)) ->
-                Just (mconcat (printed <> [anchor, body] <> spacing <> after))
-            | otherwise -> Just (mconcat (before <> [body] <> after))
-          where
-            startsAfter x = maybe False (>= n) (startOf x)
-
-        holding ds = case break (isJust . endOf) (reverse ds) of
-          (spacing, holder : earlier) -> Just (reverse earlier, holder, reverse spacing)
-          _ -> Nothing
-
-        tight ds = case break (isJust . endOf) (reverse ds) of
-          (spacing, anchor : earlier) -> Just (reverse earlier, anchor, reverse spacing)
-          _ -> Nothing
-
-    startOf = fmap fst . boundsOf
-    endOf = fmap snd . boundsOf
-    boundsOf = \case
-      DLocated s _ -> Just (spanStartLine s, spanEndLine s)
-      DFence s _ -> Just (spanStartLine s, spanEndLine s)
-      DCppDirective s _ -> Just (spanStartLine s, spanEndLine s)
-      DNest _ x -> boundsOf x
-      DAlign x -> boundsOf x
-      DGroup _ x -> boundsOf x
-      DVariant _ b -> boundsOf b
-      DCat a b -> case (boundsOf a, boundsOf b) of
-        (Just (from, _), Just (_, to)) -> Just (from, to)
-        (found, Nothing) -> found
-        (Nothing, found) -> found
-      _ -> Nothing
+-- | Merge the documents one group's configurations printed to.
+mergeOf :: Configurations -> [Doc] -> Doc
+mergeOf c =
+  merge
+    (fmap Conditional (cfgDirectiveLines c))
+    (cfgGuards c)
+    (cfgWholes c)
 
 -- | Merge the documents one conditional's branches printed to.
 --
 -- A structural walk that keeps what they all agree on and puts a choice
 -- where they part.
-merge :: [(Span, Text)] -> [Guard] -> Varied -> [Doc] -> Doc
-merge free guards varied = go Broken
+merge ::
+  -- | The conditionals asking the question, as written.
+  [Conditional] ->
+  -- | The question.
+  [Guard] ->
+  -- | The lines its answer can change.
+  Varied ->
+  -- | One document per answer.
+  [Doc] ->
+  Doc
+merge conditionals guards varied = go Broken
   where
     go _ [] = mempty
     go layout ds@(d : rest)
@@ -511,7 +472,7 @@ merge free guards varied = go Broken
         | Just tds <- every (\case DLocated t d -> Just (t, d); _ -> Nothing),
           all (meets s . fst) tds ->
             case go layout (fmap snd tds) of
-              DCppChoice _ _
+              DCppChoice{}
                 | Just opened <- unwrapping layout (fmap fst tds) xs -> opened
               descended -> DLocated (hull s tds) descended
       DFence s _
@@ -520,12 +481,13 @@ merge free guards varied = go Broken
             DFence (hull s tds) (go layout (fmap snd tds))
       DNest n _ | Just ds <- every (\case DNest m d | m == n -> Just d; _ -> Nothing) -> DNest n (go layout ds)
       DGroup _ _
-        | Just ls <- every (\case DGroup l _ -> Just l; _ -> Nothing),
-          Just ds@(d : rest) <- every (\case DGroup _ d -> Just d; _ -> Nothing) ->
-            let inside = if Broken `elem` ls then Broken else Flat
+        | Just lds <- every (\case DGroup l d -> Just (l, d); _ -> Nothing),
+          ds@(d : rest) <- fmap snd lds ->
+            let ls = [l | (l, inner) <- lds, not (printsNothing inner)]
+                inside = if Broken `elem` ls then Broken else Flat
                 merged = go inside ds
              in case merged of
-                  DCppChoice _ _
+                  DCppChoice{}
                     | not (all (== inside) ls),
                       not (all (agree varied inside d) rest) ->
                         choice xs
@@ -565,19 +527,51 @@ merge free guards varied = go Broken
         _ -> False
 
     factored layout ss =
-      let exposed = fmap (exposing (filter split' (sharedDirectives ss))) ss
-          split' d = d `elem` free && any (holds d) ss && not (all (holds d) ss)
-          holds d = any (isNamed d)
-          lining = alignable varied layout
-          shared = foldl1 (lcs lining) exposed
-          cut = fmap (segments (anchored lining) shared) exposed
+      let lining = alignable varied layout
+          shared = foldl1 (lcs lining) ss
+          cut = fmap (segments (anchored lining) shared) ss
           stretches = transpose (fmap fst cut)
           anchors = transpose (fmap snd cut)
        in mconcat (woven layout stretches (fmap (go layout) anchors))
 
-    woven layout (s : ss) (c : cs) = varying layout s : c : woven layout ss cs
-    woven layout ss [] = fmap (varying layout) ss
+    woven layout (s : ss) (c : cs) = foldMap (varying layout) (cutAtConditionals s) : c : woven layout ss cs
+    woven layout ss [] = fmap (foldMap (varying layout) . cutAtConditionals) ss
     woven _ [] _ = []
+
+    -- A stretch the configurations disagree over, cut where one conditional
+    -- asking the question ends and the next begins, so that each comes out
+    -- as a choice of its own rather than one choice printing both. Only
+    -- where every element falls inside one of them, in the order they were
+    -- written; what lies between them, space aside, is the stretch's own.
+    cutAtConditionals ss
+      | _ : _ : _ <- conditionals,
+        Just owners <- traverse (traverse ownerOf) ss,
+        present@(first' : _ : _) <- foldr insertOrdered [] [o | Just o <- concat owners],
+        let assigned = fmap (settled first') owners,
+        all ascending assigned =
+          [ [[x | (x, o) <- zip xs os, o == i] | (xs, os) <- zip ss assigned]
+          | i <- present
+          ]
+      | otherwise = [ss]
+      where
+        ranges =
+          [ (from, to)
+          | Conditional ls <- conditionals,
+            from : _ <- [ls],
+            Just (_, to) <- [unsnoc ls]
+          ]
+        ownerOf x = case printedFrom x of
+          [] -> Just Nothing
+          lines' -> case sortOn fst [r | r@(from, to) <- ranges, all (\(a, b) -> from < a && b < to) lines'] of
+            outermost : _ -> Just (Just outermost)
+            [] -> Nothing
+        settled first' os = case [o | Just o <- os] of
+          [] -> fmap (const first') os
+          o : _ -> drop 1 (scanl (\prev x -> maybe prev id x) o os)
+        insertOrdered o os
+          | o `elem` os = os
+          | otherwise = sortOn fst (o : os)
+        ascending os = and (zipWith (<=) os (drop 1 os))
 
     varying layout ss =
       let (opening, ss1) = sharedStart layout ss
@@ -625,10 +619,12 @@ merge free guards varied = go Broken
           (d : _) -> opensWithBreak layout d
 
     joined before after = case (endingChoice before, startingChoice after) of
-      (Just (opening, bs, e, gap), Just (gap', cs, e', closing))
-        | fmap fst bs == fmap fst cs ->
+      (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
+        | fmap fst bs == fmap fst cs,
+          ws == ws' ->
             opening
               <> Doc.cppChoice
+                ws
                 [(g, x <> between <> y) | ((g, x), (_, y)) <- zip bs cs]
                 (e <> between <> e')
               <> closing
@@ -683,100 +679,41 @@ merge free guards varied = go Broken
       _ -> False
 
     choice ds = case unsnoc ds of
-      Just (branches, fallback) -> Doc.cppChoice (zip (fmap guardText guards) branches) fallback
+      Just (branches, fallback) ->
+        Doc.cppChoice
+          (filter (evidenced ds) conditionals)
+          (zip (fmap guardText guards) branches)
+          fallback
       Nothing -> mempty
+
+    evidenced ds (Conditional ls) = case (ls, unsnoc ls) of
+      (from : _, Just (_, to)) ->
+        any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)
+      _ -> False
 
     only [d] = Just d
     only _ = Nothing
 
--- | 'freeDirectives' of the module as its author wrote it.
-freeOf :: Reached -> [(Span, Text)]
-freeOf = freeDirectives . T.unlines . lineTexts . reachedLines
-
--- | The opaque directives written outside every conditional.
-freeDirectives :: Text -> [(Span, Text)]
-freeDirectives source =
-  [ (opSpan d, opText d)
-  | d <- opaqueDirectives source,
-    Map.findWithDefault 0 (opLine d) depths == (0 :: Int)
-  ]
-  where
-    depths = Map.fromList (zip [1 ..] (scanl step 0 (T.lines source)))
-    step depth l = case directiveOnLine l of
-      Just (keyword, _)
-        | keyword `elem` ["if", "ifdef", "ifndef"] -> depth + 1
-        | keyword == "endif" -> max 0 (depth - 1)
-      _ -> depth
-
--- | Is this spine element the named directive itself, bare?
-isNamed :: (Span, Text) -> Doc -> Bool
-isNamed (s, t) = \case
-  DCppDirective u v -> u == s && v == t
-  _ -> False
-
--- | The directives every one of these spines holds.
-sharedDirectives :: [[Doc]] -> [(Span, Text)]
-sharedDirectives = \case
-  [] -> []
-  s : ss -> foldl (\acc t -> filter (`elem` namesIn t) acc) (namesIn s) ss
-  where
-    namesIn = concatMap named
-
--- | The directives a document holds, as far down as one may be brought out
--- from.
-named :: Doc -> [(Span, Text)]
-named = \case
-  DCppDirective s t -> [(s, t)]
-  DCat a b -> named a <> named b
-  DNest _ x -> named x
-  DAlign x -> named x
-  DGroup _ x -> named x
-  DVariant _ b -> named b
+-- | The lines of the input a document holds something printed from, as far
+-- down as there is anything.
+printedFrom :: Doc -> [(Int, Int)]
+printedFrom = \case
+  DLocated s x -> (spanStartLine s, spanEndLine s) : printedFrom x
+  DFence s x -> (spanStartLine s, spanEndLine s) : printedFrom x
+  DCppChoice cs bs e ->
+    [ (from, to)
+    | Conditional ls <- cs,
+      from : _ <- [ls],
+      Just (_, to) <- [unsnoc ls]
+    ]
+      <> foldMap (printedFrom . snd) bs
+      <> printedFrom e
+  DCat a b -> printedFrom a <> printedFrom b
+  DNest _ x -> printedFrom x
+  DAlign x -> printedFrom x
+  DGroup _ x -> printedFrom x
+  DVariant _ b -> printedFrom b
   _ -> []
-
--- | Bring the given directives out to the top of the spine.
-exposing :: [(Span, Text)] -> [Doc] -> [Doc]
-exposing wanted
-  | null wanted = id
-  | otherwise = concatMap out
-  where
-    out d
-      | not (any here (named d)) = [d]
-      | otherwise = case d of
-          DCat a b -> out a <> out b
-          DNest k x -> split (DNest k) (out x)
-          DAlign x -> split DAlign (out x)
-          DGroup l x -> split (DGroup l) (out x)
-          DVariant a b -> varied (out a) (out b)
-          _ -> [d]
-
-    here (s, t) = (s, t) `elem` wanted
-
-    bare = \case
-      DCppDirective s t -> here (s, t)
-      _ -> False
-
-    split w ps = case break bare ps of
-      (before, []) -> [w (mconcat before) | not (null before)]
-      (before, x : rest) ->
-        [w (mconcat before) | not (null before)] <> [x] <> split w rest
-
-    varied as bs =
-      let (xs, ds) = chunk as
-          (ys, es) = chunk bs
-       in if ds == es && length xs == length ys
-            then interleave xs ys ds
-            else [DVariant (mconcat as) (mconcat bs)]
-
-    chunk ps = case break bare ps of
-      (before, []) -> ([mconcat before], [])
-      (before, x : rest) ->
-        let (cs, ds) = chunk rest in (mconcat before : cs, x : ds)
-
-    interleave (x : xs) (y : ys) ds = case ds of
-      [] -> [DVariant x y]
-      z : zs -> DVariant x y : z : interleave xs ys zs
-    interleave _ _ _ = []
 
 -- | Would these two documents print the same, laid out like this?
 agree :: Varied -> Layout -> Doc -> Doc -> Bool
@@ -807,8 +744,9 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
       (DLocated s x', DLocated t y') ->
         s == t && (untouched varied s || inside x' y')
       (DFence s x', DFence t y') -> s == t && inside x' y'
-      (DCppChoice bs x', DCppChoice cs y') ->
-        length bs == length cs
+      (DCppChoice ws bs x', DCppChoice ws' cs y') ->
+        ws == ws'
+          && length bs == length cs
           && and [g == h && inside p q | ((g, p), (h, q)) <- zip bs cs]
           && inside x' y'
       (DText s, DText t) -> s == t
@@ -903,7 +841,7 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
                   )
               )
           )
-      pure (mconcat (applied bs clustered))
+      pure (mconcat (applied bs (inWrittenOrder bs clustered)))
 
     cluster _ [c] = Just c
     cluster bs cs
@@ -929,6 +867,33 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
         go i [] = drop i bs
         go i (c : cs) =
           take (chFrom c - i) (drop i bs) <> chWith c <> go (chTo c) cs
+
+-- | Put what changes made to one run of space in the order it was written
+-- in.
+--
+-- Two conditionals written one after the other with nothing between them
+-- but space both change that space, and where in it each change falls is a
+-- matter of how each one's own space lined up with it, not of which came
+-- first. Nothing but space moves when the changes trade places.
+inWrittenOrder :: [Doc] -> [Change] -> [Change]
+inWrittenOrder bs = concatMap reorder . groupBy ((==) `on` gap)
+  where
+    gap c
+      | all onlySpacing (take (chTo c - chFrom c) (drop (chFrom c) bs)) =
+          Just (length (filter (not . onlySpacing) (take (chFrom c) bs)))
+      | otherwise = Nothing
+    reorder cs = case traverse firstLine cs of
+      Just ls
+        | Just _ <- gap =<< listToMaybe cs,
+          ls /= sortOn id ls ->
+            zipWith
+              (\c w -> c{chWith = chWith w, chVaried = chVaried w})
+              cs
+              (fmap snd (sortOn fst (zip ls cs)))
+      _ -> cs
+    firstLine c = case concatMap printedFrom (chWith c) of
+      [] -> Nothing
+      ls -> Just (minimum (fmap fst ls))
 
 -- | The smallest span covering a node's own and those of everything merged
 -- into it.
@@ -1008,15 +973,15 @@ overlapping (c : cs) = go [c] (chTo c) cs
       | otherwise = reverse acc : go [x] (chTo x) xs
 
 -- | What a document prints before its final choice, and that choice.
-endingChoice :: Doc -> Maybe (Doc, [(Text, Doc)], Doc, Doc)
+endingChoice :: Doc -> Maybe (Doc, [Conditional], [(Text, Doc)], Doc, Doc)
 endingChoice d = case span onlySpacing (reverse (spine d)) of
   (trailing, x : earlier) ->
     let opening = mconcat (reverse earlier)
         gap = mconcat (reverse trailing)
-        around w (o, bs, e, g) =
-          (opening <> w o, fmap (fmap w) bs, w e, w g <> gap)
+        around w (o, ws, bs, e, g) =
+          (opening <> w o, ws, fmap (fmap w) bs, w e, w g <> gap)
      in case x of
-          DCppChoice bs e -> Just (opening, bs, e, gap)
+          DCppChoice ws bs e -> Just (opening, ws, bs, e, gap)
           DGroup l y -> around (DGroup l) <$> endingChoice y
           DNest n y -> around (DNest n) <$> endingChoice y
           DLocated s y -> around (DLocated s) <$> endingChoice y
@@ -1025,15 +990,15 @@ endingChoice d = case span onlySpacing (reverse (spine d)) of
   _ -> Nothing
 
 -- | The mirror of 'endingChoice': a document's opening choice, and the rest.
-startingChoice :: Doc -> Maybe (Doc, [(Text, Doc)], Doc, Doc)
+startingChoice :: Doc -> Maybe (Doc, [Conditional], [(Text, Doc)], Doc, Doc)
 startingChoice d = case span onlySpacing (spine d) of
   (leading, x : later) ->
     let gap = mconcat leading
         closing = mconcat later
-        around w (g, bs, e, c) =
-          (gap <> w g, fmap (fmap w) bs, w e, w c <> closing)
+        around w (g, ws, bs, e, c) =
+          (gap <> w g, ws, fmap (fmap w) bs, w e, w c <> closing)
      in case x of
-          DCppChoice bs e -> Just (gap, bs, e, closing)
+          DCppChoice ws bs e -> Just (gap, ws, bs, e, closing)
           DGroup l y -> around (DGroup l) <$> startingChoice y
           DNest n y -> around (DNest n) <$> startingChoice y
           DLocated s y -> around (DLocated s) <$> startingChoice y
@@ -1066,7 +1031,7 @@ opensWithBreak layout d = case dropWhile quiet (spineAt layout d) of
     DBreak -> layout == Broken
     DSoftBreak -> layout == Broken
     DCppDirective _ _ -> True
-    DCppChoice _ _ -> True
+    DCppChoice{} -> True
     _ -> False
   [] -> False
   where
@@ -1089,7 +1054,7 @@ weigh layout = go
         go (case layout of Flat -> flatD; Broken -> brokenD)
       DLocated _ d -> go d
       DFence _ d -> go d
-      DCppChoice bs e -> sum (fmap (go . snd) bs) + go e
+      DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t
       DHoldBack t -> T.length t
@@ -1161,7 +1126,19 @@ anchoring = \case
   DHardBreak -> False
   DCloseLine -> False
   DVerbatimBreak _ _ -> False
+  DNest _ d -> located d || not (printsNothing d)
+  DAlign d -> located d || not (printsNothing d)
+  DGroup _ d -> located d || not (printsNothing d)
   _ -> True
+  where
+    located = \case
+      DLocated{} -> True
+      DFence{} -> True
+      DCat a b -> located a || located b
+      DNest _ d -> located d
+      DAlign d -> located d
+      DGroup _ d -> located d
+      _ -> False
 
 -- | A spine cut at the elements it shares with the others: one stretch
 -- before each of them, and one after the last, and the elements themselves.
@@ -1207,5 +1184,5 @@ regions = Map.fromListWith (\_ outer -> outer) . go
       DAlign d -> go d
       DGroup _ d -> go d
       DVariant a _ -> go a
-      DCppChoice bs e -> foldMap (go . snd) bs <> go e
+      DCppChoice _ bs e -> foldMap (go . snd) bs <> go e
       _ -> []
