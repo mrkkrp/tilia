@@ -3,6 +3,12 @@
 * Achieve full idempotence and correct handling of comments in all cases
   when CPP is involved. [Issue 6](https://github.com/mrkkrp/tilia/issues/6)
   and [Issue 7](https://github.com/mrkkrp/tilia/issues/6).
+* Put a comment that comes out right above a CPP directive at the margin.
+* Format a module in which a conditional has an alternative that holds
+  nothing but `#error`, rather than declining it as having conditionals that
+  do not nest.
+* Do not repeat an expression in every alternative of a conditional when the
+  configurations lay it out differently around the part that varies.
 
 ## Tilia 0.0.2.0
 

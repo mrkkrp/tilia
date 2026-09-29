@@ -64,6 +64,9 @@ data Doc
   | -- | Indent the enclosed document to whatever column the line has
     -- reached, so that it lines up under itself when broken.
     DAlign !Doc
+  | -- | Start the enclosed document's lines at the margin if they come out
+    -- right above a preprocessor directive.
+    DCppMarginNote !Doc
   | -- | Lay the enclosed document out flat or broken.
     DGroup !Layout !Doc
   | -- | Choose between two documents according to the enclosing group: the
@@ -110,6 +113,7 @@ printsNothing = \case
   DCat a b -> printsNothing a && printsNothing b
   DNest _ d -> printsNothing d
   DAlign d -> printsNothing d
+  DCppMarginNote d -> printsNothing d
   DGroup _ d -> printsNothing d
   DLocated _ d -> printsNothing d
   DFence _ d -> printsNothing d
@@ -170,9 +174,14 @@ defaultRenderOptions = RenderOptions{roIndentStep = 2}
 
 -- | What the engine carries while walking a document.
 data Env = Env
-  { envIndent :: !Int,
+  { -- | The column a new line starts at.
+    envIndent :: !Int,
+    -- | The layout of the innermost group.
     envLayout :: !Layout,
-    envIndentStep :: !Int
+    -- | Columns per indentation step.
+    envIndentStep :: !Int,
+    -- | Whether a line started now should start at the margin.
+    envCppMarginNote :: !Bool
   }
 
 -- | Output built so far.
@@ -198,7 +207,13 @@ data Out = Out
     -- | Whether the line was closed by something that already knew it was
     -- ending it, so that a break arriving now would add an empty line
     -- rather than end anything.
-    outClosed :: !Bool
+    outClosed :: !Bool,
+    -- | The indentation of the current line, if a 'DCppMarginNote' began it
+    -- and nothing else is on it.
+    outNoteIndent :: !(Maybe Int),
+    -- | The indentation of each of the lines just completed that could go
+    -- to column zero, most recent first.
+    outNoteRun :: ![Int]
   }
 
 emptyOut :: Out
@@ -209,7 +224,9 @@ emptyOut =
       outColumn = 0,
       outStarted = False,
       outHeldBack = [],
-      outClosed = False
+      outClosed = False,
+      outNoteIndent = Nothing,
+      outNoteRun = []
     }
 
 -- | Turn a document into text.
@@ -220,14 +237,24 @@ render opts doc = finish (go env doc emptyOut)
       Env
         { envIndent = 0,
           envLayout = Broken,
-          envIndentStep = roIndentStep opts
+          envIndentStep = roIndentStep opts,
+          envCppMarginNote = False
         }
 
 -- | Walk a document, accumulating output.
 go :: Env -> Doc -> Out -> Out
 go env = \case
   DEmpty -> id
-  DText t -> putText (envIndent env) t
+  DText t
+    | T.null t -> id
+    | envCppMarginNote env -> \out ->
+        (putText (envIndent env) t out)
+          { outNoteIndent =
+              if outStarted out
+                then outNoteIndent out
+                else Just (envIndent env)
+          }
+    | otherwise -> putText (envIndent env) t . unnoted
   DSpace -> putSpace
   DBreak -> case envLayout env of
     Flat -> putSpace
@@ -235,14 +262,20 @@ go env = \case
   DSoftBreak -> case envLayout env of
     Flat -> id
     Broken -> breakLine (envIndent env)
-  DHoldBack t -> putHeldBack (envIndent env) t
+  DHoldBack t -> putHeldBack (envIndent env) t . unnoted
   DCloseLine -> closeLine (envIndent env)
   DHardBreak -> breakLine (envIndent env)
-  DVerbatimBreak lineStart trailing -> verbatimBreakLine lineStart trailing
+  DVerbatimBreak lineStart trailing -> \out ->
+    let out' = verbatimBreakLine lineStart trailing out
+     in if envCppMarginNote env
+          then out'{outNoteIndent = Just (if lineStart == AtMargin then 0 else envIndent env)}
+          else out'
   DCat a b -> go env b . go env a
   DNest n d -> go env{envIndent = envIndent env + n * envIndentStep env} d
   DAlign d -> \out ->
     go env{envIndent = max (envIndent env) (outColumn out)} d out
+  DCppMarginNote d -> \out ->
+    go env{envCppMarginNote = not (hasContent out)} d out
   DGroup l d -> go env{envLayout = l} d
   DVariant flatD brokenD -> case envLayout env of
     Flat -> go env flatD
@@ -258,9 +291,24 @@ go env = \case
         <> [[atMargin "#endif"]]
   DCppDirective _ t -> atMargin ("#" <> t)
 
--- | Put a line of text at the margin, on a line of its own.
+-- | Put a line of text at the margin, on a line of its own, with the notes
+-- right above it.
 atMargin :: Text -> Out -> Out
-atMargin t = closeLine 0 . putText 0 t . closeLine 0
+atMargin t = closeLine 0 . putText 0 t . notesToMargin . closeLine 0
+
+-- | Move the lines of notes just completed to column zero.
+notesToMargin :: Out -> Out
+notesToMargin out =
+  out
+    { outLines = zipWith T.drop (outNoteRun out) noted <> rest,
+      outNoteRun = []
+    }
+  where
+    (noted, rest) = splitAt (length (outNoteRun out)) (outLines out)
+
+-- | Say that something other than a note is on the current line.
+unnoted :: Out -> Out
+unnoted out = out{outNoteIndent = Nothing}
 
 -- | Append a fragment, emitting the line's indentation first if this is the
 -- first thing on it.
@@ -314,14 +362,11 @@ breakLine ::
 breakLine indent out
   | outClosed out = out{outClosed = False}
   | atStart out = out
-  | not (hasContent out), repeatsBlank out || opensABlock indent out = discarded
-  | otherwise =
-      discarded
-        { outLines = overflow TrimWhitespace indent out <> outLines out
-        }
+  | not (hasContent out), repeatsBlank out || opensABlock indent out = cleared out
+  | otherwise = cleared (completing TrimWhitespace indent out)
   where
-    discarded =
-      out{outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
+    cleared o =
+      o{outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
 
 -- | Close the current line, if there is anything on it.
 --
@@ -356,6 +401,27 @@ overflow trailing indent out = reverse (finished : fmap below spilled)
       | T.null finished = indent
       | otherwise = T.length (T.takeWhile (== ' ') finished)
 
+-- | Move the current line, with the held-back fragments that spill under
+-- it, to the completed lines, extending or ending the run of note lines.
+completing ::
+  -- | What to do with whitespace the lines end in.
+  TrailingWhitespace ->
+  -- | Where the line after these would begin, used only if there is no line
+  -- to take the indentation from.
+  Int ->
+  Out ->
+  Out
+completing trailing indent out =
+  out
+    { outLines = produced <> outLines out,
+      outNoteIndent = Nothing,
+      outNoteRun = case (produced, outNoteIndent out) of
+        ([_], Just k) -> k : outNoteRun out
+        _ -> []
+    }
+  where
+    produced = overflow trailing indent out
+
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool
 opensABlock indent out = case outLines out of
@@ -365,9 +431,8 @@ opensABlock indent out = case outLines out of
 -- | Finish the current line between two lines of reproduced text.
 verbatimBreakLine :: LineStart -> TrailingWhitespace -> Out -> Out
 verbatimBreakLine lineStart trailing out =
-  out
-    { outLines = overflow trailing 0 out <> outLines out,
-      outCurrent = [],
+  (completing trailing 0 out)
+    { outCurrent = [],
       outColumn = 0,
       outStarted = lineStart == AtMargin,
       outHeldBack = [],

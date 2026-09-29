@@ -37,6 +37,7 @@ module Tilia.Doc.Combinators
     nest,
     indent,
     align,
+    cppMarginNote,
 
     -- * Combining
     hsep,
@@ -231,6 +232,11 @@ indent = DNest 1
 align :: Doc -> Doc
 align = DAlign
 
+-- | Start the enclosed document's lines at the margin if they come out
+-- right above a preprocessor directive.
+cppMarginNote :: Doc -> Doc
+cppMarginNote = DCppMarginNote
+
 ----------------------------------------------------------------------------
 -- Combining
 
@@ -250,11 +256,6 @@ sepBy s = mconcat . intersperse s
 -- then the place the line may break.
 joinedBy :: Text -> Doc
 joinedBy t = space <> txt t <> breakOrSpace
-
--- | Append the separator to every element but the last.
---
--- For the cases where the separator has to travel with the element rather
--- than sit between elements, such as a trailing comma that must stay on the
 
 ----------------------------------------------------------------------------
 -- Wrapping

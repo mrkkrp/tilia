@@ -7,7 +7,7 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (groupLayout)
+import Tilia.Doc.Internal (Doc (DCppDirective), groupLayout)
 import Tilia.Span
 
 spec :: Spec
@@ -86,5 +86,28 @@ spec = do
       out (broken (indent (txt "a" <> hardBreak)))
         `shouldBe` "  a\n"
 
+  describe "margin notes" $ do
+    it "go to the margin right above a directive" $
+      out (indent (txt "a" <> hardBreak <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
+        `shouldBe` "  a\n-- x\n#if X\n"
+    it "go to the margin together when several are right above a directive" $
+      out (indent (cppMarginNote (txt "-- x") <> hardBreak <> cppMarginNote (txt "-- y") <> hardBreak <> directive))
+        `shouldBe` "-- x\n-- y\n#if X\n"
+    it "stay indented when a blank line is between them and a directive" $
+      out (indent (cppMarginNote (txt "-- x") <> blankLine <> directive))
+        `shouldBe` "  -- x\n\n#if X\n"
+    it "stay indented with no directive under them" $
+      out (indent (cppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
+        `shouldBe` "  -- x\n  a\n"
+    it "stay where they are on a line something else began" $
+      out (indent (txt "a" <> space <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
+        `shouldBe` "  a -- x\n#if X\n"
+    it "stay indented when something else follows them on their line" $
+      out (indent (cppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
+        `shouldBe` "  {- x -} a\n#if X\n"
+
 out :: Doc -> Text
 out = printDoc defaultRenderOptions
+
+directive :: Doc
+directive = DCppDirective (mkSpan (9, 1) (9, 6)) "if X"
