@@ -338,6 +338,13 @@ spec = do
     it "refuses a conditional no configuration can be parsed out of" $
       formatCpp unparseableAlone `shouldSatisfy` isLeft
 
+    it "refuses a branch that a conditional around it asking the same question rules out" $
+      formatCpp ruledOut
+        `shouldBe` Left "the branch at line 6 is ruled out by a conditional around it that asks the same question"
+
+    it "accepts such a branch when it holds nothing" $
+      formatCpp ruledOutEmpty `shouldBe` Right ruledOutEmpty
+
 ----------------------------------------------------------------------------
 -- The modules the question is asked of
 
@@ -750,6 +757,38 @@ unparseableAlone =
 -- | An @#if@ with nothing to close it.
 unbalanced :: Text
 unbalanced = T.unlines ["module M where", "", "#ifdef FOO", "f = 1"]
+
+-- | An @#else@ that the @#if@ around it rules out, which no configuration
+-- takes.
+ruledOut :: Text
+ruledOut =
+  T.unlines
+    [ "module M where",
+      "",
+      "#if FLAG",
+      "#if FLAG",
+      "f = 1",
+      "#else",
+      "f = 2",
+      "#endif",
+      "#endif"
+    ]
+
+-- | An @#if@ that the @#if@ around it rules out, but with nothing in it.
+ruledOutEmpty :: Text
+ruledOutEmpty =
+  T.unlines
+    [ "module M where",
+      "",
+      "#if FLAG",
+      "g = 1",
+      "#else",
+      "#if FLAG",
+      "#else",
+      "f = 1",
+      "#endif",
+      "#endif"
+    ]
 
 -- | A directive that is not a conditional, and so cannot be blanked away.
 withDefine :: Text
