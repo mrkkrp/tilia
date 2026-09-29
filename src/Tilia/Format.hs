@@ -184,6 +184,7 @@ formatErrorExitCode = \case
     ConfigurationNotParsed{} -> 12
     DirectiveUnplaceable{} -> 13
     DirectiveInQuotedText{} -> 14
+    RuledOutBranch{} -> 19
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool

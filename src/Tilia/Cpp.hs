@@ -32,6 +32,7 @@ module Tilia.Cpp
   )
 where
 
+import Data.Foldable (traverse_)
 import Data.Function (on)
 import Data.List (groupBy, maximumBy, sortOn, transpose, unsnoc)
 import Data.Map.Strict (Map)
@@ -86,6 +87,7 @@ formatWithCpp ::
   -- | The formatted module, or why not.
   Either CppError Text
 formatWithCpp parser render path source = do
+  traverse_ (Left . RuledOutBranch) (ruledOutBranch source)
   (document, found, _) <-
     formatAllConfigs
       parser

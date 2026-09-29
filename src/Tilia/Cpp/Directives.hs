@@ -21,6 +21,7 @@ module Tilia.Cpp.Directives
     leaves,
     branchLeaves,
     correspondingBranches,
+    ruledOutBranch,
     unconditionalErrors,
     linearLeaves,
     countLeaves,
@@ -132,6 +133,9 @@ data CppError
     DirectiveUnplaceable [([Guard], Int)] Text
   | -- | A directive written inside a quasiquote or other verbatim text.
     DirectiveInQuotedText [([Guard], Int)] Text
+  | -- | A branch holding something that a conditional around it, asking the
+    -- same question, rules out, and the line of the directive opening it.
+    RuledOutBranch Int
 
 -- | Say what went wrong, in one line. The edge of the system.
 describeCppError :: CppError -> Text
@@ -143,6 +147,10 @@ describeCppError = \case
   DirectiveUnplaceable c k -> "nowhere to put the #" <> k <> inConfiguration c
   DirectiveInQuotedText c k ->
     "a #" <> k <> " inside something quoted verbatim" <> inConfiguration c
+  RuledOutBranch n ->
+    "the branch at line "
+      <> T.pack (show n)
+      <> " is ruled out by a conditional around it that asks the same question"
 
 -- | Which configuration, in words. Empty where there is only one.
 inConfiguration :: [([Guard], Int)] -> Text
@@ -285,6 +293,32 @@ nesting level ds = traverse one (groupsAtLevel level ds)
       gs <- groupSpec group
       Nest gs <$> traverse (\r -> nesting (level + 1) (inside r ds)) (gsBranches gs)
     inside (from, to) = filter (\d -> from <= dLine d && dLine d <= to)
+
+-- | The line of the first directive whose branch holds something although
+-- a conditional around it, asking the same question, rules that branch out.
+ruledOutBranch :: Text -> Maybe Int
+ruledOutBranch source = do
+  ds <- scanDirectives source
+  forest <- nesting 0 ds
+  listToMaybe (go Map.empty forest)
+  where
+    written = zip [1 ..] (T.lines source)
+    holdsSomething (from, to) =
+      any (\(n, l) -> from <= n && n <= to && not (T.all isSpace l)) written
+    go asked forest =
+      concat
+        [ [ opening
+          | Just j <- [Map.lookup (gsGuards gs) asked],
+            (i, opening, r) <- zip3 [0 :: Int ..] (gsOwnLines gs) (gsBranches gs),
+            i /= j,
+            holdsSomething r
+          ]
+            <> concat
+              [ go (Map.insert (gsGuards gs) i asked) nested
+              | (i, nested) <- zip [0 ..] branches
+              ]
+        | Nest gs branches <- forest
+        ]
 
 -- | Read both spellings under the same CPP choices.
 --
