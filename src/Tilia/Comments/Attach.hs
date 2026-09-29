@@ -7,13 +7,16 @@
 -- other, and from then on nothing distinguishes it.
 module Tilia.Comments.Attach
   ( attachComments,
+    attachScopedComments,
   )
 where
 
 import Data.Bifunctor (first, second)
-import Data.List (mapAccumL, unsnoc)
+import Data.List (unsnoc)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
@@ -21,16 +24,53 @@ import Tilia.Doc.Combinators
 import Tilia.Doc.Internal (Doc (..))
 import Tilia.Span
 
--- | Attache comments to a 'Doc'.
+-- | Attach comments to a 'Doc'.
 attachComments :: [Comment] -> Doc -> Doc
-attachComments cs doc = written <> closingComments (unplaced left)
+attachComments = attachScopedComments (const False) (const ())
+
+-- | Attach comments to a 'Doc', each only to a region in the same scope as
+-- itself.
+--
+-- A scope is a part of the input a comment may not be carried out of, such
+-- as one branch of a conditional: a comment written in a branch has to stay
+-- among what that branch holds, and one written outside it must not end up
+-- inside. Placement never looks past a comment's own scope, so where it
+-- goes is decided among the regions it could be printed next to in every
+-- configuration it is in.
+attachScopedComments ::
+  (Ord k) =>
+  -- | Whether a line of a comment has to begin at the margin.
+  (Text -> Bool) ->
+  -- | The scope of what was written at a span.
+  (Span -> k) ->
+  -- | The comments to attach.
+  [Comment] ->
+  -- | The document to attach them to.
+  Doc ->
+  Doc
+attachScopedComments atMargin scopeOf cs doc =
+  written <> closingComments atMargin (unplaced left)
   where
-    (written, left) = walk (placeComments regions fences cs) doc
+    (written, left) = walk atMargin placements doc
     (regions, fences) = markedSpans doc
+    placements =
+      foldMap
+        (\k -> placeComments (inScope k rs) (inScope k fs) (inScope k xs))
+        (Set.toList (Map.keysSet rs <> Map.keysSet fs <> Map.keysSet xs))
+    rs = byScope id regions
+    fs = byScope id fences
+    xs = byScope commentSpan cs
+    byScope f ys = reverse <$> Map.fromListWith (<>) [(scopeOf (f y), [y]) | y <- ys]
+    inScope = Map.findWithDefault []
 
 -- | The comments nothing came to collect, written after everything.
-closingComments :: [Comment] -> Doc
-closingComments = \case
+closingComments ::
+  -- | Whether a line of a comment has to begin at the margin.
+  (Text -> Bool) ->
+  -- | The comments.
+  [Comment] ->
+  Doc
+closingComments atMargin = \case
   [] -> mempty
   (opening : rest) -> placeOne True opening <> foldMap (placeOne False) rest
   where
@@ -38,7 +78,7 @@ closingComments = \case
       commentDoc c $
         closeLine
           <> includeWhen (opensTheRun || commentGapAbove c) blankLine
-          <> commentText c
+          <> commentText atMargin c
           <> closeLine
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
@@ -52,7 +92,7 @@ markedSpans = \case
   DAlign d -> markedSpans d
   DGroup _ d -> markedSpans d
   DVariant a _ -> markedSpans a
-  DCppChoice bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
+  DCppChoice _ bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
   _ -> ([], [])
 
 -- | Write the placed comments into the document, each one around the region
@@ -61,10 +101,20 @@ markedSpans = \case
 -- so a span that occurs twice is served once. The two sides of a 'DVariant'
 -- are the exception—they are one piece of code laid out two ways, so both
 -- are walked from the same 'Placements' and both come out holding the
--- comment, and only one of them is ever printed. What is still unwritten
--- when the walk ends is returned next to the resulting 'Doc'.
-walk :: Placements -> Doc -> (Doc, Placements)
-walk = go
+-- comment, and only one of them is ever printed. So are the alternatives of
+-- a 'DCppChoice', for the same reason: no configuration prints two of them,
+-- and a region the merge wrote into several of them is printed once in each
+-- configuration, comments and all. What is still unwritten when the walk
+-- ends is returned next to the resulting 'Doc'.
+walk ::
+  -- | Whether a line of a comment has to begin at the margin.
+  (Text -> Bool) ->
+  -- | Where each comment goes.
+  Placements ->
+  -- | The document to write them into.
+  Doc ->
+  (Doc, Placements)
+walk atMargin = go
   where
     go p = \case
       DCat a b ->
@@ -75,16 +125,17 @@ walk = go
         let (mine, p') = claimPlaced s p
             (d', p'') = go p' d
             write position cs =
-              foldMap (writtenAs (isEmptyAnchor s) position) cs
+              foldMap (writtenAs atMargin (isEmptyAnchor s) position) cs
             before' = heldOffFrom d [c | (q, c) <- mine, q == Before]
             after' = [c | (q, c) <- mine, q == After]
          in (write Before before' <> DLocated s d' <> write After after', p'')
       DFence s d -> first (DFence s) (go p d)
-      DCppChoice bs e ->
-        let branch q (c, d) = let (d', q') = go q d in (q', (c, d'))
-            (p', bs') = mapAccumL branch p bs
-            (e', p'') = go p' e
-         in (DCppChoice bs' e', p'')
+      DCppChoice cs bs e ->
+        let bs' = [(c, go p d) | (c, d) <- bs]
+            (e', pe) = go p e
+         in ( DCppChoice cs [(c, d') | (c, (d', _)) <- bs'] e',
+              foldr (unclaimedByEither . snd . snd) pe bs'
+            )
       DNest n d -> first (DNest n) (go p d)
       DAlign d -> first DAlign (go p d)
       DGroup l d -> first (DGroup l) (go p d)
@@ -135,6 +186,8 @@ isEmptyAnchor s = startPoint s == endPoint s
 
 -- | Render one 'Comment' where it was placed.
 writtenAs ::
+  -- | Whether a line of the comment has to begin at the margin.
+  (Text -> Bool) ->
   -- | Does what follows only mark where the construct ends?
   Bool ->
   -- | Comment position.
@@ -142,7 +195,7 @@ writtenAs ::
   -- | The comment to render.
   Comment ->
   Doc
-writtenAs atTheEnd position c = commentDoc c $ case shapeOf position c of
+writtenAs atMargin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
     Before -> includeWhen (not (commentTrailing c)) space <> body <> space
     After -> space <> body <> space
@@ -150,7 +203,7 @@ writtenAs atTheEnd position c = commentDoc c $ case shapeOf position c of
   HeldBack -> holdBack (renderComment c)
   OnItsOwnLines -> gapAbove <> closeLine <> body <> closeLine <> gapBelow
   where
-    body = commentText c
+    body = commentText atMargin c
     gapAbove = includeWhen (commentGapAbove c) (closeLine <> blankLine)
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
@@ -159,12 +212,19 @@ commentDoc :: Comment -> Doc -> Doc
 commentDoc = located . commentSpan
 
 -- | The text of a comment, laid out as it was written.
-commentText :: Comment -> Doc
-commentText c =
-  align $
-    sepBy
-      (verbatimBreak AtIndent TrimWhitespace)
-      (fmap txt (NE.toList (commentBody c)))
+commentText ::
+  -- | Whether a line of the comment has to begin at the margin.
+  (Text -> Bool) ->
+  -- | The comment.
+  Comment ->
+  Doc
+commentText atMargin c = align $ case NE.toList (commentBody c) of
+  [] -> mempty
+  l : ls -> txt l <> foldMap (\x -> breakBefore x <> txt x) ls
+  where
+    breakBefore x
+      | atMargin x = verbatimBreak AtMargin TrimWhitespace
+      | otherwise = verbatimBreak AtIndent TrimWhitespace
 
 -- | Put this text at the end of the line this position falls on.
 holdBack :: Text -> Doc

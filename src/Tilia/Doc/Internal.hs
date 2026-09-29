@@ -5,6 +5,8 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
+    Conditional (..),
+    printsNothing,
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
@@ -87,14 +89,32 @@ data Doc
   | -- | Fence prevents comments inside from floating out and attaching to
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
-  | -- | Alternatives the preprocessor chooses between, and the condition it
-    -- chooses on.
-    DCppChoice ![(Text, Doc)] !Doc
+  | -- | Alternatives the preprocessor chooses between, the condition it
+    -- chooses on, and the conditionals of the input they were printed from.
+    DCppChoice ![Conditional] ![(Text, Doc)] !Doc
   | -- | A preprocessor line that is not a conditional, reproduced, and the
     -- region of the input it was written in. The span is included so that
     -- two directives can be told apart.
     DCppDirective !Span !Text
   deriving (Eq, Show)
+
+-- | A conditional as its author wrote it: the lines of its directives, the
+-- @#if@ first and the @#endif@ last.
+newtype Conditional = Conditional{conditionalLines :: [Int]}
+  deriving (Eq, Ord, Show)
+
+-- | Does this document put nothing at all on the page?
+printsNothing :: Doc -> Bool
+printsNothing = \case
+  DEmpty -> True
+  DCat a b -> printsNothing a && printsNothing b
+  DNest _ d -> printsNothing d
+  DAlign d -> printsNothing d
+  DGroup _ d -> printsNothing d
+  DLocated _ d -> printsNothing d
+  DFence _ d -> printsNothing d
+  DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
+  _ -> False
 
 instance Semigroup Doc where
   DEmpty <> b = b
@@ -229,12 +249,12 @@ go env = \case
     Broken -> go env brokenD
   DLocated _ d -> go env d
   DFence _ d -> go env d
-  DCppChoice branches fallback ->
+  DCppChoice _ branches fallback ->
     foldr (flip (.)) id . concat $
       [ [atMargin ("#" <> guard'), go env taken]
       | (guard', taken) <- branches
       ]
-        <> [[atMargin "#else", go env fallback] | fallback /= DEmpty]
+        <> [[atMargin "#else", go env fallback] | not (printsNothing fallback)]
         <> [[atMargin "#endif"]]
   DCppDirective _ t -> atMargin ("#" <> t)
 

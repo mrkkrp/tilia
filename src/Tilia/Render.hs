@@ -3,6 +3,7 @@ module Tilia.Render
   ( RenderConfig (..),
     defaultRenderConfig,
     renderModule,
+    renderConfiguration,
   )
 where
 
@@ -61,10 +62,19 @@ defaultRenderConfig =
 
 -- | Render a parsed module, comments and all.
 renderModule :: RenderConfig -> ParsedModule -> Doc
-renderModule settings parsed =
-  prologue (pmPrologue parsed)
-    <> stackHeader
-    <> attachComments loose (hsModule ctx pragmas (sorted hsMod))
+renderModule settings parsed = attachComments loose doc
+  where
+    (doc, loose) = renderConfiguration settings parsed
+
+-- | Render one configuration of a module, and return the comments the
+-- syntax tree does not carry rather than attach them.
+renderConfiguration :: RenderConfig -> ParsedModule -> (Doc, [Comment])
+renderConfiguration settings parsed =
+  ( prologue (pmPrologue parsed)
+      <> stackHeader
+      <> hsModule ctx pragmas (sorted hsMod),
+    loose
+  )
   where
     hsMod = pmModule parsed
     (haddocks, loose') = splitHaddocks hsMod (comments (pmSource parsed))

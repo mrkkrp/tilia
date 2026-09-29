@@ -22,7 +22,7 @@ import Tilia.Utils (tshow)
 spec :: Spec
 spec = modifyMaxSuccess (const 5000) $
   describe "a module the preprocessor runs over" $ do
-    xit "reaches its answer in one pass" $
+    it "reaches its answer in one pass" $
       property $ \m -> formatted m $ \out ->
         case format out of
           Left why -> counterexample (T.unpack ("re-formatting refused: " <> why)) False
@@ -58,7 +58,7 @@ spec = modifyMaxSuccess (const 5000) $
                           ]
               _ -> property Discard
 
-    xit "is the same program in every configuration it went in as" $
+    it "is the same program in every configuration it went in as" $
       property $ \m -> formatted m $ \out ->
         case (answeredLeaves (sourceOf m), answeredLeaves out) of
           (Right went, Right came) ->

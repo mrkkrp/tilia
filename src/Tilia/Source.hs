@@ -14,8 +14,6 @@ module Tilia.Source
     sourceLines,
     lineAt,
     blankAt,
-    blankBelow,
-    closesABranch,
     directivePresentOnLine,
     directiveOnLine,
 

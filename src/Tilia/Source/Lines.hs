@@ -13,8 +13,6 @@ module Tilia.Source.Lines
     blankAt,
     directivePresentOnLine,
     directiveOnLine,
-    blankBelow,
-    closesABranch,
   )
 where
 
@@ -89,35 +87,3 @@ directiveOnLine l = case T.uncons (T.stripStart l) of
       body = T.stripStart rest
       keyword = T.takeWhile isAsciiLower body
   _ -> Nothing
-
--- | Did the author leave an empty line below this line?
-blankBelow :: Int -> Lines -> Bool
-blankBelow start ls = go (start + 1)
-  where
-    go n
-      | n > IntMap.size (lnWritten ls) = False
-      | Nothing <- lineAt n ls = go (n + 1)
-      | leadsOut n = go (n + 1)
-      | otherwise = blankAt n ls
-    leadsOut n = case directiveOnLine =<< lineAt n ls of
-      Just (keyword, _) -> keyword `elem` leavingKeywords
-      Nothing -> False
-
--- | Does the empty line under this one stand at the end of a branch?
-closesABranch :: Int -> Lines -> Bool
-closesABranch n ls = go False (n + 1)
-  where
-    go crossed k
-      | k > IntMap.size (lnWritten ls) = False
-      | otherwise = case lineAt k ls of
-          Nothing -> go crossed (k + 1)
-          Just l
-            | T.null (T.strip l) -> go True (k + 1)
-            | Just (keyword, _) <- directiveOnLine l ->
-                crossed && keyword `elem` leavingKeywords
-            | otherwise -> False
-
--- | The directives that lead out of the region the line below them is in,
--- rather than into one it is not.
-leavingKeywords :: [Text]
-leavingKeywords = ["elif", "elifdef", "elifndef", "else", "endif"]

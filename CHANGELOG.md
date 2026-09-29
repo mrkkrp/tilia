@@ -1,3 +1,9 @@
+## Unreleased
+
+* Achieve full idempotence and correct handling of comments in all cases
+  when CPP is involved. [Issue 6](https://github.com/mrkkrp/tilia/issues/6)
+  and [Issue 7](https://github.com/mrkkrp/tilia/issues/6).
+
 ## Tilia 0.0.2.0
 
 * Keep explicit braces on empty cases in both single-line and multiline
