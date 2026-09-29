@@ -33,7 +33,7 @@ spec = do
       fmap
         refused
         [ PositionPragmas "A.hs",
-          CppUnsupported "A.hs" UnsplittableConditional,
+          CppUnsupported "A.hs" TooManyConfigurations,
           UnknownFixity "A.hs" []
         ]
         `shouldBe` [True, True, True]

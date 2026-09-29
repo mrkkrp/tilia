@@ -39,7 +39,7 @@ import Tilia.Cpp.Directives
     isDirective,
     opSpan,
     opaqueDirectives,
-    scanDirectives,
+    readDirectives,
   )
 import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen)
 import Tilia.Doc.Internal (Conditional (..), Doc (..))
@@ -118,11 +118,7 @@ restoreUnprinted ::
   Doc ->
   Either CppError Doc
 restoreUnprinted source found doc = do
-  directives <-
-    maybe
-      (Left UnsplittableConditional)
-      Right
-      (scanDirectives source)
+  directives <- readDirectives source
   let conditionals =
         [ Group
             { grConditional = Conditional (gsOwnLines gs),
@@ -140,8 +136,8 @@ restoreUnprinted source found doc = do
         | c <- Map.elems (summaryLoose found),
           let s = commentSpan c
         ]
-  shelled <- foldM (restoreConditional written) (widened doc) conditionals
-  let marked = spacedApart written (realized (widened shelled))
+  let shelled = foldl (restoreConditional written) (widened doc) conditionals
+      marked = spacedApart written (realized (widened shelled))
       printed = Set.fromList (Nothing : fmap scope (spansIn marked))
       noted =
         attachScopedComments
@@ -419,10 +415,7 @@ anchoredIn ::
   Doc
 anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
   where
-    anchor x (n, s) =
-      fromMaybe
-        x
-        (placeAt (const False) Nothing n (DLocated s mempty) x)
+    anchor x (n, s) = placeAt (const False) Nothing n (DLocated s mempty) x
     here n = case alternativeAt n cs of
       Everywhere -> True
       Only i -> i == k
@@ -469,10 +462,9 @@ regionOf = \case
 
 -- | Make sure a conditional is in the document, putting it where it was
 -- written if the merge left it out.
-restoreConditional :: Lines -> Doc -> Group -> Either CppError Doc
+restoreConditional :: Lines -> Doc -> Group -> Doc
 restoreConditional written doc w =
-  maybe (Left UnsplittableConditional) Right $
-    placeAt realized' (Just written) opening shell doc
+  placeAt realized' (Just written) opening shell doc
   where
     realized' ctx = any (all (`elem` ctx)) (realizations c doc)
     c@(Conditional ls) = grConditional w
@@ -485,13 +477,42 @@ restoreConditional written doc w =
 
 -- | Put a directive back where it was written.
 putDirective :: Lines -> Doc -> Opaque -> Either CppError Doc
-putDirective written doc d =
-  maybe (Left (DirectiveUnplaceable [] (T.takeWhile (/= ' ') (opText d)))) Right $
-    placeAt (const False) (Just written) (opLine d) body doc
+putDirective written doc d
+  | quotedAt doc (opLine d) =
+      Left (DirectiveInQuotedText (opLine d) (T.takeWhile (/= ' ') (opText d)))
+  | otherwise = Right (placeAt (const False) (Just written) (opLine d) body doc)
   where
     body =
       DCppDirective (opSpan d) (opText d)
         <> includeWhen (any (`blankAt` written) [opLastLine d, opLastLine d + 1]) blankLine
+
+-- | Is this line inside something the document reproduces verbatim, such
+-- as a quasi-quotation, where a directive cannot be put back?
+quotedAt :: Doc -> Int -> Bool
+quotedAt doc n = any inside (located doc)
+  where
+    inside (s, x) = spanStartLine s < n && n <= spanEndLine s && reproduced x
+
+    located = \case
+      DLocated s x -> (s, x) : located x
+      DFence s x -> (s, x) : located x
+      DNest _ x -> located x
+      DAlign x -> located x
+      DGroup _ x -> located x
+      DVariant _ b -> located b
+      DCat a b -> located a <> located b
+      DCppChoice _ bs e -> concatMap (located . snd) bs <> located e
+      _ -> []
+
+    reproduced = \case
+      DVerbatimBreak _ _ -> True
+      DNest _ x -> reproduced x
+      DAlign x -> reproduced x
+      DGroup _ x -> reproduced x
+      DVariant _ b -> reproduced b
+      DCat a b -> reproduced a || reproduced b
+      DCppChoice _ bs e -> any (reproduced . snd) bs || reproduced e
+      _ -> False
 
 -- | Put a document at a line of the input, in every alternative that line
 -- is printed in.
@@ -508,46 +529,48 @@ placeAt ::
   -- | What to put there.
   Doc ->
   Doc ->
-  Maybe Doc
+  Doc
 placeAt present written n body = among []
   where
     within ctx d = case d of
-      DNest k x -> DNest k <$> within ctx x
-      DAlign x -> DAlign <$> within ctx x
-      DGroup l x -> DGroup l <$> within ctx x
-      DVariant a b -> DVariant <$> within ctx a <*> within ctx b
-      DLocated s x -> DLocated s <$> within ctx x
-      DFence s x -> DFence s <$> within ctx x
+      DNest k x -> DNest k (within ctx x)
+      DAlign x -> DAlign (within ctx x)
+      DGroup l x -> DGroup l (within ctx x)
+      DVariant a b -> DVariant (within ctx a) (within ctx b)
+      DLocated s x -> DLocated s (within ctx x)
+      DFence s x -> DFence s (within ctx x)
       DCppChoice cs bs e
-        | present ctx -> Just d
+        | present ctx -> d
         | otherwise -> case alternativeAt n cs of
             Everywhere ->
-              DCppChoice cs
-                <$> sequenceA [(,) g <$> among (ctx <> [(cs, k)]) x | (k, (g, x)) <- zip [0 ..] bs]
-                <*> among (ctx <> [(cs, length bs)]) e
+              DCppChoice
+                cs
+                [(g, among (ctx <> [(cs, k)]) x) | (k, (g, x)) <- zip [0 ..] bs]
+                (among (ctx <> [(cs, length bs)]) e)
             Only k
               | k < length bs ->
-                  (\x -> DCppChoice cs (replaced k x bs) e)
-                    <$> among (ctx <> [(cs, k)]) (maybe mempty snd (listToMaybe (drop k bs)))
-              | otherwise -> DCppChoice cs bs <$> among (ctx <> [(cs, k)]) e
-            Nowhere -> Just d
+                  DCppChoice
+                    cs
+                    (replaced k (among (ctx <> [(cs, k)]) (maybe mempty snd (listToMaybe (drop k bs)))) bs)
+                    e
+              | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) e)
+            Nowhere -> d
       _ -> among ctx d
 
     among ctx d
-      | present ctx = Just d
+      | present ctx = d
       | otherwise = case break startsAfter (spine d) of
           (before, after)
             | Just (earlier, holder, spacing) <- lastBounded before,
               maybe False (>= n) (endOf holder) ->
-                (\x -> mconcat (earlier <> [x] <> spacing <> after)) <$> within ctx holder
+                mconcat (earlier <> [within ctx holder] <> spacing <> after)
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
-                Just $
-                  if gapWritten ls (from + 1) (n - 1) || not (all space spacing)
-                    then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
-                    else mconcat (printed <> [anchor, body] <> spacing <> after)
-            | otherwise -> Just (mconcat (before <> [body] <> after))
+                if gapWritten ls (from + 1) (n - 1) || not (all space spacing)
+                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
+                  else mconcat (printed <> [anchor, body] <> spacing <> after)
+            | otherwise -> mconcat (before <> [body] <> after)
 
     startsAfter x = maybe False (> n) (startOf x)
 

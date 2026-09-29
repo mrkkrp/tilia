@@ -120,8 +120,7 @@ formatAllConfigs ::
 formatAllConfigs parser render path reached budget source =
   case variations source of
     Nothing
-      | any isDirective (T.lines left) ->
-          Left (UnhandledDirective (unhandledIn left))
+      | Left why <- readDirectives source -> Left why
       | budget <= 0 -> Left TooManyConfigurations
       | otherwise -> do
           (document, found) <-
@@ -130,18 +129,8 @@ formatAllConfigs parser render path reached budget source =
               render
               path
               reached
-              left
-          case filter (quotedAt document . opLine) opaque of
-            d : _ ->
-              Left
-                ( DirectiveInQuotedText
-                    (reachedAnswers reached)
-                    (T.takeWhile (/= ' ') (opText d))
-                )
-            [] -> Right (document, found, budget - 1)
-      where
-        opaque = opaqueDirectives source
-        left = withoutOpaque source
+              (withoutOpaque source)
+          Right (document, found, budget - 1)
     Just apart -> case linearly apart of
       Right built -> Right built
       Left (Refused TooManyConfigurations, _) ->
@@ -150,11 +139,9 @@ formatAllConfigs parser render path reached budget source =
         | Right many <- countLeaves source,
           many > configurationsWorthTrying ->
             Left TooManyConfigurations
-        | otherwise ->
-            maybe
-              (Left UnsplittableConditional)
-              (together parser render path reached left')
-              (configurations source)
+        | otherwise -> case configurations source of
+            Just c -> together parser render path reached left' c
+            Nothing -> error "Tilia: a module that varies has a conditional to split on"
   where
     linearly v =
       case separately parser render path reached budget v of
@@ -301,7 +288,13 @@ together parser render path reached budget c = do
       Just d -> Right d
       Nothing -> case listToMaybe formatted >>= errorBranch (cfgWholes c) t . snd of
         Just d -> Right d
-        Nothing -> Left UnsplittableConditional
+        Nothing ->
+          Left
+            . AbortingAlternative
+            . maybe 0 opLine
+            . listToMaybe
+            . unconditionalErrors
+            $ t
 
 -- | Preserve an error-only alternative without asking the Haskell parser to
 -- parse its missing expression or declaration. A successful sibling supplies
@@ -403,32 +396,6 @@ configurationBudget = 64
 -- product on.
 configurationsWorthTrying :: Integer
 configurationsWorthTrying = 4096
-
--- | Is this line inside something the document reproduces verbatim, such
--- as a quasi-quotation, where a directive cannot be put back?
-quotedAt :: Doc -> Int -> Bool
-quotedAt doc n = any inside (located doc)
-  where
-    inside (s, x) = spanStartLine s < n && n <= spanEndLine s && reproduced x
-
-    located = \case
-      DLocated s x -> (s, x) : located x
-      DFence s x -> (s, x) : located x
-      DNest _ x -> located x
-      DAlign x -> located x
-      DGroup _ x -> located x
-      DVariant _ b -> located b
-      DCat a b -> located a <> located b
-      _ -> []
-
-    reproduced = \case
-      DVerbatimBreak _ _ -> True
-      DNest _ x -> reproduced x
-      DAlign x -> reproduced x
-      DGroup _ x -> reproduced x
-      DVariant _ b -> reproduced b
-      DCat a b -> reproduced a || reproduced b
-      _ -> False
 
 -- | Merge the documents one group's configurations printed to.
 mergeOf :: Configurations -> [Doc] -> Doc
