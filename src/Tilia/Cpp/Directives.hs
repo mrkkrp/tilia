@@ -9,8 +9,8 @@ module Tilia.Cpp.Directives
     withoutRuledOut,
     withoutOpaque,
     CppError (..),
+    Malformation (..),
     describeCppError,
-    unhandledIn,
 
     -- * Splitting
     Guard (..),
@@ -31,6 +31,7 @@ module Tilia.Cpp.Directives
 
     -- * The directives themselves
     Directive (..),
+    readDirectives,
     scanDirectives,
     isDirective,
     GroupSpec (..),
@@ -52,7 +53,7 @@ import Data.Char (isSpace)
 import Data.List (unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe, maybeToList)
+import Data.Maybe (listToMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
@@ -121,36 +122,52 @@ withoutOpaque source =
 
 -- | Why a module using the preprocessor could not be formatted.
 data CppError
-  = -- | A directive we do not handle, and its keyword.
-    UnhandledDirective Text
-  | -- | Conditionals that do not nest, or an @#else@ out of place.
-    UnsplittableConditional
+  = -- | A conditional that does not make sense: the line and the keyword of
+    -- the directive that gives it away, and what is wrong with it.
+    MalformedConditional Int Text Malformation
   | -- | More configurations than 'configurationBudget' allows.
     TooManyConfigurations
   | -- | A configuration the parser rejected, and which one it was.
     ConfigurationNotParsed [([Guard], Int)] ParseError
-  | -- | A directive whose place in the document could not be found.
-    DirectiveUnplaceable [([Guard], Int)] Text
-  | -- | A directive written inside a quasiquote or other verbatim text.
-    DirectiveInQuotedText [([Guard], Int)] Text
+  | -- | A directive written inside a quasi-quote or a multi-line string, its
+    -- line, and its keyword.
+    DirectiveInQuotedText Int Text
   | -- | A branch holding something that a conditional around it, asking the
     -- same question, rules out, and the line of the directive opening it.
     RuledOutBranch Int
+  | -- | An alternative that aborts with @#error@ that cannot be formatted
+    -- without parsing it, and the line of the @#error@.
+    AbortingAlternative Int
+
+-- | What is wrong with a conditional directive.
+data Malformation
+  = -- | It opens a conditional that nothing closes.
+    NeverClosed
+  | -- | It continues or closes a conditional where none is open.
+    NothingOpen
+  | -- | It continues a conditional after its @#else@.
+    AfterElse
 
 -- | Say what went wrong, in one line. The edge of the system.
 describeCppError :: CppError -> Text
 describeCppError = \case
-  UnhandledDirective k -> "a #" <> k <> " directive, which we do not handle"
-  UnsplittableConditional -> "conditionals that do not nest, or an #else out of place"
+  MalformedConditional n k m ->
+    "the #" <> k <> " at line " <> T.pack (show n) <> case m of
+      NeverClosed -> " is never closed"
+      NothingOpen -> " has no conditional to belong to"
+      AfterElse -> " comes after the #else of its conditional"
   TooManyConfigurations -> "too many configurations to format"
   ConfigurationNotParsed c e -> describeParseError e <> inConfiguration c
-  DirectiveUnplaceable c k -> "nowhere to put the #" <> k <> inConfiguration c
-  DirectiveInQuotedText c k ->
-    "a #" <> k <> " inside something quoted verbatim" <> inConfiguration c
+  DirectiveInQuotedText n k ->
+    "the #" <> k <> " at line " <> T.pack (show n) <> " is inside a quasi-quote or a multi-line string"
   RuledOutBranch n ->
     "the branch at line "
       <> T.pack (show n)
       <> " is ruled out by a conditional around it that asks the same question"
+  AbortingAlternative n ->
+    "the alternative that the #error at line "
+      <> T.pack (show n)
+      <> " aborts cannot be formatted without parsing it"
 
 -- | Which configuration, in words. Empty where there is only one.
 inConfiguration :: [([Guard], Int)] -> Text
@@ -162,17 +179,6 @@ inConfiguration answers =
       (g : _, _) -> "#" <> guardText g
       ([], g : _) -> "no branch of #" <> guardText g
       ([], []) -> "no branch"
-
--- | The keyword of the first directive here that we do not handle.
-unhandledIn :: Text -> Text
-unhandledIn source =
-  case [ k
-       | l <- T.lines source,
-         Just (k, _) <- [directiveOnLine l],
-         k `elem` directiveKeywords
-       ] of
-    k : _ -> k
-    [] -> ""
 
 ----------------------------------------------------------------------------
 -- Splitting
@@ -242,17 +248,14 @@ leaves = fmap (fmap snd) . answeredLeaves
 
 -- | One configuration for every branch of every conditional, and no more.
 branchLeaves :: Text -> Either CppError [Text]
-branchLeaves source = case scanDirectives source of
-  Nothing -> Left (UnhandledDirective (unhandledIn source))
-  Just ds -> case nesting 0 ds of
-    Nothing -> Left UnsplittableConditional
-    Just forest ->
-      traverse
-        resolved
-        ( filter
-            (null . unconditionalErrors)
-            (distinct (fmap configuration (assignments forest)))
-        )
+branchLeaves source = do
+  forest <- nesting 0 <$> readDirectives source
+  traverse
+    resolved
+    ( filter
+        (null . unconditionalErrors)
+        (distinct (fmap configuration (assignments forest)))
+    )
   where
     reachable = go Map.empty
       where
@@ -285,13 +288,13 @@ branchLeaves source = case scanDirectives source of
 -- inside each of its branches.
 data Nest = Nest GroupSpec [[Nest]]
 
--- | Read the forest off the directives, refusing a group 'groupSpec' refuses.
-nesting :: Int -> [Directive] -> Maybe [Nest]
-nesting level ds = traverse one (groupsAtLevel level ds)
+-- | Read the forest off the directives 'readDirectives' read.
+nesting :: Int -> [Directive] -> [Nest]
+nesting level ds = fmap one (groupsAtLevel level ds)
   where
-    one group = do
-      gs <- groupSpec group
-      Nest gs <$> traverse (\r -> nesting (level + 1) (inside r ds)) (gsBranches gs)
+    one group = case groupSpec group of
+      Just gs -> Nest gs (fmap (\r -> nesting (level + 1) (inside r ds)) (gsBranches gs))
+      Nothing -> error "Tilia: the directives readDirectives read make well-formed groups"
     inside (from, to) = filter (\d -> from <= dLine d && dLine d <= to)
 
 -- | The line of the first directive whose branch holds something although
@@ -299,8 +302,7 @@ nesting level ds = traverse one (groupsAtLevel level ds)
 ruledOutBranch :: Text -> Maybe Int
 ruledOutBranch source = do
   ds <- scanDirectives source
-  forest <- nesting 0 ds
-  listToMaybe (go Map.empty forest)
+  listToMaybe (go Map.empty (nesting 0 ds))
   where
     written = zip [1 ..] (T.lines source)
     holdsSomething (from, to) =
@@ -341,8 +343,7 @@ correspondingBranches before after = do
   traverse (\a -> (,) <$> reading before a <*> reading after a) choices
   where
     forest source = do
-      ds <- maybe (Left (UnhandledDirective (unhandledIn source))) Right (scanDirectives source)
-      maybe (Left UnsplittableConditional) Right (nesting 0 ds)
+      nesting 0 <$> readDirectives source
     reachable :: Answers -> [Nest] -> [(Answers, GroupSpec)]
     reachable asked ns =
       concat
@@ -393,12 +394,9 @@ linearLeaves = fmap (fmap snd) . answeredLinearLeaves
 
 -- | How many configurations a module has, without building any of them.
 countLeaves :: Text -> Either CppError Integer
-countLeaves source = case scanDirectives source of
-  Nothing -> Left (UnhandledDirective (unhandledIn source))
-  Just ds -> case nesting 0 ds of
-    Nothing -> Left UnsplittableConditional
-    Just forest ->
-      Right (sum [across answers forest | answers <- combinations (afforded forest)])
+countLeaves source = do
+  forest <- nesting 0 <$> readDirectives source
+  pure (sum [across answers forest | answers <- combinations (afforded forest)])
   where
     across answers = product . fmap (one answers)
     one answers (Nest gs nested) = case lookup (gsGuards gs) answers of
@@ -471,14 +469,10 @@ answeredBaseline answers source = case configurations source of
     [] -> Right (answers, source)
     t : _ -> answeredBaseline (Map.insert (cfgGuards c) 0 answers) t
 
--- | A module with no conditionals left in it, or the reason it is not one.
+-- | A module with every conditional answered, and its other directives
+-- taken out, or why its conditionals do not make sense.
 resolved :: Text -> Either CppError Text
-resolved source
-  | any isDirective (T.lines left) =
-      Left (UnhandledDirective (unhandledIn left))
-  | otherwise = Right left
-  where
-    left = withoutOpaque source
+resolved source = withoutOpaque source <$ readDirectives source
 
 ----------------------------------------------------------------------------
 -- The directives themselves
@@ -492,32 +486,43 @@ data Directive = Directive
   }
   deriving (Eq, Show)
 
+-- | Every conditional directive in a module, or why its conditionals do not
+-- make sense.
+readDirectives :: Text -> Either CppError [Directive]
+readDirectives source = go [] (zip [1 ..] (T.lines source))
+  where
+    go open [] = case open of
+      [] -> Right []
+      (n, k, _) : _ -> Left (MalformedConditional n k NeverClosed)
+    go open ((n, l) : ls) = case directiveOnLine l of
+      Nothing -> go open ls
+      Just (keyword, body)
+        | keyword `elem` opensGroup -> at (length open) ((n, keyword, False) : open)
+        | keyword `elem` continuesGroup -> case open of
+            [] -> malformed NothingOpen
+            (_, _, True) : _ -> malformed AfterElse
+            (o, k, False) : rest -> at (length rest) ((o, k, keyword == "else") : rest)
+        | keyword == "endif" -> case open of
+            [] -> malformed NothingOpen
+            _ : rest -> at (length rest) rest
+        | otherwise -> go open ls
+        where
+          malformed = Left . MalformedConditional n keyword
+          at level open' =
+            ( Directive
+                { dLine = n,
+                  dKeyword = keyword,
+                  dGuard = Guard (T.stripEnd body),
+                  dLevel = level
+                }
+                :
+            )
+              <$> go open' ls
+
 -- | Every conditional directive in a module, or 'Nothing' if its
 -- conditionals do not make sense.
 scanDirectives :: Text -> Maybe [Directive]
-scanDirectives source = go 0 (zip [1 ..] (T.lines source))
-  where
-    go 0 [] = Just []
-    go _ [] = Nothing -- the lines ran out inside a conditional
-    go level ((n, l) : ls)
-      | Nothing <- directiveOnLine l = go level ls
-      | keyword `elem` opensGroup = at level (level + 1)
-      | keyword `elem` continuesGroup, level > 0 = at (level - 1) level
-      | keyword == "endif", level > 0 = at (level - 1) (level - 1)
-      | keyword `notElem` conditionalKeywords = go level ls
-      | otherwise = Nothing
-      where
-        at here next =
-          ( Directive
-              { dLine = n,
-                dKeyword = keyword,
-                dGuard = Guard (T.stripEnd body),
-                dLevel = here
-              }
-              :
-          )
-            <$> go next ls
-        (keyword, body) = fromMaybe ("", "") (directiveOnLine l)
+scanDirectives = either (const Nothing) Just . readDirectives
 
 -- | The directives that ask a question, and so split a module in two.
 conditionalKeywords :: [Text]

@@ -178,13 +178,12 @@ formatErrorExitCode = \case
   NotEquivalent{} -> 17
   NotIdempotent{} -> 18
   CppUnsupported _ why -> case why of
-    UnhandledDirective{} -> 9
-    UnsplittableConditional -> 10
-    TooManyConfigurations -> 11
-    ConfigurationNotParsed{} -> 12
-    DirectiveUnplaceable{} -> 13
-    DirectiveInQuotedText{} -> 14
-    RuledOutBranch{} -> 19
+    MalformedConditional{} -> 9
+    TooManyConfigurations -> 10
+    ConfigurationNotParsed{} -> 11
+    DirectiveInQuotedText{} -> 12
+    RuledOutBranch{} -> 13
+    AbortingAlternative{} -> 14
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool

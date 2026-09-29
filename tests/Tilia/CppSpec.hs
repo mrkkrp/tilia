@@ -330,10 +330,22 @@ spec = do
 
   describe "directives the prototype cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
-      formatCpp unbalanced `shouldSatisfy` isLeft
+      formatCpp unbalanced `shouldBe` Left "the #ifdef at line 3 is never closed"
+
+    it "refuses an #endif with no conditional to close" $
+      formatCpp strayEndif `shouldBe` Left "the #endif at line 4 has no conditional to belong to"
 
     it "refuses an #else that comes before an #elif" $
-      formatCpp elseBeforeElif `shouldSatisfy` isLeft
+      formatCpp elseBeforeElif
+        `shouldBe` Left "the #elif at line 7 comes after the #else of its conditional"
+
+    it "refuses a directive inside a quasiquote" $
+      formatCpp includeInQuasiquote
+        `shouldBe` Left "the #include at line 7 is inside a quasi-quote or a multi-line string"
+
+    it "refuses an alternative aborting with #error that it cannot format" $
+      formatCpp abortingAlternative
+        `shouldBe` Left "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
 
     it "refuses a conditional no configuration can be parsed out of" $
       formatCpp unparseableAlone `shouldSatisfy` isLeft
@@ -757,6 +769,45 @@ unparseableAlone =
 -- | An @#if@ with nothing to close it.
 unbalanced :: Text
 unbalanced = T.unlines ["module M where", "", "#ifdef FOO", "f = 1"]
+
+-- | An @#endif@ with nothing to close.
+strayEndif :: Text
+strayEndif = T.unlines ["module M where", "", "f = 1", "#endif"]
+
+-- | A directive that the preprocessor acts on although it is written inside
+-- a quasiquote, which is reproduced verbatim.
+includeInQuasiquote :: Text
+includeInQuasiquote =
+  T.unlines
+    [ "{-# LANGUAGE QuasiQuotes #-}",
+      "",
+      "module M where",
+      "",
+      "banner =",
+      "  [template|",
+      "#include \"banner.txt\"",
+      "|]"
+    ]
+
+-- | An alternative that aborts with @#error@ and leaves an expression
+-- unfinished, in a module whose conditionals cannot be varied one at a
+-- time.
+abortingAlternative :: Text
+abortingAlternative =
+  T.unlines
+    [ "module M where",
+      "",
+      "f =",
+      "#if A",
+      "  1",
+      "#else",
+      "#error \"b\"",
+      "#endif",
+      "  + 2",
+      "#if A",
+      "g = 1",
+      "#endif"
+    ]
 
 -- | An @#else@ that the @#if@ around it rules out, which no configuration
 -- takes.
