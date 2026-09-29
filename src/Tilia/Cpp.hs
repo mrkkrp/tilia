@@ -41,7 +41,7 @@ import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives
-import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
+import Tilia.Cpp.Place (CommentSummary, regionOf, restoreUnprinted, summarizeComments)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Doc.Internal (Conditional (..), Doc (..), Layout (..), printsNothing)
@@ -303,10 +303,9 @@ together parser render path reached budget c = do
 
 -- | Preserve an error-only alternative without asking the Haskell parser to
 -- parse its missing expression or declaration. A successful sibling supplies
--- the surrounding syntax; only nodes wholly inside the conditional are
--- taken out, and the @#error@ is put back into the space they leave with
--- every other directive. More complicated aborting alternatives are left
--- unsupported.
+-- the surrounding syntax, with the nodes wholly inside the conditional taken
+-- out; the @#error@ is put back into the space they leave with every other
+-- directive. More complicated aborting alternatives are left unsupported.
 errorBranch :: Varied -> Text -> Doc -> Maybe Doc
 errorBranch (Varied ranges) source reference = foldl step (Just reference) ranges
   where
@@ -322,26 +321,21 @@ errorBranch (Varied ranges) source reference = foldl step (Just reference) range
               (\(n, l) -> not (inside n) || errorLine n || T.null (T.strip l))
               sourceLines'
           contained s = inside (spanStartLine s) && inside (spanEndLine s)
-          walk seen d = case d of
-            DLocated s _ | contained s -> (True, mempty)
+          outside d = case d of
+            DLocated s _ | contained s -> mempty
             DCppChoice{}
               | lines'@(_ : _) <- printedFrom d,
                 all (\(a, b) -> inside a && inside b) lines' ->
-                  (True, mempty)
-            DLocated s x -> fmap (DLocated s) (walk seen x)
-            DFence s x -> fmap (DFence s) (walk seen x)
-            DNest k x -> fmap (DNest k) (walk seen x)
-            DAlign x -> fmap DAlign (walk seen x)
-            DGroup l x -> fmap (DGroup l) (walk seen x)
-            DVariant a b ->
-              let (sa, a') = walk seen a; (sb, b') = walk seen b
-               in (sa || sb, DVariant a' b')
-            DCat a b ->
-              let (sa, a') = walk seen a; (sb, b') = walk sa b
-               in (sb, a' <> b')
-            _ -> (seen, d)
-          (placed, result) = walk False doc
-      if not (null here) && onlyErrors && placed then Just result else Nothing
+                  mempty
+            DLocated s x -> DLocated s (outside x)
+            DFence s x -> DFence s (outside x)
+            DNest k x -> DNest k (outside x)
+            DAlign x -> DAlign (outside x)
+            DGroup l x -> DGroup l (outside x)
+            DVariant a b -> DVariant (outside a) (outside b)
+            DCat a b -> outside a <> outside b
+            _ -> d
+      if not (null here) && onlyErrors then Just (outside doc) else Nothing
 
 -- | Format one configuration's code with the ordinary printer, and gather
 -- what else it holds.
@@ -493,7 +487,11 @@ merge conditionals guards varied = go Broken
                         choice xs
                   _ -> DGroup inside merged
       DAlign _ | Just ds <- every (\case DAlign d -> Just d; _ -> Nothing) -> DAlign (go layout ds)
-      _ -> choice xs
+      _
+        | Just spans <- traverse regionOf xs,
+          Just opened <- unwrapping layout spans xs ->
+            opened
+        | otherwise -> choice xs
       where
         every f = traverse f xs
 

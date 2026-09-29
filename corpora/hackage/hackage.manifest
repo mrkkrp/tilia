@@ -334,7 +334,7 @@ formatted       4491692a08c5  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record
 formatted       067a1492920c  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
 formatted       ccd5b1bd7f62  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs-boot
 formatted       49e329be866f  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
-formatted       b9cec9d0620c  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
+formatted       3c2ae59cbddd  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
 formatted       0b03fe8ecc8f  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances.hs
 formatted       50a087db59cf  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Abstract.hs
 formatted       36d52dce312e  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Common.hs
@@ -1599,7 +1599,7 @@ formatted       61563e5b80e1  criterion-1.6.5.0/Criterion/Main.hs
 formatted       a7ae79817c1c  criterion-1.6.5.0/Criterion/Main/Options.hs
 formatted       aab23b74a86d  criterion-1.6.5.0/Criterion/Monad.hs
 formatted       344969265c26  criterion-1.6.5.0/Criterion/Monad/Internal.hs
-formatted       68661ef87043  criterion-1.6.5.0/Criterion/Report.hs
+formatted       0b58a8342a2c  criterion-1.6.5.0/Criterion/Report.hs
 formatted       ef0e89d5813d  criterion-1.6.5.0/Criterion/Types.hs
 formatted       fb8e29343d89  criterion-1.6.5.0/app/Options.hs
 formatted       1c316429bc18  criterion-1.6.5.0/app/Report.hs
@@ -1862,16 +1862,16 @@ formatted       07108d12c1fe  distributed-process-0.7.8/src/Control/Distributed/
 formatted       b797d0b46d2e  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
 formatted       6b86ee01b32a  distributed-process-0.7.8/src/Control/Distributed/Process/Serializable.hs
 formatted       daf3cd1d8b53  distributed-process-0.7.8/src/Control/Distributed/Process/UnsafePrimitives.hs
-broken          660511706949  dlist-1.0/Data/DList.hs
+broken          ce7a3d76bb9a  dlist-1.0/Data/DList.hs
 formatted       d276a3077979  dlist-1.0/Data/DList/DNonEmpty.hs
 formatted       3d51b496abb0  dlist-1.0/Data/DList/DNonEmpty/Internal.hs
-declined        -             dlist-1.0/Data/DList/Internal.hs
+partly-checked  7e289a0d3651  dlist-1.0/Data/DList/Internal.hs
 formatted       669ee89127ed  dlist-1.0/Data/DList/Unsafe.hs
-formatted       66067b72f323  dlist-1.0/tests/DListProperties.hs
+formatted       c9537b6b49b4  dlist-1.0/tests/DListProperties.hs
 formatted       54f0c52fc06b  dlist-1.0/tests/DNonEmptyProperties.hs
 formatted       988c01fea196  dlist-1.0/tests/ImportUnsafe.hs
-formatted       977d78f79456  dlist-1.0/tests/Main.hs
-formatted       da8c3f542019  dlist-1.0/tests/OverloadedStrings.hs
+formatted       7878296311fe  dlist-1.0/tests/Main.hs
+formatted       4d7411576558  dlist-1.0/tests/OverloadedStrings.hs
 formatted       0c9b9888b599  dlist-1.0/tests/QuickCheckUtil.hs
 formatted       e865ae48f11b  esqueleto-3.6.0.3/Setup.hs
 formatted       fb274a829f01  esqueleto-3.6.0.3/src/Database/Esqueleto.hs
@@ -2239,7 +2239,7 @@ formatted       1be73b780ecd  hakyll-4.17.0.0/lib/Hakyll/Core/Rules.hs
 formatted       93257f6a99a8  hakyll-4.17.0.0/lib/Hakyll/Core/Rules/Internal.hs
 formatted       f97472fe3373  hakyll-4.17.0.0/lib/Hakyll/Core/Runtime.hs
 formatted       df1c2bd7e8fb  hakyll-4.17.0.0/lib/Hakyll/Core/Store.hs
-formatted       69e4cf2a975a  hakyll-4.17.0.0/lib/Hakyll/Core/UnixFilter.hs
+formatted       bdd417b6806c  hakyll-4.17.0.0/lib/Hakyll/Core/UnixFilter.hs
 formatted       acbb971a63bc  hakyll-4.17.0.0/lib/Hakyll/Core/Util/File.hs
 formatted       5cef0dfbc5f6  hakyll-4.17.0.0/lib/Hakyll/Core/Util/Parser.hs
 formatted       3f21bbf445b2  hakyll-4.17.0.0/lib/Hakyll/Core/Util/String.hs
@@ -2255,10 +2255,10 @@ formatted       0923e680c5d2  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/JSONLD.hs
 formatted       a3dbe80d0b45  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/OpenGraph.hs
 formatted       a3b6503b2c4a  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/TwitterCard.hs
 formatted       47b99b2ffc3a  hakyll-4.17.0.0/lib/Hakyll/Web/Paginate.hs
-formatted       54df60c90d30  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc.hs
+formatted       7288d75f8e0d  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc.hs
 formatted       c168dc9fdb41  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/Biblio.hs
 formatted       63c711e3ed6f  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/Binary.hs
-formatted       44e657ad01f1  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/FileType.hs
+formatted       3a4e2b3a9791  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/FileType.hs
 formatted       d77258d3d120  hakyll-4.17.0.0/lib/Hakyll/Web/Redirect.hs
 formatted       89e848715da3  hakyll-4.17.0.0/lib/Hakyll/Web/Tags.hs
 formatted       0e9947c1a4f2  hakyll-4.17.0.0/lib/Hakyll/Web/Template.hs
@@ -2390,7 +2390,7 @@ formatted       4edd92333a33  hedgehog-1.7/test/Test/Hedgehog/Skip.hs
 formatted       d20ec251ab72  hedgehog-1.7/test/Test/Hedgehog/Text.hs
 formatted       2d3b2e9d7168  hedgehog-1.7/test/Test/Hedgehog/Zip.hs
 formatted       df799f9ffb57  hedgehog-1.7/test/test.hs
-formatted       fa234e7aa66d  hledger-1.52.1/Hledger/Cli.hs
+formatted       691e6596c068  hledger-1.52.1/Hledger/Cli.hs
 formatted       367c43f7a331  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       8da9d899b517  hledger-1.52.1/Hledger/Cli/Anon.hs
 formatted       4ff2914ca588  hledger-1.52.1/Hledger/Cli/CliOptions.hs
@@ -2572,7 +2572,7 @@ formatted       ac2da1dd4d6b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters
 formatted       2665482bea3b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters/V1Spec.hs
 formatted       fdce61371e6b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters/V2Spec.hs
 formatted       b43a06946394  hspec-core-2.11.17/test/Test/Hspec/Core/HooksSpec.hs
-formatted       788492850ef9  hspec-core-2.11.17/test/Test/Hspec/Core/QuickCheck/UtilSpec.hs
+formatted       071b61159b8a  hspec-core-2.11.17/test/Test/Hspec/Core/QuickCheck/UtilSpec.hs
 formatted       775321ce08bf  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/EvalSpec.hs
 formatted       1a7b81d688ce  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/JobQueueSpec.hs
 formatted       a0e5092545a6  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/PrintSlowSpecItemsSpec.hs
@@ -2600,7 +2600,7 @@ formatted       c91e32be7257  http-client-0.7.19/Network/HTTP/Client/Request.hs
 formatted       cf2358330a5c  http-client-0.7.19/Network/HTTP/Client/Response.hs
 formatted       d48abdb1339e  http-client-0.7.19/Network/HTTP/Client/Types.hs
 formatted       ca6a48d5e983  http-client-0.7.19/Network/HTTP/Client/Util.hs
-formatted       d1420bafc370  http-client-0.7.19/Network/HTTP/Proxy.hs
+formatted       076df85ddc10  http-client-0.7.19/Network/HTTP/Proxy.hs
 formatted       e865ae48f11b  http-client-0.7.19/Setup.hs
 formatted       b1d3bc1d8679  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/DataStructure.hs
 formatted       245d124b8415  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/Lookup.hs
@@ -2809,7 +2809,7 @@ formatted       52733de58564  leksah-0.16.2.2/src/IDE/Pane/Trace.hs
 formatted       70de0231fabd  leksah-0.16.2.2/src/IDE/Pane/Variables.hs
 formatted       080c993f98fe  leksah-0.16.2.2/src/IDE/Pane/WebKit/Documentation.hs
 formatted       c47f6ec9f808  leksah-0.16.2.2/src/IDE/Pane/WebKit/Inspect.hs
-formatted       b526c4eb3dc8  leksah-0.16.2.2/src/IDE/Pane/WebKit/Output.hs
+formatted       d34c9086c841  leksah-0.16.2.2/src/IDE/Pane/WebKit/Output.hs
 formatted       ffd0f6653485  leksah-0.16.2.2/src/IDE/Pane/Workspace.hs
 formatted       33a766cc1c7d  leksah-0.16.2.2/src/IDE/PaneGroups.hs
 formatted       83b95acfea83  leksah-0.16.2.2/src/IDE/Preferences.hs
@@ -2820,7 +2820,7 @@ formatted       70eb7c99746e  leksah-0.16.2.2/src/IDE/SymbolNavigation.hs
 formatted       265b135c829e  leksah-0.16.2.2/src/IDE/TextEditor.hs
 formatted       b345661c1e07  leksah-0.16.2.2/src/IDE/TextEditor/Class.hs
 formatted       be8c9023310e  leksah-0.16.2.2/src/IDE/TextEditor/CodeMirror.hs
-formatted       bd04bccef282  leksah-0.16.2.2/src/IDE/TextEditor/GtkSourceView.hs
+formatted       9454056653a5  leksah-0.16.2.2/src/IDE/TextEditor/GtkSourceView.hs
 formatted       6af4d4de87f6  leksah-0.16.2.2/src/IDE/TextEditor/Yi.hs
 formatted       c73baf7194c2  leksah-0.16.2.2/src/IDE/TextEditor/Yi/Config.hs
 formatted       007fe37642f2  leksah-0.16.2.2/src/IDE/Utils/CabalUtils.hs
@@ -3821,7 +3821,7 @@ formatted       437bb6bc524e  raaz-0.3.11/core/Raaz/Core/Transfer/Unsafe.hs
 formatted       03cf11da4658  raaz-0.3.11/core/Raaz/Core/Types.hs
 formatted       14f5c5822c66  raaz-0.3.11/core/Raaz/Core/Types/Copying.hs
 formatted       7a6d55f211a6  raaz-0.3.11/core/Raaz/Core/Types/Endian.hs
-formatted       91bdd7e8c019  raaz-0.3.11/core/Raaz/Core/Types/Equality.hs
+formatted       a48c22bbc9bf  raaz-0.3.11/core/Raaz/Core/Types/Equality.hs
 formatted       72aa730843b9  raaz-0.3.11/core/Raaz/Core/Types/Internal.hs
 formatted       096187c85663  raaz-0.3.11/core/Raaz/Core/Types/Pointer.hs
 formatted       f9be8525b0e9  raaz-0.3.11/core/Raaz/Core/Types/Tuple.hs
@@ -3941,7 +3941,7 @@ formatted       53b268e9c80a  random-1.3.1/test/Spec/Stateful.hs
 formatted       4ac47a361dee  recursion-schemes-5.2.3/examples/Expr.hs
 formatted       37b2a0b086b3  recursion-schemes-5.2.3/src/Data/Functor/Base.hs
 formatted       3ca7a5ae5fb0  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
-formatted       169a5fcd71cf  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
+formatted       60333913c12d  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
 formatted       1581398eb1b5  resourcet-1.3.0/Control/Monad/Trans/Resource.hs
 formatted       5aec92d93345  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
 formatted       22ba33396e6e  resourcet-1.3.0/Data/Acquire.hs
@@ -4066,7 +4066,7 @@ formatted       2602ed01f24b  servant-0.20.3.0/src/Servant/Links.hs
 formatted       4a79910df177  servant-0.20.3.0/src/Servant/Test/ComprehensiveAPI.hs
 formatted       72397d3bb59f  servant-0.20.3.0/src/Servant/Types/Internal/Response.hs
 formatted       e57b2e66d9d5  servant-0.20.3.0/src/Servant/Types/SourceT.hs
-formatted       3860893630fe  servant-0.20.3.0/test/Servant/API/ContentTypesSpec.hs
+formatted       b246ae068953  servant-0.20.3.0/test/Servant/API/ContentTypesSpec.hs
 formatted       8d914b5e174f  servant-0.20.3.0/test/Servant/API/ResponseHeadersSpec.hs
 formatted       19481f24edd2  servant-0.20.3.0/test/Servant/API/StreamSpec.hs
 formatted       df544597bb5e  servant-0.20.3.0/test/Servant/LinksSpec.hs
@@ -4462,7 +4462,7 @@ formatted       33a0218dc730  tensorflow-0.2.0.1/src/TensorFlow/Nodes.hs
 formatted       6079d89faf44  tensorflow-0.2.0.1/src/TensorFlow/Output.hs
 formatted       43470d2fc559  tensorflow-0.2.0.1/src/TensorFlow/Session.hs
 formatted       da3a7653404f  tensorflow-0.2.0.1/src/TensorFlow/Tensor.hs
-formatted       8d0231afd5e4  tensorflow-0.2.0.1/src/TensorFlow/Types.hs
+formatted       9f6d4aec35c7  tensorflow-0.2.0.1/src/TensorFlow/Types.hs
 formatted       7786d8f90a48  tensorflow-0.2.0.1/tests/FFITest.hs
 formatted       0f5db84dd77b  tensorflow-0.2.0.1/tests/VarIntTest.hs
 formatted       8ae0364c5862  text-2.1.4/benchmarks/haskell/Benchmarks.hs
@@ -4826,7 +4826,7 @@ formatted       a64a8ea6c117  unliftio-0.2.25.1/src/UnliftIO/IO.hs
 formatted       c940b0ac5eb1  unliftio-0.2.25.1/src/UnliftIO/IO/File.hs
 formatted       dad3d51a66aa  unliftio-0.2.25.1/src/UnliftIO/IO/File/Posix.hs
 formatted       2688f4b976d8  unliftio-0.2.25.1/src/UnliftIO/IORef.hs
-formatted       783318e351cd  unliftio-0.2.25.1/src/UnliftIO/Internals/Async.hs
+formatted       0eb2bd01ab02  unliftio-0.2.25.1/src/UnliftIO/Internals/Async.hs
 formatted       2e37ab380c8b  unliftio-0.2.25.1/src/UnliftIO/MVar.hs
 formatted       25ab39f4a7d1  unliftio-0.2.25.1/src/UnliftIO/Memoize.hs
 formatted       e32e1ab244cd  unliftio-0.2.25.1/src/UnliftIO/Process.hs
@@ -4836,7 +4836,7 @@ formatted       ee3bf4d22673  unliftio-0.2.25.1/src/UnliftIO/STM.hs
 formatted       809c4f4424bb  unliftio-0.2.25.1/src/UnliftIO/Temporary.hs
 formatted       0f5f7167bc7b  unliftio-0.2.25.1/src/UnliftIO/Timeout.hs
 formatted       2fbd14b119a4  unliftio-0.2.25.1/test/Spec.hs
-formatted       3118f2133668  unliftio-0.2.25.1/test/UnliftIO/AsyncSpec.hs
+formatted       352dd56d1a83  unliftio-0.2.25.1/test/UnliftIO/AsyncSpec.hs
 formatted       dda4d2f1b5ef  unliftio-0.2.25.1/test/UnliftIO/DirectorySpec.hs
 formatted       500e291fb7a1  unliftio-0.2.25.1/test/UnliftIO/ExceptionSpec.hs
 formatted       d4a0864bfc4d  unliftio-0.2.25.1/test/UnliftIO/IO/FileSpec.hs
@@ -4913,7 +4913,7 @@ formatted       6b1b4aea2361  vector-0.13.2.0/benchmarks/Main.hs
 formatted       77ce7d3b1eda  vector-0.13.2.0/internal/GenUnboxTuple.hs
 formatted       2d5540e98f44  vector-0.13.2.0/src/Data/Vector.hs
 formatted       5524402837b5  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle.hs
-formatted       6724b27a5182  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Monadic.hs
+formatted       63fb94fb769c  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Monadic.hs
 formatted       281a320dd1fd  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Size.hs
 formatted       8b09b3b8c680  vector-0.13.2.0/src/Data/Vector/Fusion/Stream/Monadic.hs
 formatted       b52b6135f86c  vector-0.13.2.0/src/Data/Vector/Fusion/Util.hs
@@ -5105,7 +5105,7 @@ formatted       6cf89c893af0  yesod-core-1.7.0.0/test/Route/DiscoveryModeSpec.hs
 formatted       8742e593c3d0  yesod-core-1.7.0.0/test/Route/FallthroughSpec.hs
 formatted       83547078da44  yesod-core-1.7.0.0/test/Route/FocusLeafConsSpec.hs
 formatted       b96279c392b7  yesod-core-1.7.0.0/test/Route/InlineParseClausesSpec.hs
-formatted       d8f6752d05e7  yesod-core-1.7.0.0/test/Route/InstanceProbeSpec.hs
+formatted       3a68d4c4db75  yesod-core-1.7.0.0/test/Route/InstanceProbeSpec.hs
 formatted       5f762e160869  yesod-core-1.7.0.0/test/Route/InstanceProbeTypes.hs
 formatted       66f474c75dbf  yesod-core-1.7.0.0/test/Route/MissingFocusTargetSpec.hs
 formatted       4ca53b8c21db  yesod-core-1.7.0.0/test/Route/MissingFocusTargetTypes.hs

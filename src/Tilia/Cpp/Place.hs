@@ -6,6 +6,7 @@ module Tilia.Cpp.Place
   ( CommentSummary,
     summarizeComments,
     restoreUnprinted,
+    regionOf,
   )
 where
 
@@ -13,7 +14,7 @@ import Control.Monad (foldM)
 import Data.List (sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -23,9 +24,10 @@ import Tilia.Comments
   ( Comment (..),
     CommentStyle (..),
     bracketed,
+    commentPragma,
     transcendentComment,
   )
-import Tilia.Comments.Attach (attachScopedComments)
+import Tilia.Comments.Attach (Margin (..), attachScopedComments)
 import Tilia.Cpp.Directives
   ( CppError (..),
     GroupSpec (..),
@@ -143,10 +145,15 @@ restoreUnprinted source found doc = do
       printed = Set.fromList (Nothing : fmap scope (spansIn marked))
       noted =
         attachScopedComments
-          isDirective
+          margin
           scope
           (filter ((`Set.member` printed) . scope . commentSpan) notes)
           marked
+      margin =
+        Margin
+          { marginLine = isDirective,
+            marginComment = isNothing . commentPragma
+          }
   placed <-
     foldM
       (putDirective written)
@@ -537,12 +544,21 @@ placeAt present written n body = among []
               Just from <- endOf anchor,
               Just ls <- written ->
                 Just $
-                  if gapWritten ls (from + 1) (n - 1)
+                  if gapWritten ls (from + 1) (n - 1) || not (all space spacing)
                     then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
                     else mconcat (printed <> [anchor, body] <> spacing <> after)
             | otherwise -> Just (mconcat (before <> [body] <> after))
 
     startsAfter x = maybe False (> n) (startOf x)
+
+    space = \case
+      DEmpty -> True
+      DSpace -> True
+      DBreak -> True
+      DSoftBreak -> True
+      DHardBreak -> True
+      DCloseLine -> True
+      _ -> False
 
     lastBounded ds = case break (maybe False (const True) . boundsOf) (reverse ds) of
       (spacing, x : earlier) -> Just (reverse earlier, x, reverse spacing)

@@ -68,21 +68,7 @@ dlist-1.0/Data/DList.hs
     a configuration of the input does not parse: 54:13: parse error on input `Nil'
     --- input
     +++ output
-    @@ -42,19 +42,18 @@
-     module Data.DList
-       ( -- * Difference List Type
-     
-    --- CPP: GHC >= 8 for pattern synonyms allowed in the constructor
-    +    -- CPP: GHC >= 8 for pattern synonyms allowed in the constructor
-     #if __GLASGOW_HASKELL__ >= 800
-         DList (Nil, Cons),
-     #else
-         DList,
-     
-    --- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
-    +    -- CPP: GHC >= 7.8 && <= 8 for 'pattern' required in the export list
-     #if __GLASGOW_HASKELL__ >= 708
-         -- ** Bundled Patterns
+    @@ -54,7 +54,6 @@
          pattern Nil,
          pattern Cons,
      #endif
@@ -218,7 +204,7 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (27)
+partly-checked (28)
 ==========================================================================
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
@@ -232,6 +218,9 @@ async-2.2.6/Control/Concurrent/Async/Internal.hs
 
 cryptonite-0.30/Crypto/Number/Compat.hs
     180 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+dlist-1.0/Data/DList/Internal.hs
+    512 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 hashable-1.5.1.0/src/Data/Hashable/Class.hs
     4608 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -303,7 +292,7 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (29)
+declined (28)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/Main.hs
@@ -326,9 +315,6 @@ QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
 
 cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
     cryptonite-0.30/Crypto/Random/Entropy/Windows.hs:64:16-28: parse error on input `WINDOWS_CCONV', in the configuration taking #if defined(ARCH_X86)
-
-dlist-1.0/Data/DList/Internal.hs
-    conditionals that do not nest, or an #else out of place
 
 hlint-3.10/data/HLint_TypeCheck.hs
     a pragma that moves positions, which we do not rewrite

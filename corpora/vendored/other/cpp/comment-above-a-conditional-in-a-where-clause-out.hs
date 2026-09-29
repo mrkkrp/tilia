@@ -13,7 +13,7 @@ formatOf path = go (takeExtension path)
 #if MIN_VERSION_zlib(0,6,0)
     go ".z" = Deflated
 #endif
-    -- Only a new enough encoder knows the compressed form.
+-- Only a new enough encoder knows the compressed form.
 #if MIN_VERSION_zlib(0,7,0)
     go ".gz" = Compressed
 #endif

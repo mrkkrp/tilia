@@ -8,6 +8,8 @@
 module Tilia.Comments.Attach
   ( attachComments,
     attachScopedComments,
+    Margin (..),
+    noMargin,
   )
 where
 
@@ -26,7 +28,21 @@ import Tilia.Span
 
 -- | Attach comments to a 'Doc'.
 attachComments :: [Comment] -> Doc -> Doc
-attachComments = attachScopedComments (const False) (const ())
+attachComments = attachScopedComments noMargin (const ())
+
+-- | What parts of a comment go at the margin.
+data Margin = Margin
+  { -- | A line of a comment, as a preprocessor directive written in one has
+    -- to: the preprocessor reads directives out of comments as well.
+    marginLine :: Text -> Bool,
+    -- | A comment that goes to the margin when it comes out right above a
+    -- preprocessor directive, which it then documents.
+    marginComment :: Comment -> Bool
+  }
+
+-- | Nothing at the margin that the indentation does not put there.
+noMargin :: Margin
+noMargin = Margin (const False) (const False)
 
 -- | Attach comments to a 'Doc', each only to a region in the same scope as
 -- itself.
@@ -39,8 +55,8 @@ attachComments = attachScopedComments (const False) (const ())
 -- configuration it is in.
 attachScopedComments ::
   (Ord k) =>
-  -- | Whether a line of a comment has to begin at the margin.
-  (Text -> Bool) ->
+  -- | What goes at the margin.
+  Margin ->
   -- | The scope of what was written at a span.
   (Span -> k) ->
   -- | The comments to attach.
@@ -48,10 +64,10 @@ attachScopedComments ::
   -- | The document to attach them to.
   Doc ->
   Doc
-attachScopedComments atMargin scopeOf cs doc =
-  written <> closingComments atMargin (unplaced left)
+attachScopedComments margin scopeOf cs doc =
+  written <> closingComments margin (unplaced left)
   where
-    (written, left) = walk atMargin placements doc
+    (written, left) = walk margin placements doc
     (regions, fences) = markedSpans doc
     placements =
       foldMap
@@ -65,12 +81,12 @@ attachScopedComments atMargin scopeOf cs doc =
 
 -- | The comments nothing came to collect, written after everything.
 closingComments ::
-  -- | Whether a line of a comment has to begin at the margin.
-  (Text -> Bool) ->
+  -- | What goes at the margin.
+  Margin ->
   -- | The comments.
   [Comment] ->
   Doc
-closingComments atMargin = \case
+closingComments margin = \case
   [] -> mempty
   (opening : rest) -> placeOne True opening <> foldMap (placeOne False) rest
   where
@@ -78,7 +94,7 @@ closingComments atMargin = \case
       commentDoc c $
         closeLine
           <> includeWhen (opensTheRun || commentGapAbove c) blankLine
-          <> commentText atMargin c
+          <> commentText margin c
           <> closeLine
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
@@ -107,14 +123,14 @@ markedSpans = \case
 -- configuration, comments and all. What is still unwritten when the walk
 -- ends is returned next to the resulting 'Doc'.
 walk ::
-  -- | Whether a line of a comment has to begin at the margin.
-  (Text -> Bool) ->
+  -- | What goes at the margin.
+  Margin ->
   -- | Where each comment goes.
   Placements ->
   -- | The document to write them into.
   Doc ->
   (Doc, Placements)
-walk atMargin = go
+walk margin = go
   where
     go p = \case
       DCat a b ->
@@ -125,7 +141,7 @@ walk atMargin = go
         let (mine, p') = claimPlaced s p
             (d', p'') = go p' d
             write position cs =
-              foldMap (writtenAs atMargin (isEmptyAnchor s) position) cs
+              foldMap (writtenAs margin (isEmptyAnchor s) position) cs
             before' = heldOffFrom d [c | (q, c) <- mine, q == Before]
             after' = [c | (q, c) <- mine, q == After]
          in (write Before before' <> DLocated s d' <> write After after', p'')
@@ -186,8 +202,8 @@ isEmptyAnchor s = startPoint s == endPoint s
 
 -- | Render one 'Comment' where it was placed.
 writtenAs ::
-  -- | Whether a line of the comment has to begin at the margin.
-  (Text -> Bool) ->
+  -- | What goes at the margin.
+  Margin ->
   -- | Does what follows only mark where the construct ends?
   Bool ->
   -- | Comment position.
@@ -195,7 +211,7 @@ writtenAs ::
   -- | The comment to render.
   Comment ->
   Doc
-writtenAs atMargin atTheEnd position c = commentDoc c $ case shapeOf position c of
+writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
     Before -> includeWhen (not (commentTrailing c)) space <> body <> space
     After -> space <> body <> space
@@ -203,7 +219,7 @@ writtenAs atMargin atTheEnd position c = commentDoc c $ case shapeOf position c 
   HeldBack -> holdBack (renderComment c)
   OnItsOwnLines -> gapAbove <> closeLine <> body <> closeLine <> gapBelow
   where
-    body = commentText atMargin c
+    body = commentText margin c
     gapAbove = includeWhen (commentGapAbove c) (closeLine <> blankLine)
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
@@ -213,18 +229,21 @@ commentDoc = located . commentSpan
 
 -- | The text of a comment, laid out as it was written.
 commentText ::
-  -- | Whether a line of the comment has to begin at the margin.
-  (Text -> Bool) ->
+  -- | What goes at the margin.
+  Margin ->
   -- | The comment.
   Comment ->
   Doc
-commentText atMargin c = align $ case NE.toList (commentBody c) of
+commentText margin c = note . align $ case NE.toList (commentBody c) of
   [] -> mempty
   l : ls -> txt l <> foldMap (\x -> breakBefore x <> txt x) ls
   where
     breakBefore x
-      | atMargin x = verbatimBreak AtMargin TrimWhitespace
+      | marginLine margin x = verbatimBreak AtMargin TrimWhitespace
       | otherwise = verbatimBreak AtIndent TrimWhitespace
+    note
+      | marginComment margin c = cppMarginNote
+      | otherwise = id
 
 -- | Put this text at the end of the line this position falls on.
 holdBack :: Text -> Doc
