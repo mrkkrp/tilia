@@ -20,6 +20,9 @@
 * Keep a conditional directive that goes on to the next line with a
   backslash whole, rather than read the lines it goes on to as code. [PR
   39](https://github.com/mrkkrp/tilia/pull/39).
+* Indent an alternative of a conditional that continues a line further than
+  that line, so that an operator starting it does not start a statement.
+  [PR 39](https://github.com/mrkkrp/tilia/pull/39).
 
 ## Tilia 0.0.2.0
 

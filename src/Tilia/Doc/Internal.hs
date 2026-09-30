@@ -282,14 +282,57 @@ go env = \case
     Broken -> go env brokenD
   DLocated _ d -> go env d
   DFence _ d -> go env d
-  DCppChoice _ branches fallback ->
-    foldr (flip (.)) id . concat $
-      [ [atMargin ("#" <> guard'), go env taken]
-      | (guard', taken) <- branches
-      ]
-        <> [[atMargin "#else", go env fallback] | not (printsNothing fallback)]
-        <> [[atMargin "#endif"]]
+  DCppChoice _ branches fallback -> \out ->
+    let alternative x = case spacedTextAt env x of
+          Just at | at <= continuing -> shifted (continuing - at) x
+          _ -> go env x
+        shifted k = go env{envIndent = envIndent env + k + envIndentStep env}
+        continuing
+          | hasContent out = indentationOf (T.concat (reverse (outCurrent out)))
+          | otherwise = maybe 0 indentationOf (listToMaybe (outLines out))
+        indentationOf = T.length . T.takeWhile (== ' ')
+     in ( foldr (flip (.)) id . concat $
+            [ [atMargin ("#" <> guard'), alternative taken]
+            | (guard', taken) <- branches
+            ]
+              <> [[atMargin "#else", alternative fallback] | not (printsNothing fallback)]
+              <> [[atMargin "#endif"]]
+        )
+          out
   DCppDirective _ t -> atMargin ("#" <> t)
+
+-- | Where a document that begins with a space puts its first text on a
+-- line of its own, or 'Nothing' if it begins otherwise.
+spacedTextAt :: Env -> Doc -> Maybe Int
+spacedTextAt env0 = either (const Nothing) id . walk env0 False
+  where
+    -- 'Left' while nothing but spaces has been printed, saying whether a
+    -- space has; 'Right' with the answer once text or a break has.
+    walk env spaced = \case
+      DEmpty -> Left spaced
+      DText t
+        | T.null t -> Left spaced
+        | otherwise -> text env spaced
+      DHoldBack _ -> text env spaced
+      DSpace -> Left True
+      DBreak -> case envLayout env of
+        Flat -> Left True
+        Broken -> Right Nothing
+      DSoftBreak -> case envLayout env of
+        Flat -> Left spaced
+        Broken -> Right Nothing
+      DCat a b -> either (\spaced' -> walk env spaced' b) Right (walk env spaced a)
+      DNest n d -> walk env{envIndent = envIndent env + n * envIndentStep env} spaced d
+      DAlign d -> walk env spaced d
+      DCppMarginNote d -> walk env spaced d
+      DGroup l d -> walk env{envLayout = l} spaced d
+      DVariant flatD brokenD -> case envLayout env of
+        Flat -> walk env spaced flatD
+        Broken -> walk env spaced brokenD
+      DLocated _ d -> walk env spaced d
+      DFence _ d -> walk env spaced d
+      _ -> Right Nothing
+    text env spaced = Right (if spaced then Just (envIndent env) else Nothing)
 
 -- | Put a line of text at the margin, on a line of its own, with the notes
 -- right above it.
