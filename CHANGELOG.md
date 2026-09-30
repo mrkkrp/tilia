@@ -2,13 +2,17 @@
 
 * Achieve full idempotence and correct handling of comments in all cases
   when CPP is involved. [Issue 6](https://github.com/mrkkrp/tilia/issues/6)
-  and [Issue 7](https://github.com/mrkkrp/tilia/issues/6).
+  and [Issue 7](https://github.com/mrkkrp/tilia/issues/7).
 * Put a comment that comes out right above a CPP directive at the margin.
+  [PR 34](https://github.com/mrkkrp/tilia/pull/34).
 * Format a module in which a conditional has an alternative that holds
   nothing but `#error`, rather than declining it as having conditionals that
-  do not nest.
+  do not nest. [PR 34](https://github.com/mrkkrp/tilia/pull/34).
 * Do not repeat an expression in every alternative of a conditional when the
-  configurations lay it out differently around the part that varies.
+  configurations lay it out differently around the part that varies. [PR
+  34](https://github.com/mrkkrp/tilia/pull/34).
+* Speed up diffing that `tilia check` performs. [PR
+  37](https://github.com/mrkkrp/tilia/pull/37).
 
 ## Tilia 0.0.2.0
 
