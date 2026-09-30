@@ -7,7 +7,6 @@ module Tilia.Fixity.CacheSpec (spec) where
 
 import Data.Choice (pattern Do, pattern Don't)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing)
 import Data.Set qualified as Set
 import System.Directory (getModificationTime, listDirectory, setModificationTime)
 import System.Environment (setEnv, unsetEnv)
@@ -23,12 +22,13 @@ spec = do
   tokens
   database
   describe "a cache not to be used" $
-    it "is not opened, and nothing is made on disk for it" $
+    it "remembers nothing, and nothing is made on disk for it" $
       withIsolatedDirectory $ \dir -> do
         setEnv "XDG_CACHE_HOME" dir
-        opened <- openCache (Don't #useCache) (PlanToken "plan")
+        cache <- openCache (Don't #useCache) (PlanToken "plan")
         unsetEnv "XDG_CACHE_HOME"
-        isNothing opened `shouldBe` True
+        storeModules cache "thing-1.0" ["A"]
+        cachedModules cache "thing-1.0" `shouldReturn` Nothing
         listDirectory dir `shouldReturn` []
   around withIsolatedCache $ do
     describe "modules" $ do
@@ -127,44 +127,44 @@ spec = do
 
     describe "export names" $ do
       it "round-trips the names an export list gave" $ \cache -> do
-        let names = Exports (Set.fromList [OpName "<+>", OpName ":|", OpName "f"])
+        let names = Just (Set.fromList [OpName "<+>", OpName ":|", OpName "f"])
         storeExportNames cache "thing-1.0" "M" names
         cachedExportNames cache "thing-1.0" "M" `shouldReturn` Just names
 
       it "remembers a module that keeps its own counsel" $ \cache -> do
-        storeExportNames cache "thing-1.0" "M" Untellable
-        cachedExportNames cache "thing-1.0" "M" `shouldReturn` Just Untellable
+        storeExportNames cache "thing-1.0" "M" Nothing
+        cachedExportNames cache "thing-1.0" "M" `shouldReturn` Just Nothing
 
       it "tells one that keeps its own counsel from one never asked about" $ \cache -> do
-        storeExportNames cache "thing-1.0" "Quiet" Untellable
-        cachedExportNames cache "thing-1.0" "Quiet" `shouldReturn` Just Untellable
+        storeExportNames cache "thing-1.0" "Quiet" Nothing
+        cachedExportNames cache "thing-1.0" "Quiet" `shouldReturn` Just Nothing
         cachedExportNames cache "thing-1.0" "Unasked" `shouldReturn` Nothing
 
       it "tells one that exports nothing from one that will not say" $ \cache -> do
-        storeExportNames cache "thing-1.0" "Bare" (Exports Set.empty)
-        storeExportNames cache "thing-1.0" "Quiet" Untellable
+        storeExportNames cache "thing-1.0" "Bare" (Just Set.empty)
+        storeExportNames cache "thing-1.0" "Quiet" Nothing
         cachedExportNames cache "thing-1.0" "Bare"
-          `shouldReturn` Just (Exports Set.empty)
-        cachedExportNames cache "thing-1.0" "Quiet" `shouldReturn` Just Untellable
+          `shouldReturn` Just (Just Set.empty)
+        cachedExportNames cache "thing-1.0" "Quiet" `shouldReturn` Just Nothing
 
       it "keeps packages apart" $ \cache -> do
-        storeExportNames cache "one-1.0" "M" (Exports (Set.singleton (OpName "<+>")))
-        storeExportNames cache "two-1.0" "M" (Exports (Set.singleton (OpName "<?>")))
+        storeExportNames cache "one-1.0" "M" (Just (Set.singleton (OpName "<+>")))
+        storeExportNames cache "two-1.0" "M" (Just (Set.singleton (OpName "<?>")))
         cachedExportNames cache "one-1.0" "M"
-          `shouldReturn` Just (Exports (Set.singleton (OpName "<+>")))
+          `shouldReturn` Just (Just (Set.singleton (OpName "<+>")))
 
       it "keeps them apart from the fixities of the same module" $ \cache -> do
         storeFixities cache "thing-1.0" "M" (Unreadable Nothing)
-        storeExportNames cache "thing-1.0" "M" (Exports (Set.singleton (OpName "<+>")))
+        storeExportNames cache "thing-1.0" "M" (Just (Set.singleton (OpName "<+>")))
         cachedFixities cache "thing-1.0" "M" `shouldReturn` Just (Unreadable Nothing)
         cachedExportNames cache "thing-1.0" "M"
-          `shouldReturn` Just (Exports (Set.singleton (OpName "<+>")))
+          `shouldReturn` Just (Just (Set.singleton (OpName "<+>")))
 
       it "overwrites a previous answer for the same key" $ \cache -> do
-        storeExportNames cache "thing-1.0" "M" Untellable
-        storeExportNames cache "thing-1.0" "M" (Exports (Set.singleton (OpName "<+>")))
+        storeExportNames cache "thing-1.0" "M" Nothing
+        storeExportNames cache "thing-1.0" "M" (Just (Set.singleton (OpName "<+>")))
         cachedExportNames cache "thing-1.0" "M"
-          `shouldReturn` Just (Exports (Set.singleton (OpName "<+>")))
+          `shouldReturn` Just (Just (Set.singleton (OpName "<+>")))
 
     describe "what a name carries with it" $ do
       it "round-trips what each name carries" $ \cache -> do
@@ -309,9 +309,9 @@ tokens = around withIsolatedDirectory $ do
 
   it "keeps what an export list said, whatever the token" $ \dir -> do
     before' <- open dir (PlanToken "one")
-    storeExportNames before' "thing-1.0" "M" Untellable
+    storeExportNames before' "thing-1.0" "M" Nothing
     after' <- open dir (PlanToken "two")
-    cachedExportNames after' "thing-1.0" "M" `shouldReturn` Just Untellable
+    cachedExportNames after' "thing-1.0" "M" `shouldReturn` Just Nothing
 
 -- | Give each test its own cache directory, so nothing leaks between them
 -- or into the developer's real cache.
@@ -326,8 +326,6 @@ withIsolatedDirectory = withSystemTempDirectory "tilia-cache"
 open :: FilePath -> PlanToken -> IO Cache
 open dir token = do
   setEnv "XDG_CACHE_HOME" dir
-  opened <- openCache (Do #useCache) token
+  cache <- openCache (Do #useCache) token
   unsetEnv "XDG_CACHE_HOME"
-  case opened of
-    Nothing -> fail "could not open a cache in a temporary directory"
-    Just cache -> pure cache
+  pure cache

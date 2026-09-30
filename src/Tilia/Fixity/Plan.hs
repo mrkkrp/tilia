@@ -68,7 +68,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (Choice, fromBool, isTrue, pattern Do)
-import Data.Foldable (toList, traverse_)
+import Data.Foldable (toList)
 import Data.IORef
 import Data.List (isSuffixOf)
 import Data.List qualified
@@ -195,16 +195,14 @@ isFetchable p = case ppSource p of
   _ -> False
 
 -- | Every package the compiler can see.
-getInstalledPackages :: Maybe Cache -> IO [InstalledPackage]
+getInstalledPackages :: Cache -> IO [InstalledPackage]
 getInstalledPackages cache =
-  remembered >>= \case
+  cachedInstalled cache >>= \case
     Just packages -> pure packages
     Nothing -> do
       found <- readInstalledPackages
-      traverse_ (`storeInstalled` found) cache
+      storeInstalled cache found
       pure (installedPackages found)
-  where
-    remembered = maybe (pure Nothing) cachedInstalled cache
 
 -- | Summarize a 'BuildPlan', and the environment it will be read in, by
 -- hashing over both.
@@ -301,12 +299,7 @@ componentsOf named whole = case named of
 -- | Read @plan.json@.
 readBuildPlan :: FilePath -> IO (Either Text BuildPlan)
 readBuildPlan path =
-  doesFileExist path >>= \case
-    False -> pure (Left ("no build plan at " <> T.pack path))
-    True ->
-      eitherDecodeFileStrict path >>= \case
-        Left why -> pure (Left (T.pack why))
-        Right plan -> Right <$> checkedOutIn (takeDirectory (takeDirectory path)) plan
+  decodePlan path >>= traverse (checkedOutIn (takeDirectory (takeDirectory path)))
 
 -- | Read a plan that is to be trusted as up to date.
 readGivenPlan ::
@@ -315,18 +308,19 @@ readGivenPlan ::
   -- | The plan.
   FilePath ->
   IO (Either Text BuildPlan)
-readGivenPlan root path = do
-  exists <- doesFileExist path
-  if exists
-    then
-      eitherDecodeFileStrict path >>= \case
-        Left why -> pure (Left (T.pack why))
-        Right plan -> pure (Right plan{bpPackages = fmap rooted (bpPackages plan)})
-    else pure (Left ("no build plan at " <> T.pack path))
+readGivenPlan root path =
+  fmap (\plan -> plan{bpPackages = fmap rooted (bpPackages plan)}) <$> decodePlan path
   where
     rooted p = case ppSource p of
       LocalPackage dir | isRelative dir -> p{ppSource = LocalPackage (root </> dir)}
       _ -> p
+
+-- | Decode a plan, or say why it cannot be.
+decodePlan :: FilePath -> IO (Either Text BuildPlan)
+decodePlan path =
+  doesFileExist path >>= \case
+    False -> pure (Left ("no build plan at " <> T.pack path))
+    True -> either (Left . T.pack) Right <$> eitherDecodeFileStrict path
 
 -- | Find where @cabal@ unpacked each @source-repository-package@.
 checkedOutIn :: FilePath -> BuildPlan -> IO BuildPlan
@@ -531,29 +525,6 @@ filesNewerThanPlan plan projectDir = quietly [] $ do
       t <- getModificationTime path
       pure (if t > planTime then Just path else Nothing)
 
--- | Do whatever is missing, by asking @cabal@.
-prepare ::
-  -- | Whether to use the cache.
-  Choice "useCache" ->
-  -- | Whether to download what is missing.
-  Choice "download" ->
-  -- | The components the run is about to format.
-  [PlanComponent] ->
-  -- | The project being prepared.
-  FilePath ->
-  -- | What it was found to be short of.
-  Readiness ->
-  IO (Either Text ())
-prepare caching downloading wanted projectDir readiness =
-  prepareWith
-    caching
-    downloading
-    (runCabal projectDir)
-    (futilityFor caching projectDir)
-    wanted
-    projectDir
-    readiness
-
 -- | An account of actions we know are not worth attempting.
 data Futility = Futility
   { -- | Has solving this plan already been tried and left it as narrow?
@@ -590,12 +561,10 @@ futilityFor caching projectDir =
     withCache fallback use =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure fallback
-        Right plan -> do
-          opened <- openCache caching =<< tokenForBuildPlan plan
-          maybe (pure fallback) use opened
+        Right plan -> use =<< openCache caching =<< tokenForBuildPlan plan
 
--- | 'prepare', given a way to run @cabal@ and a memory of what earlier
--- attempts came to.
+-- | Do whatever is missing, given a way to run @cabal@ and a memory of what
+-- earlier attempts came to.
 prepareWith ::
   -- | Whether to use the cache.
   Choice "useCache" ->
@@ -707,9 +676,17 @@ loadPlan ::
   IO (Either Text BuildPlan)
 loadPlan caching downloading wanted projectDir = do
   readiness <- checkReadiness caching wanted projectDir
-  prepare caching downloading wanted projectDir readiness >>= \case
-    Left err -> pure (Left err)
-    _ -> readBuildPlan (planPathFor projectDir)
+  prepareWith
+    caching
+    downloading
+    (runCabal projectDir)
+    (futilityFor caching projectDir)
+    wanted
+    projectDir
+    readiness
+    >>= \case
+      Left err -> pure (Left err)
+      _ -> readBuildPlan (planPathFor projectDir)
 
 -- | Every planned package whose source could be in the package cache, with
 -- where that would be.
@@ -926,14 +903,8 @@ newResolverVia caching routes plan = do
             wkMacros = macrosOf plan,
             wkGenerated = generatedModules plan
           }
-      resolved visiting modName = do
-        known <- readIORef memo
-        case Map.lookup modName known of
-          Just answer -> pure answer
-          Nothing -> do
-            answer <- resolveModule workings visiting modName
-            atomicModifyIORef' memo (\m -> (Map.insert modName answer m, ()))
-            pure answer
+      resolved visiting modName =
+        memoized memo modName (resolveModule workings visiting modName)
       reach visiting modName
         | modName `Set.member` visiting = pure Nothing
         | otherwise = fixitiesEstablished <$> resolved visiting modName
@@ -948,25 +919,13 @@ newResolverVia caching routes plan = do
                   _ -> pure []
       exports visiting modName
         | modName `Set.member` visiting = pure Nothing
-        | otherwise = do
-            seen <- readIORef exportsRead
-            case Map.lookup modName seen of
-              Just names -> pure names
-              Nothing -> do
-                names <- exportNamesOfModule workings visiting modName
-                atomicModifyIORef' exportsRead (\m -> (Map.insert modName names m, ()))
-                pure names
+        | otherwise =
+            memoized exportsRead modName (exportNamesOfModule workings visiting modName)
       extensionsOf modName
         | Just path <- Map.lookup modName local =
             either (const []) id <$> askPackage path
-        | Just (package, tarball) <- Map.lookup modName index = do
-            seen <- readIORef extensionsRead
-            case Map.lookup package seen of
-              Just extensions -> pure extensions
-              Nothing -> do
-                extensions <- fromTarball tarball
-                atomicModifyIORef' extensionsRead (\m -> (Map.insert package extensions m, ()))
-                pure extensions
+        | Just (package, tarball) <- Map.lookup modName index =
+            memoized extensionsRead package (fromTarball tarball)
         | otherwise = pure []
       fromTarball tarball =
         quietly [] $ do
@@ -974,14 +933,8 @@ newResolverVia caching routes plan = do
           pure (foldMap declaredExtensions (cabalFileInArchive (Tar.read (GZip.decompress bytes))))
       children visiting modName
         | modName `Set.member` visiting = pure Map.empty
-        | otherwise = do
-            seen <- readIORef childrenRead
-            case Map.lookup modName seen of
-              Just kept -> pure kept
-              Nothing -> do
-                kept <- childrenOfModule workings visiting modName
-                atomicModifyIORef' childrenRead (\m -> (Map.insert modName kept m, ()))
-                pure kept
+        | otherwise =
+            memoized childrenRead modName (childrenOfModule workings visiting modName)
   pure
     Resolver
       { askFixities = reach Set.empty,
@@ -989,6 +942,17 @@ newResolverVia caching routes plan = do
         askExportNames = exports Set.empty,
         askChain = chain Set.empty
       }
+
+-- | Look an answer up in a table, working it out and filing it the first
+-- time.
+memoized :: (Ord k) => IORef (Map k v) -> k -> IO v -> IO v
+memoized table key work =
+  Map.lookup key <$> readIORef table >>= \case
+    Just answer -> pure answer
+    Nothing -> do
+      answer <- work
+      atomicModifyIORef' table (\m -> (Map.insert key answer m, ()))
+      pure answer
 
 -- | The operators a module's export list names, following what it
 -- reexports.
@@ -1008,27 +972,16 @@ exportNamesOfModule
         pure (Just (hscSupplies modName))
     | Just path <- Map.lookup modName wkLocal = namesIn =<< readFileText path
     | Just (package, tarball) <- Map.lookup modName wkIndex =
-        remembered package >>= \case
-          Just answer -> pure (exportedNames answer)
-          Nothing ->
-            readModule tarball modName >>= \case
-              Nothing -> pure Nothing
-              Just ForHsc -> do
-                let names = Just (hscSupplies modName)
-                store package (asExported names)
-                pure names
-              Just (Haskell text) -> do
-                names <- namesIn (Just text)
-                store package (asExported names)
-                pure names
+        join
+          <$> recalled
+            (cachedExportNames wkCache package modName)
+            (storeExportNames wkCache package modName)
+            (traverse namesInArchive =<< readModule tarball modName)
     | otherwise = pure Nothing
     where
-      remembered package = case wkCache of
-        Nothing -> pure Nothing
-        Just c -> cachedExportNames c package modName
-      store package answer = case wkCache of
-        Nothing -> pure ()
-        Just c -> storeExportNames c package modName answer
+      namesInArchive = \case
+        ForHsc -> pure (Just (hscSupplies modName))
+        Haskell text -> namesIn (Just text)
       namesIn text = case parsedLeaves =<< text of
         Nothing -> pure Nothing
         Just modules ->
@@ -1086,19 +1039,10 @@ childrenOfModule
         route >>= \case
           Just kept -> pure kept
           Nothing -> firstAnswer rest
-      keptUnder package readIt =
-        remembered package >>= \case
-          Just kept -> pure (Just kept)
-          Nothing -> do
-            kept <- readIt
-            traverse_ (store package) kept
-            pure kept
-      remembered package = case wkCache of
-        Nothing -> pure Nothing
-        Just c -> cachedChildren c package modName
-      store package kept = case wkCache of
-        Nothing -> pure ()
-        Just c -> storeChildren c package modName kept
+      keptUnder package =
+        recalled
+          (cachedChildren wkCache package modName)
+          (storeChildren wkCache package modName)
       outOfInterface = fmap interfaceChildren <$> wkInterfaceOf modName
       inSource text = do
         extensions <- wkExtensionsOf modName
@@ -1172,7 +1116,7 @@ data Workings = Workings
   { -- | Which readings to try, in the order given.
     wkRoutes :: [Route],
     -- | Where to remember answers between runs.
-    wkCache :: Maybe Cache,
+    wkCache :: Cache,
     -- | The modules of the project's own packages, which are read straight
     -- from disk rather than out of an archive.
     wkLocal :: Map Text FilePath,
@@ -1267,33 +1211,20 @@ resolveModule
       viaInterface = case Map.lookup modName wkInterfaces of
         Nothing -> pure Nothing
         Just (key, _) ->
-          cachedFor key >>= \case
-            Just remembered -> pure (Just remembered)
-            Nothing -> do
-              established <- fromInterface wkInterfaceOf modName
-              storeFor key established
-              pure (Just established)
+          throughCache key (Just <$> fromInterface wkInterfaceOf modName)
 
       viaArchive = case Map.lookup modName wkIndex of
         Nothing -> pure Nothing
-        Just (package, tarball) ->
-          cachedFor package >>= \case
-            Just remembered -> pure (Just remembered)
-            Nothing -> do
-              extensions <- wkExtensionsOf modName
-              fromSource
-                wkMacros
-                extensions
-                (wkReach visiting')
-                (wkReachChildren visiting')
-                visiting'
-                tarball
-                modName
-                >>= \case
-                  NoArchive -> pure Nothing
-                  FromArchive established -> do
-                    storeFor package established
-                    pure (Just established)
+        Just (package, tarball) -> throughCache package $ do
+          extensions <- wkExtensionsOf modName
+          fromSource
+            wkMacros
+            extensions
+            (wkReach visiting')
+            (wkReachChildren visiting')
+            visiting'
+            tarball
+            modName
 
       answered = \case
         Declares fixities -> Declares fixities
@@ -1301,17 +1232,15 @@ resolveModule
           | Set.member modName wkGenerated -> Declares Map.empty
           | otherwise -> maybe (Unreadable below) Declares (byHand modName)
       byHand = fmap inBothNamespaces . (`Map.lookup` byHandFixities)
-      cachedFor package = case wkCache of
-        Nothing -> pure Nothing
-        Just c -> cachedFixities c package modName
-      storeFor package fixities = case wkCache of
-        Nothing -> pure ()
-        Just c -> storeFixities c package modName fixities
+      throughCache key =
+        recalled
+          (cachedFixities wkCache key modName)
+          (storeFixities wkCache key modName)
 
 -- | Which package and tarball holds each module.
 buildModuleIndex ::
-  -- | Where to remember each package's module list, if anywhere.
-  Maybe Cache ->
+  -- | Where to remember each package's module list.
+  Cache ->
   -- | What the compiler says is installed. Empty if @ghc-pkg@ could not be
   -- run, in which case every package falls back to its @.cabal@ file.
   [InstalledPackage] ->
@@ -1389,8 +1318,8 @@ fromInterface interfaceOf modName =
 
 -- | A package's module list from the @.cabal@ file in its tarball.
 fromCabalFile ::
-  -- | Where to remember the answer, if anywhere.
-  Maybe Cache ->
+  -- | Where to remember the answer.
+  Cache ->
   -- | What to file it under. Carries the hash the tarball was verified
   -- against, so a changed tarball misses rather than matching stale data.
   Text ->
@@ -1401,23 +1330,11 @@ fromCabalFile ::
   -- | The modules it exposes, or 'Nothing' if the tarball is absent, fails
   -- verification, or holds no @.cabal@ file.
   IO (Maybe [Text])
-fromCabalFile cache key tarball p = do
-  remembered <- case cache of
-    Nothing -> pure Nothing
-    Just c -> cachedModules c key
-  case remembered of
-    Just ms -> pure (Just ms)
-    Nothing ->
-      verified p tarball >>= \case
-        False -> pure Nothing
-        True ->
-          packageModules tarball >>= \case
-            Nothing -> pure Nothing
-            Just ms -> do
-              case cache of
-                Nothing -> pure ()
-                Just c -> storeModules c key ms
-              pure (Just ms)
+fromCabalFile cache key tarball p =
+  recalled (cachedModules cache key) (storeModules cache key) $
+    verified p tarball >>= \case
+      False -> pure Nothing
+      True -> packageModules tarball
 
 -- | How a package's cached answers are filed.
 cacheKey :: PlanPackage -> Text
@@ -1458,26 +1375,19 @@ fromSource ::
   FilePath ->
   -- | The module to read.
   Text ->
-  -- | What it declares, including what it only reexports, and whether that
-  -- is worth remembering.
-  IO Reading
+  -- | What it declares, including what it only reexports, or 'Nothing' if
+  -- there is no archive to read it from.
+  IO (Maybe Established)
 fromSource macros extensions reach reachChildren visiting tarball modName =
   doesFileExist tarball >>= \case
-    False -> pure NoArchive
+    False -> pure Nothing
     True ->
-      readModule tarball modName >>= \case
-        Nothing -> pure (FromArchive (Unreadable Nothing))
-        Just ForHsc -> pure (FromArchive (hscDeclares modName))
-        Just (Haskell source) ->
-          FromArchive
-            <$> fromText macros extensions reach reachChildren visiting source modName
-
--- | What came of looking for a module in an archive.
-data Reading
-  = -- | The archive was there, and this is what reading it established.
-    FromArchive Established
-  | -- | There was no archive to open.
-    NoArchive
+      fmap Just $
+        readModule tarball modName >>= \case
+          Nothing -> pure (Unreadable Nothing)
+          Just ForHsc -> pure (hscDeclares modName)
+          Just (Haskell source) ->
+            fromText macros extensions reach reachChildren visiting source modName
 
 -- | The fixities a module's text declares and passes on.
 fromText ::
@@ -1642,7 +1552,7 @@ withReexports implicitPrelude reach reachChildren visiting modName hsModule =
     from qualifier op seen =
       [ found
       | (i, exported) <- seen,
-        canSupply qualifier op i,
+        supplies Map.empty qualifier op i,
         let found = Map.filterWithKey (\(_, o) _ -> o == op) exported,
         not (Map.null found)
       ]
@@ -1741,22 +1651,10 @@ carriedNames implicitPrelude reachChildren hsModule items =
         not (Map.member parent declared)
       ]
     carriedBy qualifier parent = do
-      answers <- traverse (reachChildren . importModule) (filter (canSupply qualifier parent) imports)
+      answers <- traverse (reachChildren . importModule) (filter (supplies Map.empty qualifier parent) imports)
       pure $ case mapMaybe (Map.lookup parent) answers of
         [] -> Nothing
         kids -> Just (Set.unions kids)
-
--- | Could this import have supplied a name an export list reexports?
-canSupply :: Maybe Text -> OpName -> Import -> Bool
-canSupply qualifier op i =
-  reaches && case importNames i of
-    Nothing -> True
-    Just (True, hidden) -> not (surelyNames Map.empty op hidden)
-    Just (False, shown) -> mightBring Map.empty op shown
-  where
-    reaches = case qualifier of
-      Nothing -> not (importQualified i)
-      Just q -> importAlias i == q
 
 -- | The modules a @module M@ export reexports whole, by their own names.
 wantedModules ::
