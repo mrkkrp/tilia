@@ -31,28 +31,23 @@ module Tilia.Cpp.Directives
 
     -- * The directives themselves
     Directive (..),
-    readDirectives,
-    Nest (..),
-    nesting,
-    scanDirectives,
+    dSpan,
+    readConditionals,
+    scanConditionals,
     isDirective,
     GroupSpec (..),
-    groupSpec,
     gsCount,
+    nestedIn,
     allGroups,
-    groupsAtLevel,
     blanking,
     blankingFor,
     droppedFor,
-    Opaque (..),
     opaqueDirectives,
-    opSpan,
-    gapWritten,
   )
 where
 
 import Data.Char (isSpace)
-import Data.List (unsnoc)
+import Data.List (sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe, maybeToList)
@@ -61,11 +56,7 @@ import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import Tilia.Cpp.Macros (Macros, guardHolds)
 import Tilia.Parser (ParseError, describeParseError)
-import Tilia.Source
-  ( Lines,
-    blankAt,
-    directiveOnLine,
-  )
+import Tilia.Source (directiveOnLine)
 import Tilia.Span
   ( Span,
     mkSpan,
@@ -83,24 +74,17 @@ usesCpp extensions source =
 
 -- | Blank out the directive lines, keeping every branch.
 blankCpp :: Text -> Text
-blankCpp = T.unlines . go False . T.lines
-  where
-    go _ [] = []
-    go continuing (l : ls)
-      | continuing || isDirective l = "" : go (runsOn l) ls
-      | otherwise = l : go False ls
-    runsOn = T.isSuffixOf "\\" . T.stripEnd
+blankCpp source = blanking [(dLine d, dLastLine d) | d <- directives source] source
 
 -- | Blank out every branch the macros rule out, and the conditionals that
 -- ask about them.
 withoutRuledOut :: Macros -> Text -> Text
-withoutRuledOut macros source = case scanDirectives source of
+withoutRuledOut macros source = case scanConditionals source of
   Nothing -> source
-  Just ds ->
+  Just forest ->
     blanking
       [ range
-      | group <- allGroups ds,
-        Just gs <- [groupSpec group],
+      | gs <- allGroups forest,
         Just taken <- [branchTaken macros gs],
         range <- blankingFor gs taken
       ]
@@ -120,7 +104,7 @@ branchTaken macros = go 0 . gsGuards
 -- | A module with the opaque directives blanked out.
 withoutOpaque :: Text -> Text
 withoutOpaque source =
-  blanking [(opLine d, opLastLine d) | d <- opaqueDirectives source] source
+  blanking [(dLine d, dLastLine d) | d <- opaqueDirectives source] source
 
 -- | Why a module using the preprocessor could not be formatted.
 data CppError
@@ -209,9 +193,9 @@ data Configurations = Configurations
 -- one written behind the same directives, wherever in the module it sits.
 configurations :: Text -> Maybe Configurations
 configurations source = do
-  ds <- scanDirectives source
-  gs <- groupSpec =<< listToMaybe (groupsAtLevel 0 ds)
-  let tied = sameGuard gs ds
+  forest <- scanConditionals source
+  gs <- listToMaybe forest
+  let tied = sameGuard gs forest
   pure
     Configurations
       { cfgGuards = gsGuards gs,
@@ -226,13 +210,8 @@ configurations source = do
       }
 
 -- | Every group in a module written behind the same directives as this one.
-sameGuard :: GroupSpec -> [Directive] -> [GroupSpec]
-sameGuard gs ds =
-  [ g
-  | grp <- allGroups ds,
-    Just g <- [groupSpec grp],
-    gsGuards g == gsGuards gs
-  ]
+sameGuard :: GroupSpec -> [GroupSpec] -> [GroupSpec]
+sameGuard gs forest = [g | g <- allGroups forest, gsGuards g == gsGuards gs]
 
 -- | The lines one conditional could have printed differently.
 newtype Varied = Varied{variedLines :: [(Int, Int)]}
@@ -251,60 +230,52 @@ leaves = fmap (fmap snd) . answeredLeaves
 -- | One configuration for every branch of every conditional, and no more.
 branchLeaves :: Text -> Either CppError [Text]
 branchLeaves source = do
-  forest <- nesting 0 <$> readDirectives source
+  forest <- readConditionals source
   traverse
     resolved
     ( filter
         (null . unconditionalErrors)
-        (distinct (fmap configuration (assignments forest)))
+        (distinct (fmap (\a -> configurationOf forest a source) (branchAssignments forest)))
     )
   where
-    reachable = go Map.empty
-      where
-        go asked ns =
-          concat
-            [ (asked, gs)
-                : concat
-                  [ go (Map.insert (gsGuards gs) i asked) nested
-                  | (i, nested) <- zip [0 ..] branches
-                  ]
-            | Nest gs branches <- ns
-            ]
-    assignments forest =
-      Map.empty
-        : [ Map.insert (gsGuards gs) i asked
-          | (asked, gs) <- reachable forest,
-            i <- [0 .. gsCount gs - 1]
-          ]
-    configuration answers =
-      blanking
-        [ r
-        | grp <- allGroups (concat (maybeToList (scanDirectives source))),
-          Just gs <- [groupSpec grp],
-          r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) answers)
-        ]
-        source
     distinct = Map.elems . Map.fromList . fmap (\t -> (t, t))
 
--- | A module's conditionals as a forest: each group, with the groups nested
--- inside each of its branches.
-data Nest = Nest GroupSpec [[Nest]]
-
--- | Read the forest off the directives 'readDirectives' read.
-nesting :: Int -> [Directive] -> [Nest]
-nesting level ds = fmap one (groupsAtLevel level ds)
+-- | The empty assignment, and then one for every branch of every
+-- conditional, which reaches the conditional and takes the branch.
+branchAssignments :: [GroupSpec] -> [Assignment]
+branchAssignments forest =
+  Map.empty
+    : [ Map.insert (gsGuards gs) i asked
+      | (asked, gs) <- reachable Map.empty forest,
+        i <- [0 .. gsCount gs - 1]
+      ]
   where
-    one group = case groupSpec group of
-      Just gs -> Nest gs (fmap (\r -> nesting (level + 1) (inside r ds)) (gsBranches gs))
-      Nothing -> error "Tilia: the directives readDirectives read make well-formed groups"
-    inside (from, to) = filter (\d -> from <= dLine d && dLine d <= to)
+    reachable asked gss =
+      concat
+        [ (asked, gs)
+            : concat
+              [ reachable (Map.insert (gsGuards gs) i asked) nested
+              | (i, nested) <- zip [0 ..] (gsNested gs)
+              ]
+        | gs <- gss
+        ]
+
+-- | The configuration of a module an assignment selects, a conditional it
+-- does not mention taking its first branch.
+configurationOf :: [GroupSpec] -> Assignment -> Text -> Text
+configurationOf forest assignment =
+  blanking
+    [ r
+    | gs <- allGroups forest,
+      r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) assignment)
+    ]
 
 -- | The line of the first directive whose branch holds something although
 -- a conditional around it, asking the same question, rules that branch out.
 ruledOutBranch :: Text -> Maybe Int
 ruledOutBranch source = do
-  ds <- scanDirectives source
-  listToMaybe (go Map.empty (nesting 0 ds))
+  forest <- scanConditionals source
+  listToMaybe (go Map.empty forest)
   where
     written = zip [1 ..] (T.lines source)
     holdsSomething (from, to) =
@@ -319,9 +290,9 @@ ruledOutBranch source = do
           ]
             <> concat
               [ go (Map.insert (gsGuards gs) i asked) nested
-              | (i, nested) <- zip [0 ..] branches
+              | (i, nested) <- zip [0 ..] (gsNested gs)
               ]
-        | Nest gs branches <- forest
+        | gs <- forest
         ]
 
 -- | Read both spellings under the same CPP choices.
@@ -338,40 +309,14 @@ correspondingBranches ::
   Text ->
   Either CppError [(Maybe Text, Maybe Text)]
 correspondingBranches before after = do
-  left <- forest before
-  right <- forest after
-  let defaults = Map.fromList [(gsGuards gs, 0) | (_, gs) <- reachable Map.empty (left <> right)]
-      choices = Map.keys (Map.fromList [(Map.union a defaults, ()) | a <- assignments left <> assignments right])
-  traverse (\a -> (,) <$> reading before a <*> reading after a) choices
+  left <- readConditionals before
+  right <- readConditionals after
+  let defaults = Map.fromList [(gsGuards gs, 0) | gs <- allGroups (left <> right)]
+      choices = Map.keys (Map.fromList [(Map.union a defaults, ()) | a <- branchAssignments left <> branchAssignments right])
+  traverse (\a -> (,) <$> reading before left a <*> reading after right a) choices
   where
-    forest source = do
-      nesting 0 <$> readDirectives source
-    reachable :: Answers -> [Nest] -> [(Answers, GroupSpec)]
-    reachable asked ns =
-      concat
-        [ (asked, gs)
-            : concat
-              [ reachable (Map.insert (gsGuards gs) i asked) nested
-              | (i, nested) <- zip [0 ..] branches
-              ]
-        | Nest gs branches <- ns
-        ]
-    assignments nodes =
-      Map.empty
-        : [ Map.insert (gsGuards gs) i asked
-          | (asked, gs) <- reachable Map.empty nodes,
-            i <- [0 .. gsCount gs - 1]
-          ]
-    reading source answers =
-      let selected =
-            blanking
-              [ r
-              | ds <- maybeToList (scanDirectives source),
-                grp <- allGroups ds,
-                Just gs <- [groupSpec grp],
-                r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) answers)
-              ]
-              source
+    reading source forest assignment =
+      let selected = configurationOf forest assignment source
        in if null (unconditionalErrors selected)
             then Just <$> resolved selected
             else Right Nothing
@@ -379,15 +324,15 @@ correspondingBranches before after = do
 -- | An unconditional @#error@ means this configuration has no Haskell
 -- program to parse. Conditional errors are only considered after choosing a
 -- branch.
-unconditionalErrors :: Text -> [Opaque]
+unconditionalErrors :: Text -> [Directive]
 unconditionalErrors source =
   [ d
   | d <- opaqueDirectives source,
-    T.takeWhile (not . isSpace) (opText d) == "error",
-    not (any (encloses (opLine d)) groups)
+    dKeyword d == "error",
+    not (any (encloses (dLine d)) groups)
   ]
   where
-    groups = [gsWhole g | ds <- maybeToList (scanDirectives source), grp <- allGroups ds, Just g <- [groupSpec grp]]
+    groups = [gsWhole g | forest <- maybeToList (scanConditionals source), g <- allGroups forest]
     encloses n (from, to) = from < n && n < to
 
 -- | The configurations reached by varying one conditional at a time.
@@ -397,14 +342,13 @@ linearLeaves = fmap (fmap snd) . answeredLinearLeaves
 -- | How many configurations a module has, without building any of them.
 countLeaves :: Text -> Either CppError Integer
 countLeaves source = do
-  forest <- nesting 0 <$> readDirectives source
+  forest <- readConditionals source
   pure (sum [across answers forest | answers <- combinations (afforded forest)])
   where
     across answers = product . fmap (one answers)
-    one answers (Nest gs nested) = case lookup (gsGuards gs) answers of
-      Just i -> across answers (branch nested i)
-      Nothing -> sum [across answers (branch nested i) | i <- [0 .. gsCount gs - 1]]
-    branch nested i = concat (take 1 (drop i nested))
+    one answers gs = case lookup (gsGuards gs) answers of
+      Just i -> across answers (nestedIn gs i)
+      Nothing -> sum [across answers (nestedIn gs i) | i <- [0 .. gsCount gs - 1]]
     combinations = traverse (\(g, k) -> [(g, i) | i <- [0 .. k - 1]])
     afforded forest = go 1 (repeated forest)
       where
@@ -414,10 +358,10 @@ countLeaves source = do
           | otherwise = []
 
 -- | The guards a module asks more than once, and how many answers each has.
-repeated :: [Nest] -> [([Guard], Int)]
+repeated :: [GroupSpec] -> [([Guard], Int)]
 repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
   where
-    asked ns = concat [(gsGuards gs, gsCount gs) : asked (concat nested) | Nest gs nested <- ns]
+    asked gss = concat [(gsGuards gs, gsCount gs) : asked (concat (gsNested gs)) | gs <- gss]
     times = Map.fromListWith (+) [(g, 1 :: Int) | (g, _) <- asked forest]
     twice g = Map.findWithDefault 0 g times >= 2
 
@@ -431,7 +375,7 @@ guardsToTie :: Integer
 guardsToTie = 4096
 
 -- | Every configuration, and the answers that reach it.
-answeredLeaves :: Text -> Either CppError [(Answers, Text)]
+answeredLeaves :: Text -> Either CppError [(Assignment, Text)]
 answeredLeaves = go Map.empty
   where
     go answers source = case configurations source of
@@ -444,11 +388,11 @@ answeredLeaves = go Map.empty
             (zip [0 ..] (cfgTexts c))
 
 -- | Which branch every question was answered with to reach a configuration.
-type Answers = Map [Guard] Int
+type Assignment = Map [Guard] Int
 
 -- | The same, labelled by the answers that reach each one, and for the same
 -- reason as 'answeredLeaves'.
-answeredLinearLeaves :: Text -> Either CppError [(Answers, Text)]
+answeredLinearLeaves :: Text -> Either CppError [(Assignment, Text)]
 answeredLinearLeaves = go Map.empty
   where
     go answers source = case configurations source of
@@ -464,7 +408,7 @@ answeredLinearLeaves = go Map.empty
 
 -- | The configuration in which every question still to be asked takes its
 -- first branch, and the answers that gives.
-answeredBaseline :: Answers -> Text -> Either CppError (Answers, Text)
+answeredBaseline :: Assignment -> Text -> Either CppError (Assignment, Text)
 answeredBaseline answers source = case configurations source of
   Nothing -> (answers,) <$> resolved source
   Just c -> case cfgTexts c of
@@ -474,67 +418,98 @@ answeredBaseline answers source = case configurations source of
 -- | A module with every conditional answered, and its other directives
 -- taken out, or why its conditionals do not make sense.
 resolved :: Text -> Either CppError Text
-resolved source = withoutOpaque source <$ readDirectives source
+resolved source = withoutOpaque source <$ readConditionals source
 
 ----------------------------------------------------------------------------
 -- The directives themselves
 
--- | One preprocessor directive, and how deep in the conditionals it sits.
+-- | One preprocessor directive, as written.
 data Directive = Directive
   { dLine :: !Int,
     -- | The last line the directive is written on, which is its first unless
     -- a line of it ends in a backslash.
     dLastLine :: !Int,
     dKeyword :: !Text,
-    dGuard :: !Guard,
-    dLevel :: !Int
+    -- | What follows its hash, on every line it is written on.
+    dText :: !Text
   }
   deriving (Eq, Show)
 
--- | Every conditional directive in a module, or why its conditionals do not
--- make sense.
-readDirectives :: Text -> Either CppError [Directive]
-readDirectives source = go [] (zip [1 ..] (T.lines source))
+-- | The lines a directive was written on, as a span.
+dSpan :: Directive -> Span
+dSpan d = mkSpan (dLine d, 1) (dLastLine d, 1)
+
+-- | Every directive in a module, in the order they are written.
+directives :: Text -> [Directive]
+directives = go . zip [1 ..] . T.lines
   where
-    go open [] = case open of
-      [] -> Right []
-      (n, k, _) : _ -> Left (MalformedConditional n k NeverClosed)
-    go open ((n, l) : ls0) = case directiveOnLine l of
-      Nothing -> go open ls0
-      Just (keyword, body)
-        | keyword `elem` opensGroup -> at (length open) ((n, keyword, False) : open)
-        | keyword `elem` continuesGroup -> case open of
-            [] -> malformed NothingOpen
-            (_, _, True) : _ -> malformed AfterElse
-            (o, k, False) : rest -> at (length rest) ((o, k, keyword == "else") : rest)
-        | keyword == "endif" -> case open of
-            [] -> malformed NothingOpen
-            _ : rest -> at (length rest) rest
-        | otherwise -> go open ls0
-        where
-          malformed = Left . MalformedConditional n keyword
-          (continued, ls) = continuation l ls0
-          at level open' =
-            ( Directive
-                { dLine = n,
-                  dLastLine = n + length continued,
-                  dKeyword = keyword,
-                  dGuard = Guard (T.intercalate "\n" (T.stripEnd body : fmap (T.stripEnd . snd) continued)),
-                  dLevel = level
-                }
-                :
-            )
-              <$> go open' ls
+    go = \case
+      [] -> []
+      (n, l) : ls
+        | Just (keyword, body) <- directiveOnLine l,
+          keyword `elem` directiveKeywords ->
+            let (continued, rest) = continuation l ls
+             in Directive
+                  { dLine = n,
+                    dLastLine = n + length continued,
+                    dKeyword = keyword,
+                    dText = T.intercalate "\n" (fmap T.stripEnd (body : continued))
+                  }
+                  : go rest
+        | otherwise -> go ls
     continuation l ls
       | T.isSuffixOf "\\" (T.stripEnd l),
-        (next : rest) <- ls =
-          let (more, rest') = continuation (snd next) rest in (next : more, rest')
+        (_, next) : rest <- ls =
+          let (more, rest') = continuation next rest in (next : more, rest')
       | otherwise = ([], ls)
 
--- | Every conditional directive in a module, or 'Nothing' if its
--- conditionals do not make sense.
-scanDirectives :: Text -> Maybe [Directive]
-scanDirectives = either (const Nothing) Just . readDirectives
+-- | A module's conditionals, each with the ones inside its branches, or why
+-- they do not make sense.
+readConditionals :: Text -> Either CppError [GroupSpec]
+readConditionals = go [] [] . filter ((`elem` conditionalKeywords) . dKeyword) . directives
+  where
+    -- The groups finished where the reading is, last first, and the
+    -- conditionals open around it, innermost first.
+    go done open = \case
+      [] -> case open of
+        [] -> Right (reverse done)
+        o : _ -> Left (MalformedConditional (dLine (oOpener o)) (dKeyword (oOpener o)) NeverClosed)
+      d : ds
+        | dKeyword d `elem` opensGroup -> go [] (Open d [] [] done : open) ds
+        | dKeyword d `elem` continuesGroup -> case open of
+            [] -> malformed NothingOpen
+            o : rest
+              | any ((== "else") . dKeyword) (take 1 (oLater o)) -> malformed AfterElse
+              | otherwise ->
+                  go [] (o{oLater = d : oLater o, oEarlier = reverse done : oEarlier o} : rest) ds
+        | otherwise -> case open of
+            [] -> malformed NothingOpen
+            o : rest ->
+              let gs =
+                    groupSpec
+                      (oOpener o)
+                      (reverse (oLater o))
+                      d
+                      (reverse (reverse done : oEarlier o))
+               in go (gs : oBefore o) rest ds
+        where
+          malformed = Left . MalformedConditional (dLine d) (dKeyword d)
+
+-- | A conditional still open as the directives are read.
+data Open = Open
+  { -- | The directive that opened it.
+    oOpener :: Directive,
+    -- | The directives that continued it, last first.
+    oLater :: [Directive],
+    -- | The groups inside each of its branches read so far, last first.
+    oEarlier :: [[GroupSpec]],
+    -- | The groups before it where it is, last first.
+    oBefore :: [GroupSpec]
+  }
+
+-- | A module's conditionals, or 'Nothing' if they do not make sense.
+scanConditionals :: Text -> Maybe [GroupSpec]
+scanConditionals = either (const Nothing) Just . readConditionals
 
 -- | The directives that ask a question, and so split a module in two.
 conditionalKeywords :: [Text]
@@ -568,60 +543,58 @@ data GroupSpec = GroupSpec
     gsOwnLines :: [Int],
     gsOwnRanges :: [(Int, Int)],
     gsBranches :: [(Int, Int)],
-    gsWhole :: (Int, Int)
+    gsWhole :: (Int, Int),
+    -- | The groups inside each of its branches.
+    gsNested :: [[GroupSpec]]
   }
 
--- | Read a group off its directives, refusing one that is malformed.
-groupSpec :: [Directive] -> Maybe GroupSpec
-groupSpec group = do
-  (separators, end) <- unsnoc group
-  opener <- listToMaybe separators
-  require (dKeyword opener `elem` opensGroup)
-  require (dKeyword end == "endif")
-  require (all ((`elem` continuesGroup) . dKeyword) (drop 1 separators))
-  require (all ((/= "else") . dKeyword) (drop 1 (reverse separators)))
-  pure
-    GroupSpec
-      { gsGuards = [dGuard d | d <- separators, dKeyword d /= "else"],
-        gsHasElse = any ((== "else") . dKeyword) separators,
-        gsOwnLines = fmap dLine group,
-        gsOwnRanges = [(dLine d, dLastLine d) | d <- group],
-        gsBranches = [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
-        gsWhole = (dLine opener, dLastLine end)
-      }
+-- | Read a group off its directives.
+groupSpec ::
+  -- | The directive opening it.
+  Directive ->
+  -- | The ones continuing it.
+  [Directive] ->
+  -- | The one closing it.
+  Directive ->
+  -- | The groups inside each of its branches.
+  [[GroupSpec]] ->
+  GroupSpec
+groupSpec opener later end nested =
+  GroupSpec
+    { gsGuards = [Guard (dText d) | d <- opener : later, dKeyword d /= "else"],
+      gsHasElse = any ((== "else") . dKeyword) later,
+      gsOwnLines = fmap dLine group,
+      gsOwnRanges = [(dLine d, dLastLine d) | d <- group],
+      gsBranches = [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
+      gsWhole = (dLine opener, dLastLine end),
+      gsNested = nested
+    }
   where
-    require b = if b then Just () else Nothing
+    group = opener : later <> [end]
 
 -- | How many configurations a group has: one per condition, and one more
 -- for when none of them holds.
 gsCount :: GroupSpec -> Int
 gsCount gs = length (gsGuards gs) + 1
 
--- | Every conditional in a module, at whatever depth it sits.
-allGroups :: [Directive] -> [[Directive]]
-allGroups ds = concat [groupsAtLevel l ds | l <- [0 .. deepest]]
-  where
-    deepest = maximum (0 : fmap dLevel ds)
+-- | The groups inside the branch configuration @i@ of a group takes.
+nestedIn :: GroupSpec -> Int -> [GroupSpec]
+nestedIn gs i = concat (take 1 (drop i (gsNested gs)))
 
--- | The directives at one level of nesting, split into the groups they make
--- up.
-groupsAtLevel :: Int -> [Directive] -> [[Directive]]
-groupsAtLevel level = split . filter ((== level) . dLevel)
-  where
-    split ds = case break ((== "endif") . dKeyword) ds of
-      (_, []) -> []
-      (before', end : rest) -> (before' <> [end]) : split rest
+-- | Every conditional in a module, outermost first.
+allGroups :: [GroupSpec] -> [GroupSpec]
+allGroups = concat . takeWhile (not . null) . iterate (concatMap (concat . gsNested))
 
 -- | Replace the given line ranges with empty lines, keeping every other line
 -- where it was.
 blanking :: [(Int, Int)] -> Text -> Text
-blanking ranges source =
-  T.unlines
-    [ if any (holds n) ranges then "" else l
-    | (n, l) <- zip [1 ..] (T.lines source)
-    ]
+blanking ranges = T.unlines . go (sortOn fst ranges) . zip [1 ..] . T.lines
   where
-    holds n (from, to) = from <= n && n <= to
+    go rs = \case
+      [] -> []
+      (n, l) : ls -> case dropWhile ((< n) . snd) rs of
+        rs'@((from, _) : _) | from <= n -> "" : go rs' ls
+        rs' -> l : go rs' ls
 
 -- | The lines to blank so that configuration @i@ of a group is what is left.
 --
@@ -638,45 +611,6 @@ droppedFor gs i
       [r | (k, r) <- zip [0 :: Int ..] (gsBranches gs), k /= i]
   | otherwise = gsBranches gs
 
--- | One opaque directive and what is known about it.
-data Opaque = Opaque
-  { -- | The line it was written on.
-    opLine :: Int,
-    -- | The last line it takes up, which is 'opLine' unless it was written
-    -- across several with backslashes.
-    opLastLine :: Int,
-    -- | What follows its hash, kept whole and never read.
-    opText :: Text
-  }
-  deriving (Eq, Show)
-
--- | Directives that do not introduce configurations.
-opaqueDirectives :: Text -> [Opaque]
-opaqueDirectives source =
-  [ Opaque
-      { opLine = n,
-        opLastLine = end n,
-        opText = T.stripEnd (T.intercalate "\n" (body : fmap lineOf below))
-      }
-  | (n, l) <- numbered,
-    Just (keyword, body) <- [directiveOnLine l],
-    keyword `elem` opaqueKeywords,
-    let below = continuing n
-  ]
-  where
-    numbered = zip [1 ..] (T.lines source)
-    byLine = Map.fromList numbered
-    lineOf n = Map.findWithDefault "" n byLine
-    end n = last (n : continuing n)
-    continuing n
-      | maybe False runsOn (Map.lookup n byLine) = n + 1 : continuing (n + 1)
-      | otherwise = []
-    runsOn = T.isSuffixOf "\\" . T.stripEnd
-
--- | The lines a directive was written on, as a span.
-opSpan :: Opaque -> Span
-opSpan d = mkSpan (opLine d, 1) (opLastLine d, 1)
-
--- | Did the author leave an empty line anywhere between these two lines?
-gapWritten :: Lines -> Int -> Int -> Bool
-gapWritten written from to = any (`blankAt` written) [from .. to]
+-- | The directives that do not introduce configurations.
+opaqueDirectives :: Text -> [Directive]
+opaqueDirectives = filter ((`elem` opaqueKeywords) . dKeyword) . directives

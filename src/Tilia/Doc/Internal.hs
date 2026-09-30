@@ -5,8 +5,13 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
-    Conditional (..),
     printsNothing,
+    foldChildren,
+    mapChildren,
+    spine,
+    onlySpacing,
+    Conditional (..),
+    conditionalRange,
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
@@ -19,6 +24,7 @@ module Tilia.Doc.Internal
   )
 where
 
+import Data.List (unsnoc)
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -101,11 +107,6 @@ data Doc
     DCppDirective !Span !Text
   deriving (Eq, Show)
 
--- | A conditional as its author wrote it: the lines of its directives, the
--- @#if@ first and the @#endif@ last.
-newtype Conditional = Conditional{conditionalLines :: [Int]}
-  deriving (Eq, Ord, Show)
-
 -- | Does this document put nothing at all on the page?
 printsNothing :: Doc -> Bool
 printsNothing = \case
@@ -120,6 +121,54 @@ printsNothing = \case
   DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
   _ -> False
 
+-- | Combine what a function makes of each document directly inside this
+-- one, a variant's broken layout standing for the variant.
+foldChildren :: (Monoid m) => (Doc -> m) -> Doc -> m
+foldChildren f = \case
+  DCat a b -> f a <> f b
+  DNest _ d -> f d
+  DAlign d -> f d
+  DCppMarginNote d -> f d
+  DGroup _ d -> f d
+  DVariant _ d -> f d
+  DLocated _ d -> f d
+  DFence _ d -> f d
+  DCppChoice _ bs e -> foldr ((<>) . f . snd) (f e) bs
+  _ -> mempty
+
+-- | Rewrite the documents directly inside this one, both layouts of a
+-- variant included.
+mapChildren :: (Doc -> Doc) -> Doc -> Doc
+mapChildren f = \case
+  DCat a b -> f a <> f b
+  DNest n d -> DNest n (f d)
+  DAlign d -> DAlign (f d)
+  DCppMarginNote d -> DCppMarginNote (f d)
+  DGroup l d -> DGroup l (f d)
+  DVariant a b -> DVariant (f a) (f b)
+  DLocated s d -> DLocated s (f d)
+  DFence s d -> DFence s (f d)
+  DCppChoice cs bs e -> DCppChoice cs [(g, f d) | (g, d) <- bs] (f e)
+  d -> d
+
+-- | A document as the sequence of things it concatenates.
+spine :: Doc -> [Doc]
+spine = \case
+  DEmpty -> []
+  DCat a b -> spine a <> spine b
+  d -> [d]
+
+-- | Nothing but the whitespace that separates one thing from the next.
+onlySpacing :: Doc -> Bool
+onlySpacing = \case
+  DEmpty -> True
+  DSpace -> True
+  DBreak -> True
+  DSoftBreak -> True
+  DHardBreak -> True
+  DCloseLine -> True
+  _ -> False
+
 instance Semigroup Doc where
   DEmpty <> b = b
   a <> DEmpty = a
@@ -127,6 +176,16 @@ instance Semigroup Doc where
 
 instance Monoid Doc where
   mempty = DEmpty
+
+-- | A conditional as its author wrote it: the lines of its directives, the
+-- @#if@ first and the @#endif@ last.
+newtype Conditional = Conditional{conditionalLines :: [Int]}
+  deriving (Eq, Ord, Show)
+
+-- | The lines of a conditional's @#if@ and @#endif@.
+conditionalRange :: Conditional -> Maybe (Int, Int)
+conditionalRange (Conditional ls) =
+  (,) <$> listToMaybe ls <*> fmap snd (unsnoc ls)
 
 -- | Whether a group is laid out on one line or across several.
 data Layout

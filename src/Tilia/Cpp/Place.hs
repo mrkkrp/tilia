@@ -14,12 +14,12 @@ import Control.Monad (foldM)
 import Data.List (sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import Data.Monoid (Any (..))
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as T
 import Tilia.Comments
   ( Comment (..),
     CommentStyle (..),
@@ -30,19 +30,25 @@ import Tilia.Comments
 import Tilia.Comments.Attach (Margin (..), attachScopedComments)
 import Tilia.Cpp.Directives
   ( CppError (..),
+    Directive (..),
     GroupSpec (..),
     Guard (..),
-    Opaque (..),
     allGroups,
-    gapWritten,
-    groupSpec,
+    dSpan,
     isDirective,
-    opSpan,
     opaqueDirectives,
-    readDirectives,
+    readConditionals,
   )
 import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen)
-import Tilia.Doc.Internal (Conditional (..), Doc (..))
+import Tilia.Doc.Internal
+  ( Conditional (..),
+    Doc (..),
+    conditionalRange,
+    foldChildren,
+    mapChildren,
+    onlySpacing,
+    spine,
+  )
 import Tilia.Source (Lines, Written (..), blankAt, lineAt, linesOf)
 import Tilia.Span (Span (..), mkSpan)
 
@@ -99,14 +105,6 @@ summarizeComments loose every =
           ]
     }
 
--- | A conditional of the module as written.
-data Group = Group
-  { -- | Its directives' lines.
-    grConditional :: Conditional,
-    -- | Each of its questions, as written after the hash.
-    grGuards :: [Guard]
-  }
-
 -- | Place comments into a document is the result of merging different
 -- configurations.
 restoreUnprinted ::
@@ -118,17 +116,9 @@ restoreUnprinted ::
   Doc ->
   Either CppError Doc
 restoreUnprinted source found doc = do
-  directives <- readDirectives source
-  let conditionals =
-        [ Group
-            { grConditional = Conditional (gsOwnLines gs),
-              grGuards = gsGuards gs
-            }
-        | group <- allGroups directives,
-          Just gs <- [groupSpec group],
-          not (inComment (fst (gsWhole gs)))
-        ]
-      scope = scopeIn (fmap grConditional conditionals)
+  forest <- readConditionals source
+  let groups = [gs | gs <- allGroups forest, not (inComment (fst (gsWhole gs)))]
+      scope = scopeIn (fmap (Conditional . gsOwnLines) groups)
       notes =
         [ if any directiveAt [spanStartLine s + 1 .. spanEndLine s - 1]
             then transcendentComment written c
@@ -136,7 +126,7 @@ restoreUnprinted source found doc = do
         | c <- Map.elems (summaryLoose found),
           let s = commentSpan c
         ]
-  let shelled = foldl (restoreConditional written) (widened doc) conditionals
+  let shelled = foldl (restoreConditional written) (widened doc) groups
       marked = spacedApart written (realized (widened shelled))
       printed = Set.fromList (Nothing : fmap scope (spansIn marked))
       noted =
@@ -154,7 +144,7 @@ restoreUnprinted source found doc = do
     foldM
       (putDirective written)
       noted
-      (filter (not . inComment . opLine) (opaqueDirectives source))
+      (filter (not . inComment . dLine) (opaqueDirectives source))
   let (under, over) =
         runsInto
           (summaryHaddocks found)
@@ -210,14 +200,10 @@ runsInto haddocks notes = snd . go Apart
       DAlign x -> go before x
       DGroup _ x -> go before x
       DVariant _ b -> go before b
-      DCppChoice _ bs e -> (Apart, foldMap (snd . go Apart . snd) bs <> snd (go Apart e))
-      DEmpty -> (before, mempty)
-      DSpace -> (before, mempty)
-      DBreak -> (before, mempty)
-      DSoftBreak -> (before, mempty)
-      DHardBreak -> (before, mempty)
-      DCloseLine -> (before, mempty)
-      _ -> (Apart, mempty)
+      d@DCppChoice{} -> (Apart, foldChildren (snd . go Apart) d)
+      d
+        | onlySpacing d -> (before, mempty)
+        | otherwise -> (Apart, mempty)
 
 -- | Put an empty line above the comments at the first spans, and below
 -- those at the second.
@@ -230,14 +216,7 @@ keptApart under over = go
           includeWhen (Set.member s under) blankLine
             <> go x
             <> includeWhen (Set.member s over) blankLine
-      DFence s x -> DFence s (go x)
-      DCat a b -> DCat (go a) (go b)
-      DNest n x -> DNest n (go x)
-      DAlign x -> DAlign (go x)
-      DGroup l x -> DGroup l (go x)
-      DVariant a b -> DVariant (go a) (go b)
-      DCppChoice cs bs e -> DCppChoice cs [(g, go x) | (g, x) <- bs] (go e)
-      d -> d
+      d -> mapChildren go d
 
 -- | Widen every region to take in the conditionals printed inside it.
 widened :: Doc -> Doc
@@ -264,9 +243,7 @@ widened = fst . go
 
 -- | The lines a conditional was written on, from its @#if@ to its @#endif@.
 conditionalSpan :: Conditional -> Maybe Span
-conditionalSpan (Conditional ls) = case (ls, unsnoc ls) of
-  (from : _, Just (_, to)) -> Just (mkSpan (from, 1) (to, 1))
-  _ -> Nothing
+conditionalSpan c = (\(from, to) -> mkSpan (from, 1) (to, 1)) <$> conditionalRange c
 
 -- | The part of the module a region was written in: the innermost branch of
 -- a conditional holding all of it, or 'Nothing' for the module itself.
@@ -311,14 +288,7 @@ realized = \case
           inner
           ((`DLocated` inner) . pastTheEnd)
           (foldMap conditionalSpan cs <> regionOf inner)
-  DCat a b -> DCat (realized a) (realized b)
-  DNest n d -> DNest n (realized d)
-  DAlign d -> DAlign (realized d)
-  DGroup l d -> DGroup l (realized d)
-  DVariant a b -> DVariant (realized a) (realized b)
-  DLocated s d -> DLocated s (realized d)
-  DFence s d -> DFence s (realized d)
-  d -> d
+  d -> mapChildren realized d
 
 -- | A span taken past the end of its last line.
 pastTheEnd :: Span -> Span
@@ -331,18 +301,11 @@ spacedApart written = go
   where
     go = \case
       d@(DCat _ _) -> mconcat (apart (fmap go (spine d)))
-      DNest n x -> DNest n (go x)
-      DAlign x -> DAlign (go x)
-      DGroup l x -> DGroup l (go x)
-      DVariant a b -> DVariant (go a) (go b)
-      DLocated s x -> DLocated s (go x)
-      DFence s x -> DFence s (go x)
-      DCppChoice cs bs e -> DCppChoice cs [(g, go x) | (g, x) <- bs] (go e)
-      d -> d
+      d -> mapChildren go d
     apart = \case
       x : rest
         | Just (_, to) <- ownLines x,
-          (_ : _, y : rest') <- span spacing rest,
+          (_ : _, y : rest') <- span onlySpacing rest,
           Just _ <- ownLines y ->
             x : (if blankAt (to + 1) written then blankLine else hardBreak) : apart (y : rest')
       x : rest -> x : apart rest
@@ -354,14 +317,6 @@ spacedApart written = go
           spanEndLine c == spanEndLine s ->
             Just (spanStartLine s, spanEndLine s)
       _ -> Nothing
-    spacing = \case
-      DEmpty -> True
-      DSpace -> True
-      DBreak -> True
-      DSoftBreak -> True
-      DHardBreak -> True
-      DCloseLine -> True
-      _ -> False
 
 -- | Give the alternatives of a choice one span for every construct that
 -- begins at the same place in more than one of them.
@@ -383,26 +338,16 @@ unified ds = fmap (rewrite Set.empty) ds
           Just ss <- Map.lookup (startPoint' s) hulls ->
             DLocated (foldr (<>) s ss) (rewrite (Set.insert (startPoint' s) seen) x)
         | otherwise -> DLocated s (rewrite (Set.insert (startPoint' s) seen) x)
-      DFence s x -> DFence s (rewrite seen x)
-      DCat a b -> DCat (rewrite seen a) (rewrite seen b)
-      DNest n x -> DNest n (rewrite seen x)
-      DAlign x -> DAlign (rewrite seen x)
-      DGroup l x -> DGroup l (rewrite seen x)
-      DVariant a b -> DVariant (rewrite seen a) (rewrite seen b)
-      d -> d
+      d@DCppChoice{} -> d
+      d -> mapChildren (rewrite seen) d
     outermost = go Set.empty
       where
         go seen = \case
           DLocated s x
             | Set.member (startPoint' s) seen -> go seen x
             | otherwise -> s : go (Set.insert (startPoint' s) seen) x
-          DFence _ x -> go seen x
-          DCat a b -> go seen a <> go seen b
-          DNest _ x -> go seen x
-          DAlign x -> go seen x
-          DGroup _ x -> go seen x
-          DVariant _ b -> go seen b
-          _ -> []
+          DCppChoice{} -> []
+          d -> foldChildren (go seen) d
     startPoint' s = (spanStartLine s, spanStartColumn s)
 
 -- | Give one alternative of a choice its anchors.
@@ -439,52 +384,38 @@ spansIn :: Doc -> [Span]
 spansIn = \case
   DLocated s d -> s : spansIn d
   DFence s d -> s : spansIn d
-  DCat a b -> spansIn a <> spansIn b
-  DNest _ d -> spansIn d
-  DAlign d -> spansIn d
-  DGroup _ d -> spansIn d
-  DVariant _ b -> spansIn b
-  DCppChoice _ bs e -> foldMap (spansIn . snd) bs <> spansIn e
-  _ -> []
+  d -> foldChildren spansIn d
 
 -- | The smallest span covering every region a document records.
 regionOf :: Doc -> Maybe Span
 regionOf = \case
   DLocated s _ -> Just s
   DFence s _ -> Just s
-  DCat a b -> regionOf a <> regionOf b
-  DNest _ d -> regionOf d
-  DAlign d -> regionOf d
-  DGroup _ d -> regionOf d
-  DVariant _ b -> regionOf b
-  DCppChoice _ bs e -> foldMap (regionOf . snd) bs <> regionOf e
-  _ -> Nothing
+  d -> foldChildren regionOf d
 
 -- | Make sure a conditional is in the document, putting it where it was
 -- written if the merge left it out.
-restoreConditional :: Lines -> Doc -> Group -> Doc
-restoreConditional written doc w =
+restoreConditional :: Lines -> Doc -> GroupSpec -> Doc
+restoreConditional written doc gs =
   placeAt realized' (Just written) opening shell doc
   where
     realized' ctx = any (all (`elem` ctx)) (realizations c doc)
-    c@(Conditional ls) = grConditional w
-    opening = fromMaybe 0 (listToMaybe ls)
-    closing = maybe 0 snd (unsnoc ls)
-    guards = fmap guardText (grGuards w)
+    c = Conditional (gsOwnLines gs)
+    (opening, closing) = gsWhole gs
+    guards = fmap guardText (gsGuards gs)
     shell =
       DCppChoice [c] [(g, mempty) | g <- guards] mempty
         <> includeWhen (blankAt (closing + 1) written) blankLine
 
 -- | Put a directive back where it was written.
-putDirective :: Lines -> Doc -> Opaque -> Either CppError Doc
+putDirective :: Lines -> Doc -> Directive -> Either CppError Doc
 putDirective written doc d
-  | quotedAt doc (opLine d) =
-      Left (DirectiveInQuotedText (opLine d) (T.takeWhile (/= ' ') (opText d)))
-  | otherwise = Right (placeAt (const False) (Just written) (opLine d) body doc)
+  | quotedAt doc (dLine d) = Left (DirectiveInQuotedText (dLine d) (dKeyword d))
+  | otherwise = Right (placeAt (const False) (Just written) (dLine d) body doc)
   where
     body =
-      DCppDirective (opSpan d) (opText d)
-        <> includeWhen (any (`blankAt` written) [opLastLine d, opLastLine d + 1]) blankLine
+      DCppDirective (dSpan d) (dText d)
+        <> includeWhen (any (`blankAt` written) [dLastLine d, dLastLine d + 1]) blankLine
 
 -- | Is this line inside something the document reproduces verbatim, such
 -- as a quasi-quotation, where a directive cannot be put back?
@@ -496,23 +427,13 @@ quotedAt doc n = any inside (located doc)
     located = \case
       DLocated s x -> (s, x) : located x
       DFence s x -> (s, x) : located x
-      DNest _ x -> located x
-      DAlign x -> located x
-      DGroup _ x -> located x
-      DVariant _ b -> located b
-      DCat a b -> located a <> located b
-      DCppChoice _ bs e -> concatMap (located . snd) bs <> located e
-      _ -> []
+      d -> foldChildren located d
 
     reproduced = \case
       DVerbatimBreak _ _ -> True
-      DNest _ x -> reproduced x
-      DAlign x -> reproduced x
-      DGroup _ x -> reproduced x
-      DVariant _ b -> reproduced b
-      DCat a b -> reproduced a || reproduced b
-      DCppChoice _ bs e -> any (reproduced . snd) bs || reproduced e
-      _ -> False
+      DLocated{} -> False
+      DFence{} -> False
+      d -> getAny (foldChildren (Any . reproduced) d)
 
 -- | Put a document at a line of the input, in every alternative that line
 -- is printed in.
@@ -567,21 +488,12 @@ placeAt present written n body = among []
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
-                if gapWritten ls (from + 1) (n - 1) || not (all space spacing)
+                if any (`blankAt` ls) [from + 1 .. n - 1] || not (all onlySpacing spacing)
                   then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
                   else mconcat (printed <> [anchor, body] <> spacing <> after)
             | otherwise -> mconcat (before <> [body] <> after)
 
     startsAfter x = maybe False (> n) (startOf x)
-
-    space = \case
-      DEmpty -> True
-      DSpace -> True
-      DBreak -> True
-      DSoftBreak -> True
-      DHardBreak -> True
-      DCloseLine -> True
-      _ -> False
 
     lastBounded ds = case break (maybe False (const True) . boundsOf) (reverse ds) of
       (spacing, x : earlier) -> Just (reverse earlier, x, reverse spacing)
@@ -605,14 +517,7 @@ realizations c = go []
       DCppChoice cs bs e ->
         [ctx | c `elem` cs]
           <> concat [go (ctx <> [(cs, k)]) d | (k, d) <- zip [0 ..] (fmap snd bs <> [e])]
-      DCat a b -> go ctx a <> go ctx b
-      DNest _ x -> go ctx x
-      DAlign x -> go ctx x
-      DGroup _ x -> go ctx x
-      DVariant _ b -> go ctx b
-      DLocated _ x -> go ctx x
-      DFence _ x -> go ctx x
-      _ -> []
+      d -> foldChildren (go ctx) d
 
 -- | Which alternatives of a choice a line of the input is printed in.
 data Alternatives
@@ -648,30 +553,19 @@ boundsOf = \case
   DCppDirective s _ -> Just (spanStartLine s, spanEndLine s)
   DCppChoice cs bs e ->
     hull
-      ( [ (from, to)
-        | Conditional ls <- cs,
-          from : _ <- [ls],
-          Just (_, to) <- [unsnoc ls]
-        ]
+      ( mapMaybe conditionalRange cs
           <> [b | Just b <- boundsOf e : fmap (boundsOf . snd) bs]
       )
-  DNest _ x -> boundsOf x
-  DAlign x -> boundsOf x
-  DGroup _ x -> boundsOf x
-  DVariant _ b -> boundsOf b
   DCat a b -> case (boundsOf a, boundsOf b) of
     (Just (from, _), Just (_, to)) -> Just (from, to)
     (found, Nothing) -> found
     (Nothing, found) -> found
+  DNest _ x -> boundsOf x
+  DAlign x -> boundsOf x
+  DGroup _ x -> boundsOf x
+  DVariant _ b -> boundsOf b
   _ -> Nothing
   where
     hull = \case
       [] -> Nothing
       bs -> Just (minimum (fmap fst bs), maximum (fmap snd bs))
-
--- | A document as the sequence of things it concatenates.
-spine :: Doc -> [Doc]
-spine = \case
-  DEmpty -> []
-  DCat a b -> spine a <> spine b
-  d -> [d]
