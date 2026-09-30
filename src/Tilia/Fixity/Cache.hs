@@ -7,6 +7,7 @@ module Tilia.Fixity.Cache
   ( Cache,
     PlanToken (..),
     openCache,
+    recalled,
     cachedModules,
     storeModules,
     cachedFixities,
@@ -26,9 +27,10 @@ where
 
 import Control.Monad (join)
 import Data.Choice (Choice, isFalse)
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -49,8 +51,9 @@ import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
 import Tilia.Utils (quietly)
 
 -- | Where cached answers are kept together with a token unique to this
--- build plan and environment.
-data Cache = Cache FilePath PlanToken
+-- build plan and environment, or nowhere, in which case nothing is
+-- remembered.
+data Cache = Cache FilePath PlanToken | NoCache
 
 -- | A token that is unique to this plan and environment. It is needed in
 -- order to be able to cache the expensive class of lookup failures that are
@@ -70,28 +73,43 @@ formatVersion = "v1"
 
 -- | Open, creating the directory if need be.
 --
--- 'Nothing' if the cache is not to be used or there is nowhere to write,
--- in which case everything still works and is merely slower.
-openCache :: Choice "useCache" -> PlanToken -> IO (Maybe Cache)
+-- 'NoCache' if the cache is not to be used or there is nowhere to write, in
+-- which case everything still works and is merely slower.
+openCache :: Choice "useCache" -> PlanToken -> IO Cache
 openCache use token
-  | isFalse use = pure Nothing
-  | otherwise = quietly Nothing $ do
+  | isFalse use = pure NoCache
+  | otherwise = quietly NoCache $ do
       root <- (</> formatVersion) <$> getXdgDirectory XdgCache "tilia"
-      createDirectoryIfMissing True (root </> "modules")
-      createDirectoryIfMissing True (root </> "fixities")
-      createDirectoryIfMissing True (root </> "installed")
-      pure (Just (Cache root token))
+      createDirectoryIfMissing True root
+      pure (Cache root token)
+
+-- | What was remembered, or else what reading finds, remembered in turn.
+recalled ::
+  -- | Recall the answer.
+  IO (Maybe a) ->
+  -- | Remember one.
+  (a -> IO ()) ->
+  -- | Work the answer out, if there is one to be had.
+  IO (Maybe a) ->
+  IO (Maybe a)
+recalled recall remember work =
+  recall >>= \case
+    Just answer -> pure (Just answer)
+    Nothing -> do
+      found <- work
+      traverse_ remember found
+      pure found
 
 -- | The modules a package exposes, if that was worked out before.
 cachedModules :: Cache -> Text -> IO (Maybe [Text])
 cachedModules cache package =
-  readIfPresent (modulesPath cache package) $
+  readIfPresent (at cache ["modules", package]) $
     filter (not . T.null) . T.lines
 
 -- | Remember what a package exposes.
 storeModules :: Cache -> Text -> [Text] -> IO ()
 storeModules cache package =
-  writeAtomically (modulesPath cache package) . T.unlines
+  writeAtomically (at cache ["modules", package]) . T.unlines
 
 -- | What was established about a module before, if anything.
 cachedFixities ::
@@ -103,11 +121,11 @@ cachedFixities ::
   Text ->
   -- | What was established, or 'Nothing' if nothing was.
   IO (Maybe Established)
-cachedFixities cache@(Cache _ (PlanToken token)) package modName =
-  fmap join . readIfPresent (fixitiesPath cache package modName) $ \contents ->
+cachedFixities cache package modName =
+  fmap join . readIfPresent (at cache ["fixities", package, modName]) $ \contents ->
     case T.lines contents of
       ("read" : entries) -> Declares . Map.fromList <$> traverse parseFixity entries
-      [unread] | Just rest <- T.stripPrefix ("unread\t" <> token) unread ->
+      [unread] | Just rest <- T.stripPrefix ("unread\t" <> tokenOf cache) unread ->
         case T.uncons rest of
           Nothing -> Just (Unreadable Nothing)
           Just ('\t', below) | not (T.null below) -> Just (Unreadable (Just below))
@@ -125,18 +143,16 @@ storeFixities ::
   -- | What was established about it.
   Established ->
   IO ()
-storeFixities cache package modName answer = do
-  quietly () (createDirectoryIfMissing True (fixitiesDir cache package))
-  writeAtomically (fixitiesPath cache package modName) $
+storeFixities cache package modName answer =
+  writeAtomically (at cache ["fixities", package, modName]) $
     case answer of
       Unreadable below ->
-        T.unlines ["unread\t" <> token <> foldMap ("\t" <>) below]
+        T.unlines ["unread\t" <> tokenOf cache <> foldMap ("\t" <>) below]
       Declares fixities ->
         T.unlines ("read" : fmap renderFixity (Map.toList fixities))
-  where
-    Cache _ (PlanToken token) = cache
 
--- | What a module's export list was found to say, if it was ever read.
+-- | What a module's export list was found to say, if it was ever read:
+-- the operators it names, or 'Nothing' where they cannot be enumerated.
 cachedExportNames ::
   -- | Where to look.
   Cache ->
@@ -144,13 +160,12 @@ cachedExportNames ::
   Text ->
   -- | The module, by its full dotted name.
   Text ->
-  -- | What its export list said, or 'Nothing' if it was never read.
-  IO (Maybe Exported)
+  IO (Maybe (Maybe (Set OpName)))
 cachedExportNames cache package modName =
-  fmap join . readIfPresent (exportsPath cache package modName) $ \contents ->
+  fmap join . readIfPresent (at cache ["exports", package, modName]) $ \contents ->
     case T.lines contents of
-      ("names" : entries) -> Just (Exports (Set.fromList (fmap OpName entries)))
-      ["untellable"] -> Just Untellable
+      ("names" : entries) -> Just (Just (Set.fromList (fmap OpName entries)))
+      ["untellable"] -> Just Nothing
       _ -> Nothing
 
 -- | Remember what a module's export list said.
@@ -161,15 +176,14 @@ storeExportNames ::
   Text ->
   -- | The module, by its full dotted name.
   Text ->
-  -- | What its export list said.
-  Exported ->
+  -- | The operators it names, or 'Nothing' where they cannot be enumerated.
+  Maybe (Set OpName) ->
   IO ()
-storeExportNames cache package modName answer = do
-  quietly () (createDirectoryIfMissing True (exportsDir cache package))
-  writeAtomically (exportsPath cache package modName) $
+storeExportNames cache package modName answer =
+  writeAtomically (at cache ["exports", package, modName]) $
     case answer of
-      Untellable -> T.unlines ["untellable"]
-      Exports names -> T.unlines ("names" : [op | OpName op <- Set.toAscList names])
+      Nothing -> T.unlines ["untellable"]
+      Just names -> T.unlines ("names" : [op | OpName op <- Set.toAscList names])
 
 -- | What a module keeps under each of its names, if it was ever read for
 -- it.
@@ -183,7 +197,7 @@ cachedChildren ::
   -- | What it keeps under each name, or 'Nothing' if it was never read.
   IO (Maybe (Map OpName (Set OpName)))
 cachedChildren cache package modName =
-  fmap join . readIfPresent (childrenPath cache package modName) $ \contents ->
+  fmap join . readIfPresent (at cache ["children", package, modName]) $ \contents ->
     case T.lines contents of
       ("children" : entries) -> Just (Map.fromList (mapMaybe childEntry entries))
       _ -> Nothing
@@ -203,9 +217,8 @@ storeChildren ::
   -- | What it keeps under each name.
   Map OpName (Set OpName) ->
   IO ()
-storeChildren cache package modName children = do
-  quietly () (createDirectoryIfMissing True (childrenDir cache package))
-  writeAtomically (childrenPath cache package modName) $
+storeChildren cache package modName children =
+  writeAtomically (at cache ["children", package, modName]) $
     T.unlines ("children" : fmap entry (Map.toList children))
   where
     entry (OpName parent, kids) =
@@ -215,7 +228,7 @@ storeChildren cache package modName children = do
 -- see it.
 cachedInstalled :: Cache -> IO (Maybe [InstalledPackage])
 cachedInstalled cache = quietly Nothing $ do
-  readIfPresent (installedPath cache) T.lines >>= \case
+  readIfPresent (at cache ["installed", tokenOf cache]) T.lines >>= \case
     Nothing -> pure Nothing
     Just ls -> do
       let written =
@@ -247,7 +260,7 @@ storeInstalled cache found
   | null (installedDatabases found) = pure ()
   | otherwise = quietly () $ do
       stamps <- traverse stamped (installedDatabases found)
-      writeAtomically (installedPath cache) . T.unlines $
+      writeAtomically (at cache ["installed", tokenOf cache]) . T.unlines $
         [T.intercalate "\t" ["db", T.pack path, stamp] | (path, stamp) <- stamps]
           <> [ T.intercalate "\t" $
                  ["pkg", ipName p, ipVersion p, T.unwords (ipModules p)]
@@ -263,13 +276,12 @@ storeInstalled cache found
 -- and left the plan exactly as before.
 cachedFutileSolve :: Cache -> IO Bool
 cachedFutileSolve cache =
-  quietly False (doesFileExist (futileSolvePath cache))
+  isJust <$> readIfPresent (at cache ["solves", tokenOf cache]) (const ())
 
 -- | Remember that solving again did not widen the plan.
 storeFutileSolve :: Cache -> IO ()
-storeFutileSolve cache = quietly () $ do
-  createDirectoryIfMissing True (takeDirectory (futileSolvePath cache))
-  writeAtomically (futileSolvePath cache) ""
+storeFutileSolve cache =
+  writeAtomically (at cache ["solves", tokenOf cache]) ""
 
 -- | The packages an earlier run was still short of after asking @cabal@ to
 -- fetch them.
@@ -277,14 +289,13 @@ cachedFutileFetch :: Cache -> IO [Text]
 cachedFutileFetch cache =
   fromMaybe []
     <$> readIfPresent
-      (futileFetchPath cache)
+      (at cache ["fetches", tokenOf cache])
       (filter (not . T.null) . T.lines)
 
 -- | Remember what fetching left missing.
 storeFutileFetch :: Cache -> [Text] -> IO ()
-storeFutileFetch cache packages = quietly () $ do
-  createDirectoryIfMissing True (takeDirectory (futileFetchPath cache))
-  writeAtomically (futileFetchPath cache) (T.unlines packages)
+storeFutileFetch cache =
+  writeAtomically (at cache ["fetches", tokenOf cache]) . T.unlines
 
 -- | Render a fixity declaration as 'Text'.
 renderFixity :: ((Namespace, OpName), Fixity) -> Text
@@ -324,62 +335,34 @@ parseFixity line = case T.splitOn "\t" line of
       Right (p, rest) | T.null rest -> Just p
       _ -> Nothing
 
--- | The directory where fixities are stored.
-fixitiesDir :: Cache -> Text -> FilePath
-fixitiesDir (Cache root _) package = root </> "fixities" </> T.unpack package
+-- | Where the cache keeps what the path names, or 'Nothing' if it keeps
+-- nothing.
+at :: Cache -> [Text] -> Maybe FilePath
+at cache path = case cache of
+  Cache root _ -> Just (foldl (</>) root (fmap T.unpack path))
+  NoCache -> Nothing
 
--- | Where @ghc-pkg dump@ is remembered.
-installedPath :: Cache -> FilePath
-installedPath (Cache root (PlanToken token)) =
-  root </> "installed" </> T.unpack token
-
--- | An empty file whose mere presence says solving this plan again would
--- not widen it.
-futileSolvePath :: Cache -> FilePath
-futileSolvePath (Cache root (PlanToken token)) =
-  root </> "solves" </> T.unpack token
-
--- | The packages fetching left missing, one per line.
-futileFetchPath :: Cache -> FilePath
-futileFetchPath (Cache root (PlanToken token)) =
-  root </> "fetches" </> T.unpack token
-
--- | Every module a package holds, one per line.
-modulesPath :: Cache -> Text -> FilePath
-modulesPath (Cache root _) package = root </> "modules" </> T.unpack package
-
--- | What reading one module established about fixities.
-fixitiesPath :: Cache -> Text -> Text -> FilePath
-fixitiesPath cache package modName =
-  fixitiesDir cache package </> T.unpack modName
-
--- | The directory where export lists are stored.
-exportsDir :: Cache -> Text -> FilePath
-exportsDir (Cache root _) package = root </> "exports" </> T.unpack package
-
--- | What one module's export list was found to say.
-exportsPath :: Cache -> Text -> Text -> FilePath
-exportsPath cache package modName =
-  exportsDir cache package </> T.unpack modName
-
--- | The directory where the names kept under a name are stored.
-childrenDir :: Cache -> Text -> FilePath
-childrenDir (Cache root _) package = root </> "children" </> T.unpack package
-
--- | What one module keeps under each of its names.
-childrenPath :: Cache -> Text -> Text -> FilePath
-childrenPath cache package modName =
-  childrenDir cache package </> T.unpack modName
+-- | The token a cache is kept under.
+tokenOf :: Cache -> Text
+tokenOf = \case
+  Cache _ (PlanToken token) -> token
+  NoCache -> ""
 
 -- | Read and parse a file, or 'Nothing' where there is none to read.
-readIfPresent :: FilePath -> (Text -> a) -> IO (Maybe a)
-readIfPresent path parse = quietly Nothing $ do
-  there <- doesFileExist path
-  if there then Just . parse <$> T.readFile path else pure Nothing
+readIfPresent :: Maybe FilePath -> (Text -> a) -> IO (Maybe a)
+readIfPresent place parse = case place of
+  Nothing -> pure Nothing
+  Just path -> quietly Nothing $ do
+    there <- doesFileExist path
+    if there then Just . parse <$> T.readFile path else pure Nothing
 
--- | Write via a temporary file and a rename.
-writeAtomically :: FilePath -> Text -> IO ()
-writeAtomically path contents = quietly () $ do
-  let temporary = path <> ".tmp"
-  T.writeFile temporary contents
-  renameFile temporary path
+-- | Write via a temporary file and a rename, making the directory if need
+-- be.
+writeAtomically :: Maybe FilePath -> Text -> IO ()
+writeAtomically place contents = case place of
+  Nothing -> pure ()
+  Just path -> quietly () $ do
+    createDirectoryIfMissing True (takeDirectory path)
+    let temporary = path <> ".tmp"
+    T.writeFile temporary contents
+    renameFile temporary path

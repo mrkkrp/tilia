@@ -26,8 +26,7 @@ module Tilia.Fixity
     Import (..),
     ImportItem (..),
     moduleImports,
-    mightBring,
-    surelyNames,
+    supplies,
     KnownModules (..),
     noKnownModules,
     Namespace (..),
@@ -55,9 +54,6 @@ module Tilia.Fixity
 
     -- * What reading a module established
     Established (..),
-    Exported (..),
-    exportedNames,
-    asExported,
   )
 where
 
@@ -227,26 +223,10 @@ opName = OpName . T.pack . occNameString . rdrNameOcc
 -- exports and also defines needs no chasing, and one it merely reexports
 -- does.
 declaredNames :: HsModule GhcPs -> Set OpName
-declaredNames = Set.fromList . concatMap (fromDecl . unLoc) . hsmodDecls
+declaredNames hsModule =
+  Set.unions [types, terms, Set.map snd (Map.keysSet (declaredFixities hsModule))]
   where
-    fromDecl = \case
-      ValD _ b -> fromBind b
-      SigD _ sig -> fromSig sig
-      TyClD _ t -> fromTyCl t
-      ForD _ f -> [opName (unLoc (fd_name f))]
-      _ -> []
-
-    fromBind = boundNames
-
-    fromSig = \case
-      FixSig _ (FixitySig _ ns _) -> fmap (opName . unLoc) ns
-      sig -> signedNames sig
-
-    fromTyCl = \case
-      FamDecl _ (FamilyDecl{fdLName}) -> [opName (unLoc fdLName)]
-      SynDecl{tcdLName} -> [opName (unLoc tcdLName)]
-      d@DataDecl{tcdLName} -> opName (unLoc tcdLName) : membersOf d
-      d@ClassDecl{tcdLName} -> opName (unLoc tcdLName) : membersOf d
+    (types, terms) = declaredNamespaces hsModule
 
 -- | The names a binding brings into being.
 boundNames :: HsBind GhcPs -> [OpName]
@@ -407,41 +387,43 @@ importedItem = \case
     nameOf :: LIEWrappedName GhcPs -> OpName
     nameOf = opName . ieWrappedName . unLoc
 
--- | Could this list bring the operator in?
-mightBring ::
+-- | Could this import bring the operator in, as far as its list says?
+--
+-- A @T(..)@ whose members are not known is taken to bring anything in, and
+-- to hide nothing but @T@ itself.
+admits ::
   -- | What each name in the list keeps under it, where that is known.
   Map OpName (Set OpName) ->
   -- | The operator being looked for.
   OpName ->
-  -- | The entries of the import list.
-  [ImportItem] ->
+  Import ->
   Bool
-mightBring carries op = any $ \case
-  ImportedName n -> n == op
-  ImportedSome parent ns -> parent == op || op `elem` ns
-  ImportedAll parent -> maybe True (names parent) (Map.lookup parent carries)
+admits carries op i = case importNames i of
+  Nothing -> True
+  Just (True, hidden) -> not (any (names False) hidden)
+  Just (False, shown) -> any (names True) shown
   where
-    names parent kids = parent == op || Set.member op kids
+    names unknown = \case
+      ImportedName n -> n == op
+      ImportedSome parent ns -> parent == op || op `elem` ns
+      ImportedAll parent ->
+        parent == op || maybe unknown (Set.member op) (Map.lookup parent carries)
 
--- | Does this list certainly name the operator?
-surelyNames ::
-  -- | What each name in the list keeps under it, where that is known.
+-- | Could this import supply the operator to a use written under this
+-- qualifier?
+supplies ::
+  -- | What each name in the import's list keeps under it, where that is
+  -- known.
   Map OpName (Set OpName) ->
+  -- | The qualifier written at the use site, if any.
+  Maybe Text ->
   -- | The operator being looked for.
   OpName ->
-  -- | The entries of the import list.
-  [ImportItem] ->
+  Import ->
   Bool
-surelyNames carries op = any $ \case
-  ImportedName n -> n == op
-  ImportedSome parent ns -> parent == op || op `elem` ns
-  ImportedAll parent ->
-    maybe
-      (parent == op)
-      (names parent)
-      (Map.lookup parent carries)
-  where
-    names parent kids = parent == op || Set.member op kids
+supplies carries qualifier op i =
+  maybe (not (importQualified i)) (== importAlias i) qualifier
+    && admits carries op i
 
 -- | What is known about the imported modules.
 data KnownModules = KnownModules
@@ -565,8 +547,6 @@ resolveScope implicitPrelude known hsModule =
       scopeUnread = unread
     }
   where
-    KnownModules{knownFixities = exportsOf, knownChildren, knownExportNames, knownChain} = known
-    exportNamesOf = knownExportNames
     imports = moduleImports implicitPrelude hsModule
     declared = declaredFixities hsModule
 
@@ -580,7 +560,7 @@ resolveScope implicitPrelude known hsModule =
         }
       where
         own = Map.map (,DeclaredHere) (fixitiesIn namespace declared)
-        offered m = fixitiesIn namespace <$> exportsOf m
+        offered m = fixitiesIn namespace <$> knownFixities known m
         unqualified =
           Map.unionsWith
             disagree
@@ -605,29 +585,20 @@ resolveScope implicitPrelude known hsModule =
     unread =
       [ UnreadModule
           { unreadImport = i,
-            unreadExportNames = exportNamesOf (importModule i),
-            unreadChildren = knownChildren (importModule i),
-            unreadChain = knownChain (importModule i)
+            unreadExportNames = knownExportNames known (importModule i),
+            unreadChildren = knownChildren known (importModule i),
+            unreadChain = knownChain known (importModule i)
           }
       | i <- imports,
-        Nothing <- [exportsOf (importModule i)]
+        Nothing <- [knownFixities known (importModule i)]
       ]
 
     disagree (a, aBad) (b, bBad) = (a, aBad || bBad || fst a /= fst b)
 
     visible offered i =
-      let exported =
-            Map.map (,DeclaredIn (importModule i)) $
-              fromMaybe Map.empty (offered (importModule i))
-          carries = knownChildren (importModule i)
-       in case importNames i of
-            Nothing -> exported
-            Just (True, hidden) ->
-              Map.filterWithKey
-                (\op _ -> not (surelyNames carries op hidden))
-                exported
-            Just (False, shown) ->
-              Map.filterWithKey (\op _ -> mightBring carries op shown) exported
+      Map.filterWithKey
+        (\op _ -> admits (knownChildren known (importModule i)) op i)
+        (Map.map (,DeclaredIn (importModule i)) (fromMaybe Map.empty (offered (importModule i))))
 
 -- | The fixities in one namespace, by the operator alone.
 fixitiesIn :: Namespace -> Fixities -> Map OpName Fixity
@@ -723,19 +694,9 @@ unreadThatMightDeclare ::
 unreadThatMightDeclare scope qualifier op =
   [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
   | u <- scopeUnread scope,
-    reaches (unreadImport u),
-    brings u,
-    exports u
+    supplies (unreadChildren u) qualifier op (unreadImport u),
+    maybe True (Set.member op) (unreadExportNames u)
   ]
-  where
-    exports u = maybe True (Set.member op) (unreadExportNames u)
-    reaches i = case qualifier of
-      Nothing -> not (importQualified i)
-      Just q -> q == importAlias i
-    brings u = case importNames (unreadImport u) of
-      Nothing -> True
-      Just (True, hidden) -> not (surelyNames (unreadChildren u) op hidden)
-      Just (False, shown) -> mightBring (unreadChildren u) op shown
 
 ----------------------------------------------------------------------------
 -- What could not be answered
@@ -829,22 +790,3 @@ data Established
     -- reaching it means exhausting every way of reading the module.
     Unreadable (Maybe Text)
   deriving (Eq, Show)
-
--- | What reading a module established about its export list.
-data Exported
-  = -- | The list names these, and they are all the module can supply.
-    Exports (Set OpName)
-  | -- | Nothing that can be enumerated: the list hands whole modules on, or
-    -- the source would not parse.
-    Untellable
-  deriving (Eq, Show)
-
--- | What 'resolveScope' makes of it.
-exportedNames :: Exported -> Maybe (Set OpName)
-exportedNames = \case
-  Exports names -> Just names
-  Untellable -> Nothing
-
--- | What to write down for an answer the reader worked out.
-asExported :: Maybe (Set OpName) -> Exported
-asExported = maybe Untellable Exports
