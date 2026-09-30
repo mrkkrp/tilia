@@ -97,7 +97,8 @@ formatWithCpp parser render path source = do
       (noAnswers source)
       configurationBudget
       source
-  printDoc defaultRenderOptions <$> restoreUnprinted source found document
+  formatted <- printDoc defaultRenderOptions <$> restoreUnprinted source found document
+  formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
     knowing c =
       c{rcImportBarriers = maybe [] (fmap dLine) (scanDirectives source)}
