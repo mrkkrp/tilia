@@ -23,6 +23,8 @@
 * Indent an alternative of a conditional that continues a line further than
   that line, so that an operator starting it does not start a statement.
   [PR 39](https://github.com/mrkkrp/tilia/pull/39).
+* Keep an empty line written above a CPP directive on the last line of a
+  branch of a conditional. [PR 44](https://github.com/mrkkrp/tilia/pull/44).
 
 ## Tilia 0.0.2.0
 

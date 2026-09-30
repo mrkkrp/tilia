@@ -493,7 +493,9 @@ placeAt present written n body = among []
                   else mconcat (printed <> [anchor, body] <> spacing <> after)
             | otherwise -> mconcat (before <> [body] <> after)
 
-    startsAfter x = maybe False (> n) (startOf x)
+    startsAfter = \case
+      DLocated s _ | spanStartColumn s == farRight -> spanStartLine s >= n
+      x -> maybe False (> n) (startOf x)
 
     lastBounded ds = case break (maybe False (const True) . boundsOf) (reverse ds) of
       (spacing, x : earlier) -> Just (reverse earlier, x, reverse spacing)
