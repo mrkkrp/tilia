@@ -55,6 +55,7 @@ import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
   ( Lines,
     Written (..),
+    blankAt,
     comments,
     dropping,
     linesOf,
@@ -131,17 +132,19 @@ formatAllConfigs parser render path reached budget source =
               reached
               (withoutOpaque source)
           Right (document, found, budget - 1)
-    Just apart -> case linearly apart of
-      Right built -> Right built
-      Left (Refused TooManyConfigurations, _) ->
-        Left TooManyConfigurations
-      Left (_, left')
-        | Right many <- countLeaves source,
-          many > configurationsWorthTrying ->
+    Just apart
+      | linearCost budget source > budget -> Left TooManyConfigurations
+      | otherwise -> case linearly apart of
+          Right built -> Right built
+          Left (Refused TooManyConfigurations, _) ->
             Left TooManyConfigurations
-        | otherwise -> case configurations source of
-            Just c -> together parser render path reached left' c
-            Nothing -> error "Tilia: a module that varies has a conditional to split on"
+          Left (_, left')
+            | Right many <- countLeaves source,
+              many > configurationsWorthTrying ->
+                Left TooManyConfigurations
+            | otherwise -> case configurations source of
+                Just c -> together parser render path reached left' c
+                Nothing -> error "Tilia: a module that varies has a conditional to split on"
   where
     linearly v =
       case separately parser render path reached budget v of
@@ -150,6 +153,40 @@ formatAllConfigs parser render path reached budget source =
           case combine Broken baseDoc (zip (fmap cfgWholes (vaGroups v)) merged) of
             Just d -> Right (d, found, budget')
             Nothing -> Left (InOneConstruct, budget')
+
+-- | How many formattings varying a module's conditionals one at a time
+-- takes at the least, counted as far as one past the given number.
+linearCost :: Int -> Text -> Int
+linearCost limit source = either (const 0) (go . nesting 0) (readDirectives source)
+  where
+    written = linesOf (Written source)
+    go = \case
+      [] -> 1
+      ns ->
+        upTo
+          0
+          ( go (concatMap (branch 0) ns)
+              : [ if holdsNothing r && all holdsNothing (take 1 (gsBranches gs))
+                    then 0
+                    else go (branch i n <> concatMap (branch 0) others)
+                | (k, n@(Nest gs _)) <- zip [0 :: Int ..] ns,
+                  let others = [o | (j, o) <- zip [0 ..] ns, j /= k],
+                  (i, r) <-
+                    zip
+                      [1 ..]
+                      ( drop 1 (gsBranches gs)
+                          <> [ (1, 0)
+                             | not (gsHasElse gs)
+                             ]
+                      )
+                ]
+          )
+    branch i (Nest _ bs) = concat (take 1 (drop i bs))
+    holdsNothing (from, to) = all (`blankAt` written) [from .. to]
+    upTo acc = \case
+      _ | acc > limit -> acc
+      [] -> acc
+      x : xs -> upTo (acc + x) xs
 
 -- | Why the linear form did not work.
 data Linearly
