@@ -482,6 +482,9 @@ resolved source = withoutOpaque source <$ readDirectives source
 -- | One preprocessor directive, and how deep in the conditionals it sits.
 data Directive = Directive
   { dLine :: !Int,
+    -- | The last line the directive is written on, which is its first unless
+    -- a line of it ends in a backslash.
+    dLastLine :: !Int,
     dKeyword :: !Text,
     dGuard :: !Guard,
     dLevel :: !Int
@@ -496,8 +499,8 @@ readDirectives source = go [] (zip [1 ..] (T.lines source))
     go open [] = case open of
       [] -> Right []
       (n, k, _) : _ -> Left (MalformedConditional n k NeverClosed)
-    go open ((n, l) : ls) = case directiveOnLine l of
-      Nothing -> go open ls
+    go open ((n, l) : ls0) = case directiveOnLine l of
+      Nothing -> go open ls0
       Just (keyword, body)
         | keyword `elem` opensGroup -> at (length open) ((n, keyword, False) : open)
         | keyword `elem` continuesGroup -> case open of
@@ -507,19 +510,26 @@ readDirectives source = go [] (zip [1 ..] (T.lines source))
         | keyword == "endif" -> case open of
             [] -> malformed NothingOpen
             _ : rest -> at (length rest) rest
-        | otherwise -> go open ls
+        | otherwise -> go open ls0
         where
           malformed = Left . MalformedConditional n keyword
+          (continued, ls) = continuation l ls0
           at level open' =
             ( Directive
                 { dLine = n,
+                  dLastLine = n + length continued,
                   dKeyword = keyword,
-                  dGuard = Guard (T.stripEnd body),
+                  dGuard = Guard (T.intercalate "\n" (T.stripEnd body : fmap (T.stripEnd . snd) continued)),
                   dLevel = level
                 }
                 :
             )
               <$> go open' ls
+    continuation l ls
+      | T.isSuffixOf "\\" (T.stripEnd l),
+        (next : rest) <- ls =
+          let (more, rest') = continuation (snd next) rest in (next : more, rest')
+      | otherwise = ([], ls)
 
 -- | Every conditional directive in a module, or 'Nothing' if its
 -- conditionals do not make sense.
@@ -556,6 +566,7 @@ data GroupSpec = GroupSpec
   { gsGuards :: [Guard],
     gsHasElse :: Bool,
     gsOwnLines :: [Int],
+    gsOwnRanges :: [(Int, Int)],
     gsBranches :: [(Int, Int)],
     gsWhole :: (Int, Int)
   }
@@ -574,8 +585,9 @@ groupSpec group = do
       { gsGuards = [dGuard d | d <- separators, dKeyword d /= "else"],
         gsHasElse = any ((== "else") . dKeyword) separators,
         gsOwnLines = fmap dLine group,
-        gsBranches = [(dLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
-        gsWhole = (dLine opener, dLine end)
+        gsOwnRanges = [(dLine d, dLastLine d) | d <- group],
+        gsBranches = [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
+        gsWhole = (dLine opener, dLastLine end)
       }
   where
     require b = if b then Just () else Nothing
@@ -617,7 +629,7 @@ blanking ranges source =
 -- themselves: a directive belongs to no configuration, which is the whole of
 -- what separates this from 'droppedFor'.
 blankingFor :: GroupSpec -> Int -> [(Int, Int)]
-blankingFor gs i = droppedFor gs i <> [(n, n) | n <- gsOwnLines gs]
+blankingFor gs i = droppedFor gs i <> gsOwnRanges gs
 
 -- | The lines a configuration of a group is not including.
 droppedFor :: GroupSpec -> Int -> [(Int, Int)]
