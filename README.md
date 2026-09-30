@@ -99,19 +99,27 @@ Finally, here are some other flags that may be of interest:
 
 ## Excluding files
 
-You can tell Tilia to skip certain files and/or directories. To do so, list
-their paths in a `.tiliaignore` file at the project root:
+You can tell Tilia to skip certain files and/or directories by listing them
+in a `.tiliaignore` file, which Tilia reads the way Git reads `.gitignore`:
 
 ```gitignore
 # Fixtures compiled by a separate driver
 tests/shouldwork/
 tests/shouldfail/
+
+# Generated modules wherever they are, except one
+*Generated.hs
+!/src/Keep/Generated.hs
 ```
 
-Entries are literal file or directory paths relative to the project root,
-and a directory excludes everything below it. Blank lines, surrounding
-whitespace, and lines beginning with `#` are ignored. Wildcards and
-re-inclusion patterns are not supported.
+A `.tiliaignore` can be in the project root or in any directory below it,
+and its patterns are relative to that directory. Everything `.gitignore`
+offers works the same: the globs `*`, `?`, `[…]`, and `**`, a `/` at the
+start or in the middle to anchor a pattern to its directory, a `/` at the
+end to match directories only, `!` to re-include what an earlier pattern
+excluded, `#` for comments, and `\` to escape any of these. As with Git, a
+pattern in a deeper file wins over one above it, and a file whose directory
+is excluded cannot be re-included.
 
 ## Formatting operator chains
 

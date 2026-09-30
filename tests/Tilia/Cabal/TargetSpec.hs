@@ -300,7 +300,7 @@ spec = do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["A.hs"]
 
-    it "excludes literal files and directory trees from .tiliaignore"
+    it "excludes files and directory trees .tiliaignore names"
       $ withProject
         [ ( "only.cabal",
             packageWith
@@ -308,7 +308,7 @@ spec = do
               ["src"]
               ["Runner", "Generated", "Fixtures.Input", "Fixtures.Nested.Other", "FixturesOther.Keep"]
           ),
-          (".tiliaignore", "  # Generated sources and runtime fixtures\r\n\r\n ./src/Fixtures/ \r\nsrc/Generated.hs\r\n"),
+          (".tiliaignore", "# Generated sources and runtime fixtures\r\n\r\n/src/Fixtures/ \r\nsrc/Generated.hs\r\n"),
           ("src/Runner.hs", "module Runner where\n"),
           ("src/Generated.hs", "module Generated where\n"),
           ("src/Fixtures/Input.hs", "module Fixtures.Input where\n"),
@@ -338,6 +338,24 @@ spec = do
           Right cs -> do
             files <- filesOfComponents root cs
             sort (map takeFileName files) `shouldBe` ["A.hs", "B.hs"]
+
+    it "reads .tiliaignore the way Git reads .gitignore"
+      $ withProject
+        [ ("cabal.project", "packages: one\n"),
+          (".tiliaignore", "*Spec.hs\n!/one/test/KeepSpec.hs\n"),
+          ("one/.tiliaignore", "Gen*/\n"),
+          ("one/one.cabal", packageWith "one" ["src", "test"] ["A", "Generated.B", "KeepSpec", "DropSpec"]),
+          ("one/src/A.hs", "module A where\n"),
+          ("one/src/Generated/B.hs", "module Generated.B where\n"),
+          ("one/test/KeepSpec.hs", "module KeepSpec where\n"),
+          ("one/test/DropSpec.hs", "module DropSpec where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            sort (map takeFileName files) `shouldBe` ["A.hs", "KeepSpec.hs"]
 
     it "can exclude every file of an explicitly selected component"
       $ withProject
