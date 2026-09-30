@@ -13,6 +13,10 @@
   34](https://github.com/mrkkrp/tilia/pull/34).
 * Speed up diffing that `tilia check` performs. [PR
   37](https://github.com/mrkkrp/tilia/pull/37).
+* Read `.tiliaignore` files the way Git reads `.gitignore` files, with
+  globs, negation, and a `.tiliaignore` in any directory of the project.
+  Leading whitespace and a leading `./` are no longer disregarded. [PR
+  41](https://github.com/mrkkrp/tilia/pull/41).
 
 ## Tilia 0.0.2.0
 
