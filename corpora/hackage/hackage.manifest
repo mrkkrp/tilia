@@ -2632,7 +2632,7 @@ formatted       9a3fe7ad6e47  http-types-0.12.6/test/Network/HTTP/Types/URISpec.
 formatted       5ac67585c5a1  http-types-0.12.6/test/Network/HTTP/Types/VersionSpec.hs
 formatted       2fbd14b119a4  http-types-0.12.6/test/Spec.hs
 formatted       6d7c004ed36a  http-types-0.12.6/test/doctests.hs
-declined        -             idris-1.3.4/Setup.hs
+formatted       d9dd9e461aa1  idris-1.3.4/Setup.hs
 formatted       6c39a6764f61  idris-1.3.4/codegen/idris-codegen-c/Main.hs
 formatted       66ce632c5bcb  idris-1.3.4/codegen/idris-codegen-javascript/Main.hs
 formatted       06a7843d0cd6  idris-1.3.4/codegen/idris-codegen-node/Main.hs
@@ -2656,7 +2656,7 @@ formatted       be460f171d5f  idris-1.3.4/src/IRTS/Lang.hs
 formatted       877532317321  idris-1.3.4/src/IRTS/LangOpts.hs
 formatted       54ee13488588  idris-1.3.4/src/IRTS/Portable.hs
 formatted       c092168371c9  idris-1.3.4/src/IRTS/Simplified.hs
-formatted       8a93ea593409  idris-1.3.4/src/IRTS/System.hs
+formatted       c149d514359b  idris-1.3.4/src/IRTS/System.hs
 formatted       0b84ce237bb8  idris-1.3.4/src/Idris/ASTUtils.hs
 broken          4ab968445573  idris-1.3.4/src/Idris/AbsSyntax.hs
 formatted       5d7408d71382  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
@@ -2743,7 +2743,7 @@ formatted       6837e439e7d6  idris-1.3.4/src/Idris/Transforms.hs
 formatted       06befdb6fc0c  idris-1.3.4/src/Idris/TypeSearch.hs
 formatted       efed23bf7411  idris-1.3.4/src/Idris/Unlit.hs
 formatted       b613b7be20de  idris-1.3.4/src/Idris/WhoCalls.hs
-declined        -             idris-1.3.4/src/Util/DynamicLinker.hs
+formatted       d7c4f3f1db31  idris-1.3.4/src/Util/DynamicLinker.hs
 formatted       298e72ccbb61  idris-1.3.4/src/Util/Net.hs
 formatted       f47f361e150a  idris-1.3.4/src/Util/Pretty.hs
 formatted       13363649406c  idris-1.3.4/src/Util/ScreenSize.hs
@@ -2998,7 +2998,7 @@ formatted       fa94f2166eef  optics-0.4.2.1/tests/Optics/Tests/Labels/Generic.h
 formatted       be66017a6045  optics-0.4.2.1/tests/Optics/Tests/Labels/TH.hs
 formatted       1ec08bb9f22e  optics-0.4.2.1/tests/Optics/Tests/Misc.hs
 formatted       9a4b74c6e2a0  optics-0.4.2.1/tests/Optics/Tests/Properties.hs
-declined        -             optics-0.4.2.1/tests/Optics/Tests/Utils.hs
+partly-checked  5d457e97c466  optics-0.4.2.1/tests/Optics/Tests/Utils.hs
 formatted       e865ae48f11b  optparse-applicative-0.19.0.0/Setup.hs
 formatted       64905439cdc6  optparse-applicative-0.19.0.0/src/Options/Applicative.hs
 formatted       c906682e4329  optparse-applicative-0.19.0.0/src/Options/Applicative/Arrows.hs

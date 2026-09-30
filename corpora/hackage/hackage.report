@@ -3,7 +3,7 @@ Why every example of this corpus that is not `formatted` is not.
 Generated beside the manifest, and compared against nothing: this
 file is the work list, and it is free to say as much as it likes.
 
-5202 examples, 5139 formatted.
+5202 examples, 5141 formatted.
 
 ==========================================================================
 broken (6)
@@ -32,7 +32,7 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
      #endif
      
      module Agda.TypeChecking.Conversion where
-     
+    -
     -import Control.Arrow (second)
     -import Control.Monad.Except ( MonadError(..) )
     -
@@ -44,7 +44,7 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
     -import qualified Data.IntMap as IntMap
     -import qualified Data.IntSet as IntSet
     -import qualified Data.Set    as Set
-    -
+     
     +import Agda.Interaction.Options
      import Agda.Syntax.Common
     +import Agda.Syntax.Common.Pretty (prettyShow)
@@ -99,13 +99,13 @@ hashable-1.5.1.0/tests/Regress.hs
      import qualified Data.ByteString.Char8 as BS8
      import qualified Data.ByteString.Lazy as BSL
      import qualified Data.ByteString.Lazy.Char8 as BSL8
-    -
     +import Data.Fixed (Pico)
     +import Data.List (nub)
     +import Data.Text (Text)
     +import qualified Data.Text.Lazy as TL
     +import GHC.Generics (Generic)
     +import Test.Tasty (TestTree, testGroup)
+    -
     +import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
     +import Test.Tasty.QuickCheck (testProperty)
      #ifdef HAVE_MMAP
@@ -125,8 +125,8 @@ hashable-1.5.1.0/tests/Regress.hs
     +  | otherwise = return ()
      
      regressions :: [TestTree]
-    -regressions = [] ++
     +regressions =
+    -regressions = [] ++
     +  []
      #ifdef HAVE_MMAP
     -    Mmap.regressions ++
@@ -136,11 +136,11 @@ hashable-1.5.1.0/tests/Regress.hs
     -#endif
     -    [ testGroup "Generic: sum of nullary constructors"
     -        [ testCase "0" $ nullaryCase 0 S0
-    -        , testCase "1" $ nullaryCase 1 S1
-    -        , testCase "2" $ nullaryCase 2 S2
-    -        , testCase "3" $ nullaryCase 3 S3
-    -        , testCase "4" $ nullaryCase 4 S4
-    -        ]
+    +    ++ Mmap.regressions
+    +    ++ [ testCase "Fixed" $ do
+    +           (hash (1 :: Pico) == hash (2 :: Pico)) @?= False
+    +       ]
+    +    ++ [ testGroup
     … and 214 more lines
 
 hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
@@ -164,8 +164,8 @@ hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
     -  GHC.IO.Exception
      #else
     -  System.IO.Error
-    -#endif
     +import System.IO.Error
+    -#endif
        ( IOErrorType (..),
          ioe_type,
        )
@@ -204,7 +204,7 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (28)
+partly-checked (29)
 ==========================================================================
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
@@ -233,6 +233,9 @@ intero-0.1.40/src/GhciInfo.hs
 
 microlens-0.5.0.0/src/Lens/Micro.hs
     128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+optics-0.4.2.1/tests/Optics/Tests/Utils.hs
+    2048 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 stm-2.5.3.1/Control/Monad/STM.hs
     72 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -292,7 +295,7 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (28)
+declined (25)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/Main.hs
@@ -322,12 +325,6 @@ hlint-3.10/data/HLint_TypeCheck.hs
 hlint-3.10/src/Config/Yaml.hs
     too many configurations to format
 
-idris-1.3.4/Setup.hs
-    too many configurations to format
-
-idris-1.3.4/src/Util/DynamicLinker.hs
-    idris-1.3.4/src/Util/DynamicLinker.hs:43:63: parse error on input `\', in the configuration taking #ifdef IDRIS_FFI, then #ifdef mingw32_HOST_OS, then #if defined(linux_HOST_OS) || defined(freebsd_HOST_OS) \, then #ifndef mingw32_HOST_OS, then #ifdef linux_HOST_OS
-
 intero-0.1.40/src/InteractiveUI.hs
     too many configurations to format
 
@@ -345,9 +342,6 @@ lens-5.3.6/tests/properties.hs
 
 microlens-0.5.0.0/src/Lens/Micro/Internal.hs
     too many configurations to format
-
-optics-0.4.2.1/tests/Optics/Tests/Utils.hs
-    optics-0.4.2.1/tests/Optics/Tests/Utils.hs:123:62: parse error on input `\', in the configuration taking #if __GLASGOW_HASKELL__ >= 802 && __GLASGOW_HASKELL__ <= 806, then #if __GLASGOW_HASKELL__ >= 806 && __GLASGOW_HASKELL__ <= 810, then #if __GLASGOW_HASKELL__ == 802, then #if __GLASGOW_HASKELL__ == 810, then #if __GLASGOW_HASKELL__ >= 806, then #if __GLASGOW_HASKELL__ <= 804, then #if __GLASGOW_HASKELL__ == 802 \, then #if __GLASGOW_HASKELL__ >= 900, then #if __GLASGOW_HASKELL__ >= 902 && __GLASGOW_HASKELL__ <= 904, then #if __GLASGOW_HASKELL__ >= 806 && __GLASGOW_HASKELL__ <= 810 \
 
 semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
     too many configurations to format

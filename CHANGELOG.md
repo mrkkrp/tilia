@@ -17,6 +17,9 @@
   globs, negation, and a `.tiliaignore` in any directory of the project.
   Leading whitespace and a leading `./` are no longer disregarded. [PR
   41](https://github.com/mrkkrp/tilia/pull/41).
+* Keep a conditional directive that goes on to the next line with a
+  backslash whole, rather than read the lines it goes on to as code. [PR
+  39](https://github.com/mrkkrp/tilia/pull/39).
 
 ## Tilia 0.0.2.0
 
