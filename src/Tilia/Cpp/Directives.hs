@@ -32,6 +32,8 @@ module Tilia.Cpp.Directives
     -- * The directives themselves
     Directive (..),
     readDirectives,
+    Nest (..),
+    nesting,
     scanDirectives,
     isDirective,
     GroupSpec (..),
