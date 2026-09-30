@@ -7,7 +7,7 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (DCppDirective), groupLayout)
+import Tilia.Doc.Internal (Doc (DCppDirective, DHoldBack), groupLayout)
 import Tilia.Span
 
 spec :: Spec
@@ -85,6 +85,9 @@ spec = do
     it "does not indent a line with nothing on it" $
       out (broken (indent (txt "a" <> hardBreak)))
         `shouldBe` "  a\n"
+    it "puts held-back text that spills onto lines of its own at the line's indentation" $
+      out (indent (txt "  a" <> DHoldBack "-- x" <> DHoldBack "-- y" <> hardBreak))
+        `shouldBe` "    a -- x\n  -- y\n"
 
   describe "margin notes" $ do
     it "go to the margin right above a directive" $

@@ -180,26 +180,27 @@ data Env = Env
     envLayout :: !Layout,
     -- | Columns per indentation step.
     envIndentStep :: !Int,
-    -- | Whether a line started now should start at the margin.
-    envCppMarginNote :: !Bool
+    -- | Whether what is written now is a note, which goes to the margin
+    -- right above a preprocessor directive.
+    envNote :: !Bool
   }
 
 -- | Output built so far.
 --
--- Lines are finished one at a time and never revisited, so the current line
--- is kept as a reversed list of fragments and completed lines as a reversed
--- list of lines.
+-- Lines are finished one at a time and never revisited while the document
+-- is walked. Whatever about a line depends on the lines around it is
+-- settled only once they are all there, in 'finish'.
 data Out = Out
   { -- | Completed lines, most recent first.
-    outLines :: [Text],
-    -- | Fragments of the line being built, most recent first.
+    outLines :: [Line],
+    -- | The line being built, but for its body, which is put together from
+    -- 'outCurrent' and 'outHeldBack' once it is finished.
+    outLine :: !Line,
+    -- | What has been written to the line being built after its
+    -- indentation, most recent first.
     outCurrent :: [Text],
     -- | Column the current line has reached.
     outColumn :: !Int,
-    -- | Whether anything has been written to the current line. Indentation
-    -- is emitted lazily, when the first fragment arrives, so that a line
-    -- with nothing on it stays genuinely empty.
-    outStarted :: !Bool,
     -- | Fragments held back until the line ends, in the order they were
     -- given. The first goes at the end of the line; any after it get lines
     -- of their own under it.
@@ -207,38 +208,77 @@ data Out = Out
     -- | Whether the line was closed by something that already knew it was
     -- ending it, so that a break arriving now would add an empty line
     -- rather than end anything.
-    outClosed :: !Bool,
-    -- | The indentation of the current line, if a 'DCppMarginNote' began it
-    -- and nothing else is on it.
-    outNoteIndent :: !(Maybe Int),
-    -- | The indentation of each of the lines just completed that could go
-    -- to column zero, most recent first.
-    outNoteRun :: ![Int]
+    outClosed :: !Bool
   }
+
+-- | A line, and what the engine knew about it as it wrote it.
+data Line = Line
+  { -- | The indentation it was started at.
+    lineIndent :: !Int,
+    -- | What it holds after its indentation.
+    lineBody :: !Text,
+    -- | Whether what it reproduces started it at the margin, whatever the
+    -- indentation, and so keeps it there.
+    linePinned :: !Bool,
+    -- | Whether a note is all it holds.
+    lineNote :: !Bool,
+    -- | Whether it continues the line before it, as a space asked for before
+    -- anything was on it says.
+    lineContinues :: !Bool,
+    -- | Its type if it is a preprocessor directive.
+    lineDirective :: !(Maybe CppDirectiveType)
+  }
+
+-- | The type of a preprocessor directive.
+data CppDirectiveType
+  = -- | It opens a conditional.
+    CppDirectiveOpens
+  | -- | It begins another alternative of the conditional it is in.
+    CppDirectiveContinues
+  | -- | It closes a conditional.
+    CppDirectiveCloses
+  | -- | It is not a conditional at all.
+    CppDirectiveOpaque
+
+-- | A line with nothing on it and nothing known about it.
+newLine :: Line
+newLine =
+  Line
+    { lineIndent = 0,
+      lineBody = "",
+      linePinned = False,
+      lineNote = False,
+      lineContinues = False,
+      lineDirective = Nothing
+    }
+
+-- | A line as it is printed.
+lineText :: Line -> Text
+lineText l
+  | T.null (lineBody l) = ""
+  | otherwise = T.replicate (lineIndent l) " " <> lineBody l
 
 emptyOut :: Out
 emptyOut =
   Out
     { outLines = [],
+      outLine = newLine,
       outCurrent = [],
       outColumn = 0,
-      outStarted = False,
       outHeldBack = [],
-      outClosed = False,
-      outNoteIndent = Nothing,
-      outNoteRun = []
+      outClosed = False
     }
 
 -- | Turn a document into text.
 render :: RenderOptions -> Doc -> Text
-render opts doc = finish (go env doc emptyOut)
+render opts doc = finish (roIndentStep opts) (go env doc emptyOut)
   where
     env =
       Env
         { envIndent = 0,
           envLayout = Broken,
           envIndentStep = roIndentStep opts,
-          envCppMarginNote = False
+          envNote = False
         }
 
 -- | Walk a document, accumulating output.
@@ -247,14 +287,7 @@ go env = \case
   DEmpty -> id
   DText t
     | T.null t -> id
-    | envCppMarginNote env -> \out ->
-        (putText (envIndent env) t out)
-          { outNoteIndent =
-              if outStarted out
-                then outNoteIndent out
-                else Just (envIndent env)
-          }
-    | otherwise -> putText (envIndent env) t . unnoted
+    | otherwise -> putText (envIndent env) t . noting (envNote env)
   DSpace -> putSpace
   DBreak -> case envLayout env of
     Flat -> putSpace
@@ -262,112 +295,64 @@ go env = \case
   DSoftBreak -> case envLayout env of
     Flat -> id
     Broken -> breakLine (envIndent env)
-  DHoldBack t -> putHeldBack (envIndent env) t . unnoted
+  DHoldBack t -> putHeldBack (envIndent env) t . noting False
   DCloseLine -> closeLine (envIndent env)
   DHardBreak -> breakLine (envIndent env)
-  DVerbatimBreak lineStart trailing -> \out ->
-    let out' = verbatimBreakLine lineStart trailing out
-     in if envCppMarginNote env
-          then out'{outNoteIndent = Just (if lineStart == AtMargin then 0 else envIndent env)}
-          else out'
+  DVerbatimBreak lineStart trailing -> verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
   DNest n d -> go env{envIndent = envIndent env + n * envIndentStep env} d
   DAlign d -> \out ->
     go env{envIndent = max (envIndent env) (outColumn out)} d out
   DCppMarginNote d -> \out ->
-    go env{envCppMarginNote = not (hasContent out)} d out
+    go env{envNote = not (hasContent out)} d out
   DGroup l d -> go env{envLayout = l} d
   DVariant flatD brokenD -> case envLayout env of
     Flat -> go env flatD
     Broken -> go env brokenD
   DLocated _ d -> go env d
   DFence _ d -> go env d
-  DCppChoice _ branches fallback -> \out ->
-    let alternative x = case spacedTextAt env x of
-          Just at | at <= continuing -> shifted (continuing - at) x
-          _ -> go env x
-        shifted k = go env{envIndent = envIndent env + k + envIndentStep env}
-        continuing
-          | hasContent out = indentationOf (T.concat (reverse (outCurrent out)))
-          | otherwise = maybe 0 indentationOf (listToMaybe (outLines out))
-        indentationOf = T.length . T.takeWhile (== ' ')
-     in ( foldr (flip (.)) id . concat $
-            [ [atMargin ("#" <> guard'), alternative taken]
-            | (guard', taken) <- branches
-            ]
-              <> [[atMargin "#else", alternative fallback] | not (printsNothing fallback)]
-              <> [[atMargin "#endif"]]
-        )
-          out
-  DCppDirective _ t -> atMargin ("#" <> t)
+  DCppChoice _ branches fallback ->
+    foldr (flip (.)) id . concat $
+      [ [directive type' ("#" <> guard'), go env taken]
+      | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
+      ]
+        <> [[directive CppDirectiveContinues "#else", go env fallback] | not (printsNothing fallback)]
+        <> [[directive CppDirectiveCloses "#endif"]]
+  DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
 
--- | Where a document that begins with a space puts its first text on a
--- line of its own, or 'Nothing' if it begins otherwise.
-spacedTextAt :: Env -> Doc -> Maybe Int
-spacedTextAt env0 = either (const Nothing) id . walk env0 False
+-- | Record whether the line holds nothing but a note, given whether what is
+-- about to be written to it is one.
+noting :: Bool -> Out -> Out
+noting note out
+  | note' == lineNote l = out
+  | otherwise = out{outLine = l{lineNote = note'}}
   where
-    -- 'Left' while nothing but spaces has been printed, saying whether a
-    -- space has; 'Right' with the answer once text or a break has.
-    walk env spaced = \case
-      DEmpty -> Left spaced
-      DText t
-        | T.null t -> Left spaced
-        | otherwise -> text env spaced
-      DHoldBack _ -> text env spaced
-      DSpace -> Left True
-      DBreak -> case envLayout env of
-        Flat -> Left True
-        Broken -> Right Nothing
-      DSoftBreak -> case envLayout env of
-        Flat -> Left spaced
-        Broken -> Right Nothing
-      DCat a b -> either (\spaced' -> walk env spaced' b) Right (walk env spaced a)
-      DNest n d -> walk env{envIndent = envIndent env + n * envIndentStep env} spaced d
-      DAlign d -> walk env spaced d
-      DCppMarginNote d -> walk env spaced d
-      DGroup l d -> walk env{envLayout = l} spaced d
-      DVariant flatD brokenD -> case envLayout env of
-        Flat -> walk env spaced flatD
-        Broken -> walk env spaced brokenD
-      DLocated _ d -> walk env spaced d
-      DFence _ d -> walk env spaced d
-      _ -> Right Nothing
-    text env spaced = Right (if spaced then Just (envIndent env) else Nothing)
+    l = outLine out
+    note' = note && (not (started out) || lineNote l)
 
--- | Put a line of text at the margin, on a line of its own, with the notes
--- right above it.
-atMargin :: Text -> Out -> Out
-atMargin t = closeLine 0 . putText 0 t . notesToMargin . closeLine 0
-
--- | Move the lines of notes just completed to column zero.
-notesToMargin :: Out -> Out
-notesToMargin out =
-  out
-    { outLines = zipWith T.drop (outNoteRun out) noted <> rest,
-      outNoteRun = []
-    }
+-- | Put a directive at the margin, on a line of its own.
+directive :: CppDirectiveType -> Text -> Out -> Out
+directive type' t =
+  closeLine 0 . typed . putText 0 t . closeLine 0
   where
-    (noted, rest) = splitAt (length (outNoteRun out)) (outLines out)
+    typed out =
+      out{outLine = (outLine out){lineNote = False, lineDirective = Just type'}}
 
--- | Say that something other than a note is on the current line.
-unnoted :: Out -> Out
-unnoted out = out{outNoteIndent = Nothing}
-
--- | Append a fragment, emitting the line's indentation first if this is the
+-- | Append a fragment, starting the line at the indentation if this is the
 -- first thing on it.
 putText :: Int -> Text -> Out -> Out
 putText indent t out0
   | T.null t = out0
-  | outStarted out =
+  | started out =
       out
         { outCurrent = t : outCurrent out,
           outColumn = outColumn out + T.length t
         }
   | otherwise =
       out
-        { outCurrent = [t, T.replicate indent " "],
+        { outCurrent = [t],
           outColumn = indent + T.length t,
-          outStarted = True
+          outLine = (outLine out){lineIndent = indent}
         }
   where
     out = out0{outClosed = False}
@@ -375,14 +360,17 @@ putText indent t out0
 -- | Hold a fragment back until the line ends.
 putHeldBack :: Int -> Text -> Out -> Out
 putHeldBack indent t out
-  | outStarted out || not (null (outHeldBack out)) =
+  | started out || not (null (outHeldBack out)) =
       out{outHeldBack = outHeldBack out <> [t], outClosed = False}
   | otherwise = closeLine indent (putText indent t out)
 
 -- | Append a space, unless the line has not started or already ends in one.
 putSpace :: Out -> Out
 putSpace out
-  | not (outStarted out) = out
+  | not (started out) =
+      if lineContinues (outLine out)
+        then out
+        else out{outLine = (outLine out){lineContinues = True}}
   | endsWithSpace out = out
   | otherwise =
       out
@@ -403,13 +391,10 @@ breakLine ::
   Out ->
   Out
 breakLine indent out
-  | outClosed out = out{outClosed = False}
-  | atStart out = out
-  | not (hasContent out), repeatsBlank out || opensABlock indent out = cleared out
-  | otherwise = cleared (completing TrimWhitespace indent out)
-  where
-    cleared o =
-      o{outCurrent = [], outColumn = 0, outStarted = False, outHeldBack = []}
+  | outClosed out = discontinued out{outClosed = False}
+  | atStart out = discontinued out
+  | not (hasContent out), repeatsBlank out || opensABlock indent out = fresh out
+  | otherwise = completing TrimWhitespace indent out
 
 -- | Close the current line, if there is anything on it.
 --
@@ -424,28 +409,26 @@ closeLine ::
   Out
 closeLine indent out
   | hasContent out = (breakLine indent out){outClosed = True}
+  | otherwise = discontinued out
+
+-- | Say that the current line does not continue the line before it.
+discontinued :: Out -> Out
+discontinued out
+  | lineContinues (outLine out) = out{outLine = (outLine out){lineContinues = False}}
   | otherwise = out
 
--- | Every line the break that has just happened produces.
-overflow ::
-  -- | What to do with whitespace the lines end in.
-  TrailingWhitespace ->
-  -- | Where the line after these would begin, used only if there is no line
-  -- to take the indentation from.
-  Int ->
-  Out ->
-  [Text]
-overflow trailing indent out = reverse (finished : fmap below spilled)
-  where
-    finished = currentLine trailing out
-    spilled = drop 1 (outHeldBack out)
-    below t = T.replicate column " " <> adjustTrailingWhitespace trailing t
-    column
-      | T.null finished = indent
-      | otherwise = T.length (T.takeWhile (== ' ') finished)
+-- | Begin a new line, leaving the one being built unfinished.
+fresh :: Out -> Out
+fresh out =
+  out
+    { outLine = newLine,
+      outCurrent = [],
+      outColumn = 0,
+      outHeldBack = []
+    }
 
--- | Move the current line, with the held-back fragments that spill under
--- it, to the completed lines, extending or ending the run of note lines.
+-- | Finish the current line, with the held-back fragments that spill under
+-- it, and begin a new one.
 completing ::
   -- | What to do with whitespace the lines end in.
   TrailingWhitespace ->
@@ -455,49 +438,56 @@ completing ::
   Out ->
   Out
 completing trailing indent out =
-  out
-    { outLines = produced <> outLines out,
-      outNoteIndent = Nothing,
-      outNoteRun = case (produced, outNoteIndent out) of
-        ([_], Just k) -> k : outNoteRun out
-        _ -> []
-    }
+  fresh out{outLines = reverse (finished : fmap below spilled) <> outLines out}
   where
-    produced = overflow trailing indent out
+    finished = (outLine out){lineBody = currentLine trailing out}
+    spilled = drop 1 (outHeldBack out)
+    below t = newLine{lineIndent = column, lineBody = adjustTrailingWhitespace trailing t}
+    column
+      | T.null (lineBody finished) = indent
+      | otherwise = lineIndent finished
 
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool
 opensABlock indent out = case outLines out of
-  (l : _) -> T.length l <= indent
+  (l : _) -> T.length (lineText l) <= indent
   [] -> False
 
 -- | Finish the current line between two lines of reproduced text.
-verbatimBreakLine :: LineStart -> TrailingWhitespace -> Out -> Out
-verbatimBreakLine lineStart trailing out =
+verbatimBreakLine ::
+  -- | Whether the next line is part of a note.
+  Bool ->
+  LineStart ->
+  TrailingWhitespace ->
+  Out ->
+  Out
+verbatimBreakLine note lineStart trailing out =
   (completing trailing 0 out)
-    { outCurrent = [],
-      outColumn = 0,
-      outStarted = lineStart == AtMargin,
-      outHeldBack = [],
+    { outLine = newLine{linePinned = lineStart == AtMargin, lineNote = note},
       outClosed = False
     }
 
 -- | Would this empty line be a second one in a row?
 repeatsBlank :: Out -> Bool
 repeatsBlank out = case outLines out of
-  ("" : _) -> True
+  (l : _) -> T.null (lineBody l)
   _ -> False
 
 -- | Is the output still empty?
 atStart :: Out -> Bool
 atStart out = null (outLines out) && not (hasContent out)
 
+-- | Has the current line begun, with something written to it or with what
+-- it reproduces starting it at the margin?
+started :: Out -> Bool
+started out = not (null (outCurrent out)) || linePinned (outLine out)
+
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool
-hasContent out = outStarted out || not (null (outHeldBack out))
+hasContent out = started out || not (null (outHeldBack out))
 
--- | The current line: what was written to it, then whatever was held back
--- for its end, with one space between them.
+-- | What the current line holds: what was written to it, then whatever was
+-- held back for its end, with one space between them.
 currentLine :: TrailingWhitespace -> Out -> Text
 currentLine trailingWhitespace out
   | T.null written = heldBack
@@ -522,8 +512,57 @@ adjustTrailingWhitespace = \case
 
 -- | Assemble the final text: one trailing newline, no blank lines at the
 -- end, no trailing whitespace anywhere.
-finish :: Out -> Text
-finish out =
-  case dropWhile T.null (outLines (breakLine 0 out)) of
+finish ::
+  -- | Columns per indentation step.
+  Int ->
+  Out ->
+  Text
+finish step out =
+  case dropWhile (T.null . lineBody) (outLines (breakLine 0 out)) of
     [] -> ""
-    ls -> T.unlines (reverse ls)
+    ls -> T.unlines (lineText <$> notesToMargin (continued step (reverse ls)))
+
+-- | Indent each alternative of a conditional that continues the line before
+-- the conditional further than that line.
+continued ::
+  -- | Columns per indentation step.
+  Int ->
+  [Line] ->
+  [Line]
+continued step = walk [] 0 False
+  where
+    walk frames previous pending = \case
+      [] -> []
+      l : ls -> case lineDirective l of
+        Just CppDirectiveOpens -> l : walk ((previous, 0) : frames) 0 True ls
+        Just CppDirectiveContinues -> l : walk (restarted frames) 0 True ls
+        Just CppDirectiveCloses -> l : walk (drop 1 frames) 0 False ls
+        Just CppDirectiveOpaque -> l : walk frames 0 False ls
+        Nothing ->
+          let frames' = if pending then settled frames l else frames
+              l' = moved (sum (fmap snd frames')) l
+           in l' : walk frames' (lineIndent l') False ls
+    restarted = \case
+      (before, _) : rest -> (before, 0) : rest
+      [] -> []
+    settled frames l = case frames of
+      (before, _) : rest
+        | lineContinues l,
+          not (linePinned l),
+          at <= before ->
+            (before, before - at + step) : rest
+        where
+          at = lineIndent l + sum (fmap snd rest)
+      _ -> frames
+    moved n l
+      | n == 0 || linePinned l || T.null (lineBody l) = l
+      | otherwise = l{lineIndent = lineIndent l + n}
+
+-- | Move every note right above a directive to the margin.
+notesToMargin :: [Line] -> [Line]
+notesToMargin = fst . foldr place ([], False)
+  where
+    place l (ls, above)
+      | Just _ <- lineDirective l = (l : ls, True)
+      | above, lineNote l = (l{lineIndent = 0} : ls, True)
+      | otherwise = (l : ls, False)
