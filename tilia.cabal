@@ -59,6 +59,9 @@ library
     Tilia.Fixity.Debug
     Tilia.Fixity.HiFile
     Tilia.Fixity.Interface
+    Tilia.Fixity.KnownKeys.Ghc910
+    Tilia.Fixity.KnownKeys.Ghc912
+    Tilia.Fixity.KnownKeys.Ghc914
     Tilia.Fixity.PackageDb
     Tilia.Fixity.Plan
     Tilia.Format

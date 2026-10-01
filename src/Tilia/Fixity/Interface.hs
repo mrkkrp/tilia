@@ -16,7 +16,7 @@ import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -65,7 +65,7 @@ fromHiFile :: Text -> HiFile -> Either Text Interface
 fromHiFile modName HiFile{..}
   | hiModule /= modName = Left ("the interface of " <> hiModule)
   | otherwise = do
-      exports <- traverse resolved hiExports
+      exports <- concat <$> traverse resolved hiExports
       pure
         Interface
           { interfaceDeclares =
@@ -73,7 +73,7 @@ fromHiFile modName HiFile{..}
             interfaceReexports =
               [ (m, op)
               | names <- exports,
-                (m, _, op) <- names,
+                (Just m, _, op) <- names,
                 m /= hiModule
               ],
             interfaceChildren =
@@ -89,10 +89,15 @@ fromHiFile modName HiFile{..}
           }
   where
     resolved = \case
-      Avail n -> pure <$> known n
-      AvailTC p ns -> (:) <$> known p <*> traverse known ns
+      Avail n -> maybe [] (pure . pure) <$> known n
+      AvailTC p ns -> do
+        parent <- known p
+        kids <- catMaybes <$> traverse known ns
+        pure (maybe (fmap pure kids) (\named -> [named : kids]) parent)
     known = \case
-      HiName m namespace op -> Right (m, namespace, op)
+      HiName m namespace op -> Right (Just (Just m, namespace, op))
+      BuiltInSyntax namespace op -> Right (Just (Nothing, namespace, op))
+      Unneeded -> Right Nothing
       KnownKey _ -> Left "a name only GHC can resolve"
 
 -- | Read what @ghc --show-iface@ printed, if it is this module's interface.

@@ -16,11 +16,17 @@ import Data.Bits (shiftL, testBit, (.&.), (.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
+import Data.Char (ord)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word (Word32, Word8)
 import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..), OpName (..))
+import Tilia.Fixity.KnownKeys.Ghc910 qualified as Ghc910
+import Tilia.Fixity.KnownKeys.Ghc912 qualified as Ghc912
+import Tilia.Fixity.KnownKeys.Ghc914 qualified as Ghc914
 
 -- | What an interface file says about the operators its module offers.
 data HiFile = HiFile
@@ -37,6 +43,11 @@ data HiFile = HiFile
 data HiName
   = -- | A name with the module that defines it and its namespace.
     HiName Text Namespace OpName
+  | -- | Built-in syntax, such as @:@, which GHC writes without the module
+    -- that defines it.
+    BuiltInSyntax Namespace OpName
+  | -- | A name GHC writes as a key that no fixity depends on.
+    Unneeded
   | -- | A name GHC knows by its unique alone, which only GHC can resolve.
     KnownKey Word32
   deriving (Eq, Show)
@@ -61,7 +72,10 @@ data Series = Series910 | Series912 | Series914
 -- | The strings and names a file refers to by index.
 data Tables = Tables
   { tablesStrings :: Array Int ByteString,
-    tablesNames :: Array Int (Int, Namespace, Int)
+    tablesNames :: Array Int (Int, Namespace, Int),
+    -- | The names the series writes as keys that fixities depend on, if
+    -- there is a table of them for the series.
+    tablesKeyed :: Maybe (Map Word32 HiName)
   }
 
 -- | An interface file, from its header as far as its fixities.
@@ -83,7 +97,7 @@ hiFile = do
   unless' (series == Series910) (() <$ pointer series)
   strings <- lookingAt stringsAt dictionary
   names <- lookingAt namesAt symbolTable
-  let tables = Tables strings names
+  let tables = Tables strings names (keyedNames series)
   payload series tables
 
 -- | What follows the tables, as far as the fixities.
@@ -208,8 +222,24 @@ name tables = do
             <*> pure namespace
             <*> (OpName <$> fastString (tablesStrings tables) occ)
       | otherwise -> failure "name index out of range"
-    0x80000000 -> pure (KnownKey w)
+    0x80000000 -> pure (maybe (KnownKey w) (Map.findWithDefault Unneeded w) (tablesKeyed tables))
     _ -> failure "unknown name tag"
+
+-- | The names a series writes as keys that fixities depend on, where there
+-- is a table of them for the series.
+keyedNames :: Series -> Maybe (Map Word32 HiName)
+keyedNames = \case
+  Series910 -> Just (keyed Ghc910.knownKeys)
+  Series912 -> Just (keyed Ghc912.knownKeys)
+  Series914 -> Just (keyed Ghc914.knownKeys)
+  where
+    keyed entries =
+      Map.fromList
+        [ ( 0x80000000 .|. (fromIntegral (ord tag) `shiftL` 22) .|. fromIntegral index,
+            maybe (BuiltInSyntax namespace) (`HiName` namespace) printedWith (OpName n)
+          )
+        | (tag, index, namespace, printedWith, n) <- entries
+        ]
 
 -- | One entry of an export list.
 export :: Tables -> Get HiExport
