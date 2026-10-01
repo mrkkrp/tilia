@@ -6,6 +6,7 @@
 module Tilia.Fixity.CacheSpec (spec) where
 
 import Data.Choice (pattern Do, pattern Don't)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import System.Directory (getModificationTime, listDirectory, setModificationTime)
@@ -197,11 +198,90 @@ spec = do
         storeChildren cache "one-1.0" "M" (Map.singleton (OpName "T") (Set.singleton (OpName ":|")))
         cachedChildren cache "two-1.0" "M" `shouldReturn` Nothing
 
+    describe "what the project's own modules say" $ do
+      it "round-trips every kind of thing a summary holds" $ \cache -> do
+        let summaries = Just (crowded :| [bare, unlisted])
+        storeSummaries cache "m" "stamp" summaries
+        cachedSummaries cache "m" "stamp" `shouldReturn` Just summaries
+
+      it "remembers a module none of whose configurations parsed" $ \cache -> do
+        storeSummaries cache "m" "stamp" Nothing
+        cachedSummaries cache "m" "stamp" `shouldReturn` Just Nothing
+
+      it "gives back nothing for what it was not read from" $ \cache -> do
+        storeSummaries cache "m" "before" (Just (crowded :| []))
+        cachedSummaries cache "m" "after" `shouldReturn` Nothing
+
+      it "keeps only what the latest text of a module said" $ \cache -> do
+        storeSummaries cache "m" "before" (Just (crowded :| []))
+        storeSummaries cache "m" "after" (Just (bare :| []))
+        cachedSummaries cache "m" "before" `shouldReturn` Nothing
+        cachedSummaries cache "m" "after" `shouldReturn` Just (Just (bare :| []))
+
+      it "keeps modules apart" $ \cache -> do
+        storeSummaries cache "m" "stamp" (Just (crowded :| []))
+        cachedSummaries cache "n" "stamp" `shouldReturn` Nothing
+
     describe "module names with dots" $
       it "files a deeply qualified module without confusion" $ \cache -> do
         storeFixities cache "thing-1.0" "A.B.C.D" (Declares (Map.fromList [((InTerms, OpName "%"), Fixity NoAssoc 5)]))
         cachedFixities cache "thing-1.0" "A.B.C.D"
           `shouldReturn` Just (Declares (Map.fromList [((InTerms, OpName "%"), Fixity NoAssoc 5)]))
+
+-- | A summary with something of every kind in it.
+crowded :: ModuleSummary
+crowded =
+  ModuleSummary
+    { summaryName = Just "M.N",
+      summaryExports =
+        Just
+          [ ExportName Nothing (OpName "<+>"),
+            ExportName (Just "Q") (OpName "<->"),
+            ExportAll Nothing (OpName "T"),
+            ExportAll (Just "Q") (OpName "U"),
+            ExportModule "Data.List"
+          ],
+      summaryImports =
+        [ Import "Prelude" False "Prelude" Nothing,
+          Import "Data.List" True "Q" Nothing,
+          Import
+            "Data.Map"
+            False
+            "Data.Map"
+            ( Just
+                ( False,
+                  [ ImportedName (OpName "!"),
+                    ImportedAll (OpName "Map"),
+                    ImportedSome (OpName "NonEmpty") [OpName ":|", OpName "toList"]
+                  ]
+                )
+            ),
+          Import "Data.Set" False "S" (Just (True, [ImportedName (OpName "\\\\")])),
+          Import "Data.Void" False "Data.Void" (Just (False, []))
+        ],
+      summaryFixities =
+        Map.fromList
+          [ ((InTerms, OpName "<+>"), Fixity LeftAssoc 6),
+            ((InTypes, OpName ":|:"), Fixity RightAssoc 5),
+            ((InTerms, OpName "div"), Fixity NoAssoc 7)
+          ],
+      summaryNames = Set.fromList [OpName "<+>", OpName "T", OpName ":|:"],
+      summaryDeclaredChildren =
+        Map.fromList
+          [ (OpName "T", Set.fromList [OpName "A", OpName ":|:"]),
+            (OpName "Empty", Set.empty)
+          ],
+      summaryChildren = Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
+    }
+
+-- | A summary with nothing in it, not even a name.
+bare :: ModuleSummary
+bare = ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty
+
+-- | One whose export list lists nothing, which is not the same as having
+-- no export list.
+unlisted :: ModuleSummary
+unlisted = bare{summaryName = Just "M", summaryExports = Just []}
 
 -- | What the compiler can see, and what it takes to stop believing it.
 --

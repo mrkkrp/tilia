@@ -69,6 +69,7 @@ spec = do
   hscModules
   generatedModuleSpec
   askedAtOnce
+  readBefore
   gitDependencies
   repositories
   packageCache
@@ -713,7 +714,7 @@ withFakeCheckout clones act =
     createDirectoryIfMissing True (takeDirectory (planPathFor dir))
     T.writeFile (planPathFor dir) fromAGitRepository
     traverse_ (unpack dir) clones
-    act dir
+    withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act dir)
   where
     unpack dir (named, version) = do
       let at = dir </> "dist-newstyle" </> "src" </> named
@@ -802,6 +803,33 @@ askedAtOnce = describe "modules asked about from several threads at once" $
             forM_ (zip [0 ..] found) $ \(i, fixities) ->
               (Map.lookup (InTerms, ringOperator i) =<< fixities)
                 `shouldBe` Just (Fixity RightAssoc (i `mod` 10))
+
+-- | A module of the project's own, which an earlier run has read.
+readBefore :: Spec
+readBefore = describe "a module of the project's own, read by an earlier run" $ do
+  it "is answered for as before while its text stays the same" $
+    withFakePlan [("src/Ops.hs", declaring "infixl 6")] $ \plan -> do
+      _ <- newResolver plan >>= (`askFixities` "Ops")
+      newResolver plan
+        >>= (`askFixities` "Ops")
+        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6)))
+
+  it "is read again once its text has changed" $
+    withFakePlan [("src/Ops.hs", declaring "infixl 6")] $ \plan -> do
+      _ <- newResolver plan >>= (`askFixities` "Ops")
+      traverse_ (\dir -> T.writeFile (dir </> "src" </> "Ops.hs") (declaring "infixr 2")) (localDirsOf plan)
+      newResolver plan
+        >>= (`askFixities` "Ops")
+        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 2)))
+  where
+    declaring fixity =
+      T.unlines
+        [ "module Ops ((<+>)) where",
+          fixity <> " <+>",
+          "(<+>) :: Int -> Int -> Int",
+          "a <+> b = a + b"
+        ]
+    localDirsOf plan = [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
 
 -- | How many modules the ring has.
 ringSize :: Int
@@ -1619,7 +1647,7 @@ withFakePlan sources act =
         <> "\"}}]}"
     readBuildPlan (dir </> "plan.json") >>= \case
       Left why -> error (T.unpack why)
-      Right plan -> act plan
+      Right plan -> withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act plan)
   where
     haskellIn = filter (isModule . fst)
     isModule path = any (`Data.List.isSuffixOf` path) [".hs", ".hsc"]

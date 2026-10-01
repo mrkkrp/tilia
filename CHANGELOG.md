@@ -32,6 +32,10 @@
 * Walk a module's syntax tree once rather than five times, which makes
   formatting about 10% faster. [PR
   47](https://github.com/mrkkrp/tilia/pull/47).
+* Parse each module that operators are looked up in once a run, read each
+  source tarball once a run, and cache module summaries for local modules
+  between runs. A run is a fifth to a quarter faster. [PR
+  48](https://github.com/mrkkrp/tilia/pull/48).
 
 ## Tilia 0.0.2.0
 

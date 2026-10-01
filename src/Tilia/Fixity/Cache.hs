@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -16,6 +17,8 @@ module Tilia.Fixity.Cache
     storeExportNames,
     cachedChildren,
     storeChildren,
+    cachedSummaries,
+    storeSummaries,
     cachedInstalled,
     storeInstalled,
     cachedFutileSolve,
@@ -27,7 +30,9 @@ where
 
 import Control.Monad (join)
 import Data.Choice (Choice, isFalse)
-import Data.Foldable (traverse_)
+import Data.Foldable (toList, traverse_)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
@@ -223,6 +228,152 @@ storeChildren cache package modName children =
   where
     entry (OpName parent, kids) =
       T.intercalate "\t" (parent : [kid | OpName kid <- Set.toAscList kids])
+
+-- | What each configuration of one of the project's own modules says, if it
+-- was last read from what the stamp stands for.
+cachedSummaries ::
+  -- | Where to look.
+  Cache ->
+  -- | Which module, by a name for its file.
+  Text ->
+  -- | What it was read from: its text and the settings it was read with.
+  Text ->
+  -- | What it said, or 'Nothing' if nothing is remembered for that stamp.
+  IO (Maybe (Maybe (NonEmpty ModuleSummary)))
+cachedSummaries cache key stamp =
+  fmap join . readIfPresent (at cache ["summaries", key]) $ \contents ->
+    case T.lines contents of
+      (header : rest) | header == readFrom stamp -> parseSummaries rest
+      _ -> Nothing
+
+-- | Remember what each configuration of one of the project's own modules
+-- says, in place of what an earlier text of it said.
+storeSummaries ::
+  -- | Where to write.
+  Cache ->
+  -- | Which module, as 'cachedSummaries' takes it.
+  Text ->
+  -- | What it was read from, as 'cachedSummaries' takes it.
+  Text ->
+  -- | What it said, or 'Nothing' where none of its configurations parses.
+  Maybe (NonEmpty ModuleSummary) ->
+  IO ()
+storeSummaries cache key stamp summaries =
+  writeAtomically (at cache ["summaries", key]) . T.unlines $
+    readFrom stamp : renderSummaries summaries
+
+-- | The first line of a remembered summary: what it was read from, and the
+-- versions of Tilia and of the parser that read it.
+readFrom :: Text -> Text
+readFrom stamp =
+  T.intercalate "\t" ["for", stamp, VERSION_tilia, VERSION_ghc_lib_parser]
+
+-- | Render what a module's configurations say, a line for each thing.
+renderSummaries :: Maybe (NonEmpty ModuleSummary) -> [Text]
+renderSummaries = \case
+  Nothing -> ["unparsed"]
+  Just summaries -> concatMap (("configuration" :) . renderSummary) (toList summaries)
+  where
+    renderSummary s =
+      ["name\t" <> name | Just name <- [summaryName s]]
+        <> maybe [] (\items -> "exports" : fmap renderExport items) (summaryExports s)
+        <> concatMap renderImport (summaryImports s)
+        <> fmap (("fixity\t" <>) . renderFixity) (Map.toList (summaryFixities s))
+        <> ["defines\t" <> op | OpName op <- Set.toAscList (summaryNames s)]
+        <> fmap (carried "declares") (Map.toList (summaryDeclaredChildren s))
+        <> fmap (carried "offers") (Map.toList (summaryChildren s))
+    carried field (OpName parent, kids) =
+      T.intercalate "\t" (field : parent : [kid | OpName kid <- Set.toAscList kids])
+    renderExport = \case
+      ExportName qualifier (OpName op) ->
+        T.intercalate "\t" ["export", "name", fromMaybe "" qualifier, op]
+      ExportAll qualifier (OpName op) ->
+        T.intercalate "\t" ["export", "all", fromMaybe "" qualifier, op]
+      ExportModule m -> "export\tmodule\t" <> m
+    renderImport i =
+      T.intercalate
+        "\t"
+        ["import", importModule i, if importQualified i then "qualified" else "open", importAlias i]
+        : case importNames i of
+          Nothing -> []
+          Just (hiding, items) ->
+            (if hiding then "list\thiding" else "list\tonly") : fmap renderItem items
+    renderItem = \case
+      ImportedName (OpName op) -> "item\tname\t" <> op
+      ImportedAll (OpName op) -> "item\tall\t" <> op
+      ImportedSome (OpName op) kids ->
+        T.intercalate "\t" ("item" : "some" : op : [kid | OpName kid <- kids])
+
+-- | Parse what 'renderSummaries' rendered.
+parseSummaries :: [Text] -> Maybe (Maybe (NonEmpty ModuleSummary))
+parseSummaries = \case
+  ["unparsed"] -> Just Nothing
+  ls -> Just <$> (NE.nonEmpty =<< traverse parseSummary =<< configurations ls)
+  where
+    configurations = \case
+      [] -> Just []
+      "configuration" : rest ->
+        let (these, more) = break (== "configuration") rest
+         in (these :) <$> configurations more
+      _ -> Nothing
+    parseSummary = go empty . fmap (T.splitOn "\t")
+      where
+        empty = ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty
+    go s = \case
+      [] ->
+        Just
+          s
+            { summaryExports = reverse <$> summaryExports s,
+              summaryImports = reverse (summaryImports s)
+            }
+      ["name", name] : rest -> go s{summaryName = Just name} rest
+      ["exports"] : rest -> go s{summaryExports = Just []} rest
+      ("export" : fields) : rest -> do
+        item <- exportItem fields
+        items <- summaryExports s
+        go s{summaryExports = Just (item : items)} rest
+      ["import", m, how, alias] : rest -> do
+        qualified <- case how of
+          "qualified" -> Just True
+          "open" -> Just False
+          _ -> Nothing
+        let (listed, rest') = span isListed rest
+        list <- importList listed
+        go s{summaryImports = Import m qualified alias list : summaryImports s} rest'
+      ("fixity" : fields) : rest -> do
+        (key, fixity) <- parseFixity (T.intercalate "\t" fields)
+        go s{summaryFixities = Map.insert key fixity (summaryFixities s)} rest
+      ["defines", op] : rest -> go s{summaryNames = Set.insert (OpName op) (summaryNames s)} rest
+      ("declares" : parent : kids) : rest ->
+        go s{summaryDeclaredChildren = Map.insert (OpName parent) (names kids) (summaryDeclaredChildren s)} rest
+      ("offers" : parent : kids) : rest ->
+        go s{summaryChildren = Map.insert (OpName parent) (names kids) (summaryChildren s)} rest
+      _ -> Nothing
+    names = Set.fromList . fmap OpName
+    qualifier q = if T.null q then Nothing else Just q
+    exportItem = \case
+      ["name", q, op] -> Just (ExportName (qualifier q) (OpName op))
+      ["all", q, op] -> Just (ExportAll (qualifier q) (OpName op))
+      ["module", m] -> Just (ExportModule m)
+      _ -> Nothing
+    isListed = \case
+      "list" : _ -> True
+      "item" : _ -> True
+      _ -> False
+    importList = \case
+      [] -> Just Nothing
+      ["list", way] : items -> do
+        hiding <- case way of
+          "hiding" -> Just True
+          "only" -> Just False
+          _ -> Nothing
+        Just . (,) hiding <$> traverse importItem items
+      _ -> Nothing
+    importItem = \case
+      ["item", "name", op] -> Just (ImportedName (OpName op))
+      ["item", "all", op] -> Just (ImportedAll (OpName op))
+      "item" : "some" : op : kids -> Just (ImportedSome (OpName op) (fmap OpName kids))
+      _ -> Nothing
 
 -- | What packages the compiler could see when last asked, if it can still
 -- see it.
