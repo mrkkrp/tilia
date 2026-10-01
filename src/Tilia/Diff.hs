@@ -166,7 +166,7 @@ tag xs ys = go 1 1 (editScript xs ys)
 -- found by searching from both ends at once, and either side of it is
 -- solved the same way.
 editScript :: [Text] -> [Text] -> [Mark]
-editScript xs ys = go 0 n 0 m []
+editScript xs ys = removalsFirst (go 0 n 0 m [])
   where
     n = length xs
     m = length ys
@@ -187,6 +187,15 @@ editScript xs ys = go 0 n 0 m []
         (x, y) /= (aHi, bHi) =
           go aLo x bLo y (go x aHi y bHi rest)
       | otherwise = replicate (aHi - aLo) Removed <> replicate (bHi - bLo) Added <> rest
+
+-- | Put the removals of every run of changes before its additions.
+removalsFirst :: [Mark] -> [Mark]
+removalsFirst = \case
+  [] -> []
+  Context : rest -> Context : removalsFirst rest
+  marks ->
+    let (changes, rest) = break (== Context) marks
+     in filter (== Removed) changes <> filter (== Added) changes <> removalsFirst rest
 
 -- | Both sequences of lines as numbers, equal where the lines are.
 interned :: [Text] -> [Text] -> (UArray Int Int, UArray Int Int)
