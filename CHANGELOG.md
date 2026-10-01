@@ -47,6 +47,10 @@
 * When declining a file over an operator its imports bring in with
   different fixities, name each fixity and the imports that bring it. [PR
   52](https://github.com/mrkkrp/tilia/pull/52).
+* Take hidden items into account in whole-module re-exports. Before this
+  change, an operator the import hides could be taken for one the module
+  reexports, which declined files as ambiguous and could give an operator
+  the wrong fixity. [PR 52](https://github.com/mrkkrp/tilia/pull/52).
 
 ## Tilia 0.0.2.0
 

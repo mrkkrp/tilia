@@ -378,6 +378,42 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M (Doc (..)) where\nimport Text.PrettyPrint hiding (Doc (..))\nimport Control.Arrow\n"
       `shouldReturn` Nothing
 
+  it "comes from a module handed on whole" $
+    chased "module M (module Text.PrettyPrint) where\nimport Text.PrettyPrint\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "does not come from a module handed on whole by an import that hides it" $
+    chased "module M (module Text.PrettyPrint) where\nimport Text.PrettyPrint hiding ((<+>))\n"
+      `shouldReturn` Nothing
+
+  it "does not come from a module handed on whole by an import that never names it" $
+    chased "module M (module Text.PrettyPrint) where\nimport Text.PrettyPrint (Doc)\n"
+      `shouldReturn` Nothing
+
+  it "does not come from a module handed on whole by an import that hides a type carrying it" $
+    chased "module M (module Text.PrettyPrint) where\nimport Text.PrettyPrint hiding (Doc (..))\n"
+      `shouldReturn` Nothing
+
+  it "does not come from a module handed on whole that is imported qualified" $
+    chased "module M (module P) where\nimport qualified Text.PrettyPrint as P\n"
+      `shouldReturn` Nothing
+
+  it "comes from the import under the name handed on that brings it in" $
+    chased "module M (module X) where\nimport Text.PrettyPrint as X hiding ((<+>))\nimport Control.Arrow as X\n"
+      `shouldReturn` Just (Fixity RightAssoc 5)
+
+  it "is not taken from a module handed on whole that hides it, further along"
+    $ withFakeProject
+      [ ("src/Persist.hs", "module Persist ((||.)) where\ninfixl 3 ||.\n(||.) :: Bool -> Bool -> Bool\na ||. b = a || b\n"),
+        ("src/Facade.hs", "module Facade (module Persist) where\nimport Persist hiding ((||.))\n"),
+        ("src/Internal.hs", "module Internal ((||.)) where\ninfixr 2 ||.\n(||.) :: Bool -> Bool -> Bool\na ||. b = a || b\n"),
+        ("src/Top.hs", "module Top ((||.), module Facade) where\nimport Facade\nimport Internal\n")
+      ]
+    $ \rs -> do
+      let orOf m = (Map.lookup (InTerms, OpName "||.") =<<) <$> askFixities rs m
+      orOf "Facade" `shouldReturn` Nothing
+      orOf "Top" `shouldReturn` Just (Fixity RightAssoc 2)
+
 -- | What a module written for @hsc2hs@ amounts to, by either route to one.
 --
 -- Both fixtures below are what @hsc2hs@ takes and no compiler does, and
@@ -889,7 +925,7 @@ signals =
 chased :: Text -> IO (Maybe Fixity)
 chased source = do
   answer <-
-    withReexports reach carries Set.empty "M" (summarize (Is #implicitPrelude) (pmModule parsed))
+    withReexports reach carries Set.empty (summarize (Is #implicitPrelude) (pmModule parsed))
   pure $ case answer of
     Declares fixities -> Map.lookup (InTerms, OpName "<+>") fixities
     Unreadable _ -> Nothing

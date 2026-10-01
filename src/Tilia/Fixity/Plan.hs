@@ -1198,10 +1198,14 @@ scopeFor resolver implicitPrelude hsModule = do
           knownChain = \m -> Map.findWithDefault [] m chains
         }
       hsModule
+
+-- | Does an import's list name a @T(..)@, which only the module imported
+-- can tell the members of?
+expands :: Import -> Bool
+expands i = case importNames i of
+  Nothing -> False
+  Just (_, items) -> any isAll items
   where
-    expands i = case importNames i of
-      Nothing -> False
-      Just (_, items) -> any isAll items
     isAll = \case
       ImportedAll _ -> True
       _ -> False
@@ -1284,7 +1288,7 @@ resolveModule
         readFileText path >>= \case
           Nothing -> pure (Unreadable Nothing)
           Just source ->
-            fromSummaries (wkReach visiting') (wkReachChildren visiting') visiting' modName
+            fromSummaries (wkReach visiting') (wkReachChildren visiting') visiting'
               =<< wkSummariesOf modName source
     | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
     where
@@ -1484,7 +1488,7 @@ fromSource moduleInArchive summariesOf reach reachChildren visiting tarball modN
           Nothing -> pure (Unreadable Nothing)
           Just ForHsc -> pure (hscDeclares modName)
           Just (Haskell source) ->
-            fromSummaries reach reachChildren visiting modName
+            fromSummaries reach reachChildren visiting
               =<< summariesOf modName source
 
 -- | The fixities a module declares and passes on, out of what each of its
@@ -1499,16 +1503,14 @@ fromSummaries ::
   -- | Modules currently being resolved, passed through so that a re-export
   -- chain cannot loop.
   Set Text ->
-  -- | The module's name.
-  Text ->
   -- | What each configuration of it says, or 'Nothing' where none of them
   -- parses.
   Maybe (NonEmpty ModuleSummary) ->
   IO Established
-fromSummaries reach reachChildren visiting modName = \case
+fromSummaries reach reachChildren visiting = \case
   Nothing -> pure (Unreadable Nothing)
   Just summaries ->
-    agreeing <$> traverse (withReexports reach reachChildren visiting modName) summaries
+    agreeing <$> traverse (withReexports reach reachChildren visiting) summaries
 
 -- | One answer from every configuration that could be read, if they agree.
 --
@@ -1581,15 +1583,12 @@ withReexports ::
   -- | Modules currently being resolved. A candidate already in here is
   -- skipped rather than followed.
   Set Text ->
-  -- | The name this module was looked up under, used to recognise a
-  -- @module M@ export that refers to the module itself.
-  Text ->
   -- | The module.
   ModuleSummary ->
   -- | What it declares together with what it re-exports, or the module it
   -- passes names on from that could not be read.
   IO Established
-withReexports reach reachChildren visiting modName summary =
+withReexports reach reachChildren visiting summary =
   case summaryExports summary of
     Nothing -> pure (Declares own)
     Just items -> do
@@ -1602,13 +1601,18 @@ withReexports reach reachChildren visiting modName summary =
             traverse
               (\i -> (,) i <$> fromModule (importModule i))
               (summaryImports summary)
-      let handedOnWhole = wantedModules modName summary items
-      wholeModules <- traverse (\m -> (,) m <$> fromModule m) handedOnWhole
+      wholeModules <-
+        traverse
+          (\i -> (,,) i <$> fromModule (importModule i) <*> keptBy i)
+          (handedOnWhole summary items)
       pure $ case stoppedAt visible wholeModules of
         Just below -> Unreadable (Just below)
         Nothing ->
           let seen = [(i, exported) | (i, Just exported) <- visible]
-              whole = [exported | (_, Just exported) <- wholeModules]
+              whole =
+                [ Map.filterWithKey (\(_, op) _ -> supplies kept Nothing op i) exported
+                | (i, Just exported, kept) <- wholeModules
+                ]
               passedOn =
                 Map.unions
                   [ found
@@ -1620,7 +1624,7 @@ withReexports reach reachChildren visiting modName summary =
     stoppedAt visible wholeModules =
       listToMaybe $
         [importModule i | (i, Nothing) <- visible]
-          <> [m | (m, Nothing) <- wholeModules]
+          <> [importModule i | (i, Nothing, _) <- wholeModules]
     own = summaryFixities summary
     defined = summaryNames summary
     wantedNames items =
@@ -1642,6 +1646,9 @@ withReexports reach reachChildren visiting modName summary =
     fromModule m
       | m `Set.member` visiting = pure (Just Map.empty)
       | otherwise = reach m
+    keptBy i
+      | expands i = reachChildren (importModule i)
+      | otherwise = pure Map.empty
 
 -- | What each name a module's export list hands on carries with it.
 childrenWithReexports ::
@@ -1723,6 +1730,16 @@ carriedNames reachChildren summary items =
       pure $ case mapMaybe (Map.lookup parent) answers of
         [] -> Nothing
         kids -> Just (Set.unions kids)
+
+-- | The imports whose names a @module M@ export hands on: the unqualified
+-- ones that go under @M@.
+handedOnWhole :: ModuleSummary -> [ExportItem] -> [Import]
+handedOnWhole summary items =
+  [ i
+  | i <- summaryImports summary,
+    not (importQualified i),
+    importAlias i `elem` [m | ExportModule m <- items]
+  ]
 
 -- | The modules a @module M@ export reexports whole, by their own names.
 wantedModules ::
