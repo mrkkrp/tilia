@@ -1,6 +1,7 @@
 # Tilia
 
 * [Getting started](#getting-started)
+* [Editor integration](#editor-integration)
 * [Excluding files](#excluding-files)
 * [Formatting operator chains](#formatting-operator-chains)
 * [Formatting CPP](#formatting-cpp)
@@ -28,7 +29,7 @@ are:
 
 ## Getting started
 
-The two most useful (and only!) commands are `inplace` and `check`:
+The two most useful commands are `inplace` and `check`:
 
 ```console
 $ tilia inplace [COMPONENT] # format all files of COMPONENT in place
@@ -96,6 +97,39 @@ Finally, here are some other flags that may be of interest:
   whose operators come from a dependency that could not be read is then
   declined.
 * `--must-not-decline` turns declined files into failures.
+
+## Editor integration
+
+Tilia offers a dedicated command for editor integrations:
+
+```console
+$ tilia for-editor FILE < buffer.hs
+```
+
+It reads a module from standard input and formats it as if it were the
+contents of `FILE` (a path): the project, the extensions in force, and the
+dependencies are found by walking upwards from `FILE` rather than from the
+working directory. `FILE` need not exist, but it has to be under the
+`hs-source-dirs` of a component. The formatted module goes to standard
+output. A module that is declined or excluded (see below), is returned
+unchanged, and a failure exits with a non-zero status and prints nothing to
+standard output, so an editor keeps its buffer as it is. The module is
+always formatted as a whole; there is no formatting of a selected range.
+
+For example, with [conform.nvim](https://github.com/stevearc/conform.nvim):
+
+```lua
+require("conform").setup({
+  formatters = {
+    tilia = { command = "tilia", args = { "for-editor", "$FILENAME" }, stdin = true },
+  },
+  formatters_by_ft = { haskell = { "tilia" } },
+})
+```
+
+A program that would rather call Tilia as a library, such as a language
+server plugin, can use `editorSession` and `formatBuffer` from
+`Tilia.Editor`, which is what `for-editor` runs.
 
 ## Excluding files
 

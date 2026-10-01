@@ -6,6 +6,7 @@
 module Tilia.Utils
   ( quietly,
     attempted,
+    asUtf8,
     lineWidth,
     indent,
     wrapTo,
@@ -26,11 +27,13 @@ import Control.Concurrent
   )
 import Control.Exception (SomeException, displayException, try)
 import Control.Monad (replicateM)
+import Data.ByteString qualified as BS
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 
 -- | 'show' a value and take the result as 'Text'.
 tshow :: (Show a) => a -> Text
@@ -50,6 +53,12 @@ attempted action =
   try action >>= \case
     Left (e :: SomeException) -> pure (Left (T.pack (displayException e)))
     Right a -> pure (Right a)
+
+-- | Decode source as UTF-8.
+asUtf8 :: BS.ByteString -> Either Text Text
+asUtf8 bytes = case T.decodeUtf8' bytes of
+  Right text -> Right text
+  Left _ -> Left "it is not valid UTF-8"
 
 -- | The line width for the terminal output of this program.
 lineWidth :: Int

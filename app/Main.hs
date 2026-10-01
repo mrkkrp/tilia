@@ -6,10 +6,12 @@
 module Main (main) where
 
 import Control.Monad (when)
+import Data.ByteString qualified as BS
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import Data.Version (showVersion)
 import GHC.IO.Encoding (TextEncoding (textEncodingName))
@@ -25,6 +27,7 @@ import System.IO
     hSetEncoding,
     mkTextEncoding,
     stderr,
+    stdin,
     stdout,
   )
 import Tilia.Cabal.Project (ProjectRoot, findProjectRoot)
@@ -37,10 +40,12 @@ import Tilia.Cabal.Target
     filesOfComponents,
     parseTarget,
   )
+import Tilia.Editor (editorSession, formatBuffer)
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
-  ( FormatError,
+  ( FormatError (Unreadable),
     PlanSource (..),
+    Session,
     describeFormatError,
     fixityNotesOf,
     formatErrorExitCode,
@@ -49,7 +54,7 @@ import Tilia.Format
 import Tilia.Palette (Color (Bad), Palette, paletteFor)
 import Tilia.Parser (ghcLibParserVersion)
 import Tilia.Run
-  ( Outcome,
+  ( Outcome (..),
     Report (..),
     checkReport,
     differs,
@@ -58,22 +63,44 @@ import Tilia.Run
     inplaceReport,
     noted,
     runOver,
+    stdinReport,
     writeBack,
   )
-import Tilia.Utils (lineWidth, quietly)
+import Tilia.Utils (asUtf8, lineWidth, quietly)
 
 -- | The program's entry point.
 main :: IO ()
 main = do
   traverse_ transliterateUnprintable [stdout, stderr]
-  Opts{..} <- customExecParser (prefs (columns lineWidth)) optsParserInfo
+  opts <- customExecParser (prefs (columns lineWidth)) optsParserInfo
   palette <- paletteFor
-  target <-
-    either
-      (die usageExitCode palette)
-      pure
-      (maybe (parseTarget "all") parseTarget optTarget)
-  (root, components) <- componentsFor palette target
+  let cmd = optCommand opts
+  outcomes <- case cmd of
+    Inplace target -> do
+      outcomes <- formatComponents palette opts target
+      traverse_ writeBack outcomes
+      outcomes <$ printReport (inplaceReport palette outcomes)
+    Check target -> do
+      outcomes <- formatComponents palette opts target
+      outcomes <$ printReport (checkReport palette outcomes)
+    ForEditor file -> do
+      (input, outcomes) <- formatStdin palette opts file
+      outcomes <$ printReport (stdinReport palette input outcomes)
+  exitWith cmd outcomes
+
+-- | Format the files of the components a target asks for.
+formatComponents ::
+  Palette ->
+  Opts ->
+  Maybe String ->
+  IO [(FilePath, Outcome)]
+formatComponents palette opts@Opts{..} target = do
+  (root, components) <-
+    componentsFor palette
+      =<< either
+        (die usageExitCode palette)
+        pure
+        (maybe (parseTarget "all") parseTarget target)
   files <-
     traverse makeRelativeToCurrentDirectory
       =<< filesOfComponents root components
@@ -90,17 +117,67 @@ main = do
       optCheckIdempotence
       optDebugFixity
       >>= either (dieFormatting palette) pure
-  outcomes <-
-    (if isTrue optMustNotDecline then fmap (fmap failIfDeclined) else id)
-      <$> runOver session files
+  formatWith palette opts session (`runOver` files)
+
+-- | Format the module read from standard input as the given file, and say
+-- what became of it, together with the module as it was read.
+formatStdin ::
+  Palette ->
+  Opts ->
+  FilePath ->
+  IO (Text, [(FilePath, Outcome)])
+formatStdin palette opts@Opts{..} file = do
+  input <- readStandardInput
+  case asUtf8 input of
+    Left why -> pure ("", [(file, Failed (Unreadable file why))])
+    Right before -> do
+      outcomes <-
+        editorSession
+          file
+          optBuildPlan
+          optUseCache
+          optDownload
+          optCheckAst
+          optCheckIdempotence
+          optDebugFixity
+          >>= \case
+            Left e -> pure [(file, Failed e)]
+            Right session ->
+              formatWith palette opts session $ \s ->
+                pure . (file,) <$> formatBuffer s file before
+      pure (before, outcomes)
+
+-- | Format with a session and print how it settled fixities, counting a
+-- declined file as failed where the options say so.
+formatWith ::
+  Palette ->
+  Opts ->
+  Session ->
+  (Session -> IO [(FilePath, Outcome)]) ->
+  IO [(FilePath, Outcome)]
+formatWith palette Opts{..} session formatting = do
+  outcomes <- formatting session
+  printFixityNotes palette session
+  pure $
+    if isTrue optMustNotDecline
+      then fmap (fmap failIfDeclined) outcomes
+      else outcomes
+
+-- | Read standard input to its end without closing it, which would hand its
+-- descriptor to whatever is opened next.
+readStandardInput :: IO BS.ByteString
+readStandardInput = BS.concat <$> chunks
+  where
+    chunks = do
+      chunk <- BS.hGetSome stdin 32768
+      if BS.null chunk then pure [] else (chunk :) <$> chunks
+
+-- | Print how the session settled every file's fixities, if it was asked to
+-- keep an account of that.
+printFixityNotes :: Palette -> Session -> IO ()
+printFixityNotes palette session =
   fixityNotesOf session
     >>= traverse_ (T.hPutStrLn stderr) . renderFixityNotes palette
-  case optMode of
-    Inplace -> do
-      traverse_ writeBack outcomes
-      printReport (inplaceReport palette outcomes)
-    Check -> printReport (checkReport palette outcomes)
-  exitWith optMode outcomes
 
 -- | Transliterate unprintable characters if the output stream cannot handle
 -- them.
@@ -114,22 +191,23 @@ transliterateUnprintable h =
             hSetEncoding h =<< mkTextEncoding (name <> "//TRANSLIT")
       _ -> pure ()
 
--- | Exit with a status code determined by 'Mode' of operation and the
--- formatting 'Outcome's.
-exitWith :: Mode -> [(FilePath, Outcome)] -> IO ()
-exitWith mode outcomes = case exitCodeOf outcomes of
+-- | Exit with a status code determined by the 'Command' and the formatting
+-- 'Outcome's.
+exitWith :: Command -> [(FilePath, Outcome)] -> IO ()
+exitWith cmd outcomes = case exitCodeOf outcomes of
   Just code -> System.Exit.exitWith (ExitFailure code)
-  Nothing -> case mode of
-    Inplace -> pure ()
-    Check ->
+  Nothing -> case cmd of
+    Inplace _ -> pure ()
+    Check _ ->
       when
         (any (differs . snd) outcomes)
         (System.Exit.exitWith (ExitFailure 1))
+    ForEditor _ -> pure ()
 
 -- | Print a 'Report'.
 printReport :: Report -> IO ()
 printReport report = do
-  traverse_ T.putStrLn (reportOut report)
+  BS.putStr (T.encodeUtf8 (reportOut report))
   hFlush stdout
   traverse_ (T.hPutStrLn stderr) (reportErr report)
   hFlush stderr
@@ -167,15 +245,20 @@ dieFormatting palette e =
 ----------------------------------------------------------------------------
 -- Command line options
 
--- | The mode of operation.
-data Mode = Inplace | Check
+-- | Command.
+data Command
+  = -- | Format the files of a component, or of all of them, in place.
+    Inplace (Maybe String)
+  | -- | Report what formatting the files of a component, or of all of them,
+    -- would change.
+    Check (Maybe String)
+  | -- | Format the module read from standard input as the given file.
+    ForEditor FilePath
 
 -- | The command line options.
 data Opts = Opts
-  { -- | The mode of operation.
-    optMode :: Mode,
-    -- | Which component to work on, if not all of them.
-    optTarget :: Maybe String,
+  { -- | What to do.
+    optCommand :: Command,
     -- | Whether to check AST equivalence.
     optCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
@@ -214,15 +297,27 @@ optsParser =
   hsubparser . mconcat $
     [ command
         "inplace"
-        (info (parser Inplace) (progDesc "Format files, in place")),
+        ( info
+            (parser (Inplace <$> optional targetArgument))
+            (progDesc "Format files, in place")
+        ),
       command
         "check"
-        (info (parser Check) (progDesc "Report what formatting would change, and fail if anything would"))
+        ( info
+            (parser (Check <$> optional targetArgument))
+            (progDesc "Report what formatting would change, and fail if anything would")
+        ),
+      command
+        "for-editor"
+        ( info
+            (parser (ForEditor <$> fileArgument))
+            (progDesc "Format a module read from standard input as FILE, and print it")
+        )
     ]
   where
-    parser mode =
-      Opts mode
-        <$> optional targetArgument
+    parser cmd =
+      Opts
+        <$> cmd
         <*> checkAstSwitch
         <*> checkIdempotenceSwitch
         <*> debugFixitySwitch
@@ -276,4 +371,9 @@ optsParser =
       (strArgument . mconcat)
         [ metavar "COMPONENT",
           help "Component to format: all (the default) or a package/component name"
+        ]
+    fileArgument =
+      (strArgument . mconcat)
+        [ metavar "FILE",
+          help "File whose contents are read from standard input"
         ]

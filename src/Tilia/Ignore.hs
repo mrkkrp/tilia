@@ -6,6 +6,9 @@ module Tilia.Ignore
   ( IgnoreFile,
     parseIgnoreFile,
     isIgnored,
+    isIgnoredInProject,
+    ignoreFilesAbove,
+    belowRoot,
   )
 where
 
@@ -22,12 +25,17 @@ import Data.Char
     isSymbol,
     isUpper,
   )
-import Data.List (inits, isPrefixOf, isSuffixOf, tails)
+import Data.List (inits, isPrefixOf, isSuffixOf, stripPrefix, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import System.Directory (canonicalizePath, doesFileExist)
+import System.FilePath (joinPath, normalise, splitDirectories, (</>))
+import Tilia.Utils (quietly)
 
 -- | The patterns of one ignore file, in the order they are written.
 newtype IgnoreFile = IgnoreFile [Pattern]
@@ -238,3 +246,45 @@ isIgnored files path =
       | n <- [0 .. length entry - 1],
         Just file <- [Map.lookup (take n entry) files]
       ]
+
+-- | Whether the @.tiliaignore@ files of a project ignore a file, which need
+-- not exist.
+isIgnoredInProject ::
+  -- | The project root, canonical.
+  FilePath ->
+  -- | The file.
+  FilePath ->
+  IO Bool
+isIgnoredInProject root path = quietly False $ do
+  file <- canonicalizePath path
+  case belowRoot root file of
+    Nothing -> pure False
+    Just below -> do
+      ignoreFiles <- ignoreFilesAbove root [below]
+      pure (isIgnored ignoreFiles below)
+
+-- | The @.tiliaignore@ files in the project root and in every directory
+-- between it and the given files, each by its directory's segments relative
+-- to the root.
+ignoreFilesAbove :: FilePath -> [[FilePath]] -> IO (Map [FilePath] IgnoreFile)
+ignoreFilesAbove root paths =
+  Map.fromList . concat <$> traverse read' (Set.toList directories)
+  where
+    directories =
+      Set.fromList [take n path | path <- paths, n <- [0 .. length path - 1]]
+    read' directory = do
+      let file = joinPath (root : directory) </> ".tiliaignore"
+      exists <- doesFileExist file
+      if exists
+        then (\t -> [(directory, parseIgnoreFile t)]) <$> T.readFile file
+        else pure []
+
+-- | A path's segments relative to the project root, if it is under it.
+belowRoot ::
+  -- | The project root.
+  FilePath ->
+  -- | The path.
+  FilePath ->
+  Maybe [FilePath]
+belowRoot root path =
+  stripPrefix (splitDirectories root) (splitDirectories (normalise path))

@@ -92,7 +92,7 @@ spec = do
   describe "the summary an inplace run prints" $ do
     it "counts the files it formatted, indented, by extension" $
       reportOut (inplaceReport Plain [("A.hs", Unchanged), ("B.hs", Changed "a" "b")])
-        `shouldBe` ["  [✓] Formatted 2 .hs files"]
+        `shouldBe` "  [✓] Formatted 2 .hs files\n"
 
     it "counts each extension on its own line, in a settled order" $
       reportOut
@@ -100,21 +100,22 @@ spec = do
             Plain
             [("C.hsig", Unchanged), ("A.hs", Unchanged), ("B.hs-boot", Unchanged)]
         )
-        `shouldBe` [ "  [✓] Formatted 1 .hs file",
-                     "  [✓] Formatted 1 .hs-boot file",
-                     "  [✓] Formatted 1 .hsig file"
-                   ]
+        `shouldBe` T.unlines
+          [ "  [✓] Formatted 1 .hs file",
+            "  [✓] Formatted 1 .hs-boot file",
+            "  [✓] Formatted 1 .hsig file"
+          ]
 
     it "says file rather than files when there is one" $
       reportOut (inplaceReport Plain [("A.hs", Unchanged)])
-        `shouldBe` ["  [✓] Formatted 1 .hs file"]
+        `shouldBe` "  [✓] Formatted 1 .hs file\n"
 
     it "counts neither a refusal nor a failure among the formatted" $
       reportOut (inplaceReport Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
-        `shouldBe` ["  [✓] Formatted 1 .hs file"]
+        `shouldBe` "  [✓] Formatted 1 .hs file\n"
 
     it "says nothing at all about a run with no files" $
-      inplaceReport Plain [] `shouldBe` Report [] []
+      inplaceReport Plain [] `shouldBe` Report "" []
 
   describe "the files a run did not format" $ do
     let mixed =
@@ -225,7 +226,7 @@ spec = do
         `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> are infixl 6 in Left but infixr 5 in Right"
 
     it "keeps all of it off the stream the summary goes to" $
-      reportOut (inplaceReport Plain mixed) `shouldBe` []
+      reportOut (inplaceReport Plain mixed) `shouldBe` ""
 
     it "says the same about them in either command" $
       reportErr (checkReport Plain mixed) `shouldBe` reportErr (inplaceReport Plain mixed)
@@ -233,29 +234,49 @@ spec = do
   describe "what a check run prints" $ do
     it "shows a diff for a file that would change" $
       reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
-        `shouldSatisfy` any (T.isInfixOf "--- a/A.hs")
+        `shouldSatisfy` T.isInfixOf "--- a/A.hs"
 
     it "heads it the way git heads one" $
       reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
-        `shouldSatisfy` any (T.isInfixOf "diff --git a/A.hs b/A.hs")
+        `shouldSatisfy` T.isInfixOf "diff --git a/A.hs b/A.hs"
 
     it "shows the removal and the addition" $ do
-      let shown = T.unlines (reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")]))
+      let shown = reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
       shown `shouldSatisfy` T.isInfixOf "-one"
       shown `shouldSatisfy` T.isInfixOf "+two"
 
     it "says nothing on standard output about a file it did not format" $
       reportOut (checkReport Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
-        `shouldBe` []
+        `shouldBe` ""
+
+  describe "what a for-editor run prints" $ do
+    it "prints the formatted module exactly, and nothing else" $
+      stdinReport Plain "a\n" [("A.hs", Changed "a\n" "b\n")]
+        `shouldBe` Report "b\n" []
+
+    it "gives the module back as it was read where nothing changed" $
+      stdinReport Plain "a\n" [("A.hs", Unchanged)]
+        `shouldBe` Report "a\n" []
+
+    it "gives the module back as it was read where it was declined, and says why" $ do
+      let report = stdinReport Plain "a\n" [("A.hs", decline)]
+      reportOut report `shouldBe` "a\n"
+      T.unwords (fmap T.strip (reportErr report))
+        `shouldSatisfy` T.isInfixOf "will not format A.hs"
+
+    it "prints no module where it failed, and says why" $ do
+      let report = stdinReport Plain "a\n" [("A.hs", failure)]
+      reportOut report `shouldBe` ""
+      reportErr report `shouldSatisfy` (not . null)
 
   describe "color" $ do
     it "leaves everything bare when there is nobody to see it" $
       reportOut (inplaceReport Plain [("A.hs", Unchanged)])
-        `shouldSatisfy` all (not . T.isInfixOf "\ESC")
+        `shouldSatisfy` (not . T.isInfixOf "\ESC")
 
     it "colors the tick and not the brackets around it" $
       reportOut (inplaceReport Colors [("A.hs", Unchanged)])
-        `shouldSatisfy` any (T.isInfixOf "[\ESC[32m✓\ESC[0m]")
+        `shouldSatisfy` T.isInfixOf "[\ESC[32m✓\ESC[0m]"
 
     it "colors the equals sign yellow" $
       reportErr (inplaceReport Colors [("A.hs", decline)])
@@ -263,7 +284,7 @@ spec = do
 
     it "sets the extension in the summary in bold" $
       reportOut (inplaceReport Colors [("A.hs", Unchanged)])
-        `shouldSatisfy` any (T.isInfixOf "\ESC[1m.hs\ESC[0m")
+        `shouldSatisfy` T.isInfixOf "\ESC[1m.hs\ESC[0m"
 
     it "sets the file a case is about in bold, and nothing around it" $
       reportErr (inplaceReport Colors [("src/A.hs", failureAbout "src/A.hs")])
@@ -390,7 +411,7 @@ spec = do
       differs (formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n") `shouldBe` True
 
     it "says as much in the diff, having nothing else to show" $
-      T.unlines (reportOut (checkReport Plain [("A.hs", formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n")]))
+      reportOut (checkReport Plain [("A.hs", formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n")])
         `shouldSatisfy` T.isInfixOf "differ only in how they end their lines"
 
     it "leaves a carriage return that is not a line ending where it is" $

@@ -81,7 +81,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (Choice, fromBool, isTrue, pattern Do)
-import Data.Foldable (toList)
+import Data.Foldable (toList, traverse_)
 import Data.IORef
 import Data.List (isSuffixOf)
 import Data.List qualified
@@ -113,14 +113,15 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
 import System.FilePath (isRelative, takeDirectory, (</>))
-import System.IO (hFlush, stderr)
+import System.IO (hClose, hFlush, stderr)
 import System.Info qualified
 import System.Process
-  ( StdStream (Inherit, UseHandle),
+  ( StdStream (CreatePipe, Inherit, UseHandle),
     createProcess,
     cwd,
     proc,
     std_err,
+    std_in,
     std_out,
     waitForProcess,
   )
@@ -645,13 +646,17 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
   -- the child has it, and closing the real standard error would leave
   -- nothing to report the failure on.
   passed <- hDuplicate stderr
-  (_, _, _, running) <-
+  -- A pipe closed at once rather than our standard input, which in an
+  -- editor's process carries what the editor says to it.
+  (toChild, _, _, running) <-
     createProcess
       (proc "cabal" args)
         { cwd = Just projectDir,
+          std_in = CreatePipe,
           std_out = UseHandle passed,
           std_err = Inherit
         }
+  traverse_ hClose toChild
   code <- waitForProcess running
   pure $ case code of
     ExitSuccess -> Right ()
