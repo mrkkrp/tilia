@@ -3,10 +3,10 @@ Why every example of this corpus that is not `formatted` is not.
 Generated beside the manifest, and compared against nothing: this
 file is the work list, and it is free to say as much as it likes.
 
-5202 examples, 5141 formatted.
+5202 examples, 5145 formatted.
 
 ==========================================================================
-broken (6)
+broken (5)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -192,9 +192,6 @@ idris-1.3.4/src/Idris/AbsSyntax.hs
            PTerm
          en 0 (PLam fc n nfc t s)
 
-leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
-    the output cannot be formatted again: too many configurations to format
-
 ==========================================================================
 does-not-parse (1)
 ==========================================================================
@@ -204,14 +201,23 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (29)
+partly-checked (37)
 ==========================================================================
+
+Agda-2.8.0/src/full/Agda/Main.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
     512 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+    55296 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
 QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
     192 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
+    4096 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 async-2.2.6/Control/Concurrent/Async/Internal.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -230,6 +236,15 @@ hspec-core-2.11.17/vendor/async-2.2.5/Control/Concurrent/Async.hs
 
 intero-0.1.40/src/GhciInfo.hs
     72 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+intero-0.1.40/src/Main.hs
+    1536 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+lens-5.3.6/src/Control/Lens/Wrapped.hs
+    538968064 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+lens-5.3.6/src/Language/Haskell/TH/Lens.hs
+    6291456 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 microlens-0.5.0.0/src/Lens/Micro.hs
     128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -285,8 +300,14 @@ transformers-0.6.3.0/Control/Monad/Trans/Writer/Lazy.hs
 transformers-0.6.3.0/Control/Monad/Trans/Writer/Strict.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
+transformers-0.6.3.0/Data/Functor/Constant.hs
+    12288 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
 transformers-0.6.3.0/Data/Functor/Reverse.hs
     6144 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+transformers-0.6.3.0/legacy/pre709/Data/Functor/Identity.hs
+    256 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 transformers-0.6.3.0/legacy/pre711/Data/Functor/Product.hs
     128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -295,23 +316,8 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (25)
+declined (14)
 ==========================================================================
-
-Agda-2.8.0/src/full/Agda/Main.hs
-    too many configurations to format
-
-QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
-    too many configurations to format
-
-QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
-    too many configurations to format
-
-QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
-    too many configurations to format
-
-QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
-    too many configurations to format
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
     QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs:315:13-14: parse error on input `::', in the configuration taking #ifndef NO_TYPEABLE, then #ifndef NO_SAFE_HASKELL, then #ifndef NO_TIMEOUT, then #if defined(MIN_VERSION_base), then #ifndef NO_DEEPSEQ, then #ifdef NO_TIMEOUT
@@ -322,19 +328,7 @@ cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
 hlint-3.10/data/HLint_TypeCheck.hs
     a pragma that moves positions, which we do not rewrite
 
-hlint-3.10/src/Config/Yaml.hs
-    too many configurations to format
-
 intero-0.1.40/src/InteractiveUI.hs
-    too many configurations to format
-
-intero-0.1.40/src/Main.hs
-    too many configurations to format
-
-lens-5.3.6/src/Control/Lens/Wrapped.hs
-    too many configurations to format
-
-lens-5.3.6/src/Language/Haskell/TH/Lens.hs
     too many configurations to format
 
 lens-5.3.6/tests/properties.hs
@@ -363,12 +357,6 @@ shake-0.19.9/src/General/FileLock.hs
 
 time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
     time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs:35:16-19: parse error on input `capi', in the configuration taking no branch of #if !defined(javascript_HOST_ARCH), then #ifndef mingw32_HOST_OS, then no branch of #if defined(javascript_HOST_ARCH) || defined(__MHS__)
-
-transformers-0.6.3.0/Data/Functor/Constant.hs
-    too many configurations to format
-
-transformers-0.6.3.0/legacy/pre709/Data/Functor/Identity.hs
-    too many configurations to format
 
 unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
     unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs:(266,9)-(267,31): Unexpected case expression in function application:

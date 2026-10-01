@@ -6,6 +6,7 @@ module Tilia.Parser
   ( ParsedModule (..),
     parseModule,
     parseConfiguration,
+    readAlike,
     ParseError (..),
     describeParseError,
     ParserConfig (..),
@@ -145,6 +146,18 @@ parseConfiguration config path written source =
         (parserOpts config')
         (GHC.stringToStringBuffer (T.unpack source))
         (GHC.mkRealSrcLoc (mkFastString path) 1 1)
+
+-- | Would the parser read these two texts with the same extensions?
+readAlike :: ParserConfig -> Text -> Text -> Bool
+readAlike config a b = bits a == bits b
+  where
+    bits t =
+      GHC.pExtsBitmap
+        ( parserOpts
+            config
+              { pcExtensions = withImplied (effectiveExtensions (pcExtensions config) t)
+              }
+        )
 
 -- | Close a set of extensions under what they imply.
 withImplied :: [Extension] -> [Extension]

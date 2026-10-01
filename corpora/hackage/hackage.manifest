@@ -94,7 +94,7 @@ formatted       11f05a0591fc  Agda-2.8.0/src/full/Agda/Interaction/Output.hs
 formatted       772e302dedad  Agda-2.8.0/src/full/Agda/Interaction/Response.hs
 formatted       77cf584c94f3  Agda-2.8.0/src/full/Agda/Interaction/Response/Base.hs
 formatted       150002ef2df6  Agda-2.8.0/src/full/Agda/Interaction/SearchAbout.hs
-declined        -             Agda-2.8.0/src/full/Agda/Main.hs
+partly-checked  f6a39fc8a6f5  Agda-2.8.0/src/full/Agda/Main.hs
 formatted       089cf0cbdae7  Agda-2.8.0/src/full/Agda/Mimer/Mimer.hs
 formatted       5ee8e2854fd8  Agda-2.8.0/src/full/Agda/Mimer/Options.hs
 formatted       d31e480d5b64  Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
@@ -462,15 +462,15 @@ formatted       6506a17a91ff  QuickCheck-2.18.0.0/examples/Set.hs
 formatted       598740b3d57c  QuickCheck-2.18.0.0/examples/Simple.hs
 partly-checked  5234e8085ba9  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
 formatted       02ad02d885d3  QuickCheck-2.18.0.0/src/Test/QuickCheck/All.hs
-declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+partly-checked  c9428f921dc1  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
 formatted       b394fbd4debb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Compat.hs
 partly-checked  06fafd04e06a  QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
 formatted       24dc2fbcd085  QuickCheck-2.18.0.0/src/Test/QuickCheck/Features.hs
-declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
+partly-checked  5f3ea51a9b76  QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
 formatted       061130c71dd5  QuickCheck-2.18.0.0/src/Test/QuickCheck/Gen.hs
 formatted       0488daa21096  QuickCheck-2.18.0.0/src/Test/QuickCheck/Gen/Unsafe.hs
-declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
-declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
+formatted       6b7aa6169be8  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
+formatted       c2a1cdea0773  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
 formatted       a94b9d13da2f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monoids.hs
 formatted       0c4f8c706edf  QuickCheck-2.18.0.0/src/Test/QuickCheck/Poly.hs
 declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
@@ -2446,7 +2446,7 @@ formatted       5ecebf30e886  hlint-3.10/src/Config/Compute.hs
 formatted       76a1b906c927  hlint-3.10/src/Config/Haskell.hs
 formatted       747182f5f5c1  hlint-3.10/src/Config/Read.hs
 formatted       36ef2b52eee9  hlint-3.10/src/Config/Type.hs
-declined        -             hlint-3.10/src/Config/Yaml.hs
+formatted       defa750904be  hlint-3.10/src/Config/Yaml.hs
 formatted       871e24292ba2  hlint-3.10/src/EmbedData.hs
 formatted       a0cce8b000d7  hlint-3.10/src/Extension.hs
 formatted       232c5ddbbb9b  hlint-3.10/src/Fixity.hs
@@ -2759,7 +2759,7 @@ formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
 formatted       72999d5c814e  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
 formatted       d3b894941b5e  intero-0.1.40/src/Intero/Compat.hs
-declined        -             intero-0.1.40/src/Main.hs
+partly-checked  e36fd6c7ba4f  intero-0.1.40/src/Main.hs
 formatted       13b22f1a2f96  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs
@@ -2801,7 +2801,7 @@ formatted       8322865655a5  leksah-0.16.2.2/src/IDE/Pane/HLint.hs
 formatted       2cc74d884f25  leksah-0.16.2.2/src/IDE/Pane/Info.hs
 formatted       84026b055134  leksah-0.16.2.2/src/IDE/Pane/Log.hs
 formatted       88d223364b06  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
-broken          a567b56cc5f6  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
+formatted       a567b56cc5f6  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
 formatted       e551f5f880ef  leksah-0.16.2.2/src/IDE/Pane/PackageFlags.hs
 formatted       021c30d05e66  leksah-0.16.2.2/src/IDE/Pane/Search.hs
 formatted       0896ee40207a  leksah-0.16.2.2/src/IDE/Pane/SourceBuffer.hs
@@ -2816,7 +2816,7 @@ formatted       83b95acfea83  leksah-0.16.2.2/src/IDE/Preferences.hs
 formatted       d73d66c34b8c  leksah-0.16.2.2/src/IDE/Session.hs
 formatted       277f211ae71b  leksah-0.16.2.2/src/IDE/SourceCandy.hs
 formatted       95169d9d3f63  leksah-0.16.2.2/src/IDE/Statusbar.hs
-formatted       70eb7c99746e  leksah-0.16.2.2/src/IDE/SymbolNavigation.hs
+formatted       a9422d237d07  leksah-0.16.2.2/src/IDE/SymbolNavigation.hs
 formatted       265b135c829e  leksah-0.16.2.2/src/IDE/TextEditor.hs
 formatted       b345661c1e07  leksah-0.16.2.2/src/IDE/TextEditor/Class.hs
 formatted       be8c9023310e  leksah-0.16.2.2/src/IDE/TextEditor/CodeMirror.hs
@@ -2893,7 +2893,7 @@ formatted       9164ff122ee8  lens-5.3.6/src/Control/Lens/Traversal.hs
 formatted       3a5cbb2c959c  lens-5.3.6/src/Control/Lens/Tuple.hs
 formatted       181a647a9c7b  lens-5.3.6/src/Control/Lens/Type.hs
 formatted       ff8881502434  lens-5.3.6/src/Control/Lens/Unsound.hs
-declined        -             lens-5.3.6/src/Control/Lens/Wrapped.hs
+partly-checked  dc2e66e1542a  lens-5.3.6/src/Control/Lens/Wrapped.hs
 formatted       2c3a223dec39  lens-5.3.6/src/Control/Lens/Zoom.hs
 formatted       d04fd074c74d  lens-5.3.6/src/Control/Monad/Error/Lens.hs
 formatted       b9bfa6cc2ae6  lens-5.3.6/src/Control/Parallel/Strategies/Lens.hs
@@ -2920,7 +2920,7 @@ formatted       bfb9f14912e5  lens-5.3.6/src/Data/Typeable/Lens.hs
 formatted       fa5b2f903156  lens-5.3.6/src/Data/Vector/Generic/Lens.hs
 formatted       4348b84e4ed7  lens-5.3.6/src/Data/Vector/Lens.hs
 formatted       7e80fcd30b07  lens-5.3.6/src/GHC/Generics/Lens.hs
-declined        -             lens-5.3.6/src/Language/Haskell/TH/Lens.hs
+partly-checked  85462ac66a8d  lens-5.3.6/src/Language/Haskell/TH/Lens.hs
 formatted       6142187a095c  lens-5.3.6/src/Numeric/Lens.hs
 formatted       11d5331927be  lens-5.3.6/src/Numeric/Natural/Lens.hs
 formatted       353cf4551a49  lens-5.3.6/src/System/Exit/Lens.hs
@@ -4797,10 +4797,10 @@ formatted       6a9857bbd181  transformers-0.6.3.0/Control/Monad/Trans/Writer.hs
 formatted       84635e677dc4  transformers-0.6.3.0/Control/Monad/Trans/Writer/CPS.hs
 partly-checked  4c4d740d0f11  transformers-0.6.3.0/Control/Monad/Trans/Writer/Lazy.hs
 partly-checked  d70a600a810a  transformers-0.6.3.0/Control/Monad/Trans/Writer/Strict.hs
-declined        -             transformers-0.6.3.0/Data/Functor/Constant.hs
+partly-checked  4e750ba7e33b  transformers-0.6.3.0/Data/Functor/Constant.hs
 partly-checked  d6d1f203de5b  transformers-0.6.3.0/Data/Functor/Reverse.hs
 formatted       e865ae48f11b  transformers-0.6.3.0/Setup.hs
-declined        -             transformers-0.6.3.0/legacy/pre709/Data/Functor/Identity.hs
+partly-checked  08299ec1f123  transformers-0.6.3.0/legacy/pre709/Data/Functor/Identity.hs
 formatted       ee4ba7098a5c  transformers-0.6.3.0/legacy/pre711/Control/Monad/IO/Class.hs
 formatted       7d9fab9a0caf  transformers-0.6.3.0/legacy/pre711/Data/Functor/Classes.hs
 formatted       effc0109229f  transformers-0.6.3.0/legacy/pre711/Data/Functor/Compose.hs
@@ -4808,7 +4808,7 @@ partly-checked  e96184ffa2ec  transformers-0.6.3.0/legacy/pre711/Data/Functor/Pr
 formatted       87f324f0c768  transformers-0.6.3.0/legacy/pre711/Data/Functor/Sum.hs
 formatted       e865ae48f11b  typed-process-0.2.13.0/Setup.hs
 formatted       cf40b7ccb335  typed-process-0.2.13.0/src/System/Process/Typed.hs
-formatted       49ed0f9e0f3c  typed-process-0.2.13.0/src/System/Process/Typed/Internal.hs
+formatted       9d473d5fbfde  typed-process-0.2.13.0/src/System/Process/Typed/Internal.hs
 formatted       2fbd14b119a4  typed-process-0.2.13.0/test/Spec.hs
 formatted       4eb03857d270  typed-process-0.2.13.0/test/System/Process/TypedSpec.hs
 formatted       e865ae48f11b  unliftio-0.2.25.1/Setup.hs
