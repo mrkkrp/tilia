@@ -51,6 +51,12 @@
   change, an operator the import hides could be taken for one the module
   reexports, which declined files as ambiguous and could give an operator
   the wrong fixity. [PR 52](https://github.com/mrkkrp/tilia/pull/52).
+* Employ formatting by fragments in the CPP pipeline, so that a module with
+  many conditionals no longer runs out of configurations to format. 12 of
+  the 15 Hackage corpus modules declined for that reason now format, among
+  them QuickCheck's `Test.QuickCheck.Arbitrary` and lens's
+  `Language.Haskell.TH.Lens`. [PR
+  54](https://github.com/mrkkrp/tilia/pull/54).
 
 ## Tilia 0.0.2.0
 

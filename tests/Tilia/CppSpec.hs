@@ -193,8 +193,35 @@ spec = do
     it "add, as formattings: twenty of them are twenty-one, not a million" $
       formatCpp (sideBySide 20) `shouldSatisfy` isRight
 
+    it "cost only the declarations each of them reaches" $
+      formatCpp (apart 400) `shouldSatisfy` isRight
+
+    it "come out of the declarations they reach as written" $
+      formatCpp (apart 2)
+        `shouldBe` Right
+          ( T.unlines
+              [ "module M where",
+                "",
+                "#if C1",
+                "x1 = 1",
+                "#else",
+                "x1 = 2",
+                "#endif",
+                "",
+                "y1 = 0",
+                "",
+                "#if C2",
+                "x2 = 1",
+                "#else",
+                "x2 = 2",
+                "#endif",
+                "",
+                "y2 = 0"
+              ]
+          )
+
     it "are refused once even the sum is more than the budget allows" $
-      formatCpp (sideBySide 100) `shouldSatisfy` isLeft
+      formatCpp (oneDeclaration 100 1000) `shouldSatisfy` isLeft
 
   describe "counting the configurations" $ do
     it "agrees with enumerating them, where enumerating them is possible" $
@@ -641,6 +668,38 @@ sideBySide n =
           ]
         | i <- [1 .. n]
         ]
+
+-- | A module with @n@ conditionals, each around a declaration of its own
+-- and kept apart from the next by one that is not.
+apart :: Int -> Text
+apart n =
+  T.unlines $
+    ["module M where", ""]
+      <> concat
+        [ [ "#if C" <> T.pack (show i),
+            "x" <> T.pack (show i) <> " = 1",
+            "#else",
+            "x" <> T.pack (show i) <> " = 2",
+            "#endif",
+            "",
+            "y" <> T.pack (show i) <> " = 0",
+            ""
+          ]
+        | i <- [1 .. n]
+        ]
+
+-- | A module with one declaration holding @n@ conditionals and @m@ lines
+-- that are in every configuration.
+oneDeclaration :: Int -> Int -> Text
+oneDeclaration n m =
+  T.unlines $
+    ["module M where", "", "x =", "  [ 0"]
+      <> concat
+        [ ["#if C" <> T.pack (show i), "  , 1", "#endif"]
+        | i <- [1 .. n]
+        ]
+      <> replicate m "  , 0"
+      <> ["  ]"]
 
 -- | A module with @n@ conditionals in a row, all asking the same question.
 --

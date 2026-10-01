@@ -16,6 +16,7 @@ module Tilia.Cpp.Directives
     Guard (..),
     Configurations (..),
     configurations,
+    configurationsOn,
     Varied (..),
     untouched,
     leaves,
@@ -195,19 +196,32 @@ configurations :: Text -> Maybe Configurations
 configurations source = do
   forest <- scanConditionals source
   gs <- listToMaybe forest
-  let tied = sameGuard gs forest
-  pure
-    Configurations
-      { cfgGuards = gsGuards gs,
-        cfgTexts =
-          [ blanking (concatMap (`blankingFor` i) tied) source
-          | i <- [0 .. gsCount gs - 1]
-          ],
-        cfgDropped =
-          [concatMap (`droppedFor` i) tied | i <- [0 .. gsCount gs - 1]],
-        cfgWholes = Varied (fmap gsWhole tied),
-        cfgDirectiveLines = fmap gsOwnLines tied
-      }
+  pure (configurationsOn gs forest source)
+
+-- | Split a module on one of its conditionals, and on every other one
+-- written behind the same directives.
+configurationsOn ::
+  -- | The conditional.
+  GroupSpec ->
+  -- | The module's conditionals.
+  [GroupSpec] ->
+  -- | The module.
+  Text ->
+  Configurations
+configurationsOn gs forest source =
+  Configurations
+    { cfgGuards = gsGuards gs,
+      cfgTexts =
+        [ blanking (concatMap (`blankingFor` i) tied) source
+        | i <- [0 .. gsCount gs - 1]
+        ],
+      cfgDropped =
+        [concatMap (`droppedFor` i) tied | i <- [0 .. gsCount gs - 1]],
+      cfgWholes = Varied (fmap gsWhole tied),
+      cfgDirectiveLines = fmap gsOwnLines tied
+    }
+  where
+    tied = sameGuard gs forest
 
 -- | Every group in a module written behind the same directives as this one.
 sameGuard :: GroupSpec -> [GroupSpec] -> [GroupSpec]

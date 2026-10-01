@@ -32,20 +32,23 @@ module Tilia.Cpp
   )
 where
 
-import Control.Monad (when)
+import Control.Applicative ((<|>))
+import Control.Monad (join, when)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put, runStateT)
+import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
+import Control.Monad.Trans.State.Strict (State, evalState, get, put)
 import Data.Foldable (traverse_)
 import Data.Function (on)
 import Data.List (groupBy, maximumBy, sort, sortOn, transpose, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Traversable (for)
 import Tilia.Cpp.Directives
+import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Place (CommentSummary, regionOf, restoreUnprinted, summarizeComments)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Doc.Combinators qualified as Doc
@@ -66,6 +69,7 @@ import Tilia.Parser
   ( ParserConfig,
     parseConfiguration,
     pmSource,
+    readAlike,
   )
 import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
@@ -106,22 +110,37 @@ formatWithCpp ::
 formatWithCpp parser render path source = do
   traverse_ (Left . RuledOutBranch) (ruledOutBranch source)
   (document, found) <-
-    evalStateT
-      (formatAllConfigs parser (knowing render) path (noAnswers source) source)
-      configurationBudget
+    evalState
+      (runExceptT (formatAllConfigs parser (knowing render) path (noAnswers source) source))
+      (configurationBudget * linesHeld source)
   formatted <- printDoc defaultRenderOptions <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
     knowing c =
       c{rcImportBarriers = maybe [] (sort . concatMap gsOwnLines . allGroups) (scanConditionals source)}
 
--- | Formatting that spends whole formattings out of the budget left, or
+-- | Formatting that spends the lines it formats out of the budget left, or
 -- fails with a 'CppError'.
-type Spending = StateT Int (Either CppError)
+type Spending = ExceptT CppError (State Int)
 
 -- | Give up on formatting the module.
 refuse :: CppError -> Spending a
-refuse = lift . Left
+refuse = throwE
+
+-- | Take lines out of the budget, or give up where fewer are left.
+spend :: Int -> Spending ()
+spend n = do
+  budget <- lift get
+  when (budget < n) (refuse TooManyConfigurations)
+  lift (put (budget - n))
+
+-- | What formatting comes to, or 'Nothing' where it fails for a reason
+-- other than the budget running out. What it spent stays spent.
+attempt :: Spending a -> Spending (Maybe a)
+attempt formatting =
+  (Just <$> formatting) `catchE` \case
+    TooManyConfigurations -> refuse TooManyConfigurations
+    _ -> pure Nothing
 
 -- | Format every configuration of a module, and merge them into one
 -- document, with what they found besides their code.
@@ -138,32 +157,45 @@ formatAllConfigs ::
   Text ->
   Spending (Doc, CommentSummary)
 formatAllConfigs parser render path reached source = do
-  forest <- lift (readConditionals source)
+  forest <- except (readConditionals source)
   case variations forest source of
     Nothing -> do
-      budget <- get
-      when (budget <= 0) (refuse TooManyConfigurations)
-      put (budget - 1)
-      lift (formatSingleConfig parser render path reached (withoutOpaque source))
+      spend (linesHeld source)
+      except (formatSingleConfig parser render path reached (withoutOpaque source))
     Just apart -> do
-      budget <- get
-      when (linearCost budget forest source > budget) (refuse TooManyConfigurations)
-      case runStateT (separately parser render path reached apart) budget of
-        Left TooManyConfigurations -> refuse TooManyConfigurations
-        Left _ -> jointly
-        Right ((baseDoc, merged, found), left) -> do
-          put left
-          case combine Broken baseDoc (zip (fmap cfgWholes (vaGroups apart)) merged) of
-            Just d -> pure (d, found)
-            Nothing -> jointly
+      budget <- lift get
+      let pragma = splitOnPragma parser forest source
+          least = max 1 (linesHeld (blanking (fmap gsWhole forest) source))
+          affordable = linearCost (budget `div` least) forest source * least <= budget
+      base <-
+        if isNothing pragma || affordable
+          then
+            attempt $
+              formatAllConfigs
+                parser
+                render
+                path
+                (without (vaBaselineDropped apart) reached)
+                (vaBaseline apart)
+          else pure Nothing
+      fragmented <- case (pragma, base) of
+        (Nothing, Just b) -> join <$> attempt (inFragments parser render path reached forest source b)
+        _ -> pure Nothing
+      linear <- case (fragmented, base) of
+        (Nothing, Just b) | affordable -> oneAtATime apart b
+        _ -> pure Nothing
+      case fragmented <|> linear of
+        Just found -> pure found
+        Nothing -> case maybeToList pragma <> forest of
+          g : _ -> together parser render path reached (configurationsOn g forest source)
+          [] -> error "Tilia: a module that varies has a conditional to split on"
   where
-    jointly
-      | Right many <- countLeaves source,
-        many > configurationsWorthTrying =
-          refuse TooManyConfigurations
-      | otherwise = case configurations source of
-          Just c -> together parser render path reached c
-          Nothing -> error "Tilia: a module that varies has a conditional to split on"
+    oneAtATime apart base = do
+      varied <- attempt (separately parser render path reached apart base)
+      pure $ do
+        (merged, found) <- varied
+        d <- combine Broken (fst base) (zip (fmap cfgWholes (vaGroups apart)) merged)
+        pure (d, found)
 
 -- | How many formattings varying a module's conditionals one at a time
 -- takes at the least, counted as far as one past the given number.
@@ -246,25 +278,93 @@ separately ::
   Reached ->
   -- | The conditionals to vary, and the baseline to hold them against.
   Variation ->
-  Spending (Doc, [Doc], CommentSummary)
-separately parser render path reached v = do
-  (baseDoc, baseFound) <-
-    formatAllConfigs
-      parser
-      render
-      path
-      (without (vaBaselineDropped v) reached)
-      (vaBaseline v)
+  -- | What the baseline was formatted to.
+  (Doc, CommentSummary) ->
+  Spending ([Doc], CommentSummary)
+separately parser render path reached v (baseDoc, baseFound) = do
   groups <- for (vaGroups v) $ \c ->
     for (zip [0 ..] (cfgTexts c)) $ \(i, t) ->
       if t == vaBaseline v
         then pure (baseDoc, mempty)
         else formatAllConfigs parser render path (answering c i reached) t
   pure
-    ( baseDoc,
-      zipWith mergeOf (vaGroups v) (fmap (fmap fst) groups),
+    ( zipWith mergeOf (vaGroups v) (fmap (fmap fst) groups),
       baseFound <> foldMap (foldMap snd) groups
     )
+
+-- | Format each fragment of declarations the outermost conditionals reach
+-- on its own, and put the results into what the baseline was formatted to.
+--
+-- 'Nothing' where the module cannot be taken apart like that.
+inFragments ::
+  -- | What to parse a configuration with.
+  ParserConfig ->
+  -- | What to print it with.
+  RenderConfig ->
+  -- | The file this is, for the positions in a parse error.
+  FilePath ->
+  -- | How this configuration was reached.
+  Reached ->
+  -- | The outermost conditionals.
+  [GroupSpec] ->
+  -- | Input text.
+  Text ->
+  -- | What the baseline was formatted to.
+  (Doc, CommentSummary) ->
+  Spending (Maybe (Doc, CommentSummary))
+inFragments parser render path reached forest source (baseDoc, baseFound) =
+  case parts of
+    Nothing -> pure Nothing
+    Just (body, ps) -> do
+      formatted <- for ps $ \(f, (text, dropped)) ->
+        (,) f
+          <$> formatAllConfigs
+            parser
+            render
+            path
+            reached{reachedLines = dropping dropped (reachedLines reached)}
+            text
+      pure $ do
+        doc <- reassembled body [(f, d) | (f, (d, _)) <- formatted]
+        pure (doc, baseFound <> foldMap (snd . snd) formatted)
+  where
+    parts = do
+      body <- bodyOf baseDoc
+      fs <- fragmentsOf body forest
+      ps <- traverse (\f -> (,) f <$> fragmentText body forest source f) fs
+      pure (body, ps)
+
+-- | The outermost conditional around a @LANGUAGE@ or @OPTIONS@ pragma that
+-- changes how the rest of the module is parsed, if there is one.
+--
+-- Formatting a fragment on its own takes the rest of the module to be
+-- parsed alike in every configuration.
+splitOnPragma :: ParserConfig -> [GroupSpec] -> Text -> Maybe GroupSpec
+splitOnPragma parser forest source =
+  listToMaybe
+    [ o
+    | g <- groups,
+      holdsPragma g,
+      any (not . readAlike parser baseline . answered g) [1 .. gsCount g - 1],
+      o <- forest,
+      fst (gsWhole o) <= fst (gsWhole g),
+      snd (gsWhole g) <= snd (gsWhole o)
+    ]
+  where
+    groups = allGroups forest
+    baseline = blanking (concatMap (`blankingFor` 0) groups) source
+    answered g i =
+      blanking
+        (blankingFor g i <> concat [blankingFor h 0 | h <- groups, gsWhole h /= gsWhole g])
+        source
+    written = T.lines source
+    holdsPragma g =
+      let (from, to) = gsWhole g
+       in any pragma (take (to - from + 1) (drop (from - 1) written))
+    pragma l =
+      let u = T.toUpper l
+       in "{-#" `T.isInfixOf` u
+            && ("LANGUAGE" `T.isInfixOf` u || "OPTIONS" `T.isInfixOf` u)
 
 -- | Vary the conditionals together, one group at a time.
 together ::
@@ -284,7 +384,7 @@ together parser render path reached c = do
     if null (unconditionalErrors t)
       then Just . (,) i <$> formatAllConfigs parser render path (answering c i reached) t
       else pure Nothing
-  docs <- lift (traverse (complete (fmap (fmap fst) formatted)) (zip [0 ..] (cfgTexts c)))
+  docs <- except (traverse (complete (fmap (fmap fst) formatted)) (zip [0 ..] (cfgTexts c)))
   pure (mergeOf c docs, foldMap (snd . snd) formatted)
   where
     complete formatted (i, t) = case lookup i formatted of
@@ -385,14 +485,9 @@ without :: [(Int, Int)] -> Reached -> Reached
 without gone reached =
   reached{reachedLines = dropping gone (reachedLines reached)}
 
--- | How many whole formattings of a module one call may spend.
+-- | How many times over one call may format the lines of a module.
 configurationBudget :: Int
 configurationBudget = 64
-
--- | How many configurations a module may have and still be worth trying the
--- product on.
-configurationsWorthTrying :: Integer
-configurationsWorthTrying = 4096
 
 -- | Merge the documents one group's configurations printed to.
 mergeOf :: Configurations -> [Doc] -> Doc
