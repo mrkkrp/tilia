@@ -73,6 +73,7 @@ import GHC.Types.Fixity qualified as GHC
 import GHC.Types.Name.Occurrence (occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
 
 ----------------------------------------------------------------------------
@@ -719,21 +720,17 @@ data Unknown
 -- the code means. Everywhere else—a section, the left-hand side of a
 -- definition, an @infix@ declaration—the operator stands on its own and
 -- nothing is regrouped around it.
-operatorsUsed :: HsModule GhcPs -> [(Namespace, (Maybe Text, OpName))]
-operatorsUsed hsModule =
+operatorsUsed :: Gathered -> [(Namespace, (Maybe Text, OpName))]
+operatorsUsed found =
   fmap (named InTerms) inExpressions <> fmap (named InTypes) inTypes
   where
     inExpressions =
       [ n
-      | e :: HsExpr GhcPs <- listify (const True) hsModule,
-        OpApp _ _ op _ <- [e],
+      | OpApp _ _ op _ <- gatheredExpressions found,
         HsVar _ (L _ n) <- [unLoc op]
       ]
     inTypes =
-      [ n
-      | t :: HsType GhcPs <- listify (const True) hsModule,
-        HsOpTy _ _ _ (L _ n) _ <- [t]
-      ]
+      [n | HsOpTy _ _ _ (L _ n) _ <- gatheredTypes found]
     named namespace n =
       (namespace, (qualifierOf n, OpName (T.pack (occNameString (rdrNameOcc n)))))
 
@@ -742,9 +739,9 @@ operatorsUsed hsModule =
 --
 -- Empty is the only acceptable answer: an operator whose fixity is not
 -- known cannot be laid out, only guessed at.
-unknownOperators :: Scope -> HsModule GhcPs -> [((Maybe Text, OpName), Unknown)]
-unknownOperators scope hsModule =
-  Map.toList (Map.fromList (mapMaybe unsettled (operatorsUsed hsModule)))
+unknownOperators :: Scope -> Gathered -> [((Maybe Text, OpName), Unknown)]
+unknownOperators scope found =
+  Map.toList (Map.fromList (mapMaybe unsettled (operatorsUsed found)))
   where
     ambiguous namespace = Set.fromList (reachAmbiguous (reachIn namespace scope))
     unsettled (namespace, (qualifier, op)) =

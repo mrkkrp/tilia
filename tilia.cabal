@@ -62,6 +62,7 @@ library
     Tilia.Fixity.PackageDb
     Tilia.Fixity.Plan
     Tilia.Format
+    Tilia.Gathered
     Tilia.Ignore
     Tilia.Imports
     Tilia.Newline

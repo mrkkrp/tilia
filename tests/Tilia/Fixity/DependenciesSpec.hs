@@ -36,6 +36,7 @@ import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.Interface (Interface (..), readInterface)
 import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
+import Tilia.Gathered (gathered)
 import Tilia.Parser
 import Tilia.WithProjectPlan
   ( Dependency (..),
@@ -308,5 +309,5 @@ unsettledIn resolver (path, hsModule) = do
   scope <- scopeFor resolver (Is #implicitPrelude) hsModule
   pure
     [ path <> ": " <> T.unpack (operatorSpelling qualifier op) <> " " <> show why
-    | ((qualifier, op), why) <- unknownOperators scope hsModule
+    | ((qualifier, op), why) <- unknownOperators scope (gathered hsModule)
     ]

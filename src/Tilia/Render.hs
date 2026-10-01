@@ -28,6 +28,7 @@ import Tilia.Comments
 import Tilia.Comments.Attach (attachComments)
 import Tilia.Doc.Combinators
 import Tilia.Fixity (Scope)
+import Tilia.Gathered (Gathered)
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
@@ -77,7 +78,7 @@ renderConfiguration settings parsed =
   )
   where
     hsMod = pmModule parsed
-    (haddocks, loose') = splitHaddocks hsMod (comments (pmSource parsed))
+    (haddocks, loose') = splitHaddocks (pmGathered parsed) (comments (pmSource parsed))
     plain = heldOff haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
@@ -178,14 +179,15 @@ knot =
 
 -- | Separate the comments the syntax tree also knows about from the rest.
 splitHaddocks ::
-  HsModule GhcPs ->
+  -- | What the tree holds.
+  Gathered ->
   -- | Every comment in the module.
   [Comment] ->
   -- | The ones the tree carries, and the ones it does not.
   ([Comment], [Comment])
-splitHaddocks hsMod = foldr sort' ([], [])
+splitHaddocks found = foldr sort' ([], [])
   where
-    inTree = Set.fromList (fmap startPoint (haddockSpans hsMod))
+    inTree = Set.fromList (fmap startPoint (haddockSpans found))
     sort' c (docs, rest)
       | startPoint (commentSpan c) `Set.member` inTree =
           (widenTrigger c : docs, rest)

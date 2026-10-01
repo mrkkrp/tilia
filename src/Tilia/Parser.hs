@@ -34,6 +34,7 @@ import GHC.Types.SrcLoc qualified as GHC
 import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
+import Tilia.Gathered (Gathered (..), gathered)
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, linesOf, sourceOf)
 import Tilia.Span (Span (..))
@@ -45,6 +46,8 @@ data ParsedModule = ParsedModule
     pmModule :: HsModule GhcPs,
     -- | The module as its author wrote it.
     pmSource :: Source,
+    -- | The nodes of the syntax tree that formatting queries.
+    pmGathered :: Gathered,
     -- | Whether GHC read this as a module or as a Backpack signature.
     pmSourceType :: SourceType,
     -- | The lines above the module that the parser never sees.
@@ -92,14 +95,16 @@ parseConfiguration config path written source =
       | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
           Left (whyNot pstate)
       | otherwise ->
-          Right
-            ParsedModule
-              { pmModule = hsModule,
-                pmSource = sourceOf written (headerComments pstate) hsModule,
-                pmSourceType = sourceType,
-                pmPrologue = prologueOf (lineTexts written),
-                pmHeaderEnd = headerEndOf hsModule
-              }
+          let found = gathered hsModule
+           in Right
+                ParsedModule
+                  { pmModule = hsModule,
+                    pmSource = sourceOf written (headerComments pstate) (gatheredComments found),
+                    pmGathered = found,
+                    pmSourceType = sourceType,
+                    pmPrologue = prologueOf (lineTexts written),
+                    pmHeaderEnd = headerEndOf hsModule
+                  }
   where
     headerComments = concat . GHC.header_comments
 

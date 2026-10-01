@@ -14,8 +14,6 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Hs (HsModule)
-import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Fixity
   ( Direction (..),
@@ -33,6 +31,7 @@ import Tilia.Fixity
     resolveScope,
   )
 import Tilia.Fixity.Builtin (builtinFixities)
+import Tilia.Parser (ParsedModule (..))
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig)
 
@@ -41,16 +40,16 @@ exampleRenderConfig ::
   -- | What the package around it puts in force, if it is a module of one.
   [Extension] ->
   Text ->
-  HsModule GhcPs ->
+  ParsedModule ->
   RenderConfig
-exampleRenderConfig package source hsModule =
+exampleRenderConfig package source parsed =
   defaultRenderConfig
     { rcExtensions =
         Set.fromList (effectiveExtensions package source),
       rcScope =
         Just
           ( underEveryQualifier
-              (resolveScope (Is #implicitPrelude) known hsModule)
+              (resolveScope (Is #implicitPrelude) known (pmModule parsed))
           )
     }
   where
@@ -67,7 +66,7 @@ exampleRenderConfig package source hsModule =
               (reachQualified reach)
               ( Map.fromList
                   [ ((qualifier, op), (fixity, DeclaredIn qualifier))
-                  | (_, (Just qualifier, op)) <- operatorsUsed hsModule,
+                  | (_, (Just qualifier, op)) <- operatorsUsed (pmGathered parsed),
                     Just exported <- [exportsOf qualifier],
                     Just fixity <- [Map.lookup (InTerms, op) exported]
                   ]

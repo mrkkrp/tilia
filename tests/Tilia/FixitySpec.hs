@@ -221,7 +221,7 @@ spec = do
     it "lets a file be formatted when no unread module could have declared it" $
       unknownOperators
         (scopeKnowing [("Opaque", ["<+>"])] usesUnknown)
-        (pmModule (parsed usesUnknown))
+        (pmGathered (parsed usesUnknown))
         `shouldBe` []
 
   describe "what a name carries with it" $ do
@@ -666,10 +666,10 @@ scopeSuspecting carries source =
 -- | The uses of an operator a module makes that its scope cannot settle.
 unsettledIn :: Text -> [((Maybe Text, OpName), Unknown)]
 unsettledIn src =
-  let hsModule = pmModule (parsed src)
+  let p = parsed src
    in unknownOperators
-        (resolveScope (Is #implicitPrelude) knowingExports hsModule)
-        hsModule
+        (resolveScope (Is #implicitPrelude) knowingExports (pmModule p))
+        (pmGathered p)
 
 -- | A module that takes its Prelude from elsewhere and hides an operator
 -- from it, in order to take that operator from a module which spells it the
@@ -707,10 +707,10 @@ unsettledAboutPrelude ::
   Text ->
   [((Maybe Text, OpName), Unknown)]
 unsettledAboutPrelude implicitPrelude src =
-  let hsModule = pmModule (parsed src)
+  let p = parsed src
    in unknownOperators
-        (resolveScope implicitPrelude disagreeingAboutPrelude hsModule)
-        hsModule
+        (resolveScope implicitPrelude disagreeingAboutPrelude (pmModule p))
+        (pmGathered p)
 
 scopeOf ::
   Text ->

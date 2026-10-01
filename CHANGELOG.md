@@ -29,6 +29,9 @@
   it at the same time. A run that starts with nothing cached is up to three
   times as fast and needs half the memory. [PR
   46](https://github.com/mrkkrp/tilia/pull/46).
+* Walk a module's syntax tree once rather than five times, which makes
+  formatting about 10% faster. [PR
+  47](https://github.com/mrkkrp/tilia/pull/47).
 
 ## Tilia 0.0.2.0
 
