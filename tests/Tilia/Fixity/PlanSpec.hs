@@ -861,7 +861,7 @@ signals =
 chased :: Text -> IO (Maybe Fixity)
 chased source = do
   answer <-
-    withReexports (Is #implicitPrelude) reach carries Set.empty "M" (pmModule parsed)
+    withReexports reach carries Set.empty "M" (summarize (Is #implicitPrelude) (pmModule parsed))
   pure $ case answer of
     Declares fixities -> Map.lookup (InTerms, OpName "<+>") fixities
     Unreadable _ -> Nothing
