@@ -36,6 +36,10 @@
   source tarball once a run, and cache module summaries for local modules
   between runs. A run is a fifth to a quarter faster. [PR
   48](https://github.com/mrkkrp/tilia/pull/48).
+* Read the operators that interface files refer to by key, rather than run
+  `ghc --show-iface` on every interface that refers to one. A run with
+  `--no-cache` no longer starts `ghc` and is about a third faster. [PR
+  49](https://github.com/mrkkrp/tilia/pull/49).
 
 ## Tilia 0.0.2.0
 
