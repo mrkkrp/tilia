@@ -9,6 +9,8 @@ module Tilia.Doc.Internal
     foldChildren,
     mapChildren,
     spine,
+    spineAt,
+    printedFrom,
     onlySpacing,
     Conditional (..),
     conditionalRange,
@@ -25,10 +27,10 @@ module Tilia.Doc.Internal
 where
 
 import Data.List (unsnoc)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Tilia.Span (Span, isSingleLine)
+import Tilia.Span (Span, isSingleLine, spanEndLine, spanStartLine)
 
 ----------------------------------------------------------------------------
 -- Documents
@@ -157,6 +159,24 @@ spine = \case
   DEmpty -> []
   DCat a b -> spine a <> spine b
   d -> [d]
+
+-- | 'spine', with the variants resolved the way this layout will print them.
+spineAt :: Layout -> Doc -> [Doc]
+spineAt layout = \case
+  DEmpty -> []
+  DCat a b -> spineAt layout a <> spineAt layout b
+  DVariant flatD brokenD ->
+    spineAt layout (case layout of Flat -> flatD; Broken -> brokenD)
+  d -> [d]
+
+-- | The lines of the input a document holds something printed from, as far
+-- down as there is anything.
+printedFrom :: Doc -> [(Int, Int)]
+printedFrom = \case
+  DLocated s x -> (spanStartLine s, spanEndLine s) : printedFrom x
+  DFence s x -> (spanStartLine s, spanEndLine s) : printedFrom x
+  d@(DCppChoice cs _ _) -> mapMaybe conditionalRange cs <> foldChildren printedFrom d
+  d -> foldChildren printedFrom d
 
 -- | Nothing but the whitespace that separates one thing from the next.
 onlySpacing :: Doc -> Bool
