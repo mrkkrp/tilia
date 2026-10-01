@@ -173,7 +173,7 @@ notesThrough ::
   IO [Text]
 notesThrough chains world source =
   renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . exportsOf) chainOf scope hsModule
+    <$> fixityNotes (Is #implicitPrelude) (pure . exportsOf) chainOf scope parsed
   where
     scope =
       resolveScope

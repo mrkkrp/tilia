@@ -326,7 +326,7 @@ checkPure palette path package source expected
     render parsed =
       printDoc
         defaultRenderOptions
-        (renderModule (exampleRenderConfig package source (pmModule parsed)) parsed)
+        (renderModule (exampleRenderConfig package source parsed) parsed)
 
 ----------------------------------------------------------------------------
 -- Checking an example that involved the preprocessor
@@ -475,5 +475,5 @@ configurationsToCheck = 64
 renderConfigFor :: ParserConfig -> FilePath -> [Extension] -> Text -> RenderConfig
 renderConfigFor parser path package source =
   case parseModule parser path (blankCpp source) of
-    Right whole -> exampleRenderConfig package source (pmModule whole)
+    Right whole -> exampleRenderConfig package source whole
     Left _ -> defaultRenderConfig

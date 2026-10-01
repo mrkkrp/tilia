@@ -18,8 +18,6 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Hs (HsModule)
-import GHC.Hs.Extension (GhcPs)
 import Tilia.Fixity
   ( Direction (..),
     Fixities,
@@ -39,6 +37,7 @@ import Tilia.Fixity
     spellUnreadIn,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
+import Tilia.Parser (ParsedModule (..))
 import Tilia.Utils (indent, lineWidth, wrapTo)
 
 -- | Everything that decided one module's fixities.
@@ -94,10 +93,10 @@ fixityNotes ::
   -- | The scope the module was formatted under.
   Scope ->
   -- | The module.
-  HsModule GhcPs ->
+  ParsedModule ->
   IO FixityNotes
-fixityNotes implicitPrelude resolve chainOf scope hsModule = do
-  brought <- traverse alongside (moduleImports implicitPrelude hsModule)
+fixityNotes implicitPrelude resolve chainOf scope parsed = do
+  brought <- traverse alongside (moduleImports implicitPrelude (pmModule parsed))
   pure
     FixityNotes
       { notedImports = brought,
@@ -126,7 +125,7 @@ fixityNotes implicitPrelude resolve chainOf scope hsModule = do
       Map.elems
         ( Map.fromList
             [ ((namespace, uncurry operatorSpelling u), (namespace, u))
-            | (namespace, u) <- operatorsUsed hsModule
+            | (namespace, u) <- operatorsUsed (pmGathered parsed)
             ]
         )
 

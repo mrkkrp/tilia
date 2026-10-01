@@ -24,15 +24,12 @@ module Tilia.Comments
 where
 
 import Data.Char (isSpace)
-import Data.Generics.Schemes (listify)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Hs (HsModule)
-import GHC.Hs.Extension (GhcPs)
 import GHC.Parser.Annotation qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Source.Lines (Lines, blankAt, lineAt, lineTexts)
@@ -91,22 +88,20 @@ commentsOf ::
   Lines ->
   -- | Comments the tree does not carry.
   [GHC.LEpaComment] ->
-  -- | Parsed module.
-  HsModule GhcPs ->
+  -- | The comments the tree's annotations hold.
+  [GHC.EpAnnComments] ->
   [Comment]
-commentsOf ls loose hsModule =
+commentsOf ls loose annotated =
   fmap (uncurry (mkComment ls))
     . dedupeOnSpan
     . sortOn (GHC.realSrcSpanStart . fst)
     . mapMaybe located
-    $ loose <> concatMap annComments (listify anyAnnComments hsModule)
+    $ loose <> concatMap annComments annotated
   where
     dedupeOnSpan = \case
       (x : y : rest) | fst x == fst y -> dedupeOnSpan (x : rest)
       (x : rest) -> x : dedupeOnSpan rest
       [] -> []
-    anyAnnComments :: GHC.EpAnnComments -> Bool
-    anyAnnComments _ = True
     annComments = \case
       GHC.EpaComments xs -> xs
       GHC.EpaCommentsBalanced xs ys -> xs <> ys

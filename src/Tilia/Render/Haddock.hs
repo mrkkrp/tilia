@@ -26,6 +26,7 @@ import Data.Text qualified as T
 import GHC.Hs
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import Tilia.Doc.Combinators
+import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
 import Tilia.Span
 import Tilia.Span.Ghc
@@ -209,18 +210,20 @@ printsWholeLineDocs ctx x = case docsIn x of
       Just written -> not (selfClosing written)
       Nothing -> not (null (docLines (writtenAsBlock ctx doc) (unLoc doc)))
 
--- | The spans of every Haddock in a fragment.
-haddockSpans :: (Data a) => a -> [Span]
-haddockSpans x = mapMaybe (spanOfSrcSpan . getLoc) (docsIn x) <> namedSections x
+-- | The spans of every Haddock in a module.
+haddockSpans :: Gathered -> [Span]
+haddockSpans found =
+  mapMaybe (spanOfSrcSpan . getLoc) (gatheredDocs found)
+    <> namedSections (gatheredEntries found)
 
 -- | Every Haddock in a fragment.
 docsIn :: (Data a) => a -> [LHsDoc GhcPs]
 docsIn = listify (const True :: LHsDoc GhcPs -> Bool)
 
--- | The spans of the @-- $name@ anchors in an export list.
-namedSections :: (Data a) => a -> [Span]
-namedSections =
-  mapMaybe anchorSpan . listify (const True :: LIE GhcPs -> Bool)
+-- | The spans of the @-- $name@ anchors among the entries of an export
+-- list.
+namedSections :: [LIE GhcPs] -> [Span]
+namedSections = mapMaybe anchorSpan
   where
     anchorSpan l = case unLoc l of
       IEDocNamed{} -> spanOfSrcSpan (getHasLoc (getLoc l))

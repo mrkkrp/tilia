@@ -75,6 +75,7 @@ import Tilia.Parser
     describeParseError,
     parseModule,
     parserConfigFor,
+    pmGathered,
     pmModule,
     pmSource,
   )
@@ -308,10 +309,10 @@ formatSource session path source = runExceptT $ do
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
          in (Set.fromList declared, usesCpp declared text)
-      renderConfigFor extensions hsModule = do
+      renderConfigFor extensions parsed = do
         let implicitPrelude =
               fromBool (Set.member ImplicitPrelude extensions)
-        scope <- liftIO (scopeFor resolver implicitPrelude hsModule)
+        scope <- liftIO (scopeFor resolver implicitPrelude (pmModule parsed))
         liftIO $ case sessionFixityNotes session of
           Nothing -> pure ()
           Just ref -> do
@@ -321,9 +322,9 @@ formatSource session path source = runExceptT $ do
                 (askFixities resolver)
                 (askChain resolver)
                 scope
-                hsModule
+                parsed
             atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
-        case unknownOperators scope hsModule of
+        case unknownOperators scope (pmGathered parsed) of
           [] ->
             pure
               defaultRenderConfig
@@ -335,7 +336,7 @@ formatSource session path source = runExceptT $ do
         | cpp = do
             render <- case parseModule config path (reading text) of
               Left _ -> pure defaultRenderConfig{rcExtensions = extensions}
-              Right whole -> renderConfigFor extensions (pmModule whole)
+              Right whole -> renderConfigFor extensions whole
             printed <-
               orElse
                 (CppUnsupported path)
@@ -344,7 +345,7 @@ formatSource session path source = runExceptT $ do
         | otherwise = do
             parsed <-
               maybe (orElse NotParsed (parseModule config path text)) pure already
-            render <- renderConfigFor extensions (pmModule parsed)
+            render <- renderConfigFor extensions parsed
             pure
               ( printDoc defaultRenderOptions (renderModule render parsed),
                 Just parsed
