@@ -52,6 +52,7 @@ import Tilia.Fixity
   ( OpName,
     Unknown (..),
     operatorSpelling,
+    spellDisagreement,
     spellUnreadIn,
     unknownOperators,
   )
@@ -82,7 +83,7 @@ import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 import Tilia.Source (comments)
-import Tilia.Utils (tshow)
+import Tilia.Utils (collected, spellList, tshow)
 
 -- | Why a file could not be formatted.
 data FormatError
@@ -134,29 +135,21 @@ describeFormatError palette = \case
     "will not format "
       <> file path
       <> ": "
-      <> T.intercalate ", and " (fmap saying (together unknown))
+      <> T.intercalate ", and " (fmap saying (collected (fmap named unknown)))
     where
+      named ((qualifier, op), why) =
+        (why, paint palette Operator (operatorSpelling qualifier op))
       saying (why, ops) =
-        (if length ops == 1 then "the fixity of " else "the fixities of ")
-          <> listing ops
+        (if single then "the fixity of " else "the fixities of ")
+          <> spellList ops
           <> " "
-          <> because why
-      because = \case
-        NotRead missing -> "may be declared in " <> spellUnreadIn palette missing
-        Ambiguous -> "is declared differently by two modules in scope"
-      together = foldl put []
+          <> because
         where
-          put seen ((qualifier, op), why) =
-            let named = paint palette Operator (operatorSpelling qualifier op)
-             in case break ((== why) . fst) seen of
-                  (before, (_, ops) : after) ->
-                    before <> [(why, ops <> [named])] <> after
-                  _ -> seen <> [(why, [named])]
-      listing ops = case reverse ops of
-        [] -> ""
-        [one] -> one
-        [second, first'] -> first' <> " and " <> second
-        (final : rest) -> T.intercalate ", " (reverse rest) <> ", and " <> final
+          single = length ops == 1
+          because = case why of
+            NotRead missing -> "may be declared in " <> spellUnreadIn palette missing
+            Ambiguous brought ->
+              (if single then "is " else "are ") <> spellDisagreement palette brought
   where
     file = paint palette Place . T.pack
     located t = case T.breakOn ":" t of

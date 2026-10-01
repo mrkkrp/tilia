@@ -1415,7 +1415,7 @@ withPlan plan = do
 
     it "reports no ambiguity for a module that compiles" $
       endToEnd resolver "module M where\nimport Prettyprinter\n" $ \scope ->
-        reachAmbiguous (scopeInTerms scope) `shouldBe` []
+        reachAmbiguous (scopeInTerms scope) `shouldBe` Map.empty
 
   describe "readiness" $ do
     it "reports something other than a missing plan for this project" $ do

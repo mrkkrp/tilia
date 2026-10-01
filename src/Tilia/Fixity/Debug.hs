@@ -13,14 +13,14 @@ module Tilia.Fixity.Debug
 where
 
 import Data.Choice (Choice)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Fixity
-  ( Direction (..),
-    Fixities,
+  ( Fixities,
     Fixity (..),
     Import (..),
     OpName (..),
@@ -34,6 +34,8 @@ import Tilia.Fixity
     reachAmbiguous,
     reachIn,
     reachUnqualified,
+    spellDisagreement,
+    spellFixity,
     spellUnreadIn,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
@@ -75,8 +77,8 @@ data OperatorNote = OperatorNote
     noteSpelling :: Text,
     -- | What the scope answered for it.
     noteResolution :: Resolution,
-    -- | Whether two modules in scope disagree about it.
-    noteAmbiguous :: Bool
+    -- | What each import in scope brings, where they disagree about it.
+    noteDisagreement :: Maybe (NonEmpty (Text, Fixity))
   }
   deriving (Eq, Show)
 
@@ -142,8 +144,8 @@ fixityNotes implicitPrelude resolve chainOf scope parsed = do
       OperatorNote
         { noteSpelling = operatorSpelling qualifier op,
           noteResolution = lookupFixity scope namespace qualifier op,
-          noteAmbiguous =
-            (qualifier, op) `elem` reachAmbiguous (reachIn namespace scope)
+          noteDisagreement =
+            Map.lookup (qualifier, op) (reachAmbiguous (reachIn namespace scope))
         }
 
 -- | Set out all the 'FixityNotes' per file.
@@ -191,14 +193,14 @@ aboutFile palette notes =
       (False, Just alias) -> " as " <> named alias
       (False, Nothing) -> ""
 
-    fromOwn (op, fixity) = operator op <> " " <> spelled fixity
+    fromOwn (op, fixity) = operator op <> " " <> spellFixity fixity
 
     fromOperator o =
       operator (noteSpelling o)
         <> " "
         <> case noteResolution o of
           Resolved fixity provenance ->
-            spelled fixity <> ", " <> from provenance <> ambiguously o
+            spellFixity fixity <> ", " <> from provenance <> ambiguously o
           Unresolved missing ->
             "unknown: may be declared in " <> spellUnreadIn palette missing
 
@@ -207,9 +209,10 @@ aboutFile palette notes =
       DeclaredIn m -> "declared in " <> named m
       ReportDefault -> "the Report's default, nothing in scope declaring it"
 
-    ambiguously o
-      | noteAmbiguous o = ", and two modules in scope disagree about it"
-      | otherwise = ""
+    ambiguously o = case noteDisagreement o of
+      Nothing -> ""
+      Just brought ->
+        ", and the imports disagree about it: " <> spellDisagreement palette brought
 
     named = paint palette Place
     operator = paint palette Operator
@@ -217,13 +220,3 @@ aboutFile palette notes =
     operators = \case
       1 -> "1 operator"
       n -> T.pack (show n) <> " operators"
-
--- | A fixity, written the way it would be declared.
-spelled :: Fixity -> Text
-spelled (Fixity direction precedence) =
-  which direction <> " " <> T.pack (show precedence)
-  where
-    which = \case
-      LeftAssoc -> "infixl"
-      RightAssoc -> "infixr"
-      NoAssoc -> "infix"

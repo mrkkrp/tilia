@@ -10,6 +10,7 @@ module Tilia.Fixity
     Direction (..),
     Fixity (..),
     defaultFixity,
+    spellFixity,
 
     -- * Module declarations
     declaredFixities,
@@ -51,6 +52,7 @@ module Tilia.Fixity
     unknownOperators,
     operatorSpelling,
     spellUnreadIn,
+    spellDisagreement,
 
     -- * Module summaries
     ModuleSummary (..),
@@ -62,10 +64,12 @@ module Tilia.Fixity
 where
 
 import Control.DeepSeq (NFData)
+import Data.Bifunctor (first)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
 import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -81,6 +85,7 @@ import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
+import Tilia.Utils (collected, spellList)
 
 ----------------------------------------------------------------------------
 -- Fixities
@@ -110,6 +115,16 @@ instance NFData Fixity
 -- | What an operator with no declaration in scope means: @infixl 9@.
 defaultFixity :: Fixity
 defaultFixity = Fixity LeftAssoc 9
+
+-- | A fixity, written the way it would be declared.
+spellFixity :: Fixity -> Text
+spellFixity (Fixity direction precedence) =
+  which direction <> " " <> T.pack (show precedence)
+  where
+    which = \case
+      LeftAssoc -> "infixl"
+      RightAssoc -> "infixr"
+      NoAssoc -> "infix"
 
 ----------------------------------------------------------------------------
 -- Module declarations
@@ -538,10 +553,11 @@ data Reach = Reach
     -- | Reachable as @M.op@, keyed by the alias actually written—or by the
     -- module's own name, under which its own declarations are reachable.
     reachQualified :: Map (Text, OpName) (Fixity, Provenance),
-    -- | Operators the imports bring in with two different fixities, as they
-    -- would have to be written to run into it: without a qualifier, or
-    -- under the alias the disagreeing imports share.
-    reachAmbiguous :: [(Maybe Text, OpName)]
+    -- | Operators the imports bring in with different fixities, as they
+    -- would have to be written to run into it—without a qualifier, or under
+    -- the alias the disagreeing imports share—with the module each import
+    -- names and the fixity it brings.
+    reachAmbiguous :: Map (Maybe Text, OpName) (NonEmpty (Text, Fixity))
   }
   deriving (Eq, Show)
 
@@ -573,23 +589,24 @@ resolveScope implicitPrelude known hsModule =
 
     reachAmong namespace =
       Reach
-        { reachUnqualified = Map.union own (Map.map fst unqualified),
+        { reachUnqualified = Map.union own (Map.map settled unqualified),
           reachQualified = qualified,
           reachAmbiguous =
-            [(Nothing, op) | op <- Map.keys (Map.filter snd unqualified)]
-              <> [(Just alias, op) | (alias, op) <- Map.keys (Map.filter snd qualifiedFrom)]
+            Map.union
+              (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
+              (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom))
         }
       where
         own = Map.map (,DeclaredHere) (fixitiesIn namespace declared)
         offered m = fixitiesIn namespace <$> knownFixities known m
         unqualified =
           Map.unionsWith
-            disagree
-            [ Map.map (,False) (visible offered i)
+            (<>)
+            [ visible offered i
             | i <- imports,
               not (importQualified i)
             ]
-        qualified = Map.union ownQualified (Map.map fst qualifiedFrom)
+        qualified = Map.union ownQualified (Map.map settled qualifiedFrom)
         ownQualified =
           Map.fromList
             [ ((m, op), entry)
@@ -598,8 +615,8 @@ resolveScope implicitPrelude known hsModule =
             ]
         qualifiedFrom =
           Map.unionsWith
-            disagree
-            [ Map.mapKeys (importAlias i,) (Map.map (,False) (visible offered i))
+            (<>)
+            [ Map.mapKeys (importAlias i,) (visible offered i)
             | i <- imports
             ]
 
@@ -614,12 +631,16 @@ resolveScope implicitPrelude known hsModule =
         Nothing <- [knownFixities known (importModule i)]
       ]
 
-    disagree (a, aBad) (b, bBad) = (a, aBad || bBad || fst a /= fst b)
+    settled ((m, fixity) :| _) = (fixity, DeclaredIn m)
+
+    disagreeing brought@((_, fixity) :| _)
+      | all ((== fixity) . snd) brought = Nothing
+      | otherwise = Just (NE.nub brought)
 
     visible offered i =
       Map.filterWithKey
         (\op _ -> admits (knownChildren known (importModule i)) op i)
-        (Map.map (,DeclaredIn (importModule i)) (fromMaybe Map.empty (offered (importModule i))))
+        (Map.map (\fixity -> (importModule i, fixity) :| []) (fromMaybe Map.empty (offered (importModule i))))
 
 -- | The fixities in one namespace, by the operator alone.
 fixitiesIn :: Namespace -> Fixities -> Map OpName Fixity
@@ -728,9 +749,10 @@ data Unknown
     -- actually stopped us, and the declaration the answer depends on may be
     -- in any of them.
     NotRead (NonEmpty ModuleChain)
-  | -- | Two modules in scope bring it in with different fixities, so which
-    -- one applies cannot be read off the imports alone.
-    Ambiguous
+  | -- | The imports in scope bring it in with different fixities, given as
+    -- the module each import names and the fixity it brings, so which one
+    -- applies cannot be read off the imports alone.
+    Ambiguous (NonEmpty (Text, Fixity))
   deriving (Eq, Show)
 
 -- | Every operator the module uses where its fixity decides the layout.
@@ -763,13 +785,11 @@ unknownOperators :: Scope -> Gathered -> [((Maybe Text, OpName), Unknown)]
 unknownOperators scope found =
   Map.toList (Map.fromList (mapMaybe unsettled (operatorsUsed found)))
   where
-    ambiguous namespace = Set.fromList (reachAmbiguous (reachIn namespace scope))
     unsettled (namespace, (qualifier, op)) =
       case fixityInScope scope namespace qualifier op of
-        Just (answering, _)
-          | Set.member (qualifier, op) (ambiguous answering) ->
-              Just ((qualifier, op), Ambiguous)
-          | otherwise -> Nothing
+        Just (answering, _) ->
+          ((qualifier, op),) . Ambiguous
+            <$> Map.lookup (qualifier, op) (reachAmbiguous (reachIn answering scope))
         Nothing -> case nonEmpty (unreadThatMightDeclare scope qualifier op) of
           Just missing -> Just ((qualifier, op), NotRead missing)
           Nothing -> Nothing
@@ -795,6 +815,22 @@ spellUnreadIn palette missing =
       [_] -> "which this run could not read"
       [_, _] -> "neither of which this run could read"
       _ -> "none of which this run could read"
+
+-- | Spell out the fixities an ambiguous operator is brought in with, and the
+-- modules that bring each.
+spellDisagreement ::
+  -- | Whether there is anybody there to see color.
+  Palette ->
+  -- | What each import brings, as 'Ambiguous' gives it.
+  NonEmpty (Text, Fixity) ->
+  Text
+spellDisagreement palette brought =
+  case fmap bringing (collected [(fixity, m) | (m, fixity) <- toList brought]) of
+    [one, other] -> one <> " but " <> other
+    each -> spellList each
+  where
+    bringing (fixity, ms) =
+      spellFixity fixity <> " in " <> spellList (fmap (paint palette Place) ms)
 
 ----------------------------------------------------------------------------
 -- Module summaries

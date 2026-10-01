@@ -342,5 +342,5 @@ nothingReaches =
   Reach
     { reachUnqualified = Map.empty,
       reachQualified = Map.empty,
-      reachAmbiguous = []
+      reachAmbiguous = Map.empty
     }
