@@ -937,7 +937,18 @@ newResolverVia caching routes plan = do
       summariesOf modName text =
         memoized flights summariesRead Nothing modName $ do
           extensions <- extensionsOf modName
-          evaluate (force (configurationsOf (macrosOf plan) (Just extensions) modName text))
+          let summarized =
+                evaluate (force (configurationsOf (macrosOf plan) (Just extensions) modName text))
+              stamp = digestOf (T.intercalate "\n" [T.pack (show extensions), macrosRead, text])
+          case digestOf . T.pack <$> Map.lookup modName local of
+            Nothing -> summarized
+            Just key ->
+              join
+                <$> recalled
+                  (cachedSummaries cache key stamp)
+                  (storeSummaries cache key stamp)
+                  (Just <$> summarized)
+      macrosRead = T.pack (show (macrosOf plan))
       extensionsOf modName
         | Just path <- Map.lookup modName local =
             either (const []) id <$> askPackage path
@@ -1361,9 +1372,11 @@ interfaceIndex installed =
       m <- ipModules i
     ]
   where
-    keyFor dir =
-      "interface-"
-        <> T.take 24 (T.decodeUtf8Lenient (B16.encode (SHA256.hash (T.encodeUtf8 (T.pack dir)))))
+    keyFor dir = "interface-" <> digestOf (T.pack dir)
+
+-- | A name for some text, short enough to file something under.
+digestOf :: Text -> Text
+digestOf = T.take 24 . T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
 
 -- | Present a fixity map as an 'Interface'.
 asInterface :: Fixities -> Interface
