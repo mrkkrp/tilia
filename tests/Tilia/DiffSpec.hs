@@ -22,6 +22,14 @@ spec = do
       property $ \(Lines xs) (Lines ys) ->
         length (filter (== Context) (editScript xs ys)) `shouldBe` common xs ys
 
+    it "takes out the lines of every change before it puts any in" $
+      property $ \(Lines xs) (Lines ys) ->
+        editScript xs ys `shouldNotSatisfy` addsBeforeRemoving
+
+    it "takes a line out first where the search splits a change in two" $
+      editScript ["a", "b", "a"] ["d", "c", "b", "b"]
+        `shouldBe` [Removed, Added, Added, Added, Context, Removed]
+
     it "keeps everything when nothing changed" $
       editScript ["a", "b", "c"] ["a", "b", "c"] `shouldBe` [Context, Context, Context]
 
@@ -70,6 +78,10 @@ followed (Context : ms) (x : xs) (y : ys) = x == y && followed ms xs ys
 followed (Removed : ms) (_ : xs) ys = followed ms xs ys
 followed (Added : ms) xs (_ : ys) = followed ms xs ys
 followed _ _ _ = False
+
+-- | Whether a line is put in somewhere right before one is taken out.
+addsBeforeRemoving :: [Mark] -> Bool
+addsBeforeRemoving marks = (Added, Removed) `elem` zip marks (drop 1 marks)
 
 -- | The length of the longest common subsequence.
 common :: [Text] -> [Text] -> Int
