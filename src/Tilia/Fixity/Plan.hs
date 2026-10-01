@@ -49,9 +49,21 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Applicative ((<|>))
-import Control.Concurrent (getNumCapabilities, newEmptyMVar, putMVar, readMVar)
+import Control.Concurrent
+  ( MVar,
+    ThreadId,
+    getNumCapabilities,
+    modifyMVar,
+    modifyMVar_,
+    myThreadId,
+    newEmptyMVar,
+    newMVar,
+    readMVar,
+    tryPutMVar,
+    tryReadMVar,
+  )
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
-import Control.Exception (bracket_)
+import Control.Exception (bracket_, onException)
 import Control.Monad (filterM, foldM, join, void)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson
@@ -83,6 +95,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
+import Data.Unique (Unique, newUnique)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.IO.Handle (hDuplicate)
@@ -858,36 +871,28 @@ newResolverVia caching routes plan = do
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
   local <- localModules plan
-  memo <- newIORef Map.empty
-  childrenRead <- newIORef Map.empty
+  flights <- newMVar (Flights Map.empty Map.empty)
+  fixitiesRead <- newMemo
+  childrenRead <- newMemo
   askPackage <- newPackageReader
-  extensionsRead <- newIORef Map.empty
-  exportsRead <- newIORef Map.empty
-  interfacesRead <- newIORef Map.empty
+  extensionsRead <- newMemo
+  exportsRead <- newMemo
+  interfacesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
-  let interfaceOf modName = do
-        slot <- newEmptyMVar
-        claimed <-
-          atomicModifyIORef' interfacesRead $ \m -> case Map.lookup modName m of
-            Just other -> (m, Left other)
-            Nothing -> (Map.insert modName slot m, Right slot)
-        case claimed of
-          Left other -> readMVar other
-          Right mine -> do
-            found <- case Map.lookup modName interfaces of
-              Nothing -> pure Nothing
-              Just (_, path) ->
-                bracket_ (waitQSem reading) (signalQSem reading) $
-                  readInterface modName path
-            -- Being listed is not the same as being readable: @ghc-pkg@
-            -- names @GHC.Prim@ among @ghc-prim@'s modules and there is no
-            -- file at the path that implies. So the table answers for a
-            -- module with nothing to read, however it came to have nothing.
-            let interface = case found of
-                  Just _ -> found
-                  Nothing -> asInterface <$> Map.lookup modName builtinFixities
-            putMVar mine interface
-            pure interface
+  let interfaceOf modName =
+        memoized flights interfacesRead Nothing modName $ do
+          found <- case Map.lookup modName interfaces of
+            Nothing -> pure Nothing
+            Just (_, path) ->
+              bracket_ (waitQSem reading) (signalQSem reading) $
+                readInterface modName path
+          -- Being listed is not the same as being readable: @ghc-pkg@ names
+          -- @GHC.Prim@ among @ghc-prim@'s modules and there is no file at
+          -- the path that implies. So the table answers for a module with
+          -- nothing to read, however it came to have nothing.
+          pure $ case found of
+            Just _ -> found
+            Nothing -> asInterface <$> Map.lookup modName builtinFixities
   let workings =
         Workings
           { wkRoutes = routes,
@@ -903,8 +908,11 @@ newResolverVia caching routes plan = do
             wkMacros = macrosOf plan,
             wkGenerated = generatedModules plan
           }
+      -- The stand-in is what 'withReexports' makes of a module it is in the
+      -- middle of reading.
       resolved visiting modName =
-        memoized memo modName (resolveModule workings visiting modName)
+        memoized flights fixitiesRead (Declares Map.empty) modName $
+          resolveModule workings visiting modName
       reach visiting modName
         | modName `Set.member` visiting = pure Nothing
         | otherwise = fixitiesEstablished <$> resolved visiting modName
@@ -920,12 +928,13 @@ newResolverVia caching routes plan = do
       exports visiting modName
         | modName `Set.member` visiting = pure Nothing
         | otherwise =
-            memoized exportsRead modName (exportNamesOfModule workings visiting modName)
+            memoized flights exportsRead Nothing modName $
+              exportNamesOfModule workings visiting modName
       extensionsOf modName
         | Just path <- Map.lookup modName local =
             either (const []) id <$> askPackage path
         | Just (package, tarball) <- Map.lookup modName index =
-            memoized extensionsRead package (fromTarball tarball)
+            memoized flights extensionsRead [] package (fromTarball tarball)
         | otherwise = pure []
       fromTarball tarball =
         quietly [] $ do
@@ -934,7 +943,8 @@ newResolverVia caching routes plan = do
       children visiting modName
         | modName `Set.member` visiting = pure Map.empty
         | otherwise =
-            memoized childrenRead modName (childrenOfModule workings visiting modName)
+            memoized flights childrenRead Map.empty modName $
+              childrenOfModule workings visiting modName
   pure
     Resolver
       { askFixities = reach Set.empty,
@@ -943,16 +953,89 @@ newResolverVia caching routes plan = do
         askChain = chain Set.empty
       }
 
+-- | Answers filed under the names they are about, each worked out once.
+data Memo v = Memo Unique (IORef (Map Text (MVar v)))
+
+-- | An empty 'Memo'.
+newMemo :: IO (Memo v)
+newMemo = Memo <$> newUnique <*> newIORef Map.empty
+
+-- | Which thread is working out which answer, and which answer each waiting
+-- thread waits for, across all of a resolver's tables.
+data Flights = Flights
+  { flightOwners :: Map (Unique, Text) ThreadId,
+    flightWaits :: Map ThreadId (Unique, Text)
+  }
+
 -- | Look an answer up in a table, working it out and filing it the first
 -- time.
-memoized :: (Ord k) => IORef (Map k v) -> k -> IO v -> IO v
-memoized table key work =
-  Map.lookup key <$> readIORef table >>= \case
-    Just answer -> pure answer
+memoized ::
+  -- | Who is working out what.
+  MVar Flights ->
+  -- | Where the answers are filed.
+  Memo v ->
+  -- | The answer for a thread that cannot wait.
+  v ->
+  -- | What the answer is about.
+  Text ->
+  -- | Work that is being memoized.
+  IO v ->
+  IO v
+memoized flights (Memo table answers) standIn key work =
+  Map.lookup key <$> readIORef answers >>= \case
+    Just slot -> tryReadMVar slot >>= maybe (waitFor slot) pure
     Nothing -> do
-      answer <- work
-      atomicModifyIORef' table (\m -> (Map.insert key answer m, ()))
-      pure answer
+      me <- myThreadId
+      claimed <- modifyMVar flights $ \fl -> do
+        filed <- readIORef answers
+        case Map.lookup key filed of
+          Just slot -> pure (fl, Left slot)
+          Nothing -> do
+            slot <- newEmptyMVar
+            writeIORef answers (Map.insert key slot filed)
+            pure
+              ( fl{flightOwners = Map.insert (table, key) me (flightOwners fl)},
+                Right slot
+              )
+      case claimed of
+        Left slot -> waitFor slot
+        Right slot -> do
+          answer <- work `onException` file slot standIn
+          answer <$ file slot answer
+  where
+    file slot answer = modifyMVar_ flights $ \fl -> do
+      _ <- tryPutMVar slot answer
+      pure fl{flightOwners = Map.delete (table, key) (flightOwners fl)}
+    waitFor slot = do
+      me <- myThreadId
+      settled <- modifyMVar flights $ \fl ->
+        tryReadMVar slot >>= \case
+          Just answer -> pure (fl, Just answer)
+          Nothing
+            | waitedOnBy fl me (table, key) -> pure (fl, Just standIn)
+            | otherwise ->
+                pure
+                  ( fl{flightWaits = Map.insert me (table, key) (flightWaits fl)},
+                    Nothing
+                  )
+      case settled of
+        Just answer -> pure answer
+        Nothing -> do
+          answer <- readMVar slot
+          modifyMVar_ flights $ \fl ->
+            pure fl{flightWaits = Map.delete me (flightWaits fl)}
+          pure answer
+
+-- | Is this answer being worked out by the given thread, or by one that
+-- waits for it, directly or through others?
+waitedOnBy :: Flights -> ThreadId -> (Unique, Text) -> Bool
+waitedOnBy fl me = go
+  where
+    go key = case Map.lookup key (flightOwners fl) of
+      Nothing -> False
+      Just owner
+        | owner == me -> True
+        | otherwise -> maybe False go (Map.lookup owner (flightWaits fl))
 
 -- | The operators a module's export list names, following what it
 -- reexports.

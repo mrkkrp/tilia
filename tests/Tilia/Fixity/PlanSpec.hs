@@ -20,7 +20,7 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Exception (bracket)
-import Control.Monad (when)
+import Control.Monad (forM_, when)
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (pattern Do, pattern Don't, pattern Is)
 import Data.Foldable (traverse_)
@@ -45,6 +45,7 @@ import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath (dropExtension, searchPathSeparator, takeBaseName, takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Info qualified
+import System.Timeout (timeout)
 import Test.Hspec
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb
@@ -57,6 +58,7 @@ import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
+import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
 spec :: Spec
@@ -66,6 +68,7 @@ spec = do
   reexports
   hscModules
   generatedModuleSpec
+  askedAtOnce
   gitDependencies
   repositories
   packageCache
@@ -782,6 +785,50 @@ generatedModuleSpec = describe "a module cabal generates" $ do
     $ \rs ->
       askFixities rs "Paths_fake"
         >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)))
+
+-- | Modules asked about from several threads at once.
+askedAtOnce :: Spec
+askedAtOnce = describe "modules asked about from several threads at once" $
+  it "answers for every module of a ring that hands itself on" $
+    withFakePlan [("src/" <> T.unpack (ringModule i) <> ".hs", ringSource i) | i <- [0 .. ringSize - 1]] $ \plan ->
+      forM_ [1 :: Int .. 50] $ \_ -> do
+        resolver <- newResolverVia (Do #useCache) [FromInterface] plan
+        answers <-
+          timeout 30000000 $
+            inParallel (askFixities resolver . ringModule) [0 .. ringSize - 1]
+        case answers of
+          Nothing -> expectationFailure "the threads waited for one another"
+          Just found ->
+            forM_ (zip [0 ..] found) $ \(i, fixities) ->
+              (Map.lookup (InTerms, ringOperator i) =<< fixities)
+                `shouldBe` Just (Fixity RightAssoc (i `mod` 10))
+
+-- | How many modules the ring has.
+ringSize :: Int
+ringSize = 8
+
+-- | The name of a module of the ring.
+ringModule :: Int -> Text
+ringModule i = "Ring" <> T.pack (show i)
+
+-- | The operator a module of the ring declares.
+ringOperator :: Int -> OpName
+ringOperator i = OpName ("%" <> T.replicate (i + 1) "|")
+
+-- | A module of the ring, which declares an operator and hands on the next
+-- module, the last handing on the first.
+ringSource :: Int -> Text
+ringSource i =
+  T.unlines
+    [ "module " <> ringModule i <> " ((" <> op <> "), module " <> next <> ") where",
+      "import " <> next,
+      "infixr " <> T.pack (show (i `mod` 10)) <> " " <> op,
+      "(" <> op <> ") :: Int -> Int -> Int",
+      "a " <> op <> " _ = a"
+    ]
+  where
+    OpName op = ringOperator i
+    next = ringModule ((i + 1) `mod` ringSize)
 
 -- | A module of the kind @hsc2hs@ takes, declaring an operator nothing can
 -- get at.
