@@ -25,6 +25,10 @@
   [PR 39](https://github.com/mrkkrp/tilia/pull/39).
 * Keep an empty line written above a CPP directive on the last line of a
   branch of a conditional. [PR 44](https://github.com/mrkkrp/tilia/pull/44).
+* Work out what a module offers once per run, however many threads ask for
+  it at the same time. A run that starts with nothing cached is up to three
+  times as fast and needs half the memory. [PR
+  46](https://github.com/mrkkrp/tilia/pull/46).
 
 ## Tilia 0.0.2.0
 
