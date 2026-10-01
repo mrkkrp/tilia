@@ -57,8 +57,10 @@ import Tilia.Doc.Internal
     foldChildren,
     mapChildren,
     onlySpacing,
+    printedFrom,
     printsNothing,
     spine,
+    spineAt,
   )
 import Tilia.Parser
   ( ParserConfig,
@@ -650,15 +652,6 @@ merge conditionals guards varied = go Broken
     only [d] = Just d
     only _ = Nothing
 
--- | The lines of the input a document holds something printed from, as far
--- down as there is anything.
-printedFrom :: Doc -> [(Int, Int)]
-printedFrom = \case
-  DLocated s x -> (spanStartLine s, spanEndLine s) : printedFrom x
-  DFence s x -> (spanStartLine s, spanEndLine s) : printedFrom x
-  d@(DCppChoice cs _ _) -> mapMaybe conditionalRange cs <> foldChildren printedFrom d
-  d -> foldChildren printedFrom d
-
 -- | Would these two documents print the same, laid out like this?
 agree :: Varied -> Layout -> Doc -> Doc -> Bool
 agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt layout b))
@@ -975,17 +968,6 @@ weigh layout = go
       DCppDirective _ t -> T.length t
       DHoldBack t -> T.length t
       _ -> 0
-
--- | 'spine', with the variants resolved the way this layout will print them.
-spineAt :: Layout -> Doc -> [Doc]
-spineAt layout = go
-  where
-    go = \case
-      DEmpty -> []
-      DCat a b -> go a <> go b
-      DVariant flatD brokenD ->
-        go (case layout of Flat -> flatD; Broken -> brokenD)
-      d -> [d]
 
 -- | The longest run of elements two spines have in common, in order,
 -- allowing for anything either of them has that the other does not.
