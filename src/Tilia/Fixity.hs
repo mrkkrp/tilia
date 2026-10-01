@@ -52,11 +52,16 @@ module Tilia.Fixity
     operatorSpelling,
     spellUnreadIn,
 
+    -- * Module summaries
+    ModuleSummary (..),
+    summarize,
+
     -- * What reading a module established
     Established (..),
   )
 where
 
+import Control.DeepSeq (NFData)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
@@ -68,6 +73,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import GHC.Hs hiding (Fixity, OpName)
 import GHC.Types.Fixity qualified as GHC
 import GHC.Types.Name.Occurrence (occNameString)
@@ -82,18 +88,24 @@ import Tilia.Palette (Color (Place), Palette, paint)
 -- | An operator, spelled as it appears in an @infix@ declaration: @<+>@, or
 -- @div@ for a function used infix in backticks.
 newtype OpName = OpName Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData OpName
 
 -- | Which way an operator associates.
 data Direction = LeftAssoc | RightAssoc | NoAssoc
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Direction
 
 -- | A fixity: how tightly an operator binds, and which way it associates.
 data Fixity = Fixity
   { fixityDirection :: Direction,
     fixityPrecedence :: Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Fixity
 
 -- | What an operator with no declaration in scope means: @infixl 9@.
 defaultFixity :: Fixity
@@ -260,7 +272,9 @@ data ExportItem
     ExportAll (Maybe Text) OpName
   | -- | @module M@, re-exporting everything that module brought in.
     ExportModule Text
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData ExportItem
 
 -- | A module's export list, or 'Nothing' if it has none.
 moduleExports :: HsModule GhcPs -> Maybe [ExportItem]
@@ -330,7 +344,9 @@ data Import = Import
     -- what it brings in only once the module it comes from has been asked.
     importNames :: Maybe (Bool, [ImportItem])
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Import
 
 -- | One entry of an import list.
 data ImportItem
@@ -340,7 +356,9 @@ data ImportItem
     ImportedAll OpName
   | -- | @T(a, b)@: the name and the members written out beside it.
     ImportedSome OpName [OpName]
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData ImportItem
 
 -- | The imports of a module.
 moduleImports ::
@@ -456,7 +474,9 @@ noKnownModules =
 
 -- | Which of Haskell's two namespaces an operator is written in.
 data Namespace = InTypes | InTerms
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Namespace
 
 -- | The fixities a module offers, by the namespace each is written in.
 type Fixities = Map (Namespace, OpName) Fixity
@@ -775,6 +795,53 @@ spellUnreadIn palette missing =
       [_] -> "which this run could not read"
       [_, _] -> "neither of which this run could read"
       _ -> "none of which this run could read"
+
+----------------------------------------------------------------------------
+-- Module summaries
+
+-- | Summary of a module: raw facts (per CPP configuration) about a module
+-- we read from source. This is built for both local modules and dependency
+-- modules when they come from tarballs. This is an optimization
+-- mechanism—we create a summary once and then share it during a run. For
+-- local modules it is also persisted in the cache on disk.
+data ModuleSummary = ModuleSummary
+  { -- | The name it gives itself, if it gives one.
+    summaryName :: Maybe Text,
+    -- | Its export list, if it has one.
+    summaryExports :: Maybe [ExportItem],
+    -- | Its imports, an implicit Prelude among them.
+    summaryImports :: [Import],
+    -- | The fixities it declares.
+    summaryFixities :: Fixities,
+    -- | Every name it defines.
+    summaryNames :: Set OpName,
+    -- | What each type or class it declares carries with it.
+    summaryDeclaredChildren :: Map OpName (Set OpName),
+    -- | What it offers under each name, as its export list offers it.
+    summaryChildren :: Map OpName (Set OpName)
+  }
+  deriving (Eq, Show, Generic)
+
+instance NFData ModuleSummary
+
+-- | Summarize a module.
+summarize ::
+  -- | Whether @ImplicitPrelude@ is on.
+  Choice "implicitPrelude" ->
+  -- | Parsed module.
+  HsModule GhcPs ->
+  -- | Module summary.
+  ModuleSummary
+summarize implicitPrelude hsModule =
+  ModuleSummary
+    { summaryName = moduleName hsModule,
+      summaryExports = moduleExports hsModule,
+      summaryImports = moduleImports implicitPrelude hsModule,
+      summaryFixities = declaredFixities hsModule,
+      summaryNames = declaredNames hsModule,
+      summaryDeclaredChildren = declaredChildren hsModule,
+      summaryChildren = moduleChildren hsModule
+    }
 
 ----------------------------------------------------------------------------
 -- What reading a module established
