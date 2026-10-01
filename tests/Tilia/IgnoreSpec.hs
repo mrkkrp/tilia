@@ -5,7 +5,10 @@ module Tilia.IgnoreSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import System.FilePath (splitDirectories)
+import Data.Text.IO qualified as T
+import System.Directory (canonicalizePath, createDirectoryIfMissing)
+import System.FilePath (splitDirectories, takeDirectory, (</>))
+import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Ignore
 
@@ -79,6 +82,32 @@ spec = do
 
     it "cannot re-include what a file above excluded the directory of" $
       nested [([], "q/\n"), (["q"], "!gen/\n")] ["q/gen/G.hs"] []
+
+  describe "a file of a project" $ do
+    it "is ignored by the .tiliaignore files above it, whether it exists or not" $
+      withProject $ \root -> do
+        isIgnoredInProject root (root </> "src" </> "Generated.hs") `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "inner" </> "A.hs-boot") `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "inner" </> ".." </> "Generated.hs") `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "New.hs") `shouldReturn` False
+
+    it "is not ignored when it is outside of the project" $
+      withProject $ \root ->
+        isIgnoredInProject root (takeDirectory root </> "Generated.hs") `shouldReturn` False
+
+-- | A project with @src/Generated.hs@, which its root's @.tiliaignore@
+-- ignores, and a @.tiliaignore@ in @src/inner@ ignoring boot files.
+withProject :: (FilePath -> Expectation) -> Expectation
+withProject act =
+  withSystemTempDirectory "tilia-ignore" $ \dir -> do
+    root <- canonicalizePath dir
+    let write path text = do
+          createDirectoryIfMissing True (takeDirectory (root </> path))
+          T.writeFile (root </> path) text
+    write ".tiliaignore" "src/Generated.hs\n"
+    write ("src" </> "Generated.hs") "module Generated where\n"
+    write ("src" </> "inner" </> ".tiliaignore") "*.hs-boot\n"
+    act root
 
 -- | Check which of the paths a single ignore file at the root ignores.
 ignores :: Text -> [FilePath] -> [FilePath] -> Expectation

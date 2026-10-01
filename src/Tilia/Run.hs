@@ -13,6 +13,7 @@ module Tilia.Run
 
     -- * Execution
     runOver,
+    outcomeOf,
     readAsUtf8,
     formattingOutcome,
     writeBack,
@@ -22,6 +23,7 @@ module Tilia.Run
     Report (..),
     inplaceReport,
     checkReport,
+    stdinReport,
     noted,
   )
 where
@@ -44,7 +46,7 @@ import Tilia.Format
   )
 import Tilia.Newline (NewlineStyle (Lf), getNewlineStyle, setNewlineStyle)
 import Tilia.Palette (Color (Bad, Good, Middling, Place), Palette, marker, paint)
-import Tilia.Utils (attempted, inParallel, indent, lineWidth, wrapTo)
+import Tilia.Utils (asUtf8, attempted, inParallel, indent, lineWidth, wrapTo)
 
 ----------------------------------------------------------------------------
 -- Outcomes
@@ -103,20 +105,29 @@ runOver session = inParallel one
       !outcome <-
         readAsUtf8 path >>= \case
           Left why -> pure (Failed (Unreadable path why))
-          Right before ->
-            formatSource session path (setNewlineStyle Lf before) >>= \case
-              Left e -> pure (if refused e then Declined e else Failed e)
-              Right formatted -> pure (formattingOutcome before formatted)
+          Right before -> outcomeOf session path before
       pure (path, outcome)
+
+-- | What formatting source that has already been read comes to.
+outcomeOf ::
+  -- | The session.
+  Session ->
+  -- | The file the source came from.
+  FilePath ->
+  -- | The source.
+  Text ->
+  IO Outcome
+outcomeOf session path before =
+  formatSource session path (setNewlineStyle Lf before) >>= \case
+    Left e -> pure (if refused e then Declined e else Failed e)
+    Right formatted -> pure (formattingOutcome before formatted)
 
 -- | Read a source file as UTF-8.
 readAsUtf8 :: FilePath -> IO (Either Text Text)
 readAsUtf8 path =
   attempted (BS.readFile path) >>= \case
     Left why -> pure (Left why)
-    Right bytes -> pure $ case T.decodeUtf8' bytes of
-      Right text -> Right text
-      Left _ -> Left "it is not valid UTF-8"
+    Right bytes -> pure (asUtf8 bytes)
 
 -- | Formatting outcome for a file.
 formattingOutcome ::
@@ -142,9 +153,9 @@ writeBack (path, outcome) = case outcome of
 
 -- | What to print when a run is over, and on which stream.
 data Report = Report
-  { -- | For standard output.
-    reportOut :: [Text],
-    -- | For standard error.
+  { -- | For standard output, exactly as it is to be written.
+    reportOut :: Text,
+    -- | For standard error, line by line.
     reportErr :: [Text]
   }
   deriving (Eq, Show)
@@ -153,7 +164,7 @@ data Report = Report
 inplaceReport :: Palette -> [(FilePath, Outcome)] -> Report
 inplaceReport palette outcomes =
   Report
-    { reportOut = tally palette ("✓", Good) "Formatted" (not . skipped) outcomes,
+    { reportOut = T.unlines (tally palette ("✓", Good) "Formatted" (not . skipped) outcomes),
       reportErr = asides palette outcomes
     }
   where
@@ -164,11 +175,37 @@ checkReport :: Palette -> [(FilePath, Outcome)] -> Report
 checkReport palette outcomes =
   Report
     { reportOut =
-        [ diffInFull palette path before after
-        | (path, Changed before after) <- outcomes
-        ],
+        T.unlines
+          [ diffInFull palette path before after
+          | (path, Changed before after) <- outcomes
+          ],
       reportErr = asides palette outcomes
     }
+
+-- | The module a @for-editor@ run prints, formatted or as it was read where
+-- it was declined, and why it was not formatted.
+stdinReport ::
+  Palette ->
+  -- | The module as it was read.
+  Text ->
+  [(FilePath, Outcome)] ->
+  Report
+stdinReport palette input outcomes =
+  Report
+    { reportOut = foldMap (printed . snd) outcomes,
+      reportErr = concatMap (said . snd) outcomes
+    }
+  where
+    printed = \case
+      Changed _ after -> after
+      Failed _ -> ""
+      _ -> input
+    said = \case
+      Declined e ->
+        noted palette ("=", Middling) (describeFormatError palette e)
+      Failed e ->
+        noted palette ("✗", Bad) (describeFormatError palette e)
+      _ -> []
 
 -- | Everything said about the files that were not formatted.
 asides :: Palette -> [(FilePath, Outcome)] -> [Text]

@@ -21,7 +21,7 @@ import Control.Monad (filterM)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
-import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
+import Data.List (isPrefixOf, isSuffixOf, sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -30,7 +30,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Text.IO qualified as T
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Fields.Parser (readFields)
@@ -47,9 +46,7 @@ import System.Directory (doesFileExist, listDirectory)
 import System.FilePath
   ( dropExtension,
     dropTrailingPathSeparator,
-    joinPath,
     normalise,
-    splitDirectories,
     takeDirectory,
     takeExtension,
     (</>),
@@ -67,7 +64,7 @@ import Tilia.Cabal.Package
   )
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
 import Tilia.Fixity.Plan (PlanComponent (..))
-import Tilia.Ignore (IgnoreFile, isIgnored, parseIgnoreFile)
+import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
 import Tilia.Utils (attempted, quietly)
 
 -- | Which components a run was asked for.
@@ -252,13 +249,15 @@ spellTarget = \case
 filesOfComponents :: ProjectRoot -> [Component] -> IO [FilePath]
 filesOfComponents root components = do
   candidates <- concat <$> traverse present (Map.toList directories)
-  let inProject = [(path, below) | path <- candidates, Just below <- [belowRoot path]]
+  let inProject =
+        [ (path, below)
+        | path <- candidates,
+          Just below <- [belowRoot (prPath root) path]
+        ]
   ignoreFiles <- ignoreFilesAbove (prPath root) (fmap snd inProject)
   let excluded = Set.fromList [path | (path, below) <- inProject, isIgnored ignoreFiles below]
   pure (sort (filter (`Set.notMember` excluded) candidates))
   where
-    belowRoot path =
-      stripPrefix (splitDirectories (prPath root)) (splitDirectories (normalise path))
     directories =
       Map.unionsWith
         (<>)
@@ -270,22 +269,6 @@ filesOfComponents root components = do
       filterM
         (quietly False . doesFileExist)
         [joined directory entry | entry <- entries, admits wanted entry]
-
--- | The @.tiliaignore@ files in the project root and in every directory
--- between it and the given files, each by its directory's segments relative
--- to the root.
-ignoreFilesAbove :: FilePath -> [[FilePath]] -> IO (Map [FilePath] IgnoreFile)
-ignoreFilesAbove root paths =
-  Map.fromList . concat <$> traverse read' (Set.toList directories)
-  where
-    directories =
-      Set.fromList [take n path | path <- paths, n <- [0 .. length path - 1]]
-    read' directory = do
-      let file = joinPath (root : directory) </> ".tiliaignore"
-      exists <- doesFileExist file
-      if exists
-        then (\t -> [(directory, parseIgnoreFile t)]) <$> T.readFile file
-        else pure []
 
 -- | A directory spelled so that a path can be appended to it without
 -- further normalisation.

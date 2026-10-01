@@ -51,6 +51,7 @@ library
     Tilia.Doc.Body
     Tilia.Doc.Combinators
     Tilia.Doc.Internal
+    Tilia.Editor
     Tilia.Equivalence
     Tilia.Fixity
     Tilia.Fixity.Builtin
@@ -144,6 +145,7 @@ executable tilia
   default-language: GHC2021
   build-depends:
     base >=4.14 && <5,
+    bytestring >=0.11 && <0.13,
     choice >=0.2 && <0.3,
     directory ^>=1.3,
     optparse-applicative >=0.14 && <0.20,
@@ -205,6 +207,7 @@ test-suite tests
     Tilia.Doc.CombinatorsSpec
     Tilia.Doc.InternalSpec
     Tilia.Doc.PropertiesSpec
+    Tilia.EditorSpec
     Tilia.EquivalenceSpec
     Tilia.Fixity.CabalSpec
     Tilia.Fixity.CacheSpec

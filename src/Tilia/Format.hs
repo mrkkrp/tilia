@@ -9,6 +9,7 @@ module Tilia.Format
     formatErrorExitCode,
     refused,
     Session,
+    sessionRoot,
     PlanSource (..),
     newSession,
     fixityNotesOf,
@@ -199,7 +200,9 @@ refused = \case
 -- about as much as formatting a small file, and none of it depends on which
 -- file is being formatted.
 data Session = Session
-  { -- | What can be asked about the modules a file imports.
+  { -- | The project.
+    sessionRoot :: ProjectRoot,
+    -- | What can be asked about the modules a file imports.
     sessionResolver :: Resolver,
     -- | What the plan settles about the questions a file's conditionals
     -- ask, so that a branch it rules out is not read as part of the file.
@@ -243,7 +246,8 @@ newSession ::
   Choice "debugFixity" ->
   IO (Either FormatError Session)
 newSession start planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
-  root <- prPath <$> (need (NoProject start) =<< liftIO (findProjectRoot start))
+  project <- need (NoProject start) =<< liftIO (findProjectRoot start)
+  let root = prPath project
   (plan, resolver) <- case planSource of
     PlanFromCabal components -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
@@ -262,7 +266,8 @@ newSession start planSource caching downloading checkAst checkIdempotence debugF
       else pure Nothing
   pure
     Session
-      { sessionResolver = resolver,
+      { sessionRoot = project,
+        sessionResolver = resolver,
         sessionMacros = macrosOf plan,
         sessionPackage = askPackage,
         sessionCheckAst = checkAst,
