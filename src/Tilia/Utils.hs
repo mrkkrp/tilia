@@ -10,6 +10,8 @@ module Tilia.Utils
     indent,
     wrapTo,
     visibleLength,
+    spellList,
+    collected,
     tshow,
     inParallel,
   )
@@ -78,6 +80,23 @@ visibleLength = go 0
         | Just after <- T.stripPrefix "[" rest ->
             go n (T.drop 1 (T.dropWhile (/= 'm') after))
       Just (_, rest) -> go (n + 1) rest
+
+-- | Join items the way a sentence lists them: @a and b@, @a, b, and c@.
+spellList :: [Text] -> Text
+spellList items = case reverse items of
+  [] -> ""
+  [one] -> one
+  [second, first'] -> first' <> " and " <> second
+  (final : rest) -> T.intercalate ", " (reverse rest) <> ", and " <> final
+
+-- | Collect the values filed under equal keys, keys in the order they first
+-- appear.
+collected :: (Eq k) => [(k, v)] -> [(k, [v])]
+collected = foldl put []
+  where
+    put seen (k, v) = case break ((== k) . fst) seen of
+      (before, (_, vs) : after) -> before <> [(k, vs <> [v])] <> after
+      _ -> seen <> [(k, [v])]
 
 -- | Run an action over every element at once, as far as the machine allows.
 inParallel :: (a -> IO b) -> [a] -> IO [b]

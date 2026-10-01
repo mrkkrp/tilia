@@ -20,7 +20,13 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..))
 import Tilia.Cpp (CppError (..))
-import Tilia.Fixity (ModuleChain (..), OpName (..), Unknown (..))
+import Tilia.Fixity
+  ( Direction (..),
+    Fixity (..),
+    ModuleChain (..),
+    OpName (..),
+    Unknown (..),
+  )
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
 import Tilia.Palette (Color (Bad), Palette (..))
 import Tilia.Run
@@ -186,8 +192,37 @@ spec = do
       flattened (inplaceReport Plain [("A.hs", twoAnswers)])
         `shouldSatisfy` T.isInfixOf
           "the fixity of <|> may be declared in Criterion.Main, which this run \
-          \could not read, and the fixity of <+> is declared differently by two \
-          \modules in scope"
+          \could not read, and the fixity of <+> is infixl 6 in Left but infixr 5 \
+          \in Right"
+
+    it "names the imports that disagree and what each brings" $
+      flattened (inplaceReport Plain [("A.hs", about "<+>")])
+        `shouldSatisfy` T.isInfixOf "the fixity of <+> is infixl 6 in Left but infixr 5 in Right"
+
+    it "gathers the imports that agree with one another" $
+      flattened (inplaceReport Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Middle", Fixity LeftAssoc 6)]))])
+        `shouldSatisfy` T.isInfixOf "is infixl 6 in Left and Middle but infixr 5 in Right"
+
+    it "lists three fixities the way it lists three of anything" $
+      flattened (inplaceReport Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Third", Fixity NoAssoc 4)]))])
+        `shouldSatisfy` T.isInfixOf "is infixl 6 in Left, infixr 5 in Right, and infix 4 in Third"
+
+    it "gives one disagreement once however many operators share it" $
+      flattened
+        ( inplaceReport
+            Plain
+            [ ( "A.hs",
+                Declined
+                  ( UnknownFixity
+                      "A.hs"
+                      [ ((Nothing, OpName "<|>"), Ambiguous (leftSix :| [rightFive])),
+                        ((Nothing, OpName "<+>"), Ambiguous (leftSix :| [rightFive]))
+                      ]
+                  )
+              )
+            ]
+        )
+        `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> are infixl 6 in Left but infixr 5 in Right"
 
     it "keeps all of it off the stream the summary goes to" $
       reportOut (inplaceReport Plain mixed) `shouldBe` []
@@ -465,7 +500,16 @@ failureAbout path = Failed (Unreadable path "no such file")
 
 -- | A case about one operator whose fixity could not be settled.
 about :: Text -> Outcome
-about op = Declined (UnknownFixity "A.hs" [((Nothing, OpName op), Ambiguous)])
+about op = Declined (UnknownFixity "A.hs" [((Nothing, OpName op), Ambiguous (leftSix :| [rightFive]))])
+
+-- | A case about @<+>@, which the imports bring in as given.
+disagreeing :: NonEmpty (Text, Fixity) -> Outcome
+disagreeing brought = Declined (UnknownFixity "A.hs" [((Nothing, OpName "<+>"), Ambiguous brought)])
+
+-- | What two disagreeing imports bring.
+leftSix, rightFive :: (Text, Fixity)
+leftSix = ("Left", Fixity LeftAssoc 6)
+rightFive = ("Right", Fixity RightAssoc 5)
 
 -- | A case about an operator whose fixity is in a module we could not read.
 missing :: Text -> Outcome
@@ -486,7 +530,7 @@ twoAnswers =
     ( UnknownFixity
         "A.hs"
         [ ((Nothing, OpName "<|>"), NotRead (ModuleChain ("Criterion.Main" :| []) :| [])),
-          ((Nothing, OpName "<+>"), Ambiguous)
+          ((Nothing, OpName "<+>"), Ambiguous (leftSix :| [rightFive]))
         ]
     )
 

@@ -86,7 +86,7 @@ spec = do
           ("Right", Just [("<+>", Fixity RightAssoc 5)])
         ]
         "import Left\nimport Right\nf a b = a <+> b\n"
-        >>= (`mentions` "two modules in scope disagree about it")
+        >>= (`mentions` "the imports disagree about it: infixl 6 in Left but infixr 5 in Right")
 
     it "gives an operator one line however often it is written" $ do
       told <- notesFor [("Prelude", Just [])] "f a b c = a <?> b <?> c <?> a\n"

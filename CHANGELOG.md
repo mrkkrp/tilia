@@ -44,6 +44,9 @@
   the square of the size of a module. Rendering a 470 KB module with many
   comments takes a second rather than 14. [PR
   50](https://github.com/mrkkrp/tilia/pull/50).
+* When declining a file over an operator its imports bring in with
+  different fixities, name each fixity and the imports that bring it. [PR
+  52](https://github.com/mrkkrp/tilia/pull/52).
 
 ## Tilia 0.0.2.0
 

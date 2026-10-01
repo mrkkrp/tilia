@@ -110,12 +110,12 @@ spec = do
 
     it "reports no ambiguity between them" $ do
       let scope = scopeOfBoth "import Types\nimport Terms\n"
-      reachAmbiguous (scopeInTypes scope) `shouldBe` []
-      reachAmbiguous (scopeInTerms scope) `shouldBe` []
+      reachAmbiguous (scopeInTypes scope) `shouldBe` Map.empty
+      reachAmbiguous (scopeInTerms scope) `shouldBe` Map.empty
 
     it "still reports one where both are in the same namespace" $
       reachAmbiguous (scopeInTerms (scopeOfBoth "import Terms\nimport Other.Terms\n"))
-        `shouldBe` [(Nothing, OpName ":>")]
+        `shouldBe` Map.fromList [((Nothing, OpName ":>"), termsDisagreeing)]
 
     it "takes a promoted constructor's fixity from the terms" $
       lookupFixity (scopeOfBoth "import Terms\n") InTypes Nothing (OpName ":>")
@@ -135,7 +135,7 @@ spec = do
 
     it "declines one that writes an operator both agree to disagree about" $
       fmap snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\nf a b = a :> b\n")
-        `shouldBe` [Ambiguous]
+        `shouldBe` [Ambiguous termsDisagreeing]
 
   describe "what a module says it exports" $ do
     it "has nothing to say about a module with no export list" $
@@ -400,7 +400,9 @@ spec = do
 
     it "would be caught between two spellings were the Prelude assumed" $
       fmap snd (unsettledAboutPrelude (Is #implicitPrelude) usingItBothWays)
-        `shouldBe` [Ambiguous]
+        `shouldBe` [ Ambiguous
+                       (("Prelude", Fixity RightAssoc 6) :| [("Pretty", Fixity LeftAssoc 6)])
+                   ]
 
     it "still takes the Prelude where the module does import it" $
       let s =
@@ -501,17 +503,28 @@ spec = do
     it "holds an ambiguous operator against its unqualified use only" $
       unsettledIn
         "module M where\nimport Data.Map\nimport Other\nimport qualified Data.Map as M\nf a b = (a ! b, a M.! b)\n"
-        `shouldBe` [((Nothing, OpName "!"), Ambiguous)]
+        `shouldBe` [((Nothing, OpName "!"), Ambiguous bangDisagreeing)]
 
     it "holds a clashing alias against the use written under it" $
       unsettledIn
         "module M where\nimport qualified Data.Map as M\nimport qualified Other as M\nf a b = a M.! b\n"
-        `shouldBe` [((Just "M", OpName "!"), Ambiguous)]
+        `shouldBe` [((Just "M", OpName "!"), Ambiguous bangDisagreeing)]
 
     it "leaves the bare operator alone when only an alias is in doubt" $
       unsettledIn
         "module M where\nimport Data.Map\nimport qualified Data.Map as M\nimport qualified Other as M\nf a b = (a ! b, a M.! b)\n"
-        `shouldBe` [((Just "M", OpName "!"), Ambiguous)]
+        `shouldBe` [((Just "M", OpName "!"), Ambiguous bangDisagreeing)]
+
+    it "names a module imported twice once" $
+      unsettledIn "module M where\nimport Data.Map\nimport Data.Map ((!))\nimport Other\nf a b = a ! b\n"
+        `shouldBe` [((Nothing, OpName "!"), Ambiguous bangDisagreeing)]
+
+    it "names every import that brings the operator in, agreeing or not" $
+      unsettledIn "module M where\nimport Data.Map\nimport Other\nimport Agreeing\nf a b = a ! b\n"
+        `shouldBe` [ ( (Nothing, OpName "!"),
+                       Ambiguous (bangDisagreeing <> (("Agreeing", Fixity LeftAssoc 9) :| []))
+                     )
+                   ]
 
     it "spells a use the way the module wrote it" $
       fmap (uncurry operatorSpelling . fst) (unsettledIn "module M where\nimport qualified Opaque as O\nf a b = a O.<+> b\n")
@@ -528,6 +541,16 @@ spec = do
 -- | Stand-in for layer 3. The real one reads a build plan, maps modules to
 -- packages and parses their sources; what it returns is exactly this shape,
 -- so everything above it can be exercised without any of that.
+-- | What @Data.Map@ and @Other@ each bring @!@ in with, in that order.
+bangDisagreeing :: NonEmpty (Text, Fixity)
+bangDisagreeing =
+  ("Data.Map", Fixity LeftAssoc 9) :| [("Other", Fixity RightAssoc 4)]
+
+-- | What @Terms@ and @Other.Terms@ each bring @:>@ in with, in that order.
+termsDisagreeing :: NonEmpty (Text, Fixity)
+termsDisagreeing =
+  ("Terms", Fixity LeftAssoc 5) :| [("Other.Terms", Fixity RightAssoc 9)]
+
 exportsOf :: Text -> Maybe Fixities
 exportsOf = \case
   "Data.Map" -> whichever [(OpName "!", Fixity LeftAssoc 9)]
@@ -722,5 +745,5 @@ scopeOf src =
   let reach = scopeInTerms (fullScope src)
    in ( Map.toList (Map.map fst (reachUnqualified reach)),
         Map.toList (Map.map fst (reachQualified reach)),
-        reachAmbiguous reach
+        Map.keys (reachAmbiguous reach)
       )
