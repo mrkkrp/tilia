@@ -154,12 +154,11 @@ placeComments regions fences comments =
         writtenAgainst = maybe False (`Set.member` regionEndPoints) stopsAt
         stopsAt = (,) (spanStartLine here) <$> commentCodeBeforeStopsAt c
 
-        enclosingRegions = filter (here `inside`) regions
-        enclosingFences = filter (here `inside`) fences
-
-        fencedOff r = outside enclosingRegions || (printedInPlace && outside enclosingFences)
+        fencedOff r =
+          outside (Map.lookup here enclosingRegions)
+            || (printedInPlace && outside (Map.lookup here enclosingFences))
           where
-            outside = any (not . (r `inside`))
+            outside = maybe False (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
 
         printedInPlace = shapeOf After c == InPlace
 
@@ -176,6 +175,9 @@ placeComments regions fences comments =
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next
 
+    enclosingRegions = enclosures regions (fmap commentSpan comments)
+    enclosingFences = enclosures fences (fmap commentSpan comments)
+
     nearest :: (Ord k) => (Span -> k) -> [Span] -> Maybe Span
     nearest key = fmap fst . foldl' closer Nothing
       where
@@ -183,9 +185,26 @@ placeComments regions fences comments =
           Just (_, k) | k <= key s -> best
           _ -> Just (s, key s)
 
--- | Does the first region fall within the second?
-inside :: Span -> Span -> Bool
-inside a b = startPoint b <= startPoint a && endPoint a <= endPoint b
+-- | For each inner span that outer spans enclose, the latest start and the
+-- earliest end among them.
+enclosures :: [Span] -> [Span] -> Map Span ((Int, Int), (Int, Int))
+enclosures outer inner =
+  Map.fromList (go (sortOn startPoint outer) Map.empty Set.empty (sortOn startPoint inner))
+  where
+    go _ _ _ [] = []
+    go os latest ends (i : is) =
+      let (opened, later) = span ((<= startPoint i) . startPoint) os
+          latest' = foldl' admit latest opened
+          ends' = foldl' (flip (Set.insert . endPoint)) ends opened
+          bounds = do
+            (_, from) <- Map.lookupGE (endPoint i) latest'
+            to <- Set.lookupGE (endPoint i) ends'
+            pure (i, (from, to))
+       in maybe id (:) bounds (go later latest' ends' is)
+    -- A span opened later starts no earlier, so it supersedes those that end
+    -- no later than it does.
+    admit latest o =
+      Map.insert (endPoint o) (startPoint o) (Map.dropWhileAntitone (<= endPoint o) latest)
 
 -- | Claim the comments that belong to the given 'Span'.
 claimPlaced :: Span -> Placements -> ([(Position, Comment)], Placements)
