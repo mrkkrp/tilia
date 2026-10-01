@@ -63,7 +63,7 @@ import Control.Concurrent
     tryReadMVar,
   )
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
-import Control.DeepSeq (force)
+import Control.DeepSeq (NFData, force)
 import Control.Exception (bracket_, evaluate, onException)
 import Control.Monad (filterM, foldM, join, void)
 import Crypto.Hash.SHA256 qualified as SHA256
@@ -97,6 +97,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
 import Data.Unique (Unique, newUnique)
+import GHC.Generics (Generic)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.IO.Handle (hDuplicate)
@@ -131,7 +132,6 @@ import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.ByHand (byHandFixities, hscFixities)
 import Tilia.Fixity.Cabal
   ( cabalFileAtTop,
-    cabalFileInArchive,
     containedModules,
     declaredExtensions,
     entryPosixPath,
@@ -879,6 +879,7 @@ newResolverVia caching routes plan = do
   extensionsRead <- newMemo
   exportsRead <- newMemo
   summariesRead <- newMemo
+  archivesRead <- newMemo
   interfacesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
   let interfaceOf modName =
@@ -907,6 +908,7 @@ newResolverVia caching routes plan = do
             wkReachChildren = children,
             wkReachExports = exports,
             wkSummariesOf = summariesOf,
+            wkModuleInArchive = moduleInArchive,
             wkMacros = macrosOf plan,
             wkGenerated = generatedModules plan
           }
@@ -940,12 +942,12 @@ newResolverVia caching routes plan = do
         | Just path <- Map.lookup modName local =
             either (const []) id <$> askPackage path
         | Just (package, tarball) <- Map.lookup modName index =
-            memoized flights extensionsRead [] package (fromTarball tarball)
+            memoized flights extensionsRead [] package $
+              foldMap declaredExtensions . (archiveCabal =<<) <$> archiveOf tarball
         | otherwise = pure []
-      fromTarball tarball =
-        quietly [] $ do
-          bytes <- BL.readFile tarball
-          pure (foldMap declaredExtensions (cabalFileInArchive (Tar.read (GZip.decompress bytes))))
+      archiveOf tarball =
+        memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
+      moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
       children visiting modName
         | modName `Set.member` visiting = pure Map.empty
         | otherwise =
@@ -1053,7 +1055,15 @@ waitedOnBy fl me = go
 -- supply.
 exportNamesOfModule :: Workings -> Set Text -> Text -> IO (Maybe (Set OpName))
 exportNamesOfModule
-  Workings{wkCache, wkLocal, wkIndex, wkReachChildren, wkReachExports, wkMacros}
+  Workings
+    { wkCache,
+      wkLocal,
+      wkIndex,
+      wkReachChildren,
+      wkReachExports,
+      wkModuleInArchive,
+      wkMacros
+    }
   visiting
   modName
     | Just path <- Map.lookup modName wkLocal,
@@ -1065,7 +1075,7 @@ exportNamesOfModule
           <$> recalled
             (cachedExportNames wkCache package modName)
             (storeExportNames wkCache package modName)
-            (traverse namesInArchive =<< readModule tarball modName)
+            (traverse namesInArchive =<< wkModuleInArchive tarball modName)
     | otherwise = pure Nothing
     where
       namesInArchive = \case
@@ -1094,7 +1104,8 @@ childrenOfModule
       wkInterfaces,
       wkInterfaceOf,
       wkReachChildren,
-      wkSummariesOf
+      wkSummariesOf,
+      wkModuleInArchive
     }
   visiting
   modName
@@ -1115,7 +1126,7 @@ childrenOfModule
           Nothing -> pure Nothing
           Just (package, tarball) ->
             keptUnder package $
-              readModule tarball modName >>= \case
+              wkModuleInArchive tarball modName >>= \case
                 Nothing -> pure Nothing
                 Just ForHsc -> pure (Just Map.empty)
                 Just (Haskell text) -> Just <$> inSource text
@@ -1218,6 +1229,8 @@ data Workings = Workings
     -- | What each configuration of a module says, given its text, worked
     -- out once a run.
     wkSummariesOf :: Text -> Text -> IO (Maybe (NonEmpty ModuleSummary)),
+    -- | What a tarball holds for a module, each tarball read once a run.
+    wkModuleInArchive :: FilePath -> Text -> IO (Maybe InArchive),
     -- | Known macro expansions.
     wkMacros :: Macros,
     -- | The modules @cabal@ writes itself, which are therefore in no
@@ -1247,6 +1260,7 @@ resolveModule
       wkReach,
       wkReachChildren,
       wkSummariesOf,
+      wkModuleInArchive,
       wkGenerated
     }
   visiting
@@ -1288,6 +1302,7 @@ resolveModule
         Just (package, tarball) ->
           throughCache package $
             fromSource
+              wkModuleInArchive
               wkSummariesOf
               (wkReach visiting')
               (wkReachChildren visiting')
@@ -1427,6 +1442,8 @@ sha256OfFile path = do
 
 -- | Read a module's fixities out of a tarball, following re-exports.
 fromSource ::
+  -- | What a tarball holds for a module.
+  (FilePath -> Text -> IO (Maybe InArchive)) ->
   -- | What each configuration of a module says, given its text.
   (Text -> Text -> IO (Maybe (NonEmpty ModuleSummary))) ->
   -- | How to reach another module, for chasing re-exports. This is
@@ -1445,12 +1462,12 @@ fromSource ::
   -- | What it declares, including what it only reexports, or 'Nothing' if
   -- there is no archive to read it from.
   IO (Maybe Established)
-fromSource summariesOf reach reachChildren visiting tarball modName =
+fromSource moduleInArchive summariesOf reach reachChildren visiting tarball modName =
   doesFileExist tarball >>= \case
     False -> pure Nothing
     True ->
       fmap Just $
-        readModule tarball modName >>= \case
+        moduleInArchive tarball modName >>= \case
           Nothing -> pure (Unreadable Nothing)
           Just ForHsc -> pure (hscDeclares modName)
           Just (Haskell source) ->
@@ -1744,38 +1761,51 @@ hasImplicitPrelude :: [Extension] -> Text -> Choice "implicitPrelude"
 hasImplicitPrelude extensions source =
   fromBool (ImplicitPrelude `elem` effectiveExtensions extensions source)
 
--- | Find a module inside a tarball and say what was found.
-readModule :: FilePath -> Text -> IO (Maybe InArchive)
-readModule tarball modName = quietly Nothing $ do
+-- | What a tarball holds that a module could be read out of.
+data Archive = Archive
+  { -- | The package's @.cabal@ file, the first one at the top.
+    archiveCabal :: Maybe Text,
+    -- | Every file that could hold a module, by where it sits, in the order
+    -- the tarball has them.
+    archiveFiles :: [(FilePath, BS.ByteString)]
+  }
+  deriving (Generic)
+
+instance NFData Archive
+
+-- | Read a tarball, keeping what a module could be read out of.
+readArchive :: FilePath -> IO (Maybe Archive)
+readArchive tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
-  let (cabal, candidates) = sweep Nothing [] (Tar.read (GZip.decompress bytes))
-      dirs = maybe [] sourceDirs cabal
-  pure (listToMaybe (mapMaybe (pick dirs candidates) moduleEndings))
+  Just <$> evaluate (force (sweep Nothing [] (Tar.read (GZip.decompress bytes))))
   where
-    suffix ending = "/" <> T.unpack (T.replace "." "/" modName) <> ending
-    suffixes = fmap suffix moduleEndings
     sweep cabal found = \case
       Tar.Next entry rest
         | Tar.NormalFile content _ <- Tar.entryContent entry,
           cabalFileAtTop (entryPosixPath entry),
           Nothing <- cabal ->
-            sweep (Just (decode content)) found rest
+            sweep (Just (T.decodeUtf8Lenient (BL.toStrict content))) found rest
         | Tar.NormalFile content _ <- Tar.entryContent entry,
-          any (`isSuffixOf` entryPosixPath entry) suffixes ->
-            sweep cabal ((entryPosixPath entry, decode content) : found) rest
+          any (`isSuffixOf` entryPosixPath entry) moduleEndings ->
+            sweep cabal ((entryPosixPath entry, BL.toStrict content) : found) rest
         | otherwise -> sweep cabal found rest
-      _ -> (cabal, reverse found)
-    pick dirs candidates ending =
-      inArchive ending . snd
-        <$> listToMaybe (under sfx dirs matching <> matching)
+      _ -> Archive cabal (reverse found)
+
+-- | Find a module in what a tarball holds and say what was found.
+moduleIn :: Text -> Archive -> Maybe InArchive
+moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
+  where
+    dirs = maybe [] sourceDirs (archiveCabal archive)
+    pick ending =
+      inArchive ending . T.decodeUtf8Lenient . snd
+        <$> listToMaybe (under sfx matching <> matching)
       where
-        sfx = suffix ending
-        matching = [c | c <- candidates, sfx `isSuffixOf` fst c]
-    under sfx dirs matching = [e | d <- dirs, e <- matching, inDir sfx d (fst e)]
+        sfx = "/" <> T.unpack (T.replace "." "/" modName) <> ending
+        matching = [f | f <- archiveFiles archive, sfx `isSuffixOf` fst f]
+    under sfx matching = [f | d <- dirs, f <- matching, inDir sfx d (fst f)]
     inDir sfx d path
       | d == "." = takeWhile (/= '/') path <> sfx == path
       | otherwise = ("/" <> T.unpack d <> sfx) `isSuffixOf` path
-    decode = T.decodeUtf8Lenient . BL.toStrict
 
 -- | The endings a package may write a module under, in the order they are
 -- tried.
