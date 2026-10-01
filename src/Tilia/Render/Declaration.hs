@@ -92,16 +92,22 @@ groupDecls ctx isSignatureFile (d : ds)
         | isDoc (unLoc (NE.head g)) -> (d :| []) : g : gs
         | otherwise -> (d <| g) : gs
   | otherwise =
-      let (together, rest) = span belongs (zip (d : ds) ds)
-       in (d :| fmap snd together) : groupDecls ctx isSignatureFile (fmap snd rest)
+      let (together, rest) = gather d ds
+       in (d :| together) : groupDecls ctx isSignatureFile rest
   where
+    gather previous = \case
+      current : more
+        | belongs previous current ->
+            let (together, rest) = gather current more
+             in (current : together, rest)
+      remaining -> ([], remaining)
     isDocNext = \case
       DocD _ (DocCommentNext _) -> True
       _ -> False
     isDoc = \case
       DocD _ _ -> True
       _ -> False
-    belongs (previous, current) =
+    belongs previous current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
         || isDerivingSeries ctx previous current
         || relatedDecls d current

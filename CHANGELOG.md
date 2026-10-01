@@ -40,6 +40,10 @@
   `ghc --show-iface` on every interface that refers to one. A run with
   `--no-cache` no longer starts `ghc` and is about a third faster. [PR
   49](https://github.com/mrkkrp/tilia/pull/49).
+* Place comments and group declarations in time that does not grow with
+  the square of the size of a module. Rendering a 470 KB module with many
+  comments takes a second rather than 14. [PR
+  50](https://github.com/mrkkrp/tilia/pull/50).
 
 ## Tilia 0.0.2.0
 
