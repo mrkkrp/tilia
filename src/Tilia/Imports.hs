@@ -39,7 +39,7 @@ normalizeImports ::
   -- | Normalized imports.
   [LImportDecl GhcPs]
 normalizeImports implicitPrelude barriers written imports =
-  concatMap stretch (cutAtBarriers (barriersBetween imports barriers) tidied)
+  concatMap stretch (cutAtBarriers barriers tidied)
   where
     tidied = fmap (fmap (tidyImportList written)) imports
     stretch is =
@@ -77,26 +77,6 @@ itemStarts (L _ decl) = case ideclImportList decl of
       IEThingWith _ _ _ members _ ->
         concatMap (foldMap ((: []) . startPoint) . spanOf) members
       _ -> []
-
--- | The barriers that fall between two imports rather than inside one.
-barriersBetween ::
-  -- | The imports as written, for the lines each of them covers.
-  [LImportDecl GhcPs] ->
-  -- | Lines the block must not be sorted across.
-  [Int] ->
-  -- | Those of them that lie between imports.
-  [Int]
-barriersBetween imports = filter (not . within)
-  where
-    within l = any (\(from, to) -> from <= l && l <= to) spans'
-    spans' =
-      [ (srcLocLine from, srcLocLine to)
-      | i <- imports,
-        Just (from, to) <- [endsOf i]
-      ]
-    endsOf i = case (srcSpanStart (getLocA i), srcSpanEnd (getLocA i)) of
-      (RealSrcLoc from _, RealSrcLoc to _) -> Just (from, to)
-      _ -> Nothing
 
 -- | Cut the imports into the stretches the barriers leave between them.
 cutAtBarriers ::

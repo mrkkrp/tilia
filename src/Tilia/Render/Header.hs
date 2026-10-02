@@ -328,31 +328,42 @@ isDocEntry = \case
   IEDocNamed{} -> True
   _ -> False
 
--- | One import declaration.
+-- | One import declaration: its keyword, then what it imports, its alias,
+-- and its import list, each a node of its own past the keyword's column.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
 importDecl ctx ImportDecl{..} =
-  txt "import"
-    <> space
-    <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")
-    <> space
-    <> includeWhen ideclSafe (txt "safe")
-    <> space
-    <> levelBefore
-    <> space
-    <> includeWhen (isQualified && not qualifiedLast) (txt "qualified")
-    <> space
-    <> packageQualifier
-    <> space
+  keywordAt ctx (tokenSpan (importDeclAnnImport annotation)) "import"
     <> indent
-      ( at ctx ideclName outputable
+      ( space
+          <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")
+          <> space
+          <> includeWhen ideclSafe (keywordAt ctx (tokenSpan =<< importDeclAnnSafe annotation) "safe")
+          <> space
+          <> levelBefore
+          <> space
+          <> includeWhen (isQualified && not qualifiedLast) qualified
+          <> space
+          <> packageQualifier
+          <> space
+          <> at ctx ideclName outputable
           <> space
           <> levelAfter
-          <> includeWhen (isQualified && qualifiedLast) (space <> txt "qualified")
-          <> foldMap (\a -> space <> txt "as" <> space <> at ctx a outputable) ideclAs
-          <> space
-          <> importList
+          <> includeWhen (isQualified && qualifiedLast) (space <> qualified)
       )
+    <> foldMap
+      ( \a ->
+          indent
+            ( space
+                <> keywordAt ctx (tokenSpan =<< importDeclAnnAs annotation) "as"
+                <> space
+                <> at ctx a outputable
+            )
+      )
+      ideclAs
+    <> foldMap (indent . (space <>)) importList
   where
+    annotation = anns (ideclAnn ideclExt)
+    qualified = keywordAt ctx (tokenSpan =<< importDeclAnnQualified annotation) "qualified"
     qualifiedLast = extensionOn ctx ImportQualifiedPost
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
@@ -364,20 +375,17 @@ importDecl ctx ImportDecl{..} =
     levelAfter = case ideclLevelSpec of
       LevelStylePost l -> declLevel l
       _ -> mempty
-    importList = case ideclImportList of
-      Nothing -> mempty
-      Just (interpretation, L listLoc xs) ->
-        hidden
-          <> breakOrSpace
-          <> parens
-            ( insideBrackets
-                (spanOfSrcSpan (locA listLoc))
-                (importExportItems ctx xs)
-            )
-        where
-          hidden = case interpretation of
+    importList = flip fmap ideclImportList $ \(interpretation, L listLoc xs) ->
+      let hidden = case interpretation of
             Exactly -> mempty
-            EverythingBut -> txt "hiding"
+            EverythingBut -> keywordAt ctx (tokenSpan (fst (al_rest (anns listLoc)))) "hiding"
+       in hidden
+            <> breakOrSpace
+            <> parens
+              ( insideBrackets
+                  (spanOfSrcSpan (locA listLoc))
+                  (importExportItems ctx xs)
+              )
 
 -- | The keyword an import's level is written with.
 declLevel :: ImportDeclLevel -> Doc
