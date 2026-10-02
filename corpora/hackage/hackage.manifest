@@ -2508,7 +2508,7 @@ formatted       aed8c8d69571  hspec-core-2.11.17/src/GetOpt/Declarative/Types.hs
 formatted       7963314c7b2d  hspec-core-2.11.17/src/GetOpt/Declarative/Util.hs
 formatted       c59700aebda7  hspec-core-2.11.17/src/Test/Hspec/Core/Annotations.hs
 formatted       aaed3a708e2b  hspec-core-2.11.17/src/Test/Hspec/Core/Clock.hs
-broken          043159a88536  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
+formatted       e56d273982ae  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
 formatted       f5ded9eab569  hspec-core-2.11.17/src/Test/Hspec/Core/Config.hs
 formatted       b9ed2689f1a4  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Definition.hs
 formatted       2c2affbefb39  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Options.hs

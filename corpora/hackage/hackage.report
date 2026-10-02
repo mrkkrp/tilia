@@ -1,9 +1,9 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5145 formatted.
+5202 examples, 5146 formatted.
 
 ==========================================================================
-broken (5)
+broken (4)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -139,38 +139,6 @@ hashable-1.5.1.0/tests/Regress.hs
     -        , testCase "4" $ nullaryCase 4 S4
     -        ]
     … and 214 more lines
-
-hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
-    formatting is non-idempotent
-    --- first pass
-    +++ second pass
-    @@ -78,17 +78,21 @@
-     #endif
-     import Control.Concurrent
-     import Data.Bool as Imports (bool)
-    +#ifndef __MHS__
-    +import GHC.IO.Exception
-    +  ( IOErrorType (..),
-    +    ioe_type,
-    +  )
-    +#endif
-     import System.Environment as Imports (lookupEnv)
-    -import Text.Read as Imports (readMaybe)
-    -import
-     #ifndef __MHS__
-    -  GHC.IO.Exception
-     #else
-    -  System.IO.Error
-    -#endif
-    +import System.IO.Error
-       ( IOErrorType (..),
-         ioe_type,
-       )
-    +#endif
-    +import Text.Read as Imports (readMaybe)
-     
-     isUnsupportedOperation :: IOError -> Bool
-     isUnsupportedOperation e = ioe_type e == UnsupportedOperation
 
 idris-1.3.4/src/Idris/AbsSyntax.hs
     formatting is non-idempotent

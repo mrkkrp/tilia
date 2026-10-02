@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Turning source text into a syntax tree and a comment stream.
@@ -7,6 +8,7 @@ module Tilia.Parser
     parseModule,
     parseConfiguration,
     readAlike,
+    importLayout,
     ParseError (..),
     describeParseError,
     ParserConfig (..),
@@ -17,6 +19,8 @@ module Tilia.Parser
 where
 
 import Data.Foldable (toList)
+import Data.IntMap.Strict (IntMap)
+import Data.IntMap.Strict qualified as IntMap
 import Data.List (isSuffixOf, nub, sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -90,7 +94,7 @@ parseConfiguration ::
   Text ->
   Either ParseError ParsedModule
 parseConfiguration config path written source =
-  case GHC.unP entryPoint initialState of
+  case GHC.unP entryPoint (stateFor config path source) of
     GHC.PFailed pstate -> Left (whyNot pstate)
     GHC.POk pstate (GHC.L _ hsModule)
       | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
@@ -136,16 +140,64 @@ parseConfiguration config path written source =
         . GHC.diagnosticMessage GHC.NoDiagnosticOpts
         . GHC.errMsgDiagnostic
 
+-- | Return each line a token other than a comment begins on, and whether
+-- the leftmost such token on the line begins an item of the top level.
+-- 'Nothing' if the module has no imports, writes its top level in explicit
+-- braces, or does not lex.
+importLayout ::
+  -- | Parser config.
+  ParserConfig ->
+  -- | The module, with its preprocessor directives blanked.
+  Text ->
+  -- | The import layout.
+  Maybe (IntMap Bool)
+importLayout config source =
+  case GHC.unP (lexing Nothing Nothing IntMap.empty) (stateFor config "" source) of
+    GHC.POk _ found -> found
+    GHC.PFailed _ -> Nothing
+  where
+    lexing topLevel previous found =
+      GHC.lexer False $ \(GHC.L s t) -> case GHC.srcSpanStart s of
+        _ | GHC.ITeof <- t -> pure (atTopLevel topLevel found)
+        GHC.RealSrcLoc l _
+          | code t ->
+              let column = GHC.srcLocCol l
+                  found' = IntMap.insertWith min (GHC.srcLocLine l) column found
+               in case (t, previous, topLevel) of
+                    (GHC.ITocurly, Just GHC.ITwhere, Nothing) -> pure Nothing
+                    (GHC.ITimport, _, Nothing) -> lexing (Just column) (Just t) found'
+                    (_, _, Just c)
+                      | column <= c,
+                        not (isImport t) ->
+                          pure (atTopLevel topLevel found')
+                    _ -> lexing topLevel (Just t) found'
+        _ -> lexing topLevel previous found
+    atTopLevel topLevel found = (\c -> fmap (<= c) found) <$> topLevel
+    isImport = \case
+      GHC.ITimport -> True
+      _ -> False
+    code = \case
+      GHC.ITlineComment _ _ -> False
+      GHC.ITblockComment _ _ -> False
+      GHC.ITdocComment _ _ -> False
+      GHC.ITdocOptions _ _ -> False
+      GHC.ITvocurly -> False
+      GHC.ITvccurly -> False
+      GHC.ITsemi -> False
+      _ -> True
+
+-- | The state to start reading a module in.
+stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
+stateFor config path source =
+  GHC.initParserState
+    (parserOpts config')
+    (GHC.stringToStringBuffer (T.unpack source))
+    (GHC.mkRealSrcLoc (mkFastString path) 1 1)
+  where
     config' =
       config
         { pcExtensions = withImplied (effectiveExtensions (pcExtensions config) source)
         }
-
-    initialState =
-      GHC.initParserState
-        (parserOpts config')
-        (GHC.stringToStringBuffer (T.unpack source))
-        (GHC.mkRealSrcLoc (mkFastString path) 1 1)
 
 -- | Would the parser read these two texts with the same extensions?
 readAlike :: ParserConfig -> Text -> Text -> Bool
