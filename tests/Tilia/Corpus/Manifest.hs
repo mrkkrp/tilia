@@ -15,7 +15,10 @@ module Tilia.Corpus.Manifest
     Manifest,
     readManifest,
     writeManifest,
+    Report,
+    readReport,
     writeReport,
+    reasonLines,
     accepting,
   )
 where
@@ -138,6 +141,34 @@ writeManifest path manifest = do
     width =
       2 + maximum (1 : fmap (T.length . outcomeName . entryOutcome) (Map.elems manifest))
 
+-- | The reasons a report gives, by example: the outcome it is filed under,
+-- and the lines that say why.
+type Report = Map FilePath (Outcome, [Text])
+
+-- | Read a report back. A missing one is an empty one, as with
+-- 'readManifest'.
+readReport :: FilePath -> IO Report
+readReport path =
+  try (T.readFile path) >>= \case
+    Left (_ :: SomeException) -> pure Map.empty
+    Right text -> pure (go Nothing Map.empty (T.lines text))
+  where
+    go section report = \case
+      [] -> report
+      rule : heading : rule' : rest
+        | ruled rule,
+          ruled rule',
+          Just outcome <- outcomeNamed (fst (T.breakOn " (" heading)) ->
+            go (Just outcome) report rest
+      name : rest
+        | Just outcome <- section,
+          not (T.null name),
+          not (" " `T.isPrefixOf` name) ->
+            let (reason, rest') = span ("    " `T.isPrefixOf`) rest
+             in go section (Map.insert (T.unpack name) (outcome, reason) report) rest'
+      _ : rest -> go section report rest
+    ruled line = not (T.null line) && T.all (== '=') line
+
 -- | Write the reasons beside the record.
 writeReport :: FilePath -> [(FilePath, Outcome, Text)] -> IO ()
 writeReport path entries = do
@@ -152,10 +183,7 @@ writeReport path entries = do
     first (name, _, _) = name
     sections = [Broken, DoesNotParse, PartlyChecked, Declined, NotUtf8]
     header =
-      [ "Why every example of this corpus that is not `formatted` is not.",
-        "",
-        "Generated beside the manifest, and compared against nothing: this",
-        "file is the work list, and it is free to say as much as it likes.",
+      [ "Hackage modules that currently do not format cleanly.",
         "",
         T.pack (show (length entries))
           <> " examples, "
@@ -171,8 +199,11 @@ writeReport path entries = do
         ""
       ]
         <> concatMap entry es
-    entry (name, why) =
-      [T.pack name] <> fmap ("    " <>) (T.lines (T.strip why)) <> [""]
+    entry (name, why) = [T.pack name] <> reasonLines why <> [""]
+
+-- | The lines a report gives an example's reason.
+reasonLines :: Text -> [Text]
+reasonLines = fmap ("    " <>) . T.lines . T.strip
 
 -- | Is this run supposed to write the records rather than check against
 -- them?

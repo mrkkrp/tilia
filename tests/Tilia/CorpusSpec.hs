@@ -32,7 +32,7 @@ import Tilia.Cpp
 import Tilia.Diff (diff)
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
-import Tilia.Palette (Palette, paletteFor)
+import Tilia.Palette (Palette (Plain), paletteFor)
 import Tilia.Parser
   ( ParseError (..),
     ParsedModule (..),
@@ -60,14 +60,15 @@ corpusSpec corpus =
   describe (corpusName corpus) $
     runIO (obtain corpus) >>= \case
       Left problem ->
-        it "is available" . pendingWith $
+        it "is available" . expectationFailure $
           "corpus not on this machine and could not be fetched: " <> T.unpack problem
       Right examples -> do
         palette <- runIO paletteFor
-        let run = check palette
         case corpusExpectations corpus of
-          Listed lists -> againstLists lists run examples
-          Recorded path -> againstRecord path run examples
+          Listed lists -> againstLists lists (check palette) examples
+          -- Plain, so that what a record says does not depend on whether the
+          -- run that wrote it printed to a terminal.
+          Recorded path -> againstRecord path (check Plain) examples
 
 -- | A corpus small enough to name its exceptions in "Tilia.Corpus".
 againstLists :: Lists -> (Example -> IO Result) -> [Example] -> Spec
@@ -121,6 +122,7 @@ againstRecord path run examples = do
 
     checked = do
       manifest <- runIO (readManifest path)
+      report <- runIO (readReport reportPath)
       parallel $ for_ examples $ \example ->
         it (exampleName example) $ do
           Result outcome why digest <- run example
@@ -131,6 +133,12 @@ againstRecord path run examples = do
                   expectationFailure (T.unpack (moved (entryOutcome expected) outcome why))
               | entryDigest expected /= digest ->
                   expectationFailure (T.unpack (rewritten (entryDigest expected) digest))
+              | Just problem <-
+                  misreported
+                    (Map.lookup (exampleName example) report)
+                    outcome
+                    (reasonLines (T.take reasonLength why)) ->
+                  expectationFailure (T.unpack problem)
               | otherwise -> case outcome of
                   Formatted -> pure ()
                   Declined -> pure ()
@@ -139,13 +147,38 @@ againstRecord path run examples = do
                   PartlyChecked -> pendingWith (T.unpack why)
                   Broken -> pendingWith (T.unpack (T.take reasonLength why))
       it "records nothing it does not have" $ do
-        let had = Set.fromList (fmap exampleName examples)
-            gone = [n | n <- Map.keys manifest, not (Set.member n had)]
+        let gone = [n | n <- Map.keys manifest, not (Set.member n had)]
         unless (null gone) . expectationFailure $
           show (length gone)
             <> " entries name examples this corpus does not have, starting with "
             <> unwords (take 5 gone)
             <> regenerate
+      it "reports nothing it does not have" $ do
+        let gone = [n | n <- Map.keys report, not (Set.member n had)]
+        unless (null gone) . expectationFailure $
+          reportPath
+            <> " gives reasons for "
+            <> show (length gone)
+            <> " examples this corpus does not have, starting with "
+            <> unwords (take 5 gone)
+            <> regenerate
+
+    had = Set.fromList (fmap exampleName examples)
+
+    misreported filed outcome reason = case (outcome, filed) of
+      (Formatted, Nothing) -> Nothing
+      (Formatted, Just _) ->
+        Just (T.pack reportPath <> " gives a reason why this is not formatted, and it is" <> T.pack regenerate)
+      (_, Just (filedUnder, given))
+        | filedUnder == outcome && given == reason -> Nothing
+      _ ->
+        Just $
+          T.pack reportPath
+            <> " says otherwise why this "
+            <> outcomeName outcome
+            <> ", which is now:\n"
+            <> T.unlines reason
+            <> T.pack regenerate
 
     unrecorded outcome =
       "this is not in "

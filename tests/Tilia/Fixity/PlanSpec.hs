@@ -12,8 +12,7 @@
 -- that talks to the outside world will not fail on.
 --
 -- Running the test suite implies the project was built, so the plan and the
--- sources are there. Where they are not — a sandboxed build with no package
--- cache — each test says so and is marked pending rather than failing.
+-- sources are there. Where they are not, each test fails and says why.
 module Tilia.Fixity.PlanSpec (spec) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -236,7 +235,7 @@ preparation = describe "preparing a project" $ do
     it "counts the components of this very project as covered" $ do
       plan' <- readBuildPlan (planPathFor ".")
       case plan' of
-        Left _ -> pendingWith "no build plan; run cabal build first"
+        Left _ -> expectationFailure "no build plan; run cabal build first"
         Right p ->
           checkReadiness (plannedComponents p) "."
             `shouldNotReturn` PlanNarrow []
@@ -496,7 +495,7 @@ packageCache = describe "where the package cache is looked for" $ do
   it "is the directory cabal reports" $ do
     said <- readProgramOutput "cabal" ["path", "--remote-repo-cache"]
     case said of
-      Nothing -> pendingWith "no cabal on the path to ask"
+      Nothing -> expectationFailure "no cabal on the path to ask"
       Just reported ->
         packageCacheRoot `shouldReturn` T.unpack (T.strip reported)
 
@@ -536,7 +535,7 @@ givenPlans = describe "a plan trusted as up to date" $ do
   it "fetches nothing where every dependency is installed" $ do
     installed <- installedPackages <$> readInstalledPackages
     case installed of
-      [] -> pendingWith "nothing installed where this runs"
+      [] -> expectationFailure "nothing installed where this runs"
       p : _ ->
         withGivenPlan [dependency (ipName p) (ipVersion p)] $ \project planFile ->
           filter (== "fetch") . fst <$> runsCabal (fetchingFor project planFile)
@@ -613,7 +612,9 @@ withGivenPlan others act =
 -- on the path that fails, and what it came to.
 runsCabal :: IO a -> IO ([String], a)
 runsCabal act
-  | System.Info.os == "mingw32" = pendingWith "the stand-in is a shell script" >> (,) [] <$> act
+  | System.Info.os == "mingw32" =
+      expectationFailure "the stand-in for cabal is a shell script, which does not run on Windows"
+        >> (,) [] <$> act
   | otherwise =
       withSystemTempDirectory "tilia-cabal" $ \bin -> do
         let stand = bin </> "cabal"
@@ -1168,7 +1169,7 @@ withPlan plan = do
   describe "what a package module says it exports" $
     it "names them, read out of the package's own tarball" $
       exported "Prettyprinter" >>= \case
-        Nothing -> pendingWith "could not read prettyprinter's source"
+        Nothing -> expectationFailure "could not read prettyprinter's source"
         Just names -> names `shouldSatisfy` Set.member (OpName "<+>")
 
   describe "what a module keeps under each of its names" $ do
@@ -1556,11 +1557,8 @@ record steps args = modifyIORef' steps (<> [args])
 obliging :: IORef [[String]] -> [String] -> IO (Either Text ())
 obliging steps args = record steps args >> pure (Right ())
 
--- | Run an assertion on a module's fixities, or mark the test pending if
--- the module could not be resolved at all.
---
--- Pending rather than failing, because an unpopulated package cache is an
--- environment problem and not a defect in the code under test.
+-- | Run an assertion on a module's fixities, failing where the module could
+-- not be resolved at all.
 needs ::
   (Text -> IO (Maybe (Fixities))) ->
   Text ->
@@ -1568,7 +1566,7 @@ needs ::
   Expectation
 needs resolve modName assertion =
   resolve modName >>= \case
-    Nothing -> pendingWith ("could not resolve " <> T.unpack modName)
+    Nothing -> expectationFailure ("could not resolve " <> T.unpack modName)
     Just fixities -> assertion fixities
 
 -- | Parse a module, resolve its imports for real, and hand over the scope.

@@ -1,7 +1,4 @@
-Why every example of this corpus that is not `formatted` is not.
-
-Generated beside the manifest, and compared against nothing: this
-file is the work list, and it is free to say as much as it likes.
+Hackage modules that currently do not format cleanly.
 
 5202 examples, 5145 formatted.
 
@@ -99,13 +96,13 @@ hashable-1.5.1.0/tests/Regress.hs
      import qualified Data.ByteString.Char8 as BS8
      import qualified Data.ByteString.Lazy as BSL
      import qualified Data.ByteString.Lazy.Char8 as BSL8
+    -
     +import Data.Fixed (Pico)
     +import Data.List (nub)
     +import Data.Text (Text)
     +import qualified Data.Text.Lazy as TL
     +import GHC.Generics (Generic)
     +import Test.Tasty (TestTree, testGroup)
-    -
     +import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
     +import Test.Tasty.QuickCheck (testProperty)
      #ifdef HAVE_MMAP
@@ -125,8 +122,8 @@ hashable-1.5.1.0/tests/Regress.hs
     +  | otherwise = return ()
      
      regressions :: [TestTree]
-    +regressions =
     -regressions = [] ++
+    +regressions =
     +  []
      #ifdef HAVE_MMAP
     -    Mmap.regressions ++
@@ -136,11 +133,11 @@ hashable-1.5.1.0/tests/Regress.hs
     -#endif
     -    [ testGroup "Generic: sum of nullary constructors"
     -        [ testCase "0" $ nullaryCase 0 S0
-    +    ++ Mmap.regressions
-    +    ++ [ testCase "Fixed" $ do
-    +           (hash (1 :: Pico) == hash (2 :: Pico)) @?= False
-    +       ]
-    +    ++ [ testGroup
+    -        , testCase "1" $ nullaryCase 1 S1
+    -        , testCase "2" $ nullaryCase 2 S2
+    -        , testCase "3" $ nullaryCase 3 S3
+    -        , testCase "4" $ nullaryCase 4 S4
+    -        ]
     … and 214 more lines
 
 hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
@@ -164,8 +161,8 @@ hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
     -  GHC.IO.Exception
      #else
     -  System.IO.Error
-    +import System.IO.Error
     -#endif
+    +import System.IO.Error
        ( IOErrorType (..),
          ioe_type,
        )
@@ -329,7 +326,15 @@ hlint-3.10/data/HLint_TypeCheck.hs
     a pragma that moves positions, which we do not rewrite
 
 intero-0.1.40/src/InteractiveUI.hs
-    too many configurations to format
+    intero-0.1.40/src/InteractiveUI.hs:(3370,39)-(3375,59): Unexpected do block in function application:
+        do let toRealSrcSpan (UnhelpfulSpan _)
+                 = panic "enclosingTickSpan UnhelpfulSpan"
+               toRealSrcSpan (RealSrcSpan s) = s
+               enclosing_spans
+                 = [pan |
+                      (_, pan) <- ticks ! line,
+                      realSrcSpanEnd (toRealSrcSpan pan) >= realSrcSpanEnd src]
+           return . head . sortBy leftmost_largest $ enclosing_spans, in the configuration taking #if __GLASGOW_HASKELL__ >= 800, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ < 709, then #if MIN_VERSION_directory(1,2,3), then #ifndef mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 802, then #if mingw32_HOST_OS, then #if defined(mingw32_HOST_OS), then #ifdef mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 710, then #if  __GLASGOW_HASKELL__ < 800, then #if __GLASGOW_HASKELL__ < 800, then #if  __GLASGOW_HASKELL__ >= 800, then #if  __GLASGOW_HASKELL__ >= 800
 
 lens-5.3.6/tests/properties.hs
     lens-5.3.6/tests/properties.hs:118:26-28: parse error on input `KVS'

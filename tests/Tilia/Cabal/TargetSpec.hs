@@ -56,7 +56,7 @@ spec = do
   describe "against this very project" $ do
     root <- runIO (findProjectRoot ".")
     case root of
-      Nothing -> it "needs a project" $ pendingWith "no project above the working directory"
+      Nothing -> it "needs a project" $ expectationFailure "no project above the working directory"
       Just here -> do
         it "is rooted at the cabal.project, not the .cabal file" $
           prMarker here `shouldBe` ProjectFile
