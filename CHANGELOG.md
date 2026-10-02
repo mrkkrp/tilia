@@ -60,6 +60,10 @@
 * Add `tilia for-editor FILE`, to facilitate editor integrations.
   `Tilia.Editor` offers the same to programs that use Tilia as a library.
   [PR 51](https://github.com/mrkkrp/tilia/pull/51).
+* Sort an import whose clause is behind a CPP conditional, such as a
+  `hiding` clause behind `#if`, among the other imports, rather than sorting
+  the imports either side of the conditional apart, which a second pass then
+  sorted again. [PR 55](https://github.com/mrkkrp/tilia/pull/55).
 
 ## Tilia 0.0.2.0
 

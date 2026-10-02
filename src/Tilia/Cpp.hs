@@ -37,8 +37,11 @@ import Control.Monad (join, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, get, put)
+import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Function (on)
+import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.List (groupBy, maximumBy, sort, sortOn, transpose, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -117,7 +120,36 @@ formatWithCpp parser render path source = do
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
     knowing c =
-      c{rcImportBarriers = maybe [] (sort . concatMap gsOwnLines . allGroups) (scanConditionals source)}
+      c{rcImportBarriers = maybe [] (importBarriers source . allGroups) (scanConditionals source)}
+
+-- | The lines imports must not be sorted across: the directives of every
+-- conditional but one that only continues the declaration above it, such as
+-- a @hiding@ clause written behind a condition.
+importBarriers ::
+  -- | The module, directives and all.
+  Text ->
+  -- | Every conditional of the module, nested ones included.
+  [GroupSpec] ->
+  [Int]
+importBarriers source groups =
+  sort [l | g <- groups, not (continuesDeclaration g), l <- gsOwnLines g]
+  where
+    written = IntMap.fromList (zip [1 ..] (T.lines source))
+    directives =
+      IntSet.fromList [l | g <- groups, (from, to) <- gsOwnRanges g, l <- [from .. to]]
+    topLevel =
+      minimum (maxBound : [indentation t | t <- IntMap.elems written, take 1 (T.words t) == ["import"]])
+    continuesDeclaration g =
+      let held =
+            [ t
+            | l <- uncurry enumFromTo (gsWhole g),
+              not (IntSet.member l directives),
+              Just t <- [IntMap.lookup l written],
+              not (T.all isSpace t),
+              not ("--" `T.isPrefixOf` T.stripStart t)
+            ]
+       in not (null held) && all ((> topLevel) . indentation) held
+    indentation = T.length . T.takeWhile isSpace
 
 -- | Formatting that spends the lines it formats out of the budget left, or
 -- fails with a 'CppError'.

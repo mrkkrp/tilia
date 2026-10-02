@@ -355,6 +355,28 @@ spec = do
     it "stays between the conditionals it was written between" $
       formatCpp defineBetweenConditionals `shouldBe` Right defineBetweenConditionals
 
+  describe "imports around a conditional" $ do
+    it "sorts an import whose clause is behind a condition among the others" $
+      formatCpp hidingBehindCondition
+        `shouldBe` Right
+          ( T.unlines
+              [ "module M where",
+                "",
+                "import Data.Maybe (catMaybes)",
+                "import Language.Haskell.TH.Syntax",
+                "#if MIN_VERSION_template_haskell(2,19,0)",
+                "  hiding",
+                "  ( makeRelativeToProject,",
+                "  )",
+                "#endif",
+                "import System.Directory (doesFileExist)",
+                "import Yesod.Core"
+              ]
+          )
+
+    it "does not sort an import out of a conditional that holds it" $
+      formatCpp importBehindCondition `shouldBe` Right importBehindCondition
+
   describe "directives the prototype cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
       formatCpp unbalanced `shouldBe` Left "the #ifdef at line 3 is never closed"
@@ -414,6 +436,8 @@ everyFixture =
     commentInsideBranch,
     packedTogether,
     differingImports,
+    hidingBehindCondition,
+    importBehindCondition,
     withoutElse,
     withElif,
     elifWithoutElse,
@@ -557,6 +581,40 @@ differingImports =
       "#endif",
       "",
       "f = 1"
+    ]
+
+-- | An import whose @hiding@ clause is behind a condition, among imports
+-- that sort around it.
+--
+-- The @#endif@ stood after the import in one configuration and inside it in
+-- the other, so the imports were sorted in two runs either side of it, and a
+-- second pass sorted them again.
+hidingBehindCondition :: Text
+hidingBehindCondition =
+  T.unlines
+    [ "module M where",
+      "",
+      "import Yesod.Core",
+      "import System.Directory (doesFileExist)",
+      "import Language.Haskell.TH.Syntax",
+      "#if MIN_VERSION_template_haskell(2,19,0)",
+      "    hiding (makeRelativeToProject)",
+      "#endif",
+      "import Data.Maybe (catMaybes)"
+    ]
+
+-- | Imports around a conditional that holds an import of its own, which
+-- must stay between the imports it was written between.
+importBehindCondition :: Text
+importBehindCondition =
+  T.unlines
+    [ "module M where",
+      "",
+      "import Z",
+      "#ifdef FOO",
+      "import B",
+      "#endif",
+      "import A"
     ]
 
 -- | A conditional with no alternative, which is what most conditionals in
