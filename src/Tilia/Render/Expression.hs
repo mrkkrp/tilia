@@ -219,7 +219,7 @@ application ctx site f x =
   case placement of
     Normal ->
       mayBraceWhenFlat (siteBracing site) headAndInit
-        <> indent (includeUnless (null initArgs) breakOrSpace <> hsExpr ctx lastArg)
+        <> indent (breakOrSpace <> hsExpr ctx lastArg)
     Hanging ->
       layoutFrom ctx initSpan (headAndInit MayBrace)
         <> attach Hanging (hsExpr ctx lastArg)
@@ -233,13 +233,9 @@ application ctx site f x =
       | otherwise = Normal
     headAndInit bracing =
       hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
-        <> breakOrSpace
         <> nest
           (if placement == Hanging then 0 else 1)
-          ( sepBy
-              breakOrSpace
-              (fmap (hsExprIn ctx (withBracing bracing plainSite)) initArgs)
-          )
+          (foldMap ((breakOrSpace <>) . hsExprIn ctx (withBracing bracing plainSite)) initArgs)
 
 -- | The head of an application, and its arguments in the order written.
 gatherArgs ::

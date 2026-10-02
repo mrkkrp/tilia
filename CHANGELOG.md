@@ -68,6 +68,10 @@
   configurations, rather than put it on a line of its own after the
   `#endif`. Several items that vary under one conditional now stay in one
   conditional. [PR 56](https://github.com/mrkkrp/tilia/pull/56).
+* Put a conditional around an argument that only some configurations pass
+  first, rather than around it and every argument after it, which then
+  came out once in each branch. [PR
+  57](https://github.com/mrkkrp/tilia/pull/57).
 
 ## Tilia 0.0.2.0
 

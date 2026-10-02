@@ -1891,7 +1891,7 @@ formatted       9cd66d1b3ed2  esqueleto-3.6.0.3/src/Database/Esqueleto/MySQL.hs
 formatted       03e7cbed2cf8  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL.hs
 formatted       c9c85bd4863e  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL/JSON.hs
 formatted       df35c8f3b6bf  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL/JSON/Instances.hs
-formatted       426349a58e2e  esqueleto-3.6.0.3/src/Database/Esqueleto/Record.hs
+formatted       70b73b182b2e  esqueleto-3.6.0.3/src/Database/Esqueleto/Record.hs
 formatted       167fa1cef38a  esqueleto-3.6.0.3/src/Database/Esqueleto/SQLite.hs
 formatted       791ffee464be  esqueleto-3.6.0.3/test/Common/Record.hs
 formatted       3d260d3951bd  esqueleto-3.6.0.3/test/Common/Test.hs
@@ -2751,7 +2751,7 @@ formatted       1db8c9da259c  idris-1.3.4/src/Util/System.hs
 formatted       ff2fc4a7a778  idris-1.3.4/test/TestData.hs
 formatted       720af8681b46  idris-1.3.4/test/TestRun.hs
 formatted       e865ae48f11b  intero-0.1.40/Setup.hs
-formatted       2179d52567a7  intero-0.1.40/src/Completion.hs
+formatted       41797b039ec2  intero-0.1.40/src/Completion.hs
 formatted       3cb1551c3e6d  intero-0.1.40/src/GhciFind.hs
 partly-checked  59a2fae2f33f  intero-0.1.40/src/GhciInfo.hs
 formatted       ca4cd509270a  intero-0.1.40/src/GhciMonad.hs
