@@ -42,10 +42,10 @@ import Data.Foldable (traverse_)
 import Data.Function (on)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (groupBy, maximumBy, sort, sortOn, transpose, unsnoc)
+import Data.List (groupBy, maximumBy, sort, sortOn, stripPrefix, transpose, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -677,7 +677,13 @@ merge conditionals guards varied = go Broken
 
     sharedEnd layout ss =
       let (c, ss') = sharedStart layout (fmap reverse ss)
-       in (fmap reverse ss', reverse c)
+          ends = fmap reverse ss'
+       in case reverse c of
+            x : closing
+              | x == Doc.comma,
+                all (maybe False (not . onlySpacing . snd) . unsnoc) ends ->
+                  (fmap (<> [x]) ends, closing)
+            closing -> (ends, closing)
 
     middle _ [] = mempty
     middle layout ss@(s : rest)
@@ -692,17 +698,36 @@ merge conditionals guards varied = go Broken
 
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss
-      let tails = fmap (drop 1) ss
+      let rest = fmap (drop 1) ss
+          (glued, tails) = case traverse (stripPrefix [Doc.comma]) rest of
+            Just rest' -> (endingWith Doc.comma, rest')
+            Nothing -> (id, rest)
       case heads of
         (h : hs)
           | all (sameKind h) hs,
             all breaksFirst tails ->
-              Just (joined (go layout heads) (middle layout tails))
+              Just (joined (glued (go layout heads)) (middle layout tails))
         _ -> Nothing
       where
         breaksFirst t = case dropWhile ((== 0) . weigh layout) t of
           [] -> True
           (d : _) -> opensWithBreak layout d
+
+    endingWith t d = fromMaybe (d <> t) (inAlternatives d)
+      where
+        inAlternatives = \case
+          DCppChoice ws bs e
+            | not (any printsNothing (e : fmap snd bs)) ->
+                Just (DCppChoice ws [(g, endingWith t b) | (g, b) <- bs] (endingWith t e))
+          DLocated s x -> DLocated s <$> inAlternatives x
+          DFence s x -> DFence s <$> inAlternatives x
+          DNest n x -> DNest n <$> inAlternatives x
+          DAlign x -> DAlign <$> inAlternatives x
+          DGroup l x -> DGroup l <$> inAlternatives x
+          DCat a b
+            | printsNothing b -> (<> b) <$> inAlternatives a
+            | otherwise -> (a <>) <$> inAlternatives b
+          _ -> Nothing
 
     joined before after = case (choiceAt Last before, choiceAt First after) of
       (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
@@ -1140,6 +1165,7 @@ anchoring = \case
   DHardBreak -> False
   DCloseLine -> False
   DVerbatimBreak _ _ -> False
+  DText "," -> False
   DNest _ d -> located d || not (printsNothing d)
   DAlign d -> located d || not (printsNothing d)
   DGroup _ d -> located d || not (printsNothing d)
