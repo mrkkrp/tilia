@@ -64,6 +64,10 @@
   `hiding` clause behind `#if`, among the other imports, rather than sorting
   the imports either side of the conditional apart, which a second pass then
   sorted again. [PR 55](https://github.com/mrkkrp/tilia/pull/55).
+* Keep a comma with the item it follows when the item varies across
+  configurations, rather than put it on a line of its own after the
+  `#endif`. Several items that vary under one conditional now stay in one
+  conditional. [PR 56](https://github.com/mrkkrp/tilia/pull/56).
 
 ## Tilia 0.0.2.0
 
