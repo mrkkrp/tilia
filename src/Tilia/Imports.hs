@@ -216,7 +216,9 @@ combineImports written (L ann kept) (L other folded) =
     both (Just (interpretation, L l xs)) (Just (_, L l' ys)) =
       Just
         ( interpretation,
-          L (bracketsAcross (widened written l l') l') (tidyImportItems written (xs <> ys))
+          L
+            (bracketsAcross (widened written l l') l')
+            (tidyImportItems written interpretation (xs <> ys))
         )
     both _ _ = Nothing
 
@@ -235,22 +237,34 @@ bracketsAcross kept folded
 tidyImportList :: [Comment] -> ImportDecl GhcPs -> ImportDecl GhcPs
 tidyImportList written decl =
   decl
-    { ideclImportList =
-        fmap (fmap (tidyImportItems written)) <$> ideclImportList decl
+    { ideclImportList = tidied <$> ideclImportList decl
     }
+  where
+    tidied (interpretation, items) =
+      (interpretation, tidyImportItems written interpretation <$> items)
 
 -- | Sort an import list and fold together the entries naming one thing.
 --
 -- @import M (T (A), T (B))@ names one type twice and comes out as @import M
 -- (T (A, B))@.
-tidyImportItems :: [Comment] -> [LIE GhcPs] -> [LIE GhcPs]
-tidyImportItems written items
+tidyImportItems ::
+  [Comment] ->
+  ImportListInterpretation ->
+  [LIE GhcPs] ->
+  [LIE GhcPs]
+tidyImportItems written interpretation items
   | any (unnameable . unLoc) items = items
   | otherwise =
       foldRuns
         (wider written)
-        [(nameIdentity (unLoc i), fmap sortSubnames i) | i <- items]
+        [((nameIdentity (unLoc i), apart (unLoc i)), fmap sortSubnames i) | i <- items]
   where
+    -- A bare name in a hiding list also hides any data constructor of that
+    -- name, which the name with its own parentheses does not.
+    apart item = case (interpretation, item) of
+      (EverythingBut, IEThingAll{}) -> True
+      (EverythingBut, IEThingWith{}) -> True
+      _ -> False
     unnameable = \case
       IEVar{} -> False
       IEThingAbs{} -> False
