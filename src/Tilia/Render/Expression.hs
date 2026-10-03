@@ -115,8 +115,8 @@ exprBody ctx site here = \case
   HsDo anns flavour es -> case flavour of
     DoExpr moduleName -> doBlock moduleName "do"
     MDoExpr moduleName -> doBlock moduleName "mdo"
-    ListComp -> comprehension ctx site es
-    MonadComp -> comprehension ctx site es
+    ListComp -> comprehension ctx site here es
+    MonadComp -> comprehension ctx site here es
     GhciStmtCtxt -> error "Tilia: GhciStmtCtxt cannot occur in a source file"
     where
       doBlock moduleName word =
@@ -154,7 +154,7 @@ exprBody ctx site here = \case
       hsExpr ctx x
         <> joinedBy "::"
         <> indent (hsSigType ctx hswc_body)
-  ArithSeq _ _ range -> arithSeq ctx (closingFor site) range
+  ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
   HsTypedBracket (bracketAnn, _) e ->
     txt opener <> breakOrNothing <> hsExpr ctx e <> breakOrNothing <> txt "||]"
     where
@@ -264,8 +264,8 @@ tuple ctx here closing boxity args
         Missing _ -> mempty
 
 -- | An arithmetic sequence, in whichever of its four forms.
-arithSeq :: Ctx -> ClosingIndent -> ArithSeqInfo GhcPs -> Doc
-arithSeq ctx closing = \case
+arithSeq :: Ctx -> Maybe Span -> ClosingIndent -> ArithSeqInfo GhcPs -> Doc
+arithSeq ctx here closing = \case
   From from -> wrap (hsExpr ctx from <> breakOrSpace <> txt "..")
   FromThen from next ->
     wrap (commaSep (fmap (hsExpr ctx) [from, next]) <> breakOrSpace <> txt "..")
@@ -279,7 +279,7 @@ arithSeq ctx closing = \case
         <> space
         <> hsExpr ctx to
   where
-    wrap = bracketsWith closing
+    wrap = bracketsWith closing . insideBrackets here
 
 -- | One field of a record construction or update.
 fieldBind ::
@@ -524,13 +524,13 @@ statements ctx site mkBody es =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
 -- | A list comprehension.
-comprehension :: Ctx -> Site -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
-comprehension ctx site es = align (variant onOneLine acrossLines)
+comprehension :: Ctx -> Site -> Maybe Span -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
+comprehension ctx site here es = align (variant onOneLine acrossLines)
   where
     onOneLine = txt "[" <> body <> txt "]"
     acrossLines = txt "[" <> space <> keepInside (body <> hardBreak <> txt "]")
     keepInside = if siteInBlock site then align else id
-    body = at ctx es sections
+    body = insideBrackets here (at ctx es sections)
     sections xs = case unsnoc xs of
       Nothing -> error "Tilia: a comprehension always yields something"
       Just (stmts, yield) ->
