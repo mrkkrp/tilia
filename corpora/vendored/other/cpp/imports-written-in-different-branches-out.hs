@@ -8,9 +8,7 @@ import GHC.IO.Exception
 #else
 import System.IO.Error
 #endif
-  ( IOErrorType (..),
-    ioe_type,
-  )
+  (IOErrorType (..), ioe_type)
 import Data.Bool (bool)
 
 isUnsupported :: IOError -> Bool

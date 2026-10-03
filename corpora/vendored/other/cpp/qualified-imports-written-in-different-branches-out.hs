@@ -8,9 +8,7 @@ import qualified Data.Text.Lazy as T
 #else
 import qualified Data.Text as T
 #endif
-  hiding
-  ( lines,
-  )
+  hiding (lines)
 import Data.Char (isSpace)
 
 strip :: T.Text -> T.Text
