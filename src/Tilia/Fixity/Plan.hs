@@ -1499,8 +1499,11 @@ withReexports reach modName summary =
                   -- could be anything.
                   <> mempty{establishedUntold = Map.keysSet (establishedUnsettled found)}
                   <> foldMap (member answers qualifier parent) (foldMap Set.toList kids)
-                  <> withMembers parent (certainMembers answers qualifier parent)
-                  <> mempty{establishedChildren = maybe Map.empty (Map.singleton parent) kids}
+                  <> case kids of
+                    Nothing -> certainly (Set.singleton (InTypes, parent)) Map.empty
+                    Just known ->
+                      withMembers parent (certainMembers answers qualifier parent)
+                        <> mempty{establishedChildren = Map.singleton parent known}
       ExportSome qualifier parent kids ->
         settled answers True qualifier (InTypes, parent)
           <> foldMap (member answers qualifier parent) kids

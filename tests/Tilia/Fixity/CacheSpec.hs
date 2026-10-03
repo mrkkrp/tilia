@@ -177,6 +177,22 @@ spec = do
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
 
+      it "round-trips what a name keeps beyond what its type certainly carries" $ \cache -> do
+        let established =
+              mempty
+                { establishedBrought =
+                    Brought
+                      (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "A")])
+                      (Map.singleton (OpName "T") (Set.singleton (InTerms, OpName "A"))),
+                  establishedChildren =
+                    Map.fromList
+                      [ (OpName "T", Set.fromList [OpName "A", OpName "B"]),
+                        (OpName "U", Set.empty)
+                      ]
+                }
+        storeEstablished cache "thing-1.0" "M" established
+        cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
+
       it "round-trips all of it at once" $ \cache -> do
         let established =
               Established

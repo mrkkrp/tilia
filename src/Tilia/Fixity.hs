@@ -1044,7 +1044,8 @@ data Established = Established
     -- | What it certainly brings in for a module that imports it whole.
     establishedBrought :: Brought,
     -- | What it keeps under each of its names, so that a @T(..)@ in an
-    -- import list can be told what it brings in.
+    -- import list can be told what it brings in. Every type
+    -- 'establishedBrought' says what it carries for is among them.
     establishedChildren :: Map OpName (Set OpName)
   }
   deriving (Eq, Show)

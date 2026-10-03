@@ -129,12 +129,12 @@ cachedEstablished cache package modName =
       _ -> Nothing
   where
     assembled entries = do
-      guard (all (`elem` ["fixity", "unsettled", "untold", "name", "member", "kept"]) (concatMap (take 1) entries))
+      guard (all (`elem` ["fixity", "unsettled", "untold", "names", "member", "kept"]) (concatMap (take 1) entries))
       fixities <- traverse (parseFixity . T.intercalate "\t") [fields | "fixity" : fields <- entries]
       unsettled <- traverse unsettledEntry [fields | "unsettled" : fields <- entries]
       untold <- traverse untoldEntry [fields | "untold" : fields <- entries]
-      names <- traverse nameEntry [fields | "name" : fields <- entries]
-      members <- traverse (memberEntry parseNamespaced) [fields | "member" : fields <- entries]
+      names <- concat <$> traverse parseByNamespace [fields | "names" : fields <- entries]
+      members <- traverse (memberEntry parseByNamespace) [fields | "member" : fields <- entries]
       kept <- traverse (memberEntry (Just . fmap OpName)) [fields | "kept" : fields <- entries]
       pure
         Established
@@ -142,7 +142,8 @@ cachedEstablished cache package modName =
             establishedUnsettled = Map.fromListWith Set.union unsettled,
             establishedUntold = Set.fromList untold,
             establishedBrought = Brought (Set.fromList names) (Map.fromListWith Set.union members),
-            establishedChildren = Map.fromListWith Set.union kept
+            establishedChildren =
+              Map.union (Map.fromListWith Set.union kept) (Map.fromListWith Set.union (fmap (fmap (Set.map snd)) members))
           }
     unsettledEntry = \case
       token : chain : names
@@ -150,9 +151,6 @@ cachedEstablished cache package modName =
       _ -> Nothing
     untoldEntry = \case
       [token, chain] | token == tokenOf cache -> Just (T.words chain)
-      _ -> Nothing
-    nameEntry = \case
-      [namespace, op] -> (,OpName op) <$> parseNamespace namespace
       _ -> Nothing
     memberEntry kidsOf = \case
       parent : kids -> (OpName parent,) . Set.fromList <$> kidsOf kids
@@ -179,14 +177,18 @@ storeEstablished cache package modName established =
         <> [ T.intercalate "\t" ["untold", tokenOf cache, T.unwords chain]
            | chain <- Set.toList (establishedUntold established)
            ]
-        <> [ T.intercalate "\t" ["name", renderNamespace namespace, op]
-           | (namespace, OpName op) <- Set.toAscList (broughtNames brought)
+        <> [T.intercalate "\t" ("names" : fields) | fields <- renderByNamespace (broughtNames brought)]
+        <> [ T.intercalate "\t" ("member" : parent : fields)
+           | (OpName parent, kids) <- Map.toList (broughtChildren brought),
+             fields <- case renderByNamespace kids of
+               [] -> [[]]
+               grouped -> grouped
            ]
-        <> [ T.intercalate "\t" ("member" : parent : renderNamespaced kids)
-           | (OpName parent, kids) <- Map.toList (broughtChildren brought)
-           ]
+        -- What a name keeps is mostly what its type certainly carries, which
+        -- the lines above already say.
         <> [ T.intercalate "\t" ("kept" : parent : [kid | OpName kid <- Set.toAscList kids])
-           | (OpName parent, kids) <- Map.toList (establishedChildren established)
+           | (OpName parent, kids) <- Map.toList (establishedChildren established),
+             Just kids /= fmap (Set.map snd) (Map.lookup (OpName parent) (broughtChildren brought))
            ]
   where
     brought = establishedBrought established
@@ -470,6 +472,22 @@ parseNamespace = \case
 renderNamespaced :: Set (Namespace, OpName) -> [Text]
 renderNamespaced names =
   concat [[renderNamespace namespace, op] | (namespace, OpName op) <- Set.toAscList names]
+
+-- | Render names as one list of fields for each namespace they are in, the
+-- namespace first.
+renderByNamespace :: Set (Namespace, OpName) -> [[Text]]
+renderByNamespace names =
+  [ renderNamespace namespace : ops
+  | namespace <- [InTypes, InTerms],
+    let ops = [op | (n, OpName op) <- Set.toAscList names, n == namespace],
+    not (null ops)
+  ]
+
+-- | Parse one list of fields 'renderByNamespace' rendered.
+parseByNamespace :: [Text] -> Maybe [(Namespace, OpName)]
+parseByNamespace = \case
+  [] -> Just []
+  namespace : ops -> (\n -> fmap ((n,) . OpName) ops) <$> parseNamespace namespace
 
 -- | Parse what 'renderNamespaced' rendered.
 parseNamespaced :: [Text] -> Maybe [(Namespace, OpName)]
