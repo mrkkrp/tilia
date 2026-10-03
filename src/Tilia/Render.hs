@@ -29,7 +29,7 @@ import Tilia.Comments
   )
 import Tilia.Comments.Attach (attachComments)
 import Tilia.Doc.Combinators
-import Tilia.Fixity (Scope)
+import Tilia.Fixity (Scope, capturedUses)
 import Tilia.Gathered (Gathered)
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
@@ -101,6 +101,7 @@ renderConfiguration settings parsed =
         { ctxExtensions = rcExtensions settings,
           ctxSourceType = pmSourceType parsed,
           ctxScope = rcScope settings,
+          ctxCaptured = capturedUses (pmGathered parsed),
           ctxSource = pmSource parsed,
           ctxLineComments = indexOn (filter (not . closesItself) loose),
           ctxCarryingOn =

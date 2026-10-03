@@ -50,6 +50,7 @@ module Tilia.Fixity
     Unknown (..),
     operatorsUsed,
     unknownOperators,
+    capturedUses,
     operatorSpelling,
     spellUnreadIn,
     spellDisagreement,
@@ -68,7 +69,7 @@ import Data.Bifunctor (first)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
-import Data.List (nub, sortOn)
+import Data.List (nub, sortOn, tails)
 import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -86,6 +87,7 @@ import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
+import Tilia.Span (Span, covers)
 import Tilia.Span.Ghc (spanOf)
 import Tilia.Utils (collected, spellList)
 
@@ -778,7 +780,9 @@ data Unknown
     Ambiguous (NonEmpty (Text, Fixity))
   deriving (Eq, Show)
 
--- | Every operator the module uses where its fixity decides the layout.
+-- | Every operator the module uses where its fixity decides the layout and
+-- the scope has to settle it, which is all of them but the uses
+-- 'capturedUses' settles.
 --
 -- Only these positions. An operator chain in an expression and one in a type
 -- are regrouped by precedence, so getting the precedence wrong changes what
@@ -789,15 +793,93 @@ operatorsUsed :: Gathered -> [(Namespace, (Maybe Text, OpName))]
 operatorsUsed found =
   fmap (named InTerms) inExpressions <> fmap (named InTypes) inTypes
   where
+    captured = capturedUses found
     inExpressions =
       [ n
       | OpApp _ _ op _ <- gatheredExpressions found,
-        HsVar _ (L _ n) <- [unLoc op]
+        HsVar _ (L _ n) <- [unLoc op],
+        maybe True (`Map.notMember` captured) (spanOf op)
       ]
     inTypes =
       [n | HsOpTy _ _ _ (L _ n) _ <- gatheredTypes found]
     named namespace n =
       (namespace, (qualifierOf n, OpName (T.pack (occNameString (rdrNameOcc n)))))
+
+-- | The uses of an operator in an expression that a local binding captures,
+-- by where the operator is written, with the fixity the binding's group
+-- declares for it, or @infixl 9@.
+--
+-- A use is captured where it falls within what a binder is in scope over,
+-- which is read off spans: the right-hand sides and the @where@ of a match,
+-- a @let@, the statements after a bind. Bindings that are in scope more
+-- widely than that, as in @mdo@, are passed over, and so is a use that
+-- bindings with different fixities could each capture.
+capturedUses :: Gathered -> Map Span Fixity
+capturedUses found =
+  Map.fromList
+    [ (s, fixity)
+    | (s, name) <- uses,
+      [fixity] <- [nub [f | (f, region) <- Map.findWithDefault [] name binders, covers region s]]
+    ]
+  where
+    uses =
+      [ (s, opName n)
+      | OpApp _ _ op _ <- gatheredExpressions found,
+        HsVar _ (L _ n@(Unqual _)) <- [unLoc op],
+        Just s <- [spanOf op]
+      ]
+    binders =
+      Map.fromListWith
+        (<>)
+        [ (name, [(f, region)])
+        | (name, f, regions) <- concatMap fromMatch (gatheredMatches found) <> concatMap fromExpression (gatheredExpressions found),
+          Set.member name used,
+          Just region <- regions
+        ]
+    used = Set.fromList (fmap snd uses)
+
+    fromMatch (Match _ _ (L _ pats) (GRHSs _ rhss binds)) =
+      [ (name, f, fmap spanOf (toList rhss) <> bindingSpans binds)
+      | (name, f) <- patternBinders pats <> localBinders binds
+      ]
+        <> concatMap guarded rhss
+    fromExpression = \case
+      HsLet _ binds body ->
+        [(name, f, bindingSpans binds <> [spanOf body]) | (name, f) <- localBinders binds]
+      HsDo _ _ (L _ stmts) -> inSequence stmts []
+      HsMultiIf _ rhss -> concatMap guarded rhss
+      _ -> []
+    guarded (L _ (GRHS _ guards body)) = inSequence guards [spanOf body]
+
+    inSequence stmts after =
+      concat
+        [ case unLoc stmt of
+            BindStmt _ pat _ ->
+              [(name, f, fmap spanOf later <> after) | (name, f) <- patternBinders [pat]]
+            LetStmt _ binds ->
+              [(name, f, fmap spanOf (stmt : later) <> after) | (name, f) <- localBinders binds]
+            _ -> []
+        | stmt : later <- tails stmts
+        ]
+
+    patternBinders pats =
+      [(opName n, defaultFixity) | n <- collectPatsBinders CollNoDictBinders pats]
+    localBinders binds =
+      [ (opName n, Map.findWithDefault defaultFixity (opName n) declared)
+      | let declared = localFixities binds,
+        n <- collectLocalBinders CollNoDictBinders binds
+      ]
+    localFixities = \case
+      HsValBinds _ (ValBinds _ _ sigs) ->
+        Map.fromList
+          [ (opName (unLoc n), fromGhcFixity fixity)
+          | L _ (FixSig _ (FixitySig _ names fixity)) <- sigs,
+            n <- names
+          ]
+      _ -> Map.empty
+    bindingSpans = \case
+      HsValBinds _ (ValBinds _ bs _) -> fmap spanOf bs
+      _ -> []
 
 -- | The operators this module uses that the scope cannot settle, as the
 -- module writes them.

@@ -78,6 +78,9 @@ data Ctx = Ctx
     ctxSourceType :: SourceType,
     -- | What imports the module can see, if that could be worked out.
     ctxScope :: Maybe Scope,
+    -- | The uses of an operator a local binding captures, by where the
+    -- operator is written, with their fixities.
+    ctxCaptured :: Map Span Fixity,
     -- | The comments that take whole lines, by starting position.
     ctxLineComments :: Map (Int, Int) Comment,
     -- | Where each comment that carries on a trailing comment begins.

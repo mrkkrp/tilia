@@ -22,12 +22,15 @@ data Gathered = Gathered
     -- | Haddocks.
     gatheredDocs :: [LHsDoc GhcPs],
     -- | The entries of import and export lists.
-    gatheredEntries :: [LIE GhcPs]
+    gatheredEntries :: [LIE GhcPs],
+    -- | The equations of functions, the alternatives of cases, and the
+    -- bodies of lambdas.
+    gatheredMatches :: [Match GhcPs (LHsExpr GhcPs)]
   }
 
 -- | Gather a module's nodes.
 gathered :: HsModule GhcPs -> Gathered
-gathered hsModule = walk hsModule (Gathered [] [] [] [] [])
+gathered hsModule = walk hsModule (Gathered [] [] [] [] [] [])
   where
     walk :: GenericQ (Gathered -> Gathered)
     walk x = keep x . descend x
@@ -39,8 +42,9 @@ gathered hsModule = walk hsModule (Gathered [] [] [] [] [])
     keep :: GenericQ (Gathered -> Gathered)
     keep =
       const id
-        `extQ` (\x (Gathered cs es ts ds ls) -> Gathered (x : cs) es ts ds ls)
-        `extQ` (\x (Gathered cs es ts ds ls) -> Gathered cs (x : es) ts ds ls)
-        `extQ` (\x (Gathered cs es ts ds ls) -> Gathered cs es (x : ts) ds ls)
-        `extQ` (\x (Gathered cs es ts ds ls) -> Gathered cs es ts (x : ds) ls)
-        `extQ` (\x (Gathered cs es ts ds ls) -> Gathered cs es ts ds (x : ls))
+        `extQ` (\x g -> g{gatheredComments = x : gatheredComments g})
+        `extQ` (\x g -> g{gatheredExpressions = x : gatheredExpressions g})
+        `extQ` (\x g -> g{gatheredTypes = x : gatheredTypes g})
+        `extQ` (\x g -> g{gatheredDocs = x : gatheredDocs g})
+        `extQ` (\x g -> g{gatheredEntries = x : gatheredEntries g})
+        `extQ` (\x g -> g{gatheredMatches = x : gatheredMatches g})

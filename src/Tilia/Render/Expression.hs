@@ -18,12 +18,14 @@ module Tilia.Render.Expression
   )
 where
 
+import Control.Applicative ((<|>))
 import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
 import Data.Function (on)
 import Data.Generics.Schemes (listify)
 import Data.List (sortBy, unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
@@ -334,7 +336,9 @@ splitOpApp e = case unLoc e of
 
 -- | The fixity of an operator used in an expression.
 fixityOf :: Ctx -> LHsExpr GhcPs -> Maybe Fixity
-fixityOf ctx o = operatorName o >>= operatorFixity ctx InTerms
+fixityOf ctx o =
+  (spanOf o >>= (`Map.lookup` ctxCaptured ctx))
+    <|> (operatorName o >>= operatorFixity ctx InTerms)
 
 -- | Print a chain of operators once precedence has regrouped it.
 renderExprChain :: Ctx -> Site -> OpChain (LHsExpr GhcPs) (LHsExpr GhcPs) -> Doc
