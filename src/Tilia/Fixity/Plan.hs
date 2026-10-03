@@ -387,7 +387,11 @@ macrosOf plan =
                 ("__GLASGOW_HASKELL_PATCHLEVEL1__", nth 0 patches),
                 ("__GLASGOW_HASKELL_PATCHLEVEL2__", nth 1 patches)
               ]
-          ]
+          ],
+      macroUndefined =
+        if null compiler
+          then Set.empty
+          else Set.fromList ["__MHS__", "__HUGS__"]
     }
   where
     versions =

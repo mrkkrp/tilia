@@ -4,13 +4,14 @@
 module Tilia.Cpp.MacrosSpec (spec) where
 
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Cpp.Directives (withoutRuledOut)
 import Tilia.Cpp.Macros
 
--- | A plan with one dependency at 1.2.3 and a compiler at 9.10.3.
+-- | A plan with one dependency at 1.2.3 and GHC at 9.10.3.
 macros :: Macros
 macros =
   Macros
@@ -24,7 +25,8 @@ macros =
           [ ("__GLASGOW_HASKELL__", 910),
             ("__GLASGOW_HASKELL_PATCHLEVEL1__", 3),
             ("__GLASGOW_HASKELL_PATCHLEVEL2__", 0)
-          ]
+          ],
+      macroUndefined = Set.fromList ["__MHS__", "__HUGS__"]
     }
 
 -- | What this guard comes to, given the plan above.
@@ -65,6 +67,34 @@ spec = do
           "if MIN_VERSION_GLASGOW_HASKELL(9,12,1,0)"
         ]
         `shouldBe` [Just True, Just True, Just False]
+
+  describe "a guard about another compiler" $ do
+    it "says its macros are not defined" $
+      fmap
+        answer
+        [ "if defined(__MHS__)",
+          "if defined __HUGS__",
+          "ifdef __MHS__",
+          "ifndef __HUGS__",
+          "if !defined(__MHS__)"
+        ]
+        `shouldBe` [Just False, Just False, Just False, Just True, Just True]
+
+    it "reads them as zero where a number is asked for" $
+      fmap answer ["if __MHS__", "if __HUGS__ >= 200", "if __HUGS__ == 0"]
+        `shouldBe` [Just False, Just False, Just True]
+
+    it "answers a guard that names this compiler alongside" $
+      fmap
+        answer
+        [ "if defined(__GLASGOW_HASKELL__) && !defined(__MHS__)",
+          "if defined(__MHS__) || __GLASGOW_HASKELL__ >= 902"
+        ]
+        `shouldBe` [Just True, Just True]
+
+    it "says nothing where a flag it does not know decides" $
+      fmap answer ["if defined(__MHS__) || defined(FOO)", "if !defined(__MHS__) && defined(FOO)"]
+        `shouldBe` [Nothing, Nothing]
 
   describe "an answer that needs more than one question settled" $ do
     it "carries a false through a conjunction whatever else is in it" $
@@ -189,6 +219,14 @@ spec = do
                      "import Two",
                      "#endif"
                    ]
+
+    it "blanks what only another compiler would see" $
+      ruledOut
+        [ "#if defined(__MHS__)",
+          "import Data.ZipList",
+          "#endif"
+        ]
+        `shouldBe` ["", "", ""]
 
     it "rules out a shim defining a macro the plan already has" $
       ruledOut

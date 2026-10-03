@@ -100,6 +100,10 @@
   operand before the operator, rather than move it after the next operand
   when the operator goes to the start of the next line. [Issue
   62](https://github.com/mrkkrp/tilia/issues/62).
+* Take the macros of other compilers, `__MHS__` and `__HUGS__`, as not
+  defined under a build plan for GHC, so that what only those compilers see,
+  such as an import of a module GHC does not have, is not in scope. [Issue
+  70](https://github.com/mrkkrp/tilia/issues/70).
 
 ## Tilia 0.0.2.0
 

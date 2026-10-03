@@ -86,7 +86,8 @@ macros :: Macros
 macros =
   Macros
     { macroVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])],
-      macroNumbers = Map.empty
+      macroNumbers = Map.empty,
+      macroUndefined = Set.empty
     }
 
 format :: Text -> Either Text Text

@@ -12,6 +12,8 @@ where
 import Data.Char (isAsciiLower, isAsciiUpper, isDigit)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -24,7 +26,10 @@ data Macros = Macros
     macroVersions :: Map Text [Integer],
     -- | The macros that stand for a number, which is @__GLASGOW_HASKELL__@
     -- and its patch levels.
-    macroNumbers :: Map Text Integer
+    macroNumbers :: Map Text Integer,
+    -- | The macros known not to be defined, which are those of the
+    -- compilers other than the one the plan is for, such as @__MHS__@.
+    macroUndefined :: Set Text
   }
   deriving (Eq, Show)
 
@@ -35,20 +40,23 @@ guardHolds macros written = case T.span isNameChar (T.stripStart written) of
   (keyword, rest) -> case keyword of
     "if" -> (/= 0) <$> valueOf macros rest
     "elif" -> (/= 0) <$> valueOf macros rest
-    "ifdef" -> nameIsKnown rest
-    "elifdef" -> nameIsKnown rest
-    "ifndef" -> not <$> nameIsKnown rest
-    "elifndef" -> not <$> nameIsKnown rest
+    "ifdef" -> nameIsDefined rest
+    "elifdef" -> nameIsDefined rest
+    "ifndef" -> not <$> nameIsDefined rest
+    "elifndef" -> not <$> nameIsDefined rest
     _ -> Nothing
   where
-    nameIsKnown rest = case tokensOf rest of
-      Just [Name n] | known macros n -> Just True
+    nameIsDefined rest = case tokensOf rest of
+      Just [Name n] -> isDefined macros n
       _ -> Nothing
 
--- | Is this a macro whose expansion we know?
-known :: Macros -> Text -> Bool
-known macros n =
-  Map.member n (macroVersions macros) || Map.member n (macroNumbers macros)
+-- | Whether a macro is defined, where that is known.
+isDefined :: Macros -> Text -> Maybe Bool
+isDefined macros n
+  | Map.member n (macroVersions macros) || Map.member n (macroNumbers macros) =
+      Just True
+  | Set.member n (macroUndefined macros) = Just False
+  | otherwise = Nothing
 
 -- | What the expression of an @#if@ or @#elif@ evaluates to, if anything.
 valueOf :: Macros -> Text -> Maybe Integer
@@ -159,18 +167,21 @@ unary macros = \case
       Punct ")" : rest'' -> Just (value, rest'')
       _ -> Nothing
   Name "defined" : rest -> case rest of
-    Name n : rest' -> Just (asKnown n, rest')
-    Punct "(" : Name n : Punct ")" : rest' -> Just (asKnown n, rest')
+    Name n : rest' -> Just (asDefined n, rest')
+    Punct "(" : Name n : Punct ")" : rest' -> Just (asDefined n, rest')
     _ -> Nothing
   Name n : Punct "(" : rest -> do
     (arguments, rest') <- argumentList rest
     pure (atLeast <$> Map.lookup n (macroVersions macros) <*> arguments, rest')
-  Name n : rest -> Just (Map.lookup n (macroNumbers macros), rest)
+  Name n : rest -> Just (number n, rest)
   Number n : rest -> Just (Just n, rest)
   _ -> Nothing
   where
     negated n = if n == 0 then 1 else 0
-    asKnown n = if known macros n then Just 1 else Nothing
+    asDefined n = (\d -> if d then 1 else 0) <$> isDefined macros n
+    number n = case isDefined macros n of
+      Just False -> Just 0
+      _ -> Map.lookup n (macroNumbers macros)
     atLeast held wanted = if pad held >= pad wanted then 1 else 0
       where
         width = max (length held) (length wanted)
