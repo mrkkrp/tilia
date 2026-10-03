@@ -11,14 +11,8 @@ module Tilia.Fixity.Cache
     recalled,
     cachedModules,
     storeModules,
-    cachedFixities,
-    storeFixities,
-    cachedExportNames,
-    storeExportNames,
-    cachedChildren,
-    storeChildren,
-    cachedBrought,
-    storeBrought,
+    cachedEstablished,
+    storeEstablished,
     cachedSummaries,
     storeSummaries,
     cachedInstalled,
@@ -30,12 +24,11 @@ module Tilia.Fixity.Cache
   )
 where
 
-import Control.Monad (join)
+import Control.Monad (guard, join)
 import Data.Choice (Choice, isFalse)
 import Data.Foldable (toList, traverse_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
@@ -119,166 +112,86 @@ storeModules cache package =
   writeAtomically (at cache ["modules", package]) . T.unlines
 
 -- | What was established about a module before, if anything.
-cachedFixities ::
+cachedEstablished ::
   -- | Where to look.
   Cache ->
   -- | The package the module belongs to. Opaque here.
   Text ->
   -- | The module, by its full dotted name.
   Text ->
-  -- | What was established, or 'Nothing' if nothing was.
+  -- | What was established, or 'Nothing' if nothing was, or if what it
+  -- left unsettled was left so under another plan.
   IO (Maybe Established)
-cachedFixities cache package modName =
-  fmap join . readIfPresent (at cache ["fixities", package, modName]) $ \contents ->
+cachedEstablished cache package modName =
+  fmap join . readIfPresent (at cache ["established", package, modName]) $ \contents ->
     case T.lines contents of
-      ("read" : entries) -> Declares . Map.fromList <$> traverse parseFixity entries
-      [unread] | Just rest <- T.stripPrefix ("unread\t" <> tokenOf cache) unread ->
-        case T.uncons rest of
-          Nothing -> Just (Unreadable Nothing)
-          Just ('\t', below) | not (T.null below) -> Just (Unreadable (Just below))
-          _ -> Nothing
+      ("established" : entries) -> assembled (fmap (T.splitOn "\t") entries)
       _ -> Nothing
+  where
+    assembled entries = do
+      guard (all (`elem` ["fixity", "unsettled", "untold", "names", "member", "kept"]) (concatMap (take 1) entries))
+      fixities <- traverse (parseFixity . T.intercalate "\t") [fields | "fixity" : fields <- entries]
+      unsettled <- traverse unsettledEntry [fields | "unsettled" : fields <- entries]
+      untold <- traverse untoldEntry [fields | "untold" : fields <- entries]
+      names <- concat <$> traverse parseByNamespace [fields | "names" : fields <- entries]
+      members <- traverse (memberEntry parseByNamespace) [fields | "member" : fields <- entries]
+      kept <- traverse (memberEntry (Just . fmap OpName)) [fields | "kept" : fields <- entries]
+      pure
+        Established
+          { establishedFixities = Map.fromList fixities,
+            establishedUnsettled = Map.fromListWith Set.union unsettled,
+            establishedUntold = Set.fromList untold,
+            establishedBrought = Brought (Set.fromList names) (Map.fromListWith Set.union members),
+            establishedChildren =
+              Map.union (Map.fromListWith Set.union kept) (Map.fromListWith Set.union (fmap (fmap (Set.map snd)) members))
+          }
+    unsettledEntry = \case
+      token : chain : names
+        | token == tokenOf cache -> (T.words chain,) . Set.fromList <$> parseNamespaced names
+      _ -> Nothing
+    untoldEntry = \case
+      [token, chain] | token == tokenOf cache -> Just (T.words chain)
+      _ -> Nothing
+    memberEntry kidsOf = \case
+      parent : kids -> (OpName parent,) . Set.fromList <$> kidsOf kids
+      [] -> Nothing
 
 -- | Remember what reading a module established.
-storeFixities ::
+storeEstablished ::
   -- | Where to write.
   Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
+  -- | The package the module belongs to, as 'cachedEstablished' takes it.
   Text ->
   -- | The module, by its full dotted name.
   Text ->
   -- | What was established about it.
   Established ->
   IO ()
-storeFixities cache package modName answer =
-  writeAtomically (at cache ["fixities", package, modName]) $
-    case answer of
-      Unreadable below ->
-        T.unlines ["unread\t" <> tokenOf cache <> foldMap ("\t" <>) below]
-      Declares fixities ->
-        T.unlines ("read" : fmap renderFixity (Map.toList fixities))
-
--- | What a module's export list was found to say, if it was ever read:
--- the operators it names, or 'Nothing' where they cannot be enumerated.
-cachedExportNames ::
-  -- | Where to look.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  IO (Maybe (Maybe (Set OpName)))
-cachedExportNames cache package modName =
-  fmap join . readIfPresent (at cache ["exports", package, modName]) $ \contents ->
-    case T.lines contents of
-      ("names" : entries) -> Just (Just (Set.fromList (fmap OpName entries)))
-      ["untellable"] -> Just Nothing
-      _ -> Nothing
-
--- | Remember what a module's export list said.
-storeExportNames ::
-  -- | Where to write.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  -- | The operators it names, or 'Nothing' where they cannot be enumerated.
-  Maybe (Set OpName) ->
-  IO ()
-storeExportNames cache package modName answer =
-  writeAtomically (at cache ["exports", package, modName]) $
-    case answer of
-      Nothing -> T.unlines ["untellable"]
-      Just names -> T.unlines ("names" : [op | OpName op <- Set.toAscList names])
-
--- | What a module keeps under each of its names, if it was ever read for
--- it.
-cachedChildren ::
-  -- | Where to look.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  -- | What it keeps under each name, or 'Nothing' if it was never read.
-  IO (Maybe (Map OpName (Set OpName)))
-cachedChildren cache package modName =
-  fmap join . readIfPresent (at cache ["children", package, modName]) $ \contents ->
-    case T.lines contents of
-      ("children" : entries) -> Just (Map.fromList (mapMaybe childEntry entries))
-      _ -> Nothing
+storeEstablished cache package modName established =
+  writeAtomically (at cache ["established", package, modName]) . T.unlines $
+    "established"
+      : fmap (("fixity\t" <>) . renderFixity) (Map.toList (establishedFixities established))
+        <> [ T.intercalate "\t" (["unsettled", tokenOf cache, T.unwords chain] <> renderNamespaced names)
+           | (chain, names) <- Map.toList (establishedUnsettled established)
+           ]
+        <> [ T.intercalate "\t" ["untold", tokenOf cache, T.unwords chain]
+           | chain <- Set.toList (establishedUntold established)
+           ]
+        <> [T.intercalate "\t" ("names" : fields) | fields <- renderByNamespace (broughtNames brought)]
+        <> [ T.intercalate "\t" ("member" : parent : fields)
+           | (OpName parent, kids) <- Map.toList (broughtChildren brought),
+             fields <- case renderByNamespace kids of
+               [] -> [[]]
+               grouped -> grouped
+           ]
+        -- What a name keeps is mostly what its type certainly carries, which
+        -- the lines above already say.
+        <> [ T.intercalate "\t" ("kept" : parent : [kid | OpName kid <- Set.toAscList kids])
+           | (OpName parent, kids) <- Map.toList (establishedChildren established),
+             Just kids /= fmap (Set.map snd) (Map.lookup (OpName parent) (broughtChildren brought))
+           ]
   where
-    childEntry line = case T.splitOn "\t" line of
-      (parent : kids) -> Just (OpName parent, Set.fromList (fmap OpName kids))
-      [] -> Nothing
-
--- | Remember what a module keeps under each of its names.
-storeChildren ::
-  -- | Where to write.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  -- | What it keeps under each name.
-  Map OpName (Set OpName) ->
-  IO ()
-storeChildren cache package modName children =
-  writeAtomically (at cache ["children", package, modName]) $
-    T.unlines ("children" : fmap entry (Map.toList children))
-  where
-    entry (OpName parent, kids) =
-      T.intercalate "\t" (parent : [kid | OpName kid <- Set.toAscList kids])
-
--- | What a module was found to bring into scope, if it was ever read for
--- it, or 'Nothing' where that could not be told.
-cachedBrought ::
-  -- | Where to look.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  IO (Maybe (Maybe Brought))
-cachedBrought cache package modName =
-  fmap join . readIfPresent (at cache ["brought", package, modName]) $ \contents ->
-    case T.lines contents of
-      ("brought" : entries) -> Just . mconcat <$> traverse entry entries
-      ["untellable"] -> Just Nothing
-      _ -> Nothing
-  where
-    entry line = case T.splitOn "\t" line of
-      ["name", namespace, op] ->
-        (\n -> Brought (Set.singleton (n, OpName op)) Map.empty) <$> parseNamespace namespace
-      "member" : parent : kids ->
-        Brought Set.empty . Map.singleton (OpName parent) . Set.fromList <$> parseNamespaced kids
-      _ -> Nothing
-
--- | Remember what a module brings into scope.
-storeBrought ::
-  -- | Where to write.
-  Cache ->
-  -- | The package the module belongs to, as 'cachedFixities' takes it.
-  Text ->
-  -- | The module, by its full dotted name.
-  Text ->
-  -- | What it brings in, or 'Nothing' where that could not be told.
-  Maybe Brought ->
-  IO ()
-storeBrought cache package modName answer =
-  writeAtomically (at cache ["brought", package, modName]) $
-    case answer of
-      Nothing -> T.unlines ["untellable"]
-      Just b ->
-        T.unlines $
-          "brought"
-            : [ T.intercalate "\t" ["name", renderNamespace namespace, op]
-              | (namespace, OpName op) <- Set.toAscList (broughtNames b)
-              ]
-              <> [ T.intercalate "\t" ("member" : parent : renderNamespaced kids)
-                 | (OpName parent, kids) <- Map.toList (broughtChildren b)
-                 ]
+    brought = establishedBrought established
 
 -- | What each configuration of one of the project's own modules says, if it
 -- was last read from what the stamp stands for.
@@ -559,6 +472,22 @@ parseNamespace = \case
 renderNamespaced :: Set (Namespace, OpName) -> [Text]
 renderNamespaced names =
   concat [[renderNamespace namespace, op] | (namespace, OpName op) <- Set.toAscList names]
+
+-- | Render names as one list of fields for each namespace they are in, the
+-- namespace first.
+renderByNamespace :: Set (Namespace, OpName) -> [[Text]]
+renderByNamespace names =
+  [ renderNamespace namespace : ops
+  | namespace <- [InTypes, InTerms],
+    let ops = [op | (n, OpName op) <- Set.toAscList names, n == namespace],
+    not (null ops)
+  ]
+
+-- | Parse one list of fields 'renderByNamespace' rendered.
+parseByNamespace :: [Text] -> Maybe [(Namespace, OpName)]
+parseByNamespace = \case
+  [] -> Just []
+  namespace : ops -> (\n -> fmap ((n,) . OpName) ops) <$> parseNamespace namespace
 
 -- | Parse what 'renderNamespaced' rendered.
 parseNamespaced :: [Text] -> Maybe [(Namespace, OpName)]

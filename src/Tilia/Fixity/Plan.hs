@@ -65,7 +65,7 @@ import Control.Concurrent
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (NFData, force)
 import Control.Exception (bracket_, evaluate, onException)
-import Control.Monad (filterM, foldM, join, void)
+import Control.Monad (filterM, join, void)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson
   ( FromJSON (..),
@@ -89,7 +89,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -238,7 +238,10 @@ tokenForEnvAndBuildPlan environment plan =
     . T.encodeUtf8
     $ T.intercalate
       "\n"
-      (environment : bpCompiler plan : Data.List.sort (fmap cacheKey (bpPackages plan)))
+      ( environment
+          : bpCompiler plan
+          : Data.List.sort (fmap cacheKey (bpPackages plan))
+      )
 
 -- | The SHA-256 the plan expects this package's tarball to have.
 sourceHashOf :: PlanPackage -> Maybe Text
@@ -283,8 +286,12 @@ instance FromJSON PlanPackage where
             (_, Just "repo-tar") ->
               RepoPackage
                 sourceHash
-                ( case (join (join repoKind) :: Maybe Text, join (join repoPath), join (join repoUri)) of
-                    (Just "local-repo-no-index", Just dir, _) -> RepoFromDirectory (T.unpack dir)
+                ( case ( join (join repoKind) :: Maybe Text,
+                         join (join repoPath),
+                         join (join repoUri)
+                       ) of
+                    (Just "local-repo-no-index", Just dir, _) ->
+                      RepoFromDirectory (T.unpack dir)
                     (_, _, Just uri) -> RepoDownloaded uri
                     _ -> RepoNoProvenance
                 )
@@ -324,10 +331,13 @@ readGivenPlan ::
   FilePath ->
   IO (Either Text BuildPlan)
 readGivenPlan root path =
-  fmap (\plan -> plan{bpPackages = fmap rooted (bpPackages plan)}) <$> decodePlan path
+  fmap (\plan -> plan{bpPackages = fmap rooted (bpPackages plan)})
+    <$> decodePlan path
   where
     rooted p = case ppSource p of
-      LocalPackage dir | isRelative dir -> p{ppSource = LocalPackage (root </> dir)}
+      LocalPackage dir
+        | isRelative dir ->
+            p{ppSource = LocalPackage (root </> dir)}
       _ -> p
 
 -- | Decode a plan, or say why it cannot be.
@@ -574,7 +584,8 @@ futilityFor caching projectDir =
     { solveWasFutile = withCache False cachedFutileSolve,
       rememberFutileSolve = withCache () storeFutileSolve,
       fetchWasFutileFor = withCache [] cachedFutileFetch,
-      rememberFutileFetch = \packages -> withCache () (`storeFutileFetch` packages)
+      rememberFutileFetch = \packages ->
+        withCache () (`storeFutileFetch` packages)
     }
   where
     withCache fallback use =
@@ -832,27 +843,9 @@ data Route
   deriving (Eq, Show)
 
 -- | What can be asked about a module, once a plan says where to look.
-data Resolver = Resolver
-  { -- | What a module exports, with 'Nothing' for one that could not be
-    -- read, which is not the same as its having no operators; see
-    -- 'Tilia.Fixity.resolveScope' for why the difference has to survive.
-    askFixities :: Text -> IO (Maybe (Fixities)),
-    -- | What a module keeps under each of its names, for the sake of a
-    -- @T(..)@ in an import list.
-    askChildren :: Text -> IO (Map OpName (Set OpName)),
-    -- | The operators an unread module's export list names, asked only of
-    -- the modules 'askFixities' gave up on, and what keeps a module that
-    -- plainly has no such operator from being blamed for one.
-    askExportNames :: Text -> IO (Maybe (Set OpName)),
-    -- | The modules reading a module went through before giving up, the one
-    -- it gave up on last. Asked only of the modules 'askFixities' gave up
-    -- on, and only so that a message can name the exact problematic module
-    -- rather than the import that happens to sit above it.
-    askChain :: Text -> IO [Text],
-    -- | Every name a module brings into scope, by namespace, where its
-    -- interface or its source says. Asked only where another import could
-    -- not be read, since only then does it settle anything.
-    askBrought :: Text -> IO (Maybe (Set (Namespace, OpName)))
+newtype Resolver = Resolver
+  { -- | What reading a module established about the names it exports.
+    askModule :: Text -> IO Established
   }
 
 -- | Build a new 'Resolver'.
@@ -886,12 +879,9 @@ newResolverVia caching routes plan = do
   let interfaces = interfaceIndex installed
   local <- localModules plan
   flights <- newMVar (Flights Map.empty Map.empty)
-  fixitiesRead <- newMemo
-  childrenRead <- newMemo
+  answersRead <- newMemo
   askPackage <- newPackageReader
   extensionsRead <- newMemo
-  exportsRead <- newMemo
-  broughtRead <- newMemo
   summariesRead <- newMemo
   archivesRead <- newMemo
   interfacesRead <- newMemo
@@ -919,42 +909,30 @@ newResolverVia caching routes plan = do
             wkInterfaces = interfaces,
             wkInterfaceOf = interfaceOf,
             wkReach = reach,
-            wkReachChildren = children,
-            wkReachExports = exports,
-            wkReachBrought = broughtBy,
             wkSummariesOf = summariesOf,
             wkModuleInArchive = moduleInArchive,
-            wkMacros = macrosOf plan,
             wkGenerated = generatedModules plan
           }
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
-      resolved visiting modName =
-        memoized flights fixitiesRead (Declares Map.empty) modName $
-          resolveModule workings visiting modName
       reach visiting modName
-        | modName `Set.member` visiting = pure Nothing
-        | otherwise = fixitiesEstablished <$> resolved visiting modName
-      chain visiting = go Set.empty
-        where
-          go seen modName
-            | modName `Set.member` seen = pure []
-            | otherwise =
-                resolved visiting modName >>= \case
-                  Unreadable (Just below) ->
-                    (below :) <$> go (Set.insert modName seen) below
-                  _ -> pure []
-      exports visiting modName
-        | modName `Set.member` visiting = pure Nothing
+        | modName `Set.member` visiting = pure mempty
         | otherwise =
-            memoized flights exportsRead Nothing modName $
-              exportNamesOfModule workings visiting modName
+            memoized flights answersRead mempty modName $
+              resolveModule workings visiting modName
       summariesOf modName text =
         memoized flights summariesRead Nothing modName $ do
           extensions <- extensionsOf modName
           let summarized =
-                evaluate (force (configurationsOf (macrosOf plan) (Just extensions) modName text))
-              stamp = digestOf (T.intercalate "\n" [T.pack (show extensions), macrosRead, text])
+                evaluate . force $
+                  configurationsOf
+                    (macrosOf plan)
+                    (Just extensions)
+                    modName
+                    text
+              stamp =
+                digestOf $
+                  T.intercalate "\n" [T.pack (show extensions), macrosRead, text]
           case digestOf . T.pack <$> Map.lookup modName local of
             Nothing -> summarized
             Just key ->
@@ -974,24 +952,7 @@ newResolverVia caching routes plan = do
       archiveOf tarball =
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
-      broughtBy visiting modName
-        | modName `Set.member` visiting = pure Nothing
-        | otherwise =
-            memoized flights broughtRead Nothing modName $
-              broughtOfModule workings visiting modName
-      children visiting modName
-        | modName `Set.member` visiting = pure Map.empty
-        | otherwise =
-            memoized flights childrenRead Map.empty modName $
-              childrenOfModule workings visiting modName
-  pure
-    Resolver
-      { askFixities = reach Set.empty,
-        askChildren = children Set.empty,
-        askExportNames = exports Set.empty,
-        askChain = chain Set.empty,
-        askBrought = fmap (fmap broughtNames) . broughtBy Set.empty
-      }
+  pure Resolver{askModule = reach Set.empty}
 
 -- | Answers filed under the names they are about, each worked out once.
 data Memo v = Memo Unique (IORef (Map Text (MVar v)))
@@ -1077,173 +1038,13 @@ waitedOnBy fl me = go
         | owner == me -> True
         | otherwise -> maybe False go (Map.lookup owner (flightWaits fl))
 
--- | The operators a module's export list names, following what it
--- reexports.
---
--- Asked only about modules whose fixities could not be established, and
--- only to decide which of them an unsettled operator can be blamed on. A
--- module that hands on one nobody could read answers 'Nothing'; one with no
--- export list exports what it declares, which is every fixity it could
--- supply.
-exportNamesOfModule :: Workings -> Set Text -> Text -> IO (Maybe (Set OpName))
-exportNamesOfModule
-  Workings
-    { wkCache,
-      wkLocal,
-      wkIndex,
-      wkReachChildren,
-      wkReachExports,
-      wkModuleInArchive,
-      wkMacros
-    }
-  visiting
-  modName
-    | Just path <- Map.lookup modName wkLocal,
-      writtenForHsc path =
-        pure (Just (hscSupplies modName))
-    | Just path <- Map.lookup modName wkLocal = namesIn =<< readFileText path
-    | Just (package, tarball) <- Map.lookup modName wkIndex =
-        join
-          <$> recalled
-            (cachedExportNames wkCache package modName)
-            (storeExportNames wkCache package modName)
-            (traverse namesInArchive =<< wkModuleInArchive tarball modName)
-    | otherwise = pure Nothing
-    where
-      namesInArchive = \case
-        ForHsc -> pure (Just (hscSupplies modName))
-        Haskell text -> namesIn (Just text)
-      namesIn text = case configurationsOf wkMacros Nothing modName =<< text of
-        Nothing -> pure Nothing
-        Just summaries ->
-          fmap Set.unions . sequence <$> traverse readOne summaries
-      readOne =
-        exportNamesWithReexports
-          (wkReachExports visiting')
-          (wkReachChildren visiting')
-          modName
-      visiting' = Set.insert modName visiting
-
--- | What a module keeps under each of its names, so that a @T(..)@ in an
--- import list can be told what it brings in.
-childrenOfModule :: Workings -> Set Text -> Text -> IO (Map OpName (Set OpName))
-childrenOfModule
-  Workings
-    { wkRoutes,
-      wkCache,
-      wkLocal,
-      wkIndex,
-      wkInterfaces,
-      wkInterfaceOf,
-      wkReachChildren,
-      wkSummariesOf,
-      wkModuleInArchive
-    }
-  visiting
-  modName
-    | Just path <- Map.lookup modName wkLocal,
-      writtenForHsc path =
-        pure Map.empty
-    | Just path <- Map.lookup modName wkLocal =
-        readFileText path >>= \case
-          Nothing -> pure Map.empty
-          Just text -> inSource text
-    | otherwise = firstAnswer (fmap taking wkRoutes)
-    where
-      taking = \case
-        FromInterface -> case Map.lookup modName wkInterfaces of
-          Nothing -> pure Nothing
-          Just (key, _) -> keptUnder key outOfInterface
-        FromSource -> case Map.lookup modName wkIndex of
-          Nothing -> pure Nothing
-          Just (package, tarball) ->
-            keptUnder package $
-              wkModuleInArchive tarball modName >>= \case
-                Nothing -> pure Nothing
-                Just ForHsc -> pure (Just Map.empty)
-                Just (Haskell text) -> Just <$> inSource text
-      firstAnswer [] = pure Map.empty
-      firstAnswer (route : rest) =
-        route >>= \case
-          Just kept -> pure kept
-          Nothing -> firstAnswer rest
-      keptUnder package =
-        recalled
-          (cachedChildren wkCache package modName)
-          (storeChildren wkCache package modName)
-      outOfInterface = fmap interfaceChildren <$> wkInterfaceOf modName
-      inSource text =
-        wkSummariesOf modName text >>= \case
-          Nothing -> pure Map.empty
-          Just summaries ->
-            Map.unionsWith Set.union
-              <$> traverse (childrenWithReexports (wkReachChildren visiting') modName) summaries
-      visiting' = Set.insert modName visiting
-
--- | What a module brings into scope, where its interface or its source says.
---
--- Of a module with several configurations, only what every one of them
--- brings in, since which of them the compiler sees is not known.
-broughtOfModule :: Workings -> Set Text -> Text -> IO (Maybe Brought)
-broughtOfModule
-  Workings
-    { wkRoutes,
-      wkCache,
-      wkLocal,
-      wkIndex,
-      wkInterfaceOf,
-      wkReachBrought,
-      wkSummariesOf,
-      wkModuleInArchive
-    }
-  visiting
-  modName
-    | Just path <- Map.lookup modName wkLocal,
-      writtenForHsc path =
-        pure Nothing
-    | Just path <- Map.lookup modName wkLocal = inSource =<< readFileText path
-    | otherwise = firstAnswer (fmap taking wkRoutes)
-    where
-      taking = \case
-        FromInterface -> (interfaceExports =<<) <$> wkInterfaceOf modName
-        FromSource -> case Map.lookup modName wkIndex of
-          Nothing -> pure Nothing
-          Just (package, tarball) ->
-            join
-              <$> recalled
-                (cachedBrought wkCache package modName)
-                (storeBrought wkCache package modName)
-                ( wkModuleInArchive tarball modName >>= \case
-                    Just (Haskell text) -> Just <$> inSource (Just text)
-                    Just ForHsc -> pure (Just Nothing)
-                    Nothing -> pure Nothing
-                )
-      firstAnswer = \case
-        [] -> pure Nothing
-        route : rest -> route >>= maybe (firstAnswer rest) (pure . Just)
-      inSource = \case
-        Nothing -> pure Nothing
-        Just text ->
-          wkSummariesOf modName text >>= \case
-            Nothing -> pure Nothing
-            Just summaries ->
-              Just . foldr1 inEvery
-                <$> traverse (broughtWithReexports (wkReachBrought visiting') modName) summaries
-      inEvery a b =
-        Brought
-          { broughtNames = Set.intersection (broughtNames a) (broughtNames b),
-            broughtChildren =
-              Map.intersectionWith Set.intersection (broughtChildren a) (broughtChildren b)
-          }
-      visiting' = Set.insert modName visiting
-
 -- | Work out what a module can see, using a resolver to reach its imports.
 --
 -- This is the join between the pure half of "Tilia.Fixity" and the half
 -- that touches the disk: the imports are resolved first, and the scope is
--- then computed from the answers. Note that an import the resolver could
--- not read arrives as 'Nothing' and stays 'Nothing', which is what lets
--- 'Tilia.Fixity.lookupFixity' distinguish a conclusion from a guess.
+-- then computed from the answers. Note that a name an import leaves
+-- unsettled stays unsettled, which is what lets 'Tilia.Fixity.lookupFixity'
+-- distinguish a conclusion from a guess.
 scopeFor ::
   -- | What can be asked about the modules it imports.
   Resolver ->
@@ -1257,46 +1058,16 @@ scopeFor ::
   IO Scope
 scopeFor resolver implicitPrelude configurations = do
   let imports = moduleImports implicitPrelude configurations
-  answers <- inParallel (\m -> (m,) <$> askFixities resolver m) (fmap importModule imports)
+  answers <-
+    inParallel
+      (\m -> (m,) <$> askModule resolver m)
+      (fmap importModule imports)
   let table = Map.fromList answers
-      unread = [m | (m, Nothing) <- answers]
-  names <- Map.fromList <$> inParallel (\m -> (m,) <$> askExportNames resolver m) unread
-  chains <- Map.fromList <$> inParallel (\m -> (m,) <$> askChain resolver m) unread
-  brought <-
-    if null unread
-      then pure Map.empty
-      else
-        Map.fromList
-          <$> inParallel
-            (\m -> (m,) <$> askBrought resolver m)
-            (Set.toList (Set.fromList [m | (m, Just _) <- answers]))
-  kept <-
-    Map.fromList
-      <$> inParallel
-        (\m -> (m,) <$> askChildren resolver m)
-        (Set.toList (Set.fromList (fmap importModule (filter expands imports))))
   pure $
     resolveScope
       implicitPrelude
-      KnownModules
-        { knownFixities = \m -> Map.findWithDefault Nothing m table,
-          knownChildren = \m -> Map.findWithDefault Map.empty m kept,
-          knownExportNames = \m -> Map.findWithDefault Nothing m names,
-          knownChain = \m -> Map.findWithDefault [] m chains,
-          knownBrought = \m -> Map.findWithDefault Nothing m brought
-        }
+      (\m -> Map.findWithDefault unreadable m table)
       configurations
-
--- | Does an import's list name a @T(..)@, which only the module imported
--- can tell the members of?
-expands :: Import -> Bool
-expands i = case importNames i of
-  Nothing -> False
-  Just (_, items) -> any isAll items
-  where
-    isAll = \case
-      ImportedAll _ -> True
-      _ -> False
 
 -- | Everything a resolver consults, and the way back into it.
 --
@@ -1322,29 +1093,19 @@ data Workings = Workings
     -- | How to reach another module. Tied back on itself by
     -- 'newResolverVia', so that the memo it keeps covers the recursive
     -- calls too.
-    wkReach :: Set Text -> Text -> IO (Maybe (Fixities)),
-    -- | How to reach another module for what its names carry with them,
-    -- tied back the same way and against a visiting set of its own.
-    wkReachChildren :: Set Text -> Text -> IO (Map OpName (Set OpName)),
-    -- | How to reach another module for what its export list names, tied
-    -- back the same way again.
-    wkReachExports :: Set Text -> Text -> IO (Maybe (Set OpName)),
-    -- | How to reach another module for what it brings into scope, tied
-    -- back the same way again.
-    wkReachBrought :: Set Text -> Text -> IO (Maybe Brought),
+    wkReach :: Set Text -> Text -> IO Established,
     -- | What each configuration of a module says, given its text, worked
     -- out once a run.
     wkSummariesOf :: Text -> Text -> IO (Maybe (NonEmpty ModuleSummary)),
     -- | What a tarball holds for a module, each tarball read once a run.
     wkModuleInArchive :: FilePath -> Text -> IO (Maybe InArchive),
-    -- | Known macro expansions.
-    wkMacros :: Macros,
     -- | The modules @cabal@ writes itself, which are therefore in no
     -- package's sources. See 'generatedModules'.
     wkGenerated :: Set Text
   }
 
--- | Where a module's fixities come from, in order of cost.
+-- | What reading a module establishes, by the cheapest route that settles
+-- it.
 resolveModule ::
   -- | Where to look, and how to get back to the resolver.
   Workings ->
@@ -1352,8 +1113,6 @@ resolveModule ::
   Set Text ->
   -- | The module to resolve.
   Text ->
-  -- | Its operator fixities, or, where they could not be established, the
-  -- module below it that stopped us.
   IO Established
 resolveModule
   Workings
@@ -1364,23 +1123,22 @@ resolveModule
       wkInterfaces,
       wkInterfaceOf,
       wkReach,
-      wkReachChildren,
       wkSummariesOf,
       wkModuleInArchive,
       wkGenerated
     }
   visiting
   modName
-    | Just builtin <- Map.lookup modName builtinFixities = pure (Declares builtin)
+    | Just builtin <- Map.lookup modName builtinFixities =
+        settledAs builtin <$> firstAnswer (fmap taking wkRoutes)
     | Just path <- Map.lookup modName wkLocal,
       writtenForHsc path =
         pure (hscDeclares modName)
     | Just path <- Map.lookup modName wkLocal =
         readFileText path >>= \case
-          Nothing -> pure (Unreadable Nothing)
+          Nothing -> pure unreadable
           Just source ->
-            fromSummaries (wkReach visiting') (wkReachChildren visiting') visiting'
-              =<< wkSummariesOf modName source
+            fromSummaries (wkReach visiting') modName =<< wkSummariesOf modName source
     | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
     where
       visiting' = Set.insert modName visiting
@@ -1389,14 +1147,17 @@ resolveModule
         FromInterface -> viaInterface
         FromSource -> viaArchive
 
+      -- A route that read some of the module is kept in case no later one
+      -- reads all of it.
       firstAnswer = go Nothing
         where
-          go blamed [] = pure (Unreadable blamed)
-          go blamed (route : rest) =
+          go partial [] = pure (fromMaybe unreadable partial)
+          go partial (route : rest) =
             route >>= \case
-              Just (Declares fixities) -> pure (Declares fixities)
-              Just (Unreadable below) -> go (blamed <|> below) rest
-              Nothing -> go blamed rest
+              Just established
+                | settlesEverything established -> pure established
+                | established /= unreadable -> go (partial <|> Just established) rest
+              _ -> go partial rest
 
       viaInterface = case Map.lookup modName wkInterfaces of
         Nothing -> pure Nothing
@@ -1411,21 +1172,19 @@ resolveModule
               wkModuleInArchive
               wkSummariesOf
               (wkReach visiting')
-              (wkReachChildren visiting')
-              visiting'
               tarball
               modName
 
-      answered = \case
-        Declares fixities -> Declares fixities
-        Unreadable below
-          | Set.member modName wkGenerated -> Declares Map.empty
-          | otherwise -> maybe (Unreadable below) Declares (byHand modName)
-      byHand = fmap inBothNamespaces . (`Map.lookup` byHandFixities)
+      answered established
+        | settlesEverything established = established
+        | Set.member modName wkGenerated = settledAs Map.empty established
+        | Just declared <- Map.lookup modName byHandFixities =
+            settledAs (inBothNamespaces declared) established
+        | otherwise = established
       throughCache key =
         recalled
-          (cachedFixities wkCache key modName)
-          (storeFixities wkCache key modName)
+          (cachedEstablished wkCache key modName)
+          (storeEstablished wkCache key modName)
 
 -- | Which package and tarball holds each module.
 buildModuleIndex ::
@@ -1471,7 +1230,8 @@ interfaceIndex installed =
 
 -- | A name for some text, short enough to file something under.
 digestOf :: Text -> Text
-digestOf = T.take 24 . T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
+digestOf =
+  T.take 24 . T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
 
 -- | Present a fixity map as an 'Interface'.
 asInterface :: Fixities -> Interface
@@ -1483,7 +1243,8 @@ asInterface fixities =
       interfaceExports = Nothing
     }
 
--- | The fixities a compiled interface reports, and those it passes on.
+-- | What a compiled interface says a module exports, with the fixities of
+-- what it passes on read from where each is declared.
 fromInterface ::
   -- | A module's interface, if it has one.
   (Text -> IO (Maybe Interface)) ->
@@ -1492,17 +1253,34 @@ fromInterface ::
   IO Established
 fromInterface interfaceOf modName =
   interfaceOf modName >>= \case
-    Nothing -> pure (Unreadable Nothing)
+    Nothing -> pure unreadable
     Just iface -> do
-      declarers <- inParallel asked (distinct (fmap fst (interfaceReexports iface)))
-      pure $ case [m | (m, Nothing) <- declarers] of
-        (m : _) -> Unreadable (Just m)
-        [] ->
-          Declares . Map.union (interfaceDeclares iface) . Map.unions $
-            [ Map.filterWithKey (\(_, o) _ -> o == op) (interfaceDeclares declarer)
-            | (m, op) <- interfaceReexports iface,
-              Just (Just declarer) <- [lookup m declarers]
-            ]
+      declarers <-
+        inParallel
+          asked
+          (distinct (fmap fst (interfaceReexports iface)))
+      let declarer m = join (lookup m declarers)
+      pure
+        Established
+          { establishedFixities =
+              Map.union (interfaceDeclares iface) . Map.unions $
+                [ Map.filterWithKey
+                    (\(_, o) _ -> o == op)
+                    (interfaceDeclares declared)
+                | (m, op) <- interfaceReexports iface,
+                  Just declared <- [declarer m]
+                ],
+            establishedUnsettled =
+              Map.fromListWith
+                Set.union
+                [ ([m], Set.fromList [(InTypes, op), (InTerms, op)])
+                | (m, op) <- interfaceReexports iface,
+                  Nothing <- [declarer m]
+                ],
+            establishedUntold = Set.empty,
+            establishedBrought = fromMaybe mempty (interfaceExports iface),
+            establishedChildren = interfaceChildren iface
+          }
   where
     asked m = do
       interface <- interfaceOf m
@@ -1549,7 +1327,7 @@ sha256OfFile path = do
   bytes <- BL.readFile path
   pure (T.decodeUtf8Lenient (B16.encode (SHA256.hashlazy bytes)))
 
--- | Read a module's fixities out of a tarball, following re-exports.
+-- | Read what a module exports out of a tarball, following re-exports.
 fromSource ::
   -- | What a tarball holds for a module.
   (FilePath -> Text -> IO (Maybe InArchive)) ->
@@ -1558,72 +1336,93 @@ fromSource ::
   -- | How to reach another module, for chasing re-exports. This is
   -- 'resolveModule' tied back on itself, with the visiting set already
   -- extended.
-  (Text -> IO (Maybe (Fixities))) ->
-  -- | How to reach another module for what its names carry with them.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | Modules currently being resolved, passed through so that a
-  -- re-export chain cannot loop.
-  Set Text ->
+  (Text -> IO Established) ->
   -- | The tarball holding this module's source.
   FilePath ->
   -- | The module to read.
   Text ->
-  -- | What it declares, including what it only reexports, or 'Nothing' if
-  -- there is no archive to read it from.
+  -- | What reading it established, or 'Nothing' if there is no archive to
+  -- read it from.
   IO (Maybe Established)
-fromSource moduleInArchive summariesOf reach reachChildren visiting tarball modName =
+fromSource moduleInArchive summariesOf reach tarball modName =
   doesFileExist tarball >>= \case
     False -> pure Nothing
     True ->
       fmap Just $
         moduleInArchive tarball modName >>= \case
-          Nothing -> pure (Unreadable Nothing)
+          Nothing -> pure unreadable
           Just ForHsc -> pure (hscDeclares modName)
           Just (Haskell source) ->
-            fromSummaries reach reachChildren visiting
-              =<< summariesOf modName source
+            fromSummaries reach modName =<< summariesOf modName source
 
--- | The fixities a module declares and passes on, out of what each of its
--- configurations says.
+-- | What a module exports, out of what each of its configurations says.
 fromSummaries ::
   -- | How to reach another module, for chasing re-exports. This is
   -- 'resolveModule' tied back on itself, with the visiting set already
   -- extended.
-  (Text -> IO (Maybe (Fixities))) ->
-  -- | How to reach another module for what its names carry with them.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | Modules currently being resolved, passed through so that a re-export
-  -- chain cannot loop.
-  Set Text ->
+  (Text -> IO Established) ->
+  -- | The name the module was looked up under.
+  Text ->
   -- | What each configuration of it says, or 'Nothing' where none of them
   -- parses.
   Maybe (NonEmpty ModuleSummary) ->
   IO Established
-fromSummaries reach reachChildren visiting = \case
-  Nothing -> pure (Unreadable Nothing)
+fromSummaries reach modName = \case
+  Nothing -> pure unreadable
   Just summaries ->
-    agreeing <$> traverse (withReexports reach reachChildren visiting) summaries
+    agreeing <$> traverse (withReexports reach modName) summaries
 
--- | One answer from every configuration that could be read, if they agree.
+-- | One answer from every configuration of a module that counts.
 --
 -- A module may declare a fixity in one configuration and a different one in
 -- another. Which of them holds depends on how the module is compiled, which
--- is not ours to decide, so disagreement is not an answer. Agreement across
--- the ones we could read is one, and a stronger one than the blanked text
--- could give.
+-- is not ours to decide, so disagreement leaves the name unsettled.
+-- Agreement across the ones that count is an answer, and a stronger one
+-- than the blanked text could give.
 --
--- A configuration whose imports could not be resolved is passed over rather
--- than counted against the rest, because almost every one of those is a
--- branch meant for a different platform.
+-- A configuration that leaves names unsettled is passed over where another
+-- settles every name, because almost every one of those is a branch meant
+-- for a different platform. Where none does, every configuration counts,
+-- and a name any of them leaves unsettled stays unsettled.
 agreeing :: NonEmpty Established -> Established
-agreeing answers = case [fixities | Declares fixities <- toList answers] of
-  [] -> Unreadable (listToMaybe (catMaybes [below | Unreadable below <- toList answers]))
-  readable ->
-    maybe (Unreadable Nothing) Declares (foldM together Map.empty readable)
+agreeing answers =
+  settledOnly
+    Established
+      { establishedFixities = Map.mapMaybe sole declared,
+        establishedUnsettled =
+          Map.unionsWith
+            Set.union
+            ( maybe
+                Map.empty
+                (Map.singleton [])
+                disagreed
+                : fmap establishedUnsettled (toList counted)
+            ),
+        establishedUntold = foldMap establishedUntold counted,
+        establishedBrought = foldr1 inEvery (fmap establishedBrought counted),
+        establishedChildren =
+          Map.unionsWith Set.union (fmap establishedChildren counted)
+      }
   where
-    together settled found
-      | and (Map.intersectionWith (==) settled found) = Just (Map.union settled found)
-      | otherwise = Nothing
+    counted =
+      fromMaybe answers $
+        NE.nonEmpty (NE.filter settlesEverything answers)
+    declared =
+      Map.unionsWith
+        (<>)
+        [Map.map pure (establishedFixities a) | a <- toList counted]
+    sole (fixity :| rest) =
+      if all (== fixity) rest then Just fixity else Nothing
+    disagreed = inhabited (Map.keysSet (Map.filter (isNothing . sole) declared))
+    inEvery a b =
+      Brought
+        { broughtNames = Set.intersection (broughtNames a) (broughtNames b),
+          broughtChildren =
+            Map.intersectionWith
+              Set.intersection
+              (broughtChildren a)
+              (broughtChildren b)
+        }
 
 -- | Where each module that lives in a directory rather than an archive is.
 localModules :: BuildPlan -> IO (Map Text FilePath)
@@ -1665,283 +1464,281 @@ readFileText path = quietly Nothing $ do
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
     else pure Nothing
 
--- | What a module reexports, as well as what it declares.
+-- | What a module exports, out of what it declares and what its imports
+-- bring in.
 withReexports ::
   -- | How to reach another module, for names this one only passes on.
-  (Text -> IO (Maybe (Fixities))) ->
-  -- | How to reach another module for what its names carry with them,
-  -- which is what a @T(..)@ this module hands on amounts to.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | Modules currently being resolved. A candidate already in here is
-  -- skipped rather than followed.
-  Set Text ->
-  -- | The module.
-  ModuleSummary ->
-  -- | What it declares together with what it re-exports, or the module it
-  -- passes names on from that could not be read.
-  IO Established
-withReexports reach reachChildren visiting summary =
-  case summaryExports summary of
-    Nothing -> pure (Declares own)
-    Just items -> do
-      carried <- carriedNames reachChildren summary items
-      let wanted = wantedNames items <> fromCarried carried
-      visible <-
-        traverse
-          (\i -> (,) i <$> fromModule (importModule i))
-          [ i
-          | i <- summaryImports summary,
-            any (\(qualifier, op) -> supplies Map.empty qualifier op i) wanted
-          ]
-      wholeModules <-
-        traverse
-          (\i -> (,,) i <$> fromModule (importModule i) <*> keptBy i)
-          (handedOnWhole summary items)
-      pure $ case stoppedAt visible wholeModules of
-        Just below -> Unreadable (Just below)
-        Nothing ->
-          let seen = [(i, exported) | (i, Just exported) <- visible]
-              whole =
-                [ Map.filterWithKey (\(_, op) _ -> supplies kept Nothing op i) exported
-                | (i, Just exported, kept) <- wholeModules
-                ]
-              passedOn =
-                Map.unions
-                  [ found
-                  | (qualifier, op) <- wanted,
-                    found <- take 1 (from qualifier op seen)
-                  ]
-           in Declares (Map.unions (own : passedOn : whole))
-  where
-    stoppedAt visible wholeModules =
-      listToMaybe $
-        [importModule i | (i, Nothing) <- visible]
-          <> [importModule i | (i, Nothing, _) <- wholeModules]
-    own = summaryFixities summary
-    defined =
-      Set.map snd (summaryNames summary) <> Set.map snd (Map.keysSet (summaryFixities summary))
-    wantedNames items =
-      [ (qualifier, op)
-      | item <- items,
-        (qualifier, op) <- case item of
-          ExportName _ qualifier op -> [(qualifier, op)]
-          ExportAll qualifier op -> [(qualifier, op)]
-          ExportSome qualifier op kids -> (qualifier, op) : fmap (qualifier,) kids
-          ExportModule _ -> [],
-        not (Set.member op defined)
-      ]
-    fromCarried carried =
-      [ (qualifier, op)
-      | ((qualifier, _), Just ops) <- carried,
-        op <- Set.toList ops,
-        not (Set.member op defined)
-      ]
-    from qualifier op seen =
-      [ found
-      | (i, exported) <- seen,
-        supplies Map.empty qualifier op i,
-        let found = Map.filterWithKey (\(_, o) _ -> o == op) exported,
-        not (Map.null found)
-      ]
-    fromModule m
-      | m `Set.member` visiting = pure (Just Map.empty)
-      | otherwise = reach m
-    keptBy i
-      | expands i = reachChildren (importModule i)
-      | otherwise = pure Map.empty
-
--- | What a module brings into scope, following re-exports.
-broughtWithReexports ::
-  -- | How to reach another module for what it brings into scope.
-  (Text -> IO (Maybe Brought)) ->
+  (Text -> IO Established) ->
   -- | The name this module was looked up under.
   Text ->
   -- | The module.
   ModuleSummary ->
-  IO Brought
-broughtWithReexports reach modName summary =
+  IO Established
+withReexports reach modName summary =
   case summaryExports summary of
     Nothing -> pure own
     Just items -> do
-      fromImports <-
-        Map.fromList
-          <$> traverse
-            ( \(qualifier, parent) ->
-                (,) (qualifier, parent) . carriedIn parent
-                  <$> traverse
-                    (reach . importModule)
-                    (filter (supplies Map.empty qualifier parent) imports)
-            )
-            (parentsHandedOn items)
-      wholes <-
-        traverse
-          (\i -> fmap (handedOn i) <$> reach (importModule i))
-          (handedOnWhole summary items)
-      let carried qualifier parent =
-            fromMaybe
-              (Map.findWithDefault Set.empty (qualifier, parent) fromImports)
-              (Map.lookup parent declared)
-          listed = \case
-            ExportName namespace _ op ->
-              Brought (Set.singleton (namespace, op)) Map.empty
-            ExportAll qualifier parent ->
-              withMembers parent (carried qualifier parent)
-            ExportSome qualifier parent kids ->
-              withMembers
-                parent
-                (Set.filter ((`elem` kids) . snd) (carried qualifier parent))
-            ExportModule m
-              | Just m == summaryName summary || m == modName -> own
-              | otherwise -> mempty
-      pure (foldMap listed items <> mconcat (catMaybes wholes))
+      listed <-
+        reached $ \i ->
+          any (suppliedBy i) (concatMap named items)
+            || ( not (importQualified i)
+                   && importAlias i
+                     `elem` [m | ExportModule m <- items]
+               )
+      let carried =
+            Map.fromList
+              [ ((qualifier, parent), membersFrom listed qualifier parent)
+              | ExportAll qualifier parent <- items,
+                Map.notMember parent declared
+              ]
+          members =
+            [ (qualifier, kid)
+            | ((qualifier, _), Just kids) <- Map.toList carried,
+              kid <- Set.toList kids,
+              Set.notMember kid defined
+            ]
+      more <- reached $ \i ->
+        Map.notMember (importModule i) listed && any (suppliedBy i) members
+      let answers = Map.union listed more
+      pure . together $
+        mempty
+          { establishedFixities = summaryFixities summary,
+            establishedChildren = summaryChildren summary
+          }
+          : fmap (exported answers carried) items
   where
-    own = Brought (summaryNames summary) declared
-    declared = summaryDeclaredChildren summary
     imports = summaryImports summary
-    parentsHandedOn items =
-      [ (qualifier, parent)
-      | item <- items,
-        Just (qualifier, parent) <- [handedOnParent item],
-        not (Map.member parent declared)
-      ]
-    handedOnParent = \case
-      ExportAll qualifier parent -> Just (qualifier, parent)
-      ExportSome qualifier parent _ -> Just (qualifier, parent)
-      _ -> Nothing
-    carriedIn parent answers =
-      Set.unions
-        [ kids
-        | Just b <- answers,
-          Set.member (InTypes, parent) (broughtNames b),
-          Just kids <- [Map.lookup parent (broughtChildren b)]
-        ]
-    withMembers parent kids =
-      Brought (Set.insert (InTypes, parent) kids) (Map.singleton parent kids)
-    handedOn i b =
-      Brought
-        { broughtNames = Set.filter certain (broughtNames b),
-          broughtChildren =
-            Map.map
-              (Set.filter certain)
-              (Map.filterWithKey (\parent _ -> certain (InTypes, parent)) (broughtChildren b))
+    declared = summaryDeclaredChildren summary
+    defined =
+      Set.map snd (summaryNames summary)
+        <> Set.map snd (Map.keysSet (summaryFixities summary))
+    own =
+      mempty
+        { establishedFixities = summaryFixities summary,
+          establishedBrought = Brought (summaryNames summary) declared,
+          establishedChildren = Map.map (Set.map snd) declared
         }
-      where
-        certain name = brings (Map.map (Set.map snd) (broughtChildren b)) name i
+    reached wanted =
+      Map.fromList
+        <$> traverse
+          (\m -> (m,) <$> reach m)
+          (Set.toList (Set.fromList [importModule i | i <- imports, wanted i]))
+    suppliedBy i (qualifier, op) = supplies Map.empty qualifier op i
+    named = \case
+      ExportName _ qualifier op ->
+        [(qualifier, op) | Set.notMember op defined]
+      ExportAll qualifier parent ->
+        [(qualifier, parent) | Set.notMember parent defined]
+      ExportSome qualifier parent kids ->
+        [(qualifier, op) | op <- parent : kids, Set.notMember op defined]
+      ExportModule _ -> []
 
--- | What each name a module's export list hands on carries with it.
-childrenWithReexports ::
-  -- | How to reach another module for what its names carry.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The name this module was looked up under.
-  Text ->
-  -- | The module.
-  ModuleSummary ->
-  IO (Map OpName (Set OpName))
-childrenWithReexports reachChildren modName summary =
-  case summaryExports summary of
-    Nothing -> pure (summaryChildren summary)
-    Just items -> do
-      carried <- carriedNames reachChildren summary items
-      wholes <- traverse reachChildren (wantedModules modName summary items)
-      pure . Map.unionsWith Set.union $
-        summaryChildren summary
-          : Map.fromListWith Set.union [(parent, ops) | ((_, parent), Just ops) <- carried]
-          : wholes
+    exported answers carried = \case
+      ExportName namespace qualifier op ->
+        settled answers True qualifier (namespace, op)
+          <> certainly (Set.singleton (namespace, op)) Map.empty
+      ExportAll qualifier parent
+        | Just kids <- Map.lookup parent declared -> withMembers parent kids
+        | otherwise ->
+            let found = settled answers True qualifier (InTypes, parent)
+                kids = Map.findWithDefault Nothing (qualifier, parent) carried
+             in found
+                  <> mempty{establishedUntold = Map.keysSet (establishedUnsettled found)}
+                  <> foldMap (member answers qualifier parent) (foldMap Set.toList kids)
+                  <> case kids of
+                    Nothing -> certainly (Set.singleton (InTypes, parent)) Map.empty
+                    Just known ->
+                      withMembers parent (certainMembers answers qualifier parent)
+                        <> mempty{establishedChildren = Map.singleton parent known}
+      ExportSome qualifier parent kids ->
+        settled answers True qualifier (InTypes, parent)
+          <> foldMap (member answers qualifier parent) kids
+          <> withMembers
+            parent
+            ( Set.filter
+                ((`elem` kids) . snd)
+                ( fromMaybe
+                    (certainMembers answers qualifier parent)
+                    (Map.lookup parent declared)
+                )
+            )
+      ExportModule m ->
+        (if Just m == summaryName summary || m == modName then own else mempty)
+          <> foldMap
+            (whole answers)
+            [i | i <- imports, not (importQualified i), importAlias i == m]
 
--- | The operators a module's export list names, following what it
--- reexports.
-exportNamesWithReexports ::
-  -- | How to reach another module for what its export list names.
-  (Text -> IO (Maybe (Set OpName))) ->
-  -- | How to reach another module for what its names carry.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The name this module was looked up under.
-  Text ->
-  -- | The module.
-  ModuleSummary ->
-  IO (Maybe (Set OpName))
-exportNamesWithReexports reachNames reachChildren modName summary =
-  case summaryExports summary of
-    Nothing -> pure (Just (Set.fromList [op | (_, op) <- Map.keys (summaryFixities summary)]))
-    Just items -> do
-      carried <- carriedNames reachChildren summary items
-      wholes <- traverse reachNames (wantedModules modName summary items)
-      pure $ do
-        fromWholes <- sequence wholes
-        fromCarried <-
-          traverse (\((_, parent), kids) -> Set.insert parent <$> kids) carried
-        pure (Set.unions (named items : declaredHere items : fromCarried <> fromWholes))
-  where
-    declared = Map.map (Set.map snd) (summaryDeclaredChildren summary)
-    named items =
-      Set.fromList $
-        [op | ExportName _ _ op <- items]
-          <> concat [parent : kids | ExportSome _ parent kids <- items]
-    declaredHere items =
-      Set.unions
-        [ Set.insert parent kids
-        | ExportAll _ parent <- items,
-          Just kids <- [Map.lookup parent declared]
-        ]
+    certainly names children = mempty{establishedBrought = Brought names children}
+    withMembers parent kids =
+      certainly (Set.insert (InTypes, parent) kids) (Map.singleton parent kids)
+    member answers qualifier parent kid
+      | Set.member kid defined = mempty
+      | otherwise =
+          case [ (i, established, carried)
+               | (i, established) <- candidates answers qualifier parent,
+                 speaksFor established (InTypes, parent) i,
+                 let carried =
+                       Set.filter
+                         ((== kid) . snd)
+                         ( Map.findWithDefault
+                             Set.empty
+                             parent
+                             (broughtChildren (establishedBrought established))
+                         ),
+                 not (Set.null carried)
+               ] of
+            (i, established, carried) : _ -> foldMap (from [(i, established)]) carried
+            [] ->
+              foldMap
+                ( \namespace ->
+                    settled answers False qualifier (namespace, kid)
+                )
+                [InTypes, InTerms]
 
--- | What the types a module reexports carry with them, asked of the modules
--- they could have come from.
-carriedNames ::
-  -- | How to reach another module for what its export list names.
-  (Text -> IO (Map OpName (Set OpName))) ->
-  -- | The module.
-  ModuleSummary ->
-  -- | Export items.
-  [ExportItem] ->
-  -- | For each reexported name, what it carries, or 'Nothing' where no
-  -- module that could have supplied it had anything to say about it.
-  IO [((Maybe Text, OpName), Maybe (Set OpName))]
-carriedNames reachChildren summary items =
-  traverse (\(qualifier, parent) -> ((qualifier, parent),) <$> carriedBy qualifier parent) handedOn
-  where
-    declared = summaryDeclaredChildren summary
-    imports = summaryImports summary
-    handedOn =
-      [ (qualifier, parent)
-      | ExportAll qualifier parent <- items,
-        not (Map.member parent declared)
+    candidates answers qualifier op =
+      [ (i, established)
+      | i <- imports,
+        Just established <- [Map.lookup (importModule i) answers],
+        supplies (establishedChildren established) qualifier op i
       ]
-    carriedBy qualifier parent = do
-      answers <- traverse (reachChildren . importModule) (filter (supplies Map.empty qualifier parent) imports)
-      pure $ case mapMaybe (Map.lookup parent) answers of
+
+    settled answers certain qualifier name@(_, op)
+      | Set.member op defined = mempty
+      | otherwise = case [ (i, established)
+                         | certain,
+                           (i, established) <- found,
+                           speaksFor established name i
+                         ] of
+          speaker : _ -> from [speaker] name
+          [] -> from found name
+      where
+        found = candidates answers qualifier op
+
+    from imported name =
+      case [ importModule i : chain
+           | (i, established) <- imported,
+             chain <- unsettledThrough established name
+           ] of
+        [] ->
+          mempty
+            { establishedFixities =
+                Map.fromList
+                  ( take
+                      1
+                      [ (name, fixity)
+                      | (_, a) <- imported,
+                        Just fixity <- [Map.lookup name (establishedFixities a)]
+                      ]
+                  )
+            }
+        chains ->
+          mempty
+            { establishedUnsettled =
+                Map.fromList [(chain, Set.singleton name) | chain <- chains]
+            }
+
+    membersFrom answers qualifier parent =
+      case mapMaybe
+        (Map.lookup parent . establishedChildren . snd)
+        (candidates answers qualifier parent) of
         [] -> Nothing
         kids -> Just (Set.unions kids)
 
--- | The imports whose names a @module M@ export hands on: the unqualified
--- ones that go under @M@.
-handedOnWhole :: ModuleSummary -> [ExportItem] -> [Import]
-handedOnWhole summary items =
-  [ i
-  | i <- summaryImports summary,
-    not (importQualified i),
-    importAlias i `elem` [m | ExportModule m <- items]
-  ]
+    certainMembers answers qualifier parent =
+      Set.unions
+        [ Set.filter (\kid -> brings (establishedChildren established) kid i) kids
+        | (i, established) <- candidates answers qualifier parent,
+          let brought = establishedBrought established,
+          Set.member (InTypes, parent) (broughtNames brought),
+          Just kids <- [Map.lookup parent (broughtChildren brought)]
+        ]
 
--- | The modules a @module M@ export reexports whole, by their own names.
-wantedModules ::
-  -- | The name this module was looked up under, so that a module handing
-  -- itself on under it is not chased.
-  Text ->
-  -- | The module.
-  ModuleSummary ->
-  -- | Export items.
-  [ExportItem] ->
-  -- | The modules named, with an alias resolved to what it was imported
-  -- as, and this module itself left out.
-  [Text]
-wantedModules modName summary items =
-  Set.toList . Set.fromList $
-    concat [under m | ExportModule m <- items, not (isSelf m)]
+    whole answers i =
+      Established
+        { establishedFixities =
+            Map.filterWithKey
+              (\(_, op) _ -> admitted op)
+              (establishedFixities established),
+          establishedUnsettled =
+            Map.mapKeys
+              (importModule i :)
+              ( Map.mapMaybe
+                  (inhabited . Set.filter (admitted . snd))
+                  (establishedUnsettled established)
+              ),
+          establishedUntold =
+            Set.map
+              (importModule i :)
+              (establishedUntold established),
+          establishedBrought =
+            Brought
+              { broughtNames = Set.filter certain (broughtNames brought),
+                broughtChildren =
+                  Map.map
+                    (Set.filter certain)
+                    ( Map.filterWithKey
+                        (\parent _ -> certain (InTypes, parent))
+                        (broughtChildren brought)
+                    )
+              },
+          establishedChildren = establishedChildren established
+        }
+      where
+        established = Map.findWithDefault mempty (importModule i) answers
+        brought = establishedBrought established
+        admitted op = supplies (establishedChildren established) Nothing op i
+        certain name = brings (establishedChildren established) name i
+
+-- | The parts of what a module exports, together.
+--
+-- A name one part certainly exports with a settled fixity is the one every
+-- other part exports under that name too, or the module would not compile,
+-- so no part leaves it unsettled.
+together :: [Established] -> Established
+together parts =
+  settledOnly
+    combined
+      { establishedUnsettled =
+          Map.mapMaybe
+            (inhabited . (`Set.difference` certain))
+            (establishedUnsettled combined)
+      }
   where
-    under m = case [importModule i | i <- summaryImports summary, importAlias i == m] of
-      [] -> [m]
-      aliased -> aliased
-    isSelf m = Just m == summaryName summary || m == modName
+    combined = mconcat parts
+    certain =
+      Set.unions
+        [ Set.filter
+            (null . unsettledThrough part)
+            (broughtNames (establishedBrought part))
+        | part <- parts
+        ]
+
+-- | An answer without the fixities of the names it leaves unsettled.
+settledOnly :: Established -> Established
+settledOnly established
+  | settlesEverything established = established
+  | otherwise =
+      established
+        { establishedFixities =
+            Map.filterWithKey
+              (\name _ -> null (unsettledThrough established name))
+              (establishedFixities established)
+        }
+
+-- | An answer whose fixities come from elsewhere, and settle every name.
+settledAs :: Fixities -> Established -> Established
+settledAs fixities established =
+  established
+    { establishedFixities = fixities,
+      establishedUnsettled = Map.empty,
+      establishedUntold = Set.empty
+    }
+
+-- | A set, unless it is empty.
+inhabited :: Set a -> Maybe (Set a)
+inhabited names
+  | Set.null names = Nothing
+  | otherwise = Just names
 
 -- | Every configuration the preprocessor allows of a module's text that is
 -- Haskell, parsed and summarized.
@@ -2044,15 +1841,7 @@ writtenForHsc = isSuffixOf ".hsc"
 -- | What an @.hsc@ module declares, which is nothing unless it is named.
 hscDeclares :: Text -> Established
 hscDeclares modName =
-  Declares (maybe Map.empty inBothNamespaces (Map.lookup modName hscFixities))
-
--- | The fixities an 'Established' holds, where it holds any.
-fixitiesEstablished :: Established -> Maybe (Fixities)
-fixitiesEstablished = \case
-  Declares fixities -> Just fixities
-  Unreadable _ -> Nothing
-
--- | The operators an @.hsc@ module can supply, on the same reasoning.
-hscSupplies :: Text -> Set OpName
-hscSupplies modName =
-  maybe Set.empty Map.keysSet (Map.lookup modName hscFixities)
+  mempty
+    { establishedFixities =
+        maybe Map.empty inBothNamespaces (Map.lookup modName hscFixities)
+    }
