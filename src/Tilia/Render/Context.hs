@@ -249,7 +249,7 @@ at_ ctx f l = at ctx l f
 -- of an @if@—and for nothing else.
 atSpan :: Ctx -> Maybe Span -> Doc -> Doc
 atSpan _ Nothing d = d
-atSpan ctx (Just s) d = located s (grouped ctx s d)
+atSpan _ (Just s) d = located s (group s d)
 
 -- | A keyword, claiming the span it was written on.
 keywordAt :: Ctx -> Maybe Span -> Text -> Doc
@@ -267,7 +267,7 @@ fenceWithin _ (Just s) d = fence s d
 -- line or several.
 layoutFrom :: Ctx -> Maybe Span -> Doc -> Doc
 layoutFrom _ Nothing d = flat d
-layoutFrom ctx (Just s) d = grouped ctx s d
+layoutFrom _ (Just s) d = group s d
 
 -- | Lay a construct out from the region its contents occupy rather than the
 -- region it occupies.
@@ -292,12 +292,6 @@ layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 -- | Give the inside of a bracketed construct an anchor at its far end.
 insideBrackets :: Maybe Span -> Doc -> Doc
 insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
-
--- | Lay a document out according to a span, and to the comments inside it.
-grouped :: Ctx -> Span -> Doc -> Doc
-grouped ctx s d
-  | holdsLineComment ctx s = broken d
-  | otherwise = group s d
 
 -- | Does a comment that takes whole lines begin inside this span?
 holdsLineComment :: Ctx -> Span -> Bool
