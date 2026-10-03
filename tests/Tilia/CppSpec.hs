@@ -4,10 +4,12 @@
 module Tilia.CppSpec (spec) where
 
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Cpp
+import Tilia.Cpp.Directives (implied)
 import Tilia.Doc.Internal (Doc)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
@@ -138,6 +140,65 @@ spec = do
         `shouldSatisfy` either
           (const False)
           (all (\l -> not ("inner" `T.isInfixOf` l) || "outer" `T.isInfixOf` l))
+
+  describe "what answers imply about the macros" $ do
+    it "rules out an #if X holding where #ifdef X fails" $
+      implied [([Guard "ifdef X"], 1), ([Guard "if X"], 0)] `shouldBe` Nothing
+
+    it "allows an #if X failing where #ifdef X holds, as X defined as 0" $
+      implied [([Guard "ifdef X"], 0), ([Guard "if X"], 1)] `shouldSatisfy` isJust
+
+    it "rules out #ifdef X and #ifndef X both holding" $
+      implied [([Guard "ifdef X"], 0), ([Guard "ifndef X"], 0)] `shouldBe` Nothing
+
+    it "takes an #if 0 to ask something, as code is put aside with it" $
+      implied [([Guard "if 0"], 0)] `shouldSatisfy` isJust
+
+    it "rules out a version below one and at least a later one" $
+      implied
+        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 1),
+          ([Guard "if MIN_VERSION_base(4,11,0)"], 0)
+        ]
+        `shouldBe` Nothing
+
+    it "allows a version at least one and below a later one" $
+      implied
+        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 0),
+          ([Guard "if MIN_VERSION_base(4,11,0)"], 1)
+        ]
+        `shouldSatisfy` isJust
+
+    it "takes a version with zeros at its end for the same version" $
+      implied
+        [ ([Guard "if MIN_VERSION_base(4,10)"], 0),
+          ([Guard "if MIN_VERSION_base(4,10,0)"], 1)
+        ]
+        `shouldBe` Nothing
+
+    it "rules out a range whose bound another answer contradicts" $
+      implied
+        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 1),
+          ([Guard "if MIN_VERSION_base(4,10,0) && !(MIN_VERSION_base(4,12,0))"], 0)
+        ]
+        `shouldBe` Nothing
+
+    it "rules out a compiler below one version and at least a later one" $
+      implied
+        [ ([Guard "if __GLASGOW_HASKELL__ >= 908", Guard "elif __GLASGOW_HASKELL__ >= 906"], 2),
+          ([Guard "if __GLASGOW_HASKELL__ > 906"], 0)
+        ]
+        `shouldBe` Nothing
+
+  describe "configurations no definition of the macros gives" $ do
+    it "are left out of every configuration of a module" $
+      said (length <$> leaves askedTwoWays) `shouldBe` Right 3
+
+    it "are left out of what is compared before and after formatting" $
+      (all parses . concatMap (maybeToList . fst) <$> said (correspondingBranches askedTwoWays askedTwoWays))
+        `shouldBe` Right True
+
+    it "are not taken to cover a branch" $
+      (all parses <$> said (branchLeaves askedTwoWays)) `shouldBe` Right True
 
   describe "covering every branch" $ do
     it "gives a module with no conditionals one configuration, its own" $
@@ -505,6 +566,23 @@ alternatives =
       "#endif"
     ]
 
+-- | An @#ifdef@ around a pragma, and an @#if@ asking about the same macro
+-- around code that needs the pragma, so that no configuration takes the
+-- code without the pragma.
+askedTwoWays :: Text
+askedTwoWays =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "#ifdef USE_ST",
+      "{-# LANGUAGE RankNTypes #-}",
+      "#endif",
+      "module M where",
+      "#if USE_ST",
+      "run :: (forall s. s -> s) -> Int",
+      "run f = f 1",
+      "#endif"
+    ]
+
 -- | Two alternatives, only one of which parses.
 oneAlternativeParses :: Text
 oneAlternativeParses =
@@ -611,6 +689,10 @@ sameBranch (Just input, Just output) = sameProgram input output
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
 sameBranch _ = Left "preprocessing changed between succeeding and failing"
+
+-- | Does a configuration parse, with what its own pragmas turn on?
+parses :: Text -> Bool
+parses t = either (const False) (const True) (parseModule defaultParserConfig "example.hs" t)
 
 -- | How many modules parsing every branch of a module comes to.
 branchesParsed :: Text -> Maybe Int

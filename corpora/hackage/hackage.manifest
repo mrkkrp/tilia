@@ -1862,7 +1862,7 @@ formatted       07108d12c1fe  distributed-process-0.7.8/src/Control/Distributed/
 formatted       e790ad3384cd  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
 formatted       6b86ee01b32a  distributed-process-0.7.8/src/Control/Distributed/Process/Serializable.hs
 formatted       daf3cd1d8b53  distributed-process-0.7.8/src/Control/Distributed/Process/UnsafePrimitives.hs
-broken          ce7a3d76bb9a  dlist-1.0/Data/DList.hs
+formatted       ce7a3d76bb9a  dlist-1.0/Data/DList.hs
 formatted       d276a3077979  dlist-1.0/Data/DList/DNonEmpty.hs
 formatted       3d51b496abb0  dlist-1.0/Data/DList/DNonEmpty/Internal.hs
 partly-checked  7e289a0d3651  dlist-1.0/Data/DList/Internal.hs
@@ -4598,7 +4598,7 @@ formatted       55892c430b7b  time-1.16.0.1/lib/Data/Time/Calendar/Week.hs
 formatted       8d6d0ff3c8ec  time-1.16.0.1/lib/Data/Time/Calendar/WeekDate.hs
 formatted       c2de888ee84b  time-1.16.0.1/lib/Data/Time/Clock.hs
 formatted       0b01b660df99  time-1.16.0.1/lib/Data/Time/Clock/Internal/AbsoluteTime.hs
-declined        -             time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
+formatted       b17785e460f5  time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
 formatted       fde88246f337  time-1.16.0.1/lib/Data/Time/Clock/Internal/DiffTime.hs
 formatted       130201256efa  time-1.16.0.1/lib/Data/Time/Clock/Internal/NominalDiffTime.hs
 formatted       8ef6afa040bc  time-1.16.0.1/lib/Data/Time/Clock/Internal/POSIXTime.hs

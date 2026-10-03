@@ -380,7 +380,7 @@ checkedOutIn distDir plan = do
 -- | The version macros a plan settles.
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
-  Macros
+  mempty
     { macroVersions =
         Map.fromList
           ( [ ("MIN_VERSION_" <> underscored name, version)
