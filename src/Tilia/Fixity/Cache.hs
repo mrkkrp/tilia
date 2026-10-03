@@ -17,6 +17,8 @@ module Tilia.Fixity.Cache
     storeExportNames,
     cachedChildren,
     storeChildren,
+    cachedBrought,
+    storeBrought,
     cachedSummaries,
     storeSummaries,
     cachedInstalled,
@@ -228,6 +230,55 @@ storeChildren cache package modName children =
   where
     entry (OpName parent, kids) =
       T.intercalate "\t" (parent : [kid | OpName kid <- Set.toAscList kids])
+
+-- | What a module was found to bring into scope, if it was ever read for
+-- it, or 'Nothing' where that could not be told.
+cachedBrought ::
+  -- | Where to look.
+  Cache ->
+  -- | The package the module belongs to, as 'cachedFixities' takes it.
+  Text ->
+  -- | The module, by its full dotted name.
+  Text ->
+  IO (Maybe (Maybe Brought))
+cachedBrought cache package modName =
+  fmap join . readIfPresent (at cache ["brought", package, modName]) $ \contents ->
+    case T.lines contents of
+      ("brought" : entries) -> Just . mconcat <$> traverse entry entries
+      ["untellable"] -> Just Nothing
+      _ -> Nothing
+  where
+    entry line = case T.splitOn "\t" line of
+      ["name", namespace, op] ->
+        (\n -> Brought (Set.singleton (n, OpName op)) Map.empty) <$> parseNamespace namespace
+      "member" : parent : kids ->
+        Brought Set.empty . Map.singleton (OpName parent) . Set.fromList <$> parseNamespaced kids
+      _ -> Nothing
+
+-- | Remember what a module brings into scope.
+storeBrought ::
+  -- | Where to write.
+  Cache ->
+  -- | The package the module belongs to, as 'cachedFixities' takes it.
+  Text ->
+  -- | The module, by its full dotted name.
+  Text ->
+  -- | What it brings in, or 'Nothing' where that could not be told.
+  Maybe Brought ->
+  IO ()
+storeBrought cache package modName answer =
+  writeAtomically (at cache ["brought", package, modName]) $
+    case answer of
+      Nothing -> T.unlines ["untellable"]
+      Just b ->
+        T.unlines $
+          "brought"
+            : [ T.intercalate "\t" ["name", renderNamespace namespace, op]
+              | (namespace, OpName op) <- Set.toAscList (broughtNames b)
+              ]
+              <> [ T.intercalate "\t" ("member" : parent : renderNamespaced kids)
+                 | (OpName parent, kids) <- Map.toList (broughtChildren b)
+                 ]
 
 -- | What each configuration of one of the project's own modules says, if it
 -- was last read from what the stamp stands for.
