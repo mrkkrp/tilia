@@ -38,3 +38,14 @@ codeAfterTheComment =
   -- and this is about something else
   where
     h = 1
+
+-- An empty line under the remark still separates what it trails from what
+-- comes next.
+gapUnderTheRemark = a ++ b
+  where
+    a =
+      [1]
+        ++ [2] -- said once
+        -- and never twice
+
+    b = []

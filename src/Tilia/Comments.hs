@@ -13,6 +13,7 @@ module Tilia.Comments
     bracketed,
     commentTrailing,
     singleLine,
+    carriedOnFrom,
     widenTrigger,
     escapeTrigger,
     triggerEscaped,
@@ -24,6 +25,8 @@ module Tilia.Comments
 where
 
 import Data.Char (isSpace)
+import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -237,6 +240,40 @@ singleLine :: Comment -> Bool
 singleLine c = case commentBody c of
   (_ :| []) -> True
   _ -> False
+
+-- | The line whose trailing comment a comment with the line to itself
+-- carries on, by being lined up under that line or under comments that
+-- carry it on in turn.
+carriedOnFrom :: [Comment] -> Comment -> Maybe Int
+carriedOnFrom cs = \c -> case commentAbove c of
+  ContentAt column
+    | not (commentTrailing c),
+      column == spanStartColumn (commentSpan c) ->
+        go column (spanStartLine (commentSpan c) - 1)
+  _ -> Nothing
+  where
+    linesEndingInAComment =
+      IntSet.fromList
+        [ spanEndLine (commentSpan c)
+        | c <- cs,
+          commentTrailing c,
+          not (commentFollowed c)
+        ]
+    ownLineComments =
+      IntMap.fromList
+        [ (spanStartLine s, (spanStartColumn s, commentAbove c))
+        | c <- cs,
+          not (commentTrailing c),
+          not (commentFollowed c),
+          let s = commentSpan c
+        ]
+    go column line
+      | IntSet.member line linesEndingInAComment = Just line
+      | Just (col, above) <- IntMap.lookup line ownLineComments,
+        col == column,
+        above == ContentAt column =
+          go column (line - 1)
+      | otherwise = Nothing
 
 -- | Put a space between a doc comment's trigger and the text after it, so
 -- that @-- |Foo@ comes out as @-- | Foo@.

@@ -12,15 +12,14 @@ module Tilia.Comments.Place
 where
 
 import Data.IntMap.Strict qualified as IntMap
-import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..))
 import Data.Set qualified as Set
 import Tilia.Comments
-  ( Above (..),
-    Comment (..),
+  ( Comment (..),
+    carriedOnFrom,
     closesItself,
     commentTrailing,
     singleLine,
@@ -98,32 +97,7 @@ placeComments regions fences comments =
   where
     decided = [(against c, c) | c <- comments]
 
-    linesEndingInAComment =
-      IntSet.fromList
-        [ spanEndLine (commentSpan c)
-        | c <- comments,
-          commentTrailing c,
-          not (commentFollowed c)
-        ]
-
-    ownLineComments =
-      IntMap.fromList
-        [ (spanStartLine s, (spanStartColumn s, commentAbove c))
-        | c <- comments,
-          not (commentTrailing c),
-          not (commentFollowed c),
-          let s = commentSpan c
-        ]
-
-    carriedOnFrom column = go
-      where
-        go line
-          | IntSet.member line linesEndingInAComment = Just line
-          | Just (col, above) <- IntMap.lookup line ownLineComments,
-            col == column,
-            above == ContentAt column =
-              go (line - 1)
-          | otherwise = Nothing
+    carriedOn = carriedOnFrom comments
 
     regionsByEndLine =
       IntMap.fromListWith (<>) [(spanEndLine r, [r]) | r <- regions]
@@ -137,7 +111,7 @@ placeComments regions fences comments =
 
     against c
       | commentTrailing c, Just r <- trailed = Just (r, After)
-      | not (commentTrailing c), Just r <- continues = Just (r, After)
+      | Just r <- continues = Just (r, After)
       | Just r <- next = Just (r, Before)
       | otherwise = Nothing
       where
@@ -165,10 +139,8 @@ placeComments regions fences comments =
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
         continues
-          | ContentAt column <- commentAbove c,
-            column == spanStartColumn here,
-            nothingBelowItLinesUp,
-            Just anchor <- carriedOnFrom column (spanStartLine here - 1) =
+          | nothingBelowItLinesUp,
+            Just anchor <- carriedOn c =
               endingOn anchor
           | otherwise = Nothing
 
