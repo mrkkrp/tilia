@@ -112,6 +112,10 @@
   comprehension, an arithmetic sequence or a Template Haskell quote inside
   the brackets, rather than move it after them or, when nothing follows,
   out of the declaration. [PR 79](https://github.com/mrkkrp/tilia/pull/79).
+* Put a conditional around an argument that only some configurations pass
+  last, rather than around it and the argument before it, which then came
+  out once more under the `#else` of a second conditional. [Issue
+  66](https://github.com/mrkkrp/tilia/issues/66).
 
 ## Tilia 0.0.2.0
 

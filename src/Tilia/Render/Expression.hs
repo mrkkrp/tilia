@@ -237,9 +237,12 @@ application ctx site f x =
       | otherwise = Normal
     headAndInit bracing =
       hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
-        <> nest
-          (if placement == Hanging then 0 else 1)
-          (foldMap ((breakOrSpace <>) . hsExprIn ctx (withBracing bracing plainSite)) initArgs)
+        <> foldMap
+          ( nest (if placement == Hanging then 0 else 1)
+              . (breakOrSpace <>)
+              . hsExprIn ctx (withBracing bracing plainSite)
+          )
+          initArgs
 
 -- | The head of an application, and its arguments in the order written.
 gatherArgs ::

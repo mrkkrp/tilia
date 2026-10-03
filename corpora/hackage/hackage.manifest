@@ -4517,7 +4517,7 @@ formatted       999f28ae046f  text-2.1.4/src/Data/Text/Internal/Encoding/Utf8.hs
 formatted       9b74d0d7d95a  text-2.1.4/src/Data/Text/Internal/Fusion.hs
 formatted       9ae139203b50  text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs
 formatted       0858f0992142  text-2.1.4/src/Data/Text/Internal/Fusion/Common.hs
-formatted       eb26e26b5392  text-2.1.4/src/Data/Text/Internal/Fusion/Size.hs
+formatted       a3b0b51a0759  text-2.1.4/src/Data/Text/Internal/Fusion/Size.hs
 formatted       a8149e253de6  text-2.1.4/src/Data/Text/Internal/Fusion/Types.hs
 formatted       32b50634031b  text-2.1.4/src/Data/Text/Internal/IO.hs
 formatted       e2bb47936e11  text-2.1.4/src/Data/Text/Internal/IsAscii.hs
