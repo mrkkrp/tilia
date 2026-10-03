@@ -1605,12 +1605,12 @@ withReexports reach reachChildren visiting summary =
       carried <- carriedNames reachChildren summary items
       let wanted = wantedNames items <> fromCarried carried
       visible <-
-        if null wanted
-          then pure []
-          else
-            traverse
-              (\i -> (,) i <$> fromModule (importModule i))
-              (summaryImports summary)
+        traverse
+          (\i -> (,) i <$> fromModule (importModule i))
+          [ i
+          | i <- summaryImports summary,
+            any (\(qualifier, op) -> supplies Map.empty qualifier op i) wanted
+          ]
       wholeModules <-
         traverse
           (\i -> (,,) i <$> fromModule (importModule i) <*> keptBy i)

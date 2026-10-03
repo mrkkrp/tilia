@@ -383,6 +383,22 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M ((<+>)) where\nimport No.Such.Module\n"
       `shouldReturn` Nothing
 
+  it "is not held up by an unread import under another qualifier" $
+    chased "module M ((Disp.<+>)) where\nimport qualified No.Such.Module as Q\nimport qualified Text.PrettyPrint as Disp\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is not held up by an unread import that is qualified when it is written plainly" $
+    chased "module M ((<+>)) where\nimport qualified No.Such.Module\nimport Text.PrettyPrint\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is not held up by an unread import whose list does not name it" $
+    chased "module M ((<+>)) where\nimport No.Such.Module (first)\nimport Text.PrettyPrint\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is still not answered when an unread import could have supplied it" $
+    chased "module M ((Disp.<+>)) where\nimport qualified No.Such.Module as Disp\nimport qualified Text.PrettyPrint as Disp\n"
+      `shouldReturn` Nothing
+
   it "comes from a type handed on whole, which carries it" $
     chased "module M (Doc (..)) where\nimport Text.PrettyPrint\n"
       `shouldReturn` Just (Fixity LeftAssoc 6)
