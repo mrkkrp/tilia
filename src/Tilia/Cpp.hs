@@ -729,12 +729,42 @@ merge conditionals guards varied = go Broken
     middle layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
       | Just xs <- traverse only ss = go layout xs
+      | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | Just merged <- alongsideHeads layout ss,
         weigh layout merged < weigh layout apart =
           merged
       | otherwise = apart
       where
-        apart = choice (fmap mconcat ss)
+        apart = choice (fmap (mconcat . commaFirst) ss)
+
+    commaFirst = \case
+      x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
+      xs -> xs
+
+    commaLed layout ss = do
+      views <- traverse (ledBy layout) ss
+      let unmoved = [v | v@(_, _, False) <- views]
+      (c, _, _) : _ <- Just (if null unmoved then views else unmoved)
+      if length unmoved < length views && all (\(d, _, _) -> agree varied layout c d) views
+        then Just (c, [r | (_, r, _) <- views])
+        else Nothing
+
+    ledBy layout = \case
+      c@DCppChoice{} : r
+        | everyAlternative (\xs -> take 1 xs == [Doc.comma]) c -> Just (c, r, False)
+      x : DBreak : DCppChoice ws bs e : r
+        | x == Doc.comma,
+          following@(_ : _) <- dropWhile onlySpacing r,
+          everyAlternative (\xs -> fmap snd (unsnoc xs) == Just Doc.comma) (DCppChoice ws bs e) ->
+            Just (Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e), x : DBreak : following, True)
+      _ -> Nothing
+      where
+        everyAlternative p = \case
+          DCppChoice _ bs e -> all (\a -> printsNothing a || p (spineAt layout a)) (e : fmap snd bs)
+          _ -> False
+        led a
+          | printsNothing a = a
+          | otherwise = mconcat (Doc.comma : Doc.space : maybe [] fst (unsnoc (spineAt layout a)))
 
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss
