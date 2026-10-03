@@ -18,18 +18,18 @@ import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Fixity
   ( Direction (..),
+    Established (..),
     Fixities,
     Fixity (..),
-    KnownModules (..),
     Namespace (..),
     OpName (..),
     Provenance (..),
     Reach (..),
     Scope (..),
     inBothNamespaces,
-    noKnownModules,
     operatorsUsed,
     resolveScope,
+    unreadable,
   )
 import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Parser (ParsedModule (..))
@@ -55,7 +55,7 @@ exampleRenderConfig package source parsed =
           )
     }
   where
-    known = noKnownModules{knownFixities = exportsOf}
+    known = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
     underEveryQualifier scope =
       scope
         { scopeInTypes = alsoQualified (scopeInTypes scope),
