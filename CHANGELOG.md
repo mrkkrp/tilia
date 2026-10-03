@@ -134,6 +134,10 @@
   from its source, brings in as settling the name's fixity despite an
   unreadable import, as one read from an interface file already did. [Issue
   84](https://github.com/mrkkrp/tilia/issues/84).
+* Keep a comment apart from a Haddock under it only where it comes out
+  right above one, rather than in every branch of a conditional it is
+  printed in, which a second pass then undid. [Issue
+  82](https://github.com/mrkkrp/tilia/issues/82).
 
 ## Tilia 0.0.2.0
 
