@@ -160,10 +160,17 @@ renderChain ctx = \case
   Operand t -> hsType ctx t
   chain@(Chain (firstOne :| rest) operators) ->
     layoutFrom ctx (chainSpan spanOf chain) $
-      renderChain ctx firstOne <> mconcat (zipWith piece operators rest)
+      renderChain ctx firstOne
+        <> mconcat (zipWith3 piece (firstOne : rest) operators rest)
   where
-    piece op operand =
-      attach Normal (name ctx op <> space <> renderChain ctx operand)
+    piece previous op operand =
+      attachOperator
+        Normal
+        (chainSpan spanOf previous)
+        (spanOf op)
+        (chainSpan spanOf operand)
+        (name ctx op)
+        (renderChain ctx operand)
 
 -- | Gather a nest of applications into a head and its arguments.
 gatherAppArgs ::

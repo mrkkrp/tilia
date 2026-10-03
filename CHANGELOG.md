@@ -96,6 +96,10 @@
   parentheses, rather than fold them together, since alone it also hides
   any data constructor of that name. [PR
   76](https://github.com/mrkkrp/tilia/pull/76).
+* Keep a comment written after an operator at the end of a line with the
+  operand before the operator, rather than move it after the next operand
+  when the operator goes to the start of the next line. [Issue
+  62](https://github.com/mrkkrp/tilia/issues/62).
 
 ## Tilia 0.0.2.0
 

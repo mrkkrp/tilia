@@ -359,7 +359,15 @@ renderExprChain ctx site = \case
                   <> attach
                     (tailPlacement isLast previous operand)
                     (rendered <> rest')
-              else attach placement (hsExpr ctx o <> space <> rendered) <> rest'
+              else
+                attachOperator
+                  placement
+                  (chainSpan spanOf previous)
+                  (spanOf o)
+                  (chainSpan spanOf operand)
+                  (hsExpr ctx o)
+                  rendered
+                  <> rest'
       pieces _ _ _ _ = mempty
       tailPlacement isLast previous operand
         | isLast,
@@ -776,21 +784,23 @@ cmdChain ctx site l op r =
         where
           placement = chainPlacement cmdTopHangs firstOne (NE.last operands)
           laidOut bracing =
-            renderIn bracing firstOne <> pieces bracing operators rest
-          pieces bracing (o : os) (operand : more) =
-            attach
+            renderIn bracing firstOne <> pieces bracing firstOne operators rest
+          pieces bracing previous (o : os) (operand : more) =
+            attachOperator
               placement
-              ( hsExpr ctx o
-                  <> space
-                  <> renderIn
-                    ( if null more
-                        then siteBracing site
-                        else bracing
-                    )
-                    operand
+              (chainSpan spanOf previous)
+              (spanOf o)
+              (chainSpan spanOf operand)
+              (hsExpr ctx o)
+              ( renderIn
+                  ( if null more
+                      then siteBracing site
+                      else bracing
+                  )
+                  operand
               )
-              <> pieces bracing os more
-          pieces _ _ _ = mempty
+              <> pieces bracing operand os more
+          pieces _ _ _ _ = mempty
           renderIn bracing = \case
             Operand c -> at ctx c (cmdTop ctx (withBracing bracing site))
             inner -> render inner
@@ -1095,7 +1105,16 @@ patSynBind ctx PSB{..} =
       layoutFrom
         ctx
         (spanOf l <> spanOf r)
-        (space <> name ctx l <> breakOrSpace <> indent (name ctx psb_id <> space <> name ctx r))
+        ( space
+            <> name ctx l
+            <> attachOperator
+              Normal
+              (spanOf l)
+              (spanOf psb_id)
+              (spanOf r)
+              (name ctx psb_id)
+              (name ctx r)
+        )
         <> indent (definition (spanOf l <> spanOf r))
   where
     argsAfterName rendered isEmpty =

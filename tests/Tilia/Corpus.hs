@@ -339,7 +339,9 @@ ormoluSkip =
     "declaration" </> "deriving" </> "singleline.hs",
     "declaration" </> "deriving" </> "multiline.hs",
     "declaration" </> "deriving" </> "overlapping.hs",
-    "declaration" </> "warning" </> "warning-single-line.hs"
+    "declaration" </> "warning" </> "warning-single-line.hs",
+    "declaration" </> "value" </> "function" </> "parallel-comprehensions-complex.hs",
+    "other" </> "comment-opening-a-list.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

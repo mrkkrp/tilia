@@ -94,7 +94,7 @@ formatted       11f05a0591fc  Agda-2.8.0/src/full/Agda/Interaction/Output.hs
 formatted       423a5d917fd6  Agda-2.8.0/src/full/Agda/Interaction/Response.hs
 formatted       cfbad8bc01b8  Agda-2.8.0/src/full/Agda/Interaction/Response/Base.hs
 formatted       150002ef2df6  Agda-2.8.0/src/full/Agda/Interaction/SearchAbout.hs
-partly-checked  f6a39fc8a6f5  Agda-2.8.0/src/full/Agda/Main.hs
+partly-checked  2addb7a5a449  Agda-2.8.0/src/full/Agda/Main.hs
 formatted       089cf0cbdae7  Agda-2.8.0/src/full/Agda/Mimer/Mimer.hs
 formatted       43b9c484bd7b  Agda-2.8.0/src/full/Agda/Mimer/Options.hs
 formatted       d31e480d5b64  Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
@@ -163,7 +163,7 @@ formatted       074a6f85bb7d  Agda-2.8.0/src/full/Agda/Syntax/Scope/Monad.hs
 formatted       d3a3db0834c5  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName.hs
 formatted       f40939e29708  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName/Boot.hs
 formatted       186389ffe3cc  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
-formatted       626963f95f9f  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
+formatted       a7d8c4391a4f  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
 formatted       5a2ce5ab4c13  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       8c2de5355091  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
 formatted       1833fe43bc3a  Agda-2.8.0/src/full/Agda/Syntax/Treeless.hs
@@ -192,7 +192,7 @@ broken          1d46dc5f6f5c  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.h
 formatted       cc3a6f5cf005  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       8bb452c258d1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
 formatted       5078fcc899f4  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
-formatted       494defadf31e  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Cubical.hs
+formatted       5d7955ebba8b  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Cubical.hs
 formatted       a5d8271fb8c7  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Match.hs
 formatted       66752ed436cd  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/SplitClause.hs
 formatted       50e4c607d3c4  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/SplitTree.hs
@@ -230,7 +230,7 @@ formatted       43902630fee9  Agda-2.8.0/src/full/Agda/TypeChecking/Level/Solve.
 formatted       ae0893a4561e  Agda-2.8.0/src/full/Agda/TypeChecking/LevelConstraints.hs
 formatted       f1d52a2a57f4  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs
 formatted       00b8f5e75aa7  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs-boot
-formatted       4d6c3253493c  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs
+formatted       8818ac23db6e  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs
 formatted       52101179c5b2  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs-boot
 formatted       d45b97295243  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Mention.hs
 formatted       402d1f890cfc  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Occurs.hs
@@ -253,7 +253,7 @@ formatted       ab2c039addc8  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Env.hs
 formatted       46512cb4f780  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Imports.hs
 formatted       de8d601fd794  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/MetaVars.hs
 formatted       894d39f81e58  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/MetaVars.hs-boot
-formatted       b783b82e5721  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Modality.hs
+formatted       57b8aff312f6  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Modality.hs
 formatted       bbf8f13a117e  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Mutual.hs
 formatted       8fe6e5c381d6  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Open.hs
 formatted       dbde98a0370f  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Options.hs
@@ -293,7 +293,7 @@ formatted       2ea530f280a4  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cu
 formatted       34da472277ef  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs-boot
 formatted       caff936ed890  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Glue.hs
 formatted       3a30d149c7d5  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/HCompU.hs
-formatted       78197ae078a9  Agda-2.8.0/src/full/Agda/TypeChecking/ProjectionLike.hs
+formatted       edb25c7435c2  Agda-2.8.0/src/full/Agda/TypeChecking/ProjectionLike.hs
 formatted       21d019305ce5  Agda-2.8.0/src/full/Agda/TypeChecking/ProjectionLike.hs-boot
 formatted       2505bf50d757  Agda-2.8.0/src/full/Agda/TypeChecking/Quote.hs
 formatted       134651a3168e  Agda-2.8.0/src/full/Agda/TypeChecking/ReconstructParameters.hs
@@ -320,7 +320,7 @@ formatted       1f8fe493c19f  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Data.h
 formatted       89ea7a6db701  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Data.hs-boot
 formatted       8ca53478922f  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Decl.hs
 formatted       c3dda6e649e5  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Decl.hs-boot
-formatted       65e84b8c3d9a  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Def.hs
+formatted       332423935617  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Def.hs
 formatted       aa2e722e924d  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Def.hs-boot
 formatted       fed954351c6b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Display.hs
 formatted       fdb1bc3c865f  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS.hs
@@ -358,7 +358,7 @@ formatted       d94c0d202dfc  Agda-2.8.0/src/full/Agda/TypeChecking/Telescope.hs
 formatted       687ac4667b88  Agda-2.8.0/src/full/Agda/TypeChecking/Telescope/Path.hs
 formatted       d927a41c56d4  Agda-2.8.0/src/full/Agda/TypeChecking/Unquote.hs
 formatted       80d32d18ead5  Agda-2.8.0/src/full/Agda/TypeChecking/Warnings.hs
-formatted       1e8984d31ba8  Agda-2.8.0/src/full/Agda/TypeChecking/With.hs
+formatted       ea895edbcd4e  Agda-2.8.0/src/full/Agda/TypeChecking/With.hs
 formatted       b02f16e6d20a  Agda-2.8.0/src/full/Agda/Utils/AffineHole.hs
 formatted       ae5ced9ae20f  Agda-2.8.0/src/full/Agda/Utils/Applicative.hs
 formatted       7fe48d6127fe  Agda-2.8.0/src/full/Agda/Utils/AssocList.hs
@@ -478,7 +478,7 @@ formatted       d248979763fb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Random.hs
 formatted       67a6c49f2d76  QuickCheck-2.18.0.0/src/Test/QuickCheck/State.hs
 formatted       3bad70f5b189  QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs
 formatted       fc335cb1eb17  QuickCheck-2.18.0.0/src/Test/QuickCheck/Text.hs
-formatted       9ca8d4e83360  QuickCheck-2.18.0.0/tests/CollectDataTypes.hs
+formatted       05783cdc0cb6  QuickCheck-2.18.0.0/tests/CollectDataTypes.hs
 formatted       da3fb75adccf  QuickCheck-2.18.0.0/tests/DiscardRatio.hs
 formatted       5408e5e13bd3  QuickCheck-2.18.0.0/tests/GCoArbitraryExample.hs
 formatted       8dd012261272  QuickCheck-2.18.0.0/tests/GShrinkExample.hs
@@ -487,7 +487,7 @@ formatted       057887c409bc  QuickCheck-2.18.0.0/tests/Misc.hs
 formatted       414efdc48918  QuickCheck-2.18.0.0/tests/MonadFix.hs
 formatted       85ad2d1decbe  QuickCheck-2.18.0.0/tests/Monoids.hs
 formatted       eae30fa51b1b  QuickCheck-2.18.0.0/tests/RunCollectDataTypes.hs
-formatted       d798509570fa  QuickCheck-2.18.0.0/tests/Split.hs
+formatted       6cff09f61b57  QuickCheck-2.18.0.0/tests/Split.hs
 formatted       da1fe583377c  QuickCheck-2.18.0.0/tests/Strictness.hs
 formatted       5b211214c287  QuickCheck-2.18.0.0/tests/Terminal.hs
 formatted       398a0f17171d  QuickCheck-2.18.0.0/tests/WithProgress.hs
@@ -2304,7 +2304,7 @@ formatted       228c88ef0843  hashable-1.5.1.0/src/Data/Hashable/Mix.hs
 formatted       bd7108c77ca4  hashable-1.5.1.0/src/Data/Hashable/XXH3.hs
 formatted       f74f5b618f9a  hashable-1.5.1.0/tests/Main.hs
 formatted       dbb3871c33e7  hashable-1.5.1.0/tests/Properties.hs
-broken          42af08530ac7  hashable-1.5.1.0/tests/Regress.hs
+formatted       aa65b20321d6  hashable-1.5.1.0/tests/Regress.hs
 formatted       468c72120829  hashable-1.5.1.0/tests/xxhash-tests.hs
 formatted       867a035875ee  haxl-2.5.1.1/Haxl/Core.hs
 formatted       d1219c0fe211  haxl-2.5.1.1/Haxl/Core/CallGraph.hs
@@ -2394,16 +2394,16 @@ formatted       691e6596c068  hledger-1.52.1/Hledger/Cli.hs
 formatted       367c43f7a331  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       8da9d899b517  hledger-1.52.1/Hledger/Cli/Anon.hs
 formatted       4ff2914ca588  hledger-1.52.1/Hledger/Cli/CliOptions.hs
-formatted       9a8576f9b568  hledger-1.52.1/Hledger/Cli/Commands.hs
-formatted       2b1dfb85dfe1  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
+formatted       469b9884c35e  hledger-1.52.1/Hledger/Cli/Commands.hs
+formatted       982029c1f001  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       17bf0339577c  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
-formatted       c68caf7ae7ab  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
+formatted       cfc272af01c3  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
 formatted       8bc565ccfdc9  hledger-1.52.1/Hledger/Cli/Commands/Aregister.hs
 formatted       23d3572ab1c4  hledger-1.52.1/Hledger/Cli/Commands/Balance.hs
 formatted       df62b41123dc  hledger-1.52.1/Hledger/Cli/Commands/Balancesheet.hs
 formatted       2a8714e55f40  hledger-1.52.1/Hledger/Cli/Commands/Balancesheetequity.hs
 formatted       a74be8a824e5  hledger-1.52.1/Hledger/Cli/Commands/Cashflow.hs
-formatted       3d46f3fa2141  hledger-1.52.1/Hledger/Cli/Commands/Check.hs
+formatted       2c855507bd74  hledger-1.52.1/Hledger/Cli/Commands/Check.hs
 formatted       d72408ffa321  hledger-1.52.1/Hledger/Cli/Commands/Close.hs
 formatted       e9c489e0f01e  hledger-1.52.1/Hledger/Cli/Commands/Codes.hs
 formatted       075784a0845d  hledger-1.52.1/Hledger/Cli/Commands/Commodities.hs
@@ -2426,7 +2426,7 @@ formatted       518388ac79ba  hledger-1.52.1/Hledger/Cli/Commands/Setup.hs
 formatted       72882e775cf1  hledger-1.52.1/Hledger/Cli/Commands/Stats.hs
 formatted       c0d493d6d059  hledger-1.52.1/Hledger/Cli/Commands/Tags.hs
 formatted       8ca30544dcfc  hledger-1.52.1/Hledger/Cli/CompoundBalanceCommand.hs
-formatted       b20a3db0f839  hledger-1.52.1/Hledger/Cli/Conf.hs
+formatted       43740b54b9ea  hledger-1.52.1/Hledger/Cli/Conf.hs
 formatted       261d1d375816  hledger-1.52.1/Hledger/Cli/DocFiles.hs
 formatted       e2b8c81fe6ee  hledger-1.52.1/Hledger/Cli/Script.hs
 formatted       3977570cbdad  hledger-1.52.1/Hledger/Cli/Utils.hs
@@ -2468,7 +2468,7 @@ formatted       92b62ac403c1  hlint-3.10/src/Hint/Bracket.hs
 formatted       e0953eb3c567  hlint-3.10/src/Hint/Comment.hs
 formatted       4a34094f4e91  hlint-3.10/src/Hint/Duplicate.hs
 formatted       63510e8bd4a6  hlint-3.10/src/Hint/Export.hs
-formatted       c3f23d24fb11  hlint-3.10/src/Hint/Extensions.hs
+formatted       7bef350e46fd  hlint-3.10/src/Hint/Extensions.hs
 formatted       8499a9dafb7a  hlint-3.10/src/Hint/Fixities.hs
 formatted       8fffda41f5e4  hlint-3.10/src/Hint/Import.hs
 formatted       e2ae13afdd01  hlint-3.10/src/Hint/Lambda.hs
@@ -2683,7 +2683,7 @@ formatted       e884d58256bb  idris-1.3.4/src/Idris/Coverage.hs
 formatted       61677e52356c  idris-1.3.4/src/Idris/DSL.hs
 formatted       04b448aefa16  idris-1.3.4/src/Idris/DataOpts.hs
 formatted       591136fc0c25  idris-1.3.4/src/Idris/DeepSeq.hs
-formatted       5f5aff7f4f6d  idris-1.3.4/src/Idris/Delaborate.hs
+formatted       f91680f1520f  idris-1.3.4/src/Idris/Delaborate.hs
 formatted       c0a210b99952  idris-1.3.4/src/Idris/Directives.hs
 formatted       3d3d5a0afe4c  idris-1.3.4/src/Idris/Docs.hs
 formatted       a485f5642886  idris-1.3.4/src/Idris/Docstrings.hs
@@ -3042,7 +3042,7 @@ formatted       0798d787f37f  pandoc-3.10.2/src/Text/Pandoc/CSS.hs
 formatted       eb9916b55f28  pandoc-3.10.2/src/Text/Pandoc/CSV.hs
 formatted       425285a86e63  pandoc-3.10.2/src/Text/Pandoc/Char.hs
 formatted       829d97307b71  pandoc-3.10.2/src/Text/Pandoc/Chunks.hs
-formatted       78112fbbaa4f  pandoc-3.10.2/src/Text/Pandoc/Citeproc.hs
+formatted       19d351a86f00  pandoc-3.10.2/src/Text/Pandoc/Citeproc.hs
 formatted       73b49670ac75  pandoc-3.10.2/src/Text/Pandoc/Citeproc/BibTeX.hs
 formatted       f4a7c604316e  pandoc-3.10.2/src/Text/Pandoc/Citeproc/CslJson.hs
 formatted       a47804651b9d  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Data.hs
@@ -3080,7 +3080,7 @@ formatted       78249fa68c58  pandoc-3.10.2/src/Text/Pandoc/Parsing/Citations.hs
 formatted       50b13251d11e  pandoc-3.10.2/src/Text/Pandoc/Parsing/Future.hs
 formatted       6936706c303e  pandoc-3.10.2/src/Text/Pandoc/Parsing/General.hs
 formatted       ebf243a003b2  pandoc-3.10.2/src/Text/Pandoc/Parsing/GridTable.hs
-formatted       6ae9fc28f92d  pandoc-3.10.2/src/Text/Pandoc/Parsing/Lists.hs
+formatted       ae35c28522cd  pandoc-3.10.2/src/Text/Pandoc/Parsing/Lists.hs
 formatted       01f46171ab05  pandoc-3.10.2/src/Text/Pandoc/Parsing/Math.hs
 formatted       fad3834b08e5  pandoc-3.10.2/src/Text/Pandoc/Parsing/Smart.hs
 formatted       96971d0301f6  pandoc-3.10.2/src/Text/Pandoc/Parsing/State.hs
@@ -3098,11 +3098,11 @@ formatted       fbd149ee0503  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx.hs
 formatted       fc9009e1ca7b  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Combine.hs
 formatted       2d1f14f169d4  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Fields.hs
 formatted       1182acf4b772  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Lists.hs
-formatted       33062d5907a1  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Parse.hs
+formatted       4353898d0fd2  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Parse.hs
 formatted       cdafbece822b  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Parse/Styles.hs
 formatted       59a529967b45  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Symbols.hs
 formatted       5ca3b138e6d7  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Util.hs
-formatted       646ac8cb5cfc  pandoc-3.10.2/src/Text/Pandoc/Readers/DokuWiki.hs
+formatted       ad24860bbd96  pandoc-3.10.2/src/Text/Pandoc/Readers/DokuWiki.hs
 formatted       84bb8bb4469c  pandoc-3.10.2/src/Text/Pandoc/Readers/EPUB.hs
 formatted       f3a6089222df  pandoc-3.10.2/src/Text/Pandoc/Readers/EndNote.hs
 formatted       14038d82e889  pandoc-3.10.2/src/Text/Pandoc/Readers/FB2.hs
@@ -3165,7 +3165,7 @@ formatted       06b32e0a02bb  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Shapes.
 formatted       68136f2cd896  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Slides.hs
 formatted       2a1143e52057  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/SmartArt.hs
 formatted       57c12a897562  pandoc-3.10.2/src/Text/Pandoc/Readers/RIS.hs
-formatted       c533a0d22bb6  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
+formatted       b358505df13e  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
 formatted       e222e84bebc7  pandoc-3.10.2/src/Text/Pandoc/Readers/RTF.hs
 formatted       9bae09e648f9  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff.hs
 formatted       51df41061f92  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff/Escape.hs
@@ -3211,12 +3211,12 @@ formatted       d9b0707d098c  pandoc-3.10.2/src/Text/Pandoc/Writers/CslJson.hs
 formatted       225f5fe7008c  pandoc-3.10.2/src/Text/Pandoc/Writers/Djot.hs
 formatted       f33c2046ecde  pandoc-3.10.2/src/Text/Pandoc/Writers/DocBook.hs
 formatted       7bf8f7c3beff  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx.hs
-formatted       08e3ddf08ad6  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
+formatted       c79e55b3d979  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
 formatted       47c7fc1f3217  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/StyleMap.hs
 formatted       9366da9eb866  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Table.hs
 formatted       a7b1f18b1b94  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Types.hs
 formatted       fc05af348123  pandoc-3.10.2/src/Text/Pandoc/Writers/DokuWiki.hs
-formatted       9912d53d0231  pandoc-3.10.2/src/Text/Pandoc/Writers/EPUB.hs
+formatted       c42b68e71962  pandoc-3.10.2/src/Text/Pandoc/Writers/EPUB.hs
 formatted       18a7003d6454  pandoc-3.10.2/src/Text/Pandoc/Writers/FB2.hs
 formatted       c4b4f9d5a6e4  pandoc-3.10.2/src/Text/Pandoc/Writers/GridTable.hs
 formatted       9d5caf505673  pandoc-3.10.2/src/Text/Pandoc/Writers/HTML.hs
@@ -3228,7 +3228,7 @@ formatted       4a683f5d9700  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Referen
 formatted       e7a9cf0c0644  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Table.hs
 formatted       3aae3967440a  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Types.hs
 formatted       9cd811748938  pandoc-3.10.2/src/Text/Pandoc/Writers/Jira.hs
-formatted       2736c4a68c2a  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX.hs
+formatted       fee4ee5df0f1  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX.hs
 formatted       cafc5a3796df  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Caption.hs
 formatted       e809a90650c6  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Citation.hs
 formatted       e89e979a29e1  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Lang.hs
@@ -3237,13 +3237,13 @@ formatted       549c44bdd262  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Table.
 formatted       a4eb629d0029  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Types.hs
 formatted       62321b6f0ef0  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Util.hs
 formatted       85fcfddb12db  pandoc-3.10.2/src/Text/Pandoc/Writers/Man.hs
-formatted       e7926f029264  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown.hs
+formatted       25ede011f47d  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown.hs
 formatted       a6c79d7a5251  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Inline.hs
 formatted       c57101b9ec66  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Table.hs
 formatted       02c7eb593d88  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Types.hs
 formatted       3d9d722a4e7e  pandoc-3.10.2/src/Text/Pandoc/Writers/Math.hs
 formatted       aa965fb1df0e  pandoc-3.10.2/src/Text/Pandoc/Writers/MediaWiki.hs
-formatted       30e82db907e2  pandoc-3.10.2/src/Text/Pandoc/Writers/Ms.hs
+formatted       58e5ae41dc82  pandoc-3.10.2/src/Text/Pandoc/Writers/Ms.hs
 formatted       80ea597c2f04  pandoc-3.10.2/src/Text/Pandoc/Writers/Muse.hs
 formatted       4acde5355993  pandoc-3.10.2/src/Text/Pandoc/Writers/Native.hs
 formatted       1364fe58b369  pandoc-3.10.2/src/Text/Pandoc/Writers/ODT.hs
@@ -3275,7 +3275,7 @@ formatted       08a6d3f3d84f  pandoc-3.10.2/test/Tests/MediaBag.hs
 formatted       58f15e3f067a  pandoc-3.10.2/test/Tests/Old.hs
 formatted       333649c94dd9  pandoc-3.10.2/test/Tests/Readers/Creole.hs
 formatted       c5655e1aeeef  pandoc-3.10.2/test/Tests/Readers/Docx.hs
-formatted       bee6f3e148cf  pandoc-3.10.2/test/Tests/Readers/DokuWiki.hs
+formatted       35e25d7a6148  pandoc-3.10.2/test/Tests/Readers/DokuWiki.hs
 formatted       150d1390d716  pandoc-3.10.2/test/Tests/Readers/EPUB.hs
 formatted       0d2db3fa6504  pandoc-3.10.2/test/Tests/Readers/FB2.hs
 formatted       155489214643  pandoc-3.10.2/test/Tests/Readers/HTML.hs
@@ -3328,7 +3328,7 @@ formatted       123f7ce6880c  pandoc-3.10.2/test/Tests/Writers/OOXML.hs
 formatted       3033600cbe42  pandoc-3.10.2/test/Tests/Writers/Org.hs
 formatted       0e4b414e2dea  pandoc-3.10.2/test/Tests/Writers/Plain.hs
 formatted       1b5be67cf1c4  pandoc-3.10.2/test/Tests/Writers/Powerpoint.hs
-formatted       05aa845f56f2  pandoc-3.10.2/test/Tests/Writers/RST.hs
+formatted       318e86041158  pandoc-3.10.2/test/Tests/Writers/RST.hs
 formatted       7f7f9e6de407  pandoc-3.10.2/test/Tests/Writers/TEI.hs
 formatted       9286c785c97e  pandoc-3.10.2/test/Tests/Writers/Txt2Tags.hs
 formatted       14edd0465124  pandoc-3.10.2/test/Tests/XML.hs
@@ -3501,7 +3501,7 @@ formatted       9ac8d5c64df2  postgrest-9.0.1/src/PostgREST/Query/SqlFragment.hs
 formatted       5f4cbf20b7f3  postgrest-9.0.1/src/PostgREST/Query/Statements.hs
 formatted       7d83276a4311  postgrest-9.0.1/src/PostgREST/RangeQuery.hs
 formatted       4cecd3055b78  postgrest-9.0.1/src/PostgREST/Request/ApiRequest.hs
-formatted       de23350d6744  postgrest-9.0.1/src/PostgREST/Request/DbRequestBuilder.hs
+formatted       ada16e51401b  postgrest-9.0.1/src/PostgREST/Request/DbRequestBuilder.hs
 formatted       fc3632173741  postgrest-9.0.1/src/PostgREST/Request/Parsers.hs
 formatted       8e710c5836da  postgrest-9.0.1/src/PostgREST/Request/Preferences.hs
 formatted       1353ba00b6c3  postgrest-9.0.1/src/PostgREST/Request/Types.hs

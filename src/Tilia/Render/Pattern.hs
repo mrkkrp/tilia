@@ -124,8 +124,7 @@ conPattern ctx bracing inAsPat here con = \case
   InfixCon l r ->
     layoutFrom ctx (spanOf l <> spanOf r) $
       recur l
-        <> breakOrSpace
-        <> indent (name ctx con <> space <> recur r)
+        <> attachOperator Normal (spanOf l) (spanOf con) (spanOf r) (name ctx con) (recur r)
   where
     recur = hsPatIn ctx bracing inAsPat
     field = either wildcard (at_ ctx (patFieldBind ctx))
