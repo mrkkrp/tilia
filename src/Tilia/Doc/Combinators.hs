@@ -26,6 +26,7 @@ module Tilia.Doc.Combinators
     broken,
     variant,
     located,
+    unclaimed,
     fence,
     cppChoice,
 
@@ -79,6 +80,7 @@ import Tilia.Doc.Internal
     LineStart (..),
     TrailingWhitespace (..),
     groupLayout,
+    mapChildren,
     printsNothing,
   )
 import Tilia.Span (Span)
@@ -173,6 +175,12 @@ variant = DVariant
 -- piece of the document corresponds to.
 located :: Span -> Doc -> Doc
 located = DLocated
+
+-- | The same document, with no region in it for a comment to attach to.
+unclaimed :: Doc -> Doc
+unclaimed = \case
+  DLocated _ d -> unclaimed d
+  d -> mapChildren unclaimed d
 
 -- | Fence prevents comments inside from floating out and attaching to
 -- elements they are not supposed to attach to.

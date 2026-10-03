@@ -31,6 +31,7 @@ module Tilia.Render.Context
     layoutFrom,
     layoutWithin,
     layoutAcross,
+    attachOperator,
     insideBrackets,
 
     -- * Haddocks
@@ -288,6 +289,30 @@ layoutWithin ctx whole contents d
 -- | 'layoutFrom' over the region several located things cover.
 layoutAcross :: (HasLoc l) => Ctx -> [GenLocated l a] -> Doc -> Doc
 layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
+
+-- | 'attach' an operator and its operand, leaving the operator's region at
+-- the end of the line when it was written there, so that the comments
+-- written around it stay on that line.
+attachOperator ::
+  Placement ->
+  -- | What the operator follows.
+  Maybe Span ->
+  -- | The operator.
+  Maybe Span ->
+  -- | Its operand.
+  Maybe Span ->
+  -- | The operator, printed.
+  Doc ->
+  -- | Its operand, printed.
+  Doc ->
+  Doc
+attachOperator placement before here after op operand = case here of
+  Just s
+    | placement == Normal,
+      sameLine before here,
+      not (sameLine here after) ->
+        indent (located s mempty) <> attach Normal (unclaimed op <> space <> operand)
+  _ -> attach placement (op <> space <> operand)
 
 -- | Give the inside of a bracketed construct an anchor at its far end.
 insideBrackets :: Maybe Span -> Doc -> Doc
