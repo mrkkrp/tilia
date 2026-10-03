@@ -19,6 +19,7 @@ import Test.Hspec
 import Tilia.Cpp (blankCpp, branchLeaves)
 import Tilia.Fixity
 import Tilia.Parser
+import Tilia.Span (spanStartColumn, spanStartLine)
 
 spec :: Spec
 spec = do
@@ -263,6 +264,71 @@ spec = do
     it "lets a file be formatted that uses what it defines itself" $
       unknownOperators (fullScope definesItsOwn) (pure (pmGathered (parsed definesItsOwn)))
         `shouldBe` []
+
+  describe "a use a local binding captures" $ do
+    it "is captured by a function its equation binds under where" $
+      capturedIn "f = 1 `roundTo` 2\n  where\n    a `roundTo` b = a * b\n"
+        `shouldBe` [((1, 7), defaultFixity)]
+
+    it "takes the fixity the binding's group declares" $
+      capturedIn "f = 1 <+> 2 <+> 3\n  where\n    infixr 5 <+>\n    a <+> b = a * b\n"
+        `shouldBe` [((1, 7), Fixity RightAssoc 5), ((1, 13), Fixity RightAssoc 5)]
+
+    it "is captured by what a let binds" $
+      capturedIn "f = let a <+> b = a * b in 1 <+> 2\n"
+        `shouldBe` [((1, 30), defaultFixity)]
+
+    it "is captured by an argument of the equation" $
+      capturedIn "f op = 1 `op` 2\n"
+        `shouldBe` [((1, 10), defaultFixity)]
+
+    it "is captured by an argument of a lambda" $
+      capturedIn "f = \\op -> 1 `op` 2\n"
+        `shouldBe` [((1, 14), defaultFixity)]
+
+    it "is captured by the pattern of a case alternative" $
+      capturedIn "f x = case x of\n  Just op -> 1 `op` 2\n"
+        `shouldBe` [((2, 16), defaultFixity)]
+
+    it "is captured by a pattern guard before it" $
+      capturedIn "f x\n  | Just op <- x = 1 `op` 2\n"
+        `shouldBe` [((2, 22), defaultFixity)]
+
+    it "is captured by a bind earlier in a do block" $
+      capturedIn "f = do\n  op <- get\n  pure (1 `op` 2)\n"
+        `shouldBe` [((3, 11), defaultFixity)]
+
+    it "is captured by a bind in a comprehension, before it as written" $
+      capturedIn "f xs = [1 `op` 2 | op <- xs]\n"
+        `shouldBe` [((1, 11), defaultFixity)]
+
+    it "is not captured by a bind later in a do block" $
+      capturedIn "f = do\n  x <- pure (1 `op` 2)\n  op <- get\n  pure x\n"
+        `shouldBe` []
+
+    it "is not captured outside the equation that binds it" $
+      capturedIn "f = 1 `op` 2\ng = x\n  where\n    op = (+)\n"
+        `shouldBe` []
+
+    it "is not captured by a function the module defines at its top level" $
+      capturedIn "f = 1 `op` 2\nop = (+)\n"
+        `shouldBe` []
+
+    it "is not captured by a method an instance defines" $
+      capturedIn "instance Semigroup T where\n  a <> b = a\nf = a <> b\n"
+        `shouldBe` []
+
+    it "is not captured where bindings of different fixities could each capture it" $
+      capturedIn "f op = let infixr 5 `op`\n           a `op` b = a in 1 `op` 2\n"
+        `shouldBe` []
+
+    it "lets a file be formatted that uses it alongside an unread import" $
+      unsettledIn "module M where\nimport Opaque\nf = 1 `roundTo` 2\n  where\n    a `roundTo` b = a\n"
+        `shouldBe` []
+
+    it "is still held against the unread import where nothing binds it" $
+      fmap fst (unsettledIn "module M where\nimport Opaque\nf = 1 `roundTo` 2\n")
+        `shouldBe` [(Nothing, OpName "roundTo")]
 
   describe "what a name carries with it" $ do
     it "takes a type's constructors" $
@@ -720,6 +786,14 @@ scopeKnowing said =
     . parsed
   where
     exportNamesOf m = Set.fromList . fmap OpName <$> lookup m said
+
+-- | The uses of an operator a local binding captures in a module made of
+-- these declarations, by where each operator starts.
+capturedIn :: Text -> [((Int, Int), Fixity)]
+capturedIn decls =
+  [ ((spanStartLine s - 1, spanStartColumn s), fixity)
+  | (s, fixity) <- Map.toList (capturedUses (pmGathered (parsed ("module M where\n" <> decls))))
+  ]
 
 -- | What each name a module declares carries with it, in a settled order.
 childrenIn :: Text -> [(OpName, [OpName])]

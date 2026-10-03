@@ -3393,7 +3393,7 @@ formatted       ab8743cef9ef  persistent-2.18.1.0/Database/Persist/FieldDef/Inte
 formatted       62ee350971e4  persistent-2.18.1.0/Database/Persist/ImplicitIdDef.hs
 formatted       23219cfb95d9  persistent-2.18.1.0/Database/Persist/ImplicitIdDef/Internal.hs
 formatted       03da4b4e1d1b  persistent-2.18.1.0/Database/Persist/Names.hs
-formatted       67c816fd5b28  persistent-2.18.1.0/Database/Persist/PersistValue.hs
+formatted       bffc2993298b  persistent-2.18.1.0/Database/Persist/PersistValue.hs
 formatted       3b8981721873  persistent-2.18.1.0/Database/Persist/Quasi.hs
 formatted       8181443f0a2e  persistent-2.18.1.0/Database/Persist/Quasi/Internal.hs
 formatted       46a99c7ced31  persistent-2.18.1.0/Database/Persist/Quasi/Internal/ModelParser.hs

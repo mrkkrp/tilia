@@ -164,6 +164,30 @@ spec = do
                      "    * d"
                    ]
 
+    it "takes an operator's fixity from the local binding that captures it" $
+      formatWith
+        (Just arithmetic)
+        [ "module M where",
+          "",
+          "f =",
+          "  a * b",
+          "    + c * d",
+          "  where",
+          "    infixl 8 +",
+          "    x + y = x"
+        ]
+        `shouldBe` [ "module M where",
+                     "",
+                     "f =",
+                     "  a",
+                     "    * b",
+                     "      + c",
+                     "    * d",
+                     "  where",
+                     "    infixl 8 +",
+                     "    x + y = x"
+                   ]
+
     it "lets a separator hand a block to what precedes it" $
       formatWith
         (Just arithmetic)

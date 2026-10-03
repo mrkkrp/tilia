@@ -121,6 +121,9 @@
   line of its own, and keep several such conditionals in a row apart as
   written rather than nest them and repeat the items of one in both
   branches of the other. [Issue 69](https://github.com/mrkkrp/tilia/issues/69).
+* Give an operator a local binding captures the fixity its binding group
+  declares, or `infixl 9`, rather than that of an import of the same name.
+  [Issue 67](https://github.com/mrkkrp/tilia/issues/67).
 
 ## Tilia 0.0.2.0
 
