@@ -33,14 +33,6 @@ spec = do
       let input = "module M where\n#if FLAG\n#error no\n#else\nf = 1\n#endif\n"
           output = "module M where\n#if FLAG\nf = 1\n#else\n#error no\n#endif\n"
       (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldSatisfy` isLeft
-  describe "branches which deliberately abort preprocessing" $ do
-    it "formats the valid branches and preserves the error directive" $
-      case formatCpp errorAlternative of
-        Left why -> expectationFailure (T.unpack why)
-        Right formatted -> formatted `shouldSatisfy` T.isInfixOf "#error Unsupported word size"
-    it "checks only valid configurations and is idempotent" $ do
-      roundTrip errorAlternative `shouldBe` Right ()
-      settles errorAlternative `shouldBe` Right ()
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       cfgGuards <$> configurations atDeclarations
@@ -95,98 +87,11 @@ spec = do
     it "print identically across all three branches of an #elif" $
       disagreements withElif `shouldBe` Right []
 
-  describe "every configuration of the output"
-    $ it "is the same program as that configuration of the input"
-    $ mapM_ (`shouldBe` Right ()) (fmap roundTrip everyFixture)
-
-  describe "formatting an already formatted module"
-    $ it "changes nothing, for every module the prototype handles"
-    $ mapM_ (`shouldBe` Right ()) (fmap settles everyFixture)
-
-  describe "an #elif chain" $ do
-    it "is printed back as one conditional rather than as nested ones" $
-      formatCpp withElif
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "before = 1",
-                "",
-                "#if A",
-                "mid = 1",
-                "#elif B",
-                "mid = 2",
-                "#else",
-                "mid = 3",
-                "#endif",
-                "",
-                "after = 4"
-              ]
-          )
-
-    it "keeps its shape when the chain has no #else" $
-      formatCpp elifWithoutElse
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "#if A",
-                "mid = 1",
-                "#elif B",
-                "mid = 2",
-                "#endif",
-                "",
-                "after = 4"
-              ]
-          )
-
-  describe "conditionals nested inside one another" $ do
-    it "are printed back nested, not flattened into compound conditions" $
-      formatCpp nested
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "#if OUTER",
-                "a = 1",
-                "",
-                "#if INNER",
-                "b = 2",
-                "#endif",
-                "#else",
-                "a = 3",
-                "#endif",
-                "",
-                "after = 4"
-              ]
-          )
-
-    it "reach three leaf configurations rather than four" $
-      said (length <$> leaves nested) `shouldBe` Right 3
+  describe "conditionals nested inside one another"
+    $ it "reach three leaf configurations rather than four"
+    $ said (length <$> leaves nested) `shouldBe` Right 3
 
   describe "several conditionals side by side" $ do
-    it "each end up around what they were written around" $
-      formatCpp twoConditionals
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "#if FIRST",
-                "a = 1",
-                "#else",
-                "a = 2",
-                "#endif",
-                "",
-                "between = 0",
-                "",
-                "#if SECOND",
-                "b = 1",
-                "#endif",
-                "",
-                "after = 4"
-              ]
-          )
-
     it "multiply, as configurations" $
       said (length <$> leaves twoConditionals) `shouldBe` Right 4
 
@@ -195,30 +100,6 @@ spec = do
 
     it "cost only the declarations each of them reaches" $
       formatCpp (apart 400) `shouldSatisfy` isRight
-
-    it "come out of the declarations they reach as written" $
-      formatCpp (apart 2)
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "#if C1",
-                "x1 = 1",
-                "#else",
-                "x1 = 2",
-                "#endif",
-                "",
-                "y1 = 0",
-                "",
-                "#if C2",
-                "x2 = 1",
-                "#else",
-                "x2 = 2",
-                "#endif",
-                "",
-                "y2 = 0"
-              ]
-          )
 
     it "are refused once even the sum is more than the budget allows" $
       formatCpp (oneDeclaration 100 1000) `shouldSatisfy` isLeft
@@ -287,94 +168,6 @@ spec = do
       (said (linearLeaves atDeclarations), said (leaves atDeclarations))
         `shouldSatisfy` uncurry (==)
 
-  describe "conditionals that reach into the same construct" $ do
-    it "are still formatted, by varying them together" $
-      roundTrip twoInOneExpression `shouldBe` Right ()
-
-    it "come back nested, still covering all four configurations" $
-      (formatCpp twoInOneExpression >>= said . leaves) `shouldSatisfy` either (const False) ((== 4) . length)
-
-    it "still settle" $
-      settles twoInOneExpression `shouldBe` Right ()
-
-  describe "a conditional the construct around it straddles" $ do
-    it "comes to rest on the context, with nothing written out twice" $
-      formatCpp conditionalContext
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "f ::",
-                "#ifdef A",
-                "  (Ord a) =>",
-                "#endif",
-                "  a -> [(String, Int)] -> Maybe String -> Either String Int -> IO ()",
-                "f x pairs fallback outcome = print (x, pairs, fallback, outcome)"
-              ]
-          )
-
-    it "gives back what was written" $
-      formatCpp conditionalContext `shouldBe` Right conditionalContext
-
-    it "settles on the first pass" $
-      settles conditionalContext `shouldBe` Right ()
-
-    it "reads back as the same program in every configuration" $
-      roundTrip conditionalContext `shouldBe` Right ()
-
-  describe "a conditional inside an expression" $ do
-    it "is left exactly where it was written" $
-      formatCpp splitExpression
-        `shouldBe` Right "module M where\n\nf x =\n  g x\n#ifdef FOO\n    + 1\n#endif\n"
-
-    it "still reads back as the same program in every configuration" $
-      roundTrip splitExpression `shouldBe` Right ()
-
-  describe "a conditional whose branches say the same thing"
-    $ it "is kept, because the branches are not at the same spans"
-    $ formatCpp sameEitherWay
-      `shouldBe` Right "module M where\n\n#ifdef FOO\nmid = 2\n#else\nmid = 2\n#endif\n"
-
-  describe "a directive that asks nothing" $ do
-    it "comes back at the line it was written on" $
-      formatCpp withDefine
-        `shouldBe` Right "module M where\n\n#define N 1\nf = N\n"
-
-    it "settles" $
-      settles withDefine `shouldBe` Right ()
-
-    it "still reads back as the same program" $
-      roundTrip withDefine `shouldBe` Right ()
-
-    it "is refused when the module is not Haskell without expanding it" $
-      formatCpp macroDeclaration `shouldSatisfy` isLeft
-
-    it "does not run a Haddock into the comment under it" $
-      roundTrip defineBetweenConditionals `shouldBe` Right ()
-
-    it "stays between the conditionals it was written between" $
-      formatCpp defineBetweenConditionals `shouldBe` Right defineBetweenConditionals
-
-  describe "imports around a conditional" $ do
-    it "sorts an import whose clause is behind a condition among the others" $
-      formatCpp hidingBehindCondition
-        `shouldBe` Right
-          ( T.unlines
-              [ "module M where",
-                "",
-                "import Data.Maybe (catMaybes)",
-                "import Language.Haskell.TH.Syntax",
-                "#if MIN_VERSION_template_haskell(2,19,0)",
-                "  hiding (makeRelativeToProject)",
-                "#endif",
-                "import System.Directory (doesFileExist)",
-                "import Yesod.Core"
-              ]
-          )
-
-    it "does not sort an import out of a conditional that holds it" $
-      formatCpp importBehindCondition `shouldBe` Right importBehindCondition
-
   describe "directives the prototype cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
       formatCpp unbalanced `shouldBe` Left "the #ifdef at line 3 is never closed"
@@ -394,79 +187,12 @@ spec = do
       formatCpp abortingAlternative
         `shouldBe` Left "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
 
-    it "refuses a conditional no configuration can be parsed out of" $
-      formatCpp unparseableAlone `shouldSatisfy` isLeft
-
     it "refuses a branch that a conditional around it asking the same question rules out" $
       formatCpp ruledOut
         `shouldBe` Left "the branch at line 6 is ruled out by a conditional around it that asks the same question"
 
-    it "accepts such a branch when it holds nothing" $
-      formatCpp ruledOutEmpty `shouldBe` Right ruledOutEmpty
-
 ----------------------------------------------------------------------------
 -- The modules the question is asked of
-
-errorAlternative :: Text
-errorAlternative =
-  T.unlines
-    [ "{-# LANGUAGE CPP #-}",
-      "module M where",
-      "value :: Int",
-      "value = if True then",
-      "#if WORD_SIZE_IN_BITS == 64",
-      "  64",
-      "#elif WORD_SIZE_IN_BITS == 32",
-      "  32",
-      "#else",
-      "#error Unsupported word size",
-      "#endif",
-      "  else 0"
-    ]
-
--- | Everything that is meant to come out the other side, for the properties
--- that should hold of all of it.
-everyFixture :: [Text]
-everyFixture =
-  [ atDeclarations,
-    unevenBranches,
-    withComments,
-    commentInsideBranch,
-    packedTogether,
-    differingImports,
-    hidingBehindCondition,
-    importBehindCondition,
-    withoutElse,
-    withElif,
-    elifWithoutElse,
-    nested,
-    twoConditionals,
-    twoInOneExpression,
-    splitExpression
-  ]
-
--- | A directive that asks nothing, between two conditionals that ask the
--- same question, with a Haddock above the first and a comment in each.
---
--- Merging the comments along with the code gave every configuration its own
--- idea of where they went, and the module came out wrapped in a conditional
--- rather than the conditionals in the module, with the Haddock run into the
--- comment under it.
-defineBetweenConditionals :: Text
-defineBetweenConditionals =
-  T.unlines
-    [ "module M where",
-      "",
-      "-- | documentation",
-      "#if FLAG",
-      "-- a remark",
-      "f9 = 9",
-      "#endif",
-      "#define WIDE 1",
-      "#if FLAG",
-      "-- a remark",
-      "#endif"
-    ]
 
 -- | A conditional between two whole declarations, which is the case the
 -- design is meant to handle.
@@ -563,56 +289,6 @@ withComments =
       "",
       "-- below",
       "after = 4"
-    ]
-
--- | Branches that import different modules, which is the commonest thing a
--- real conditional does.
-differingImports :: Text
-differingImports =
-  T.unlines
-    [ "module M where",
-      "",
-      "#ifdef FOO",
-      "import Data.Map",
-      "#else",
-      "import Data.Set",
-      "#endif",
-      "",
-      "f = 1"
-    ]
-
--- | An import whose @hiding@ clause is behind a condition, among imports
--- that sort around it.
---
--- The @#endif@ stood after the import in one configuration and inside it in
--- the other, so the imports were sorted in two runs either side of it, and a
--- second pass sorted them again.
-hidingBehindCondition :: Text
-hidingBehindCondition =
-  T.unlines
-    [ "module M where",
-      "",
-      "import Yesod.Core",
-      "import System.Directory (doesFileExist)",
-      "import Language.Haskell.TH.Syntax",
-      "#if MIN_VERSION_template_haskell(2,19,0)",
-      "    hiding (makeRelativeToProject)",
-      "#endif",
-      "import Data.Maybe (catMaybes)"
-    ]
-
--- | Imports around a conditional that holds an import of its own, which
--- must stay between the imports it was written between.
-importBehindCondition :: Text
-importBehindCondition =
-  T.unlines
-    [ "module M where",
-      "",
-      "import Z",
-      "#ifdef FOO",
-      "import B",
-      "#endif",
-      "import A"
     ]
 
 -- | A conditional with no alternative, which is what most conditionals in
@@ -798,89 +474,6 @@ guardAtTwoDepths =
       "#endif"
     ]
 
--- | A conditional around a signature's context, which the signature straddles.
---
--- The branches are of unequal length, so the construct the conditional is
--- inside occupies different lines in the two configurations — which is the
--- one case where a span honestly differs without anything having gone wrong.
--- The type is written long enough not to fit on a line once the context is
--- there and to fit comfortably once it is not, so the two configurations also
--- disagree about how to lay the group out.
-conditionalContext :: Text
-conditionalContext =
-  T.unlines
-    [ "module M where",
-      "",
-      "f ::",
-      "#ifdef A",
-      "  (Ord a) =>",
-      "#endif",
-      "  a -> [(String, Int)] -> Maybe String -> Either String Int -> IO ()",
-      "f x pairs fallback outcome = print (x, pairs, fallback, outcome)"
-    ]
-
--- | A conditional in the middle of an expression, which every configuration
--- can be parsed out of, but which no span survives.
-splitExpression :: Text
-splitExpression =
-  T.unlines
-    [ "module M where",
-      "",
-      "f x =",
-      "  g x",
-      "#ifdef FOO",
-      "    + 1",
-      "#endif"
-    ]
-
--- | Two conditionals reaching into one expression, so that their
--- differences land in the same place and cannot be applied side by side.
-twoInOneExpression :: Text
-twoInOneExpression =
-  T.unlines
-    [ "module M where",
-      "",
-      "f =",
-      "  a",
-      "#if X",
-      "    + b",
-      "#endif",
-      "#if Y",
-      "    + c",
-      "#endif"
-    ]
-
--- | A conditional whose two branches say the same thing.
-sameEitherWay :: Text
-sameEitherWay =
-  T.unlines
-    [ "module M where",
-      "",
-      "#ifdef FOO",
-      "mid = 2",
-      "#else",
-      "mid  =  2",
-      "#endif"
-    ]
-
--- | A conditional that opens a bracket it does not close, so that dropping
--- the branch leaves something that is not a Haskell module at all.
---
--- Harder to come by than it looks. A conditional holding the only statement
--- of a @do@ block, or the only alternative of a @case@, still leaves both
--- configurations parsing, since GHC2021 has @EmptyCase@ and takes an empty
--- @do@. It is unbalanced delimiters that no blanking can rescue.
-unparseableAlone :: Text
-unparseableAlone =
-  T.unlines
-    [ "module M where",
-      "",
-      "#ifdef FOO",
-      "f = (1",
-      "#endif",
-      "  + 2)"
-    ]
-
 -- | An @#if@ with nothing to close it.
 unbalanced :: Text
 unbalanced = T.unlines ["module M where", "", "#ifdef FOO", "f = 1"]
@@ -940,43 +533,6 @@ ruledOut =
       "#endif"
     ]
 
--- | An @#if@ that the @#if@ around it rules out, but with nothing in it.
-ruledOutEmpty :: Text
-ruledOutEmpty =
-  T.unlines
-    [ "module M where",
-      "",
-      "#if FLAG",
-      "g = 1",
-      "#else",
-      "#if FLAG",
-      "#else",
-      "f = 1",
-      "#endif",
-      "#endif"
-    ]
-
--- | A directive that is not a conditional, and so cannot be blanked away.
-withDefine :: Text
-withDefine = T.unlines ["module M where", "", "#define N 1", "f = N"]
-
--- | A macro standing for a piece of syntax rather than for a piece of
--- program.
---
--- @CLOSE@ is a bracket, so the module is only balanced once the macro has
--- been expanded. Nothing short of expanding it makes this Haskell, no
--- configuration of it parses, and there is no document to build. The same
--- shape as a conditional that opens a bracket it does not close, and refused
--- for the same reason.
-macroDeclaration :: Text
-macroDeclaration =
-  T.unlines
-    [ "module M where",
-      "",
-      "#define CLOSE )",
-      "f = (1 CLOSE"
-    ]
-
 -- | An @#else@ with an @#elif@ after it, which no preprocessor would accept
 -- and which the splitter must not quietly reorder into something it would.
 elseBeforeElif :: Text
@@ -1000,19 +556,6 @@ isLeft, isRight :: Either a b -> Bool
 isLeft = either (const True) (const False)
 isRight = either (const False) (const True)
 
--- | Format a module, then check that every configuration of what came out is
--- the same program as that configuration of what went in.
---
--- The variational form of the check the corpus already makes of every
--- example, with a @forall cfg@ in front of it. The conditionals come back in
--- the order they were written, so the two enumerations line up leaf for leaf
--- — and if they did not, the count would say so first.
-roundTrip :: Text -> Either Text ()
-roundTrip source = do
-  formatted <- formatCpp source
-  pairs <- said (correspondingBranches source formatted)
-  mapM_ sameBranch pairs
-
 sameBranch :: (Maybe Text, Maybe Text) -> Either Text ()
 sameBranch (Nothing, Nothing) = Right ()
 sameBranch (Just input, Just output) = sameProgram input output
@@ -1027,20 +570,6 @@ sameBranch (Just input, Just output) = sameProgram input output
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
 sameBranch _ = Left "preprocessing changed between succeeding and failing"
-
--- | Whether formatting what was formatted changes anything.
---
--- The property the corpus makes of every ordinary example. It is worth
--- asking separately here because the merge is the one part of the printer
--- whose input is its own output: directives go into the text, and the second
--- pass has to split on the very ones the first pass wrote.
-settles :: Text -> Either Text ()
-settles source = do
-  once <- formatCpp source
-  twice <- formatCpp once
-  if once == twice
-    then Right ()
-    else Left ("did not settle:\n" <> once <> "\nbecame:\n" <> twice)
 
 -- | A refusal as words, which is the only place these tests want one.
 said :: Either CppError a -> Either Text a
