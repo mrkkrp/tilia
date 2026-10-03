@@ -15,3 +15,15 @@ nested = [ outer, [ inner
     -- innermost
     ]
   ]
+
+comprehension = [ x | x <- xs
+  -- and only those
+  ] ++ rest
+
+comprehensionAlone = [ x | x <- xs
+  -- and nothing after it
+  ]
+
+openSequence = [ first ..
+  -- and on from there
+  ] ++ rest

@@ -2872,7 +2872,7 @@ formatted       929b3db19b16  lens-5.3.6/src/Control/Lens/Internal/List.hs
 formatted       b107d5717343  lens-5.3.6/src/Control/Lens/Internal/Magma.hs
 formatted       9e5dde30fb82  lens-5.3.6/src/Control/Lens/Internal/Prelude.hs
 formatted       d033545bb0fa  lens-5.3.6/src/Control/Lens/Internal/Prism.hs
-formatted       c5b138918bc8  lens-5.3.6/src/Control/Lens/Internal/PrismTH.hs
+formatted       a6ec57e8a7b3  lens-5.3.6/src/Control/Lens/Internal/PrismTH.hs
 formatted       d1e3368088fd  lens-5.3.6/src/Control/Lens/Internal/Profunctor.hs
 formatted       a0cfb7f64915  lens-5.3.6/src/Control/Lens/Internal/Review.hs
 formatted       bd611b570342  lens-5.3.6/src/Control/Lens/Internal/Setter.hs
@@ -3228,7 +3228,7 @@ formatted       4a683f5d9700  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Referen
 formatted       e7a9cf0c0644  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Table.hs
 formatted       3aae3967440a  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Types.hs
 formatted       9cd811748938  pandoc-3.10.2/src/Text/Pandoc/Writers/Jira.hs
-formatted       fee4ee5df0f1  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX.hs
+formatted       2c72ceea3fbd  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX.hs
 formatted       cafc5a3796df  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Caption.hs
 formatted       e809a90650c6  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Citation.hs
 formatted       e89e979a29e1  pandoc-3.10.2/src/Text/Pandoc/Writers/LaTeX/Lang.hs
