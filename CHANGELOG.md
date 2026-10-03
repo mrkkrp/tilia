@@ -130,6 +130,10 @@
 * Give an operator a local binding captures the fixity its binding group
   declares, or `infixl 9`, rather than that of an import of the same name.
   [Issue 67](https://github.com/mrkkrp/tilia/issues/67).
+* Take a name that one of the project's own modules, or a dependency read
+  from its source, brings in as settling the name's fixity despite an
+  unreadable import, as one read from an interface file already did. [Issue
+  84](https://github.com/mrkkrp/tilia/issues/84).
 
 ## Tilia 0.0.2.0
 

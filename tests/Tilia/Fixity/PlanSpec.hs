@@ -1406,9 +1406,125 @@ withPlan plan = do
       brought <- askBrought resolver "Data.List"
       fmap (Set.member (InTerms, OpName "isPrefixOf")) brought `shouldBe` Just True
 
-    it "is not known for one of the project's own modules" $
+    it "is what one of the project's own modules exports, read from its source" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
-        \rs -> askBrought rs "Opaque" `shouldReturn` Nothing
+        \rs ->
+          askBrought rs "Opaque"
+            `shouldReturn` Just (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "f")])
+
+    it "is what a module in a tarball exports, read from its source" $
+      withFakeArchive [("Lib.hs", "module Lib (T (..), f) where\ndata T = C\nf :: Int\nf = 1\n")] $
+        \rs ->
+          askBrought rs "Lib"
+            `shouldReturn` Just (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
+
+    it "is everything a module with no export list defines, in its namespaces"
+      $ withFakeProject
+        [ ( "src/Own.hs",
+            T.unlines
+              [ "module Own where",
+                "data T = C | Int :+ Int",
+                "class K a where",
+                "  type F a",
+                "  method :: a",
+                "f :: Int",
+                "f = 1"
+              ]
+          )
+        ]
+      $ \rs ->
+        askBrought rs "Own"
+          `shouldReturn` Just
+            ( Set.fromList
+                [ (InTypes, OpName "T"),
+                  (InTerms, OpName "C"),
+                  (InTerms, OpName ":+"),
+                  (InTypes, OpName "K"),
+                  (InTypes, OpName "F"),
+                  (InTerms, OpName "method"),
+                  (InTerms, OpName "f")
+                ]
+            )
+
+    it "takes what a type it exports carries from the type's declaration" $
+      withFakeProject [("src/Own.hs", "module Own (T (..)) where\ndata T = C | D\n")] $
+        \rs ->
+          askBrought rs "Own"
+            `shouldReturn` Just (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "D")])
+
+    it "keeps to the members its export list writes out beside a type" $
+      withFakeProject [("src/Own.hs", "module Own (T (C)) where\ndata T = C | D\n")] $
+        \rs ->
+          askBrought rs "Own"
+            `shouldReturn` Just (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C")])
+
+    it "takes what a type it hands on carries from the module the type came from"
+      $ withFakeProject
+        [ ("src/Inner.hs", "module Inner where\ndata T = C | D\n"),
+          ("src/Outer.hs", "module Outer (T (..)) where\nimport Inner\n")
+        ]
+      $ \rs ->
+        askBrought rs "Outer"
+          `shouldReturn` Just (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "D")])
+
+    it "takes what a whole module it hands on brings in"
+      $ withFakeProject
+        [ ("src/Inner.hs", "module Inner where\ndata T = C\nf :: Int\nf = 1\n"),
+          ("src/Outer.hs", "module Outer (module Inner) where\nimport Inner\n")
+        ]
+      $ \rs ->
+        askBrought rs "Outer"
+          `shouldReturn` Just (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
+
+    it "keeps to what the import list of a whole module it hands on certainly brings in"
+      $ withFakeProject
+        [ ("src/Inner.hs", "module Inner where\ndata T = C\nf :: Int\nf = 1\n"),
+          ("src/Outer.hs", "module Outer (module Inner) where\nimport Inner (f)\n")
+        ]
+      $ \rs -> askBrought rs "Outer" `shouldReturn` Just (Set.fromList [(InTerms, OpName "f")])
+
+    it "keeps to what every configuration of a module brings in"
+      $ withFakeProject
+        [ ( "src/Own.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "module Own",
+                "  ( g,",
+                "#ifdef A",
+                "    f,",
+                "#endif",
+                "  )",
+                "where",
+                "f :: Int",
+                "f = 1",
+                "g :: Int",
+                "g = 2"
+              ]
+          )
+        ]
+      $ \rs -> askBrought rs "Own" `shouldReturn` Just (Set.fromList [(InTerms, OpName "g")])
+
+    it "settles a name one of the project's own modules brings in, despite an unreadable import"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ("src/B.hs", "module B (clampTo) where\nclampTo :: Int -> Int -> Int\nclampTo = min\n")
+        ]
+      $ \rs -> do
+        let m = parse "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "clampTo")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "does not take a type it brings in for a constructor spelled the same way"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ("src/B.hs", "{-# LANGUAGE TypeOperators #-}\nmodule B ((:+:)) where\ndata a :+: b = a :+: b\n")
+        ]
+      $ \rs -> do
+        let m = parse "module C (w) where\nimport A\nimport B\nw = 1 :+: 2\n"
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName ":+:")
+          `shouldBe` Unresolved (unreadOnly "A")
 
   describe "the whole pipeline, from source text to a fixity" $ do
     it "resolves an operator through a real import" $

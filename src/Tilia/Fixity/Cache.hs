@@ -74,7 +74,7 @@ newtype PlanToken = PlanToken Text
 
 -- | Bumped whenever cache format changes.
 formatVersion :: FilePath
-formatVersion = "v1"
+formatVersion = "v2"
 
 -- | Open, creating the directory if need be.
 --
@@ -279,16 +279,22 @@ renderSummaries = \case
         <> maybe [] (\items -> "exports" : fmap renderExport items) (summaryExports s)
         <> concatMap renderImport (summaryImports s)
         <> fmap (("fixity\t" <>) . renderFixity) (Map.toList (summaryFixities s))
-        <> ["defines\t" <> op | OpName op <- Set.toAscList (summaryNames s)]
-        <> fmap (carried "declares") (Map.toList (summaryDeclaredChildren s))
-        <> fmap (carried "offers") (Map.toList (summaryChildren s))
-    carried field (OpName parent, kids) =
-      T.intercalate "\t" (field : parent : [kid | OpName kid <- Set.toAscList kids])
+        <> [ T.intercalate "\t" ["defines", renderNamespace namespace, op]
+           | (namespace, OpName op) <- Set.toAscList (summaryNames s)
+           ]
+        <> fmap declares (Map.toList (summaryDeclaredChildren s))
+        <> fmap offers (Map.toList (summaryChildren s))
+    declares (OpName parent, kids) =
+      T.intercalate "\t" ("declares" : parent : renderNamespaced kids)
+    offers (OpName parent, kids) =
+      T.intercalate "\t" ("offers" : parent : [kid | OpName kid <- Set.toAscList kids])
     renderExport = \case
-      ExportName qualifier (OpName op) ->
-        T.intercalate "\t" ["export", "name", fromMaybe "" qualifier, op]
+      ExportName namespace qualifier (OpName op) ->
+        T.intercalate "\t" ["export", "name", renderNamespace namespace, fromMaybe "" qualifier, op]
       ExportAll qualifier (OpName op) ->
         T.intercalate "\t" ["export", "all", fromMaybe "" qualifier, op]
+      ExportSome qualifier (OpName op) kids ->
+        T.intercalate "\t" (["export", "some", fromMaybe "" qualifier, op] <> [kid | OpName kid <- kids])
       ExportModule m -> "export\tmodule\t" <> m
     renderImport i =
       T.intercalate
@@ -343,17 +349,22 @@ parseSummaries = \case
       ("fixity" : fields) : rest -> do
         (key, fixity) <- parseFixity (T.intercalate "\t" fields)
         go s{summaryFixities = Map.insert key fixity (summaryFixities s)} rest
-      ["defines", op] : rest -> go s{summaryNames = Set.insert (OpName op) (summaryNames s)} rest
-      ("declares" : parent : kids) : rest ->
-        go s{summaryDeclaredChildren = Map.insert (OpName parent) (names kids) (summaryDeclaredChildren s)} rest
+      ["defines", namespace, op] : rest -> do
+        n <- parseNamespace namespace
+        go s{summaryNames = Set.insert (n, OpName op) (summaryNames s)} rest
+      ("declares" : parent : kids) : rest -> do
+        namespaced <- parseNamespaced kids
+        go s{summaryDeclaredChildren = Map.insert (OpName parent) (Set.fromList namespaced) (summaryDeclaredChildren s)} rest
       ("offers" : parent : kids) : rest ->
         go s{summaryChildren = Map.insert (OpName parent) (names kids) (summaryChildren s)} rest
       _ -> Nothing
     names = Set.fromList . fmap OpName
     qualifier q = if T.null q then Nothing else Just q
     exportItem = \case
-      ["name", q, op] -> Just (ExportName (qualifier q) (OpName op))
+      ["name", namespace, q, op] ->
+        (\n -> ExportName n (qualifier q) (OpName op)) <$> parseNamespace namespace
       ["all", q, op] -> Just (ExportAll (qualifier q) (OpName op))
+      "some" : q : op : kids -> Just (ExportSome (qualifier q) (OpName op) (fmap OpName kids))
       ["module", m] -> Just (ExportModule m)
       _ -> Nothing
     isListed = \case
@@ -455,9 +466,6 @@ renderFixity ((namespace, OpName op), Fixity direction precedence) =
     "\t"
     [op, renderNamespace namespace, renderDirection direction, T.pack (show precedence)]
   where
-    renderNamespace = \case
-      InTypes -> "t"
-      InTerms -> "v"
     renderDirection = \case
       LeftAssoc -> "l"
       RightAssoc -> "r"
@@ -473,10 +481,6 @@ parseFixity line = case T.splitOn "\t" line of
     pure ((n, OpName op), Fixity d p)
   _ -> Nothing
   where
-    parseNamespace = \case
-      "t" -> Just InTypes
-      "v" -> Just InTerms
-      _ -> Nothing
     parseDirection = \case
       "l" -> Just LeftAssoc
       "r" -> Just RightAssoc
@@ -485,6 +489,33 @@ parseFixity line = case T.splitOn "\t" line of
     readPrecedence t = case T.signed T.decimal t of
       Right (p, rest) | T.null rest -> Just p
       _ -> Nothing
+
+-- | Render a namespace as 'Text'.
+renderNamespace :: Namespace -> Text
+renderNamespace = \case
+  InTypes -> "t"
+  InTerms -> "v"
+
+-- | Parse a namespace from 'Text'.
+parseNamespace :: Text -> Maybe Namespace
+parseNamespace = \case
+  "t" -> Just InTypes
+  "v" -> Just InTerms
+  _ -> Nothing
+
+-- | Render names in their namespaces as fields, each namespace before its
+-- name.
+renderNamespaced :: Set (Namespace, OpName) -> [Text]
+renderNamespaced names =
+  concat [[renderNamespace namespace, op] | (namespace, OpName op) <- Set.toAscList names]
+
+-- | Parse what 'renderNamespaced' rendered.
+parseNamespaced :: [Text] -> Maybe [(Namespace, OpName)]
+parseNamespaced = \case
+  [] -> Just []
+  namespace : op : rest ->
+    (:) <$> ((,OpName op) <$> parseNamespace namespace) <*> parseNamespaced rest
+  _ -> Nothing
 
 -- | Where the cache keeps what the path names, or 'Nothing' if it keeps
 -- nothing.

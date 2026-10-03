@@ -12,6 +12,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Test.Hspec
 import Tilia.Fixity
+import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Fixity.Interface
 
 spec :: Spec
@@ -166,6 +167,25 @@ spec = do
     it "has nothing to say about a name that carries nothing" $
       carries "exports:\n  decode'\n  Data.Aeson.Types.FromJSON..:\n" `shouldBe` []
 
+  describe "what a decoded interface brings in" $ do
+    it "is every name it exports, by namespace, and what each type carries" $
+      fmap
+        interfaceExports
+        (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTypes "T", inM InTerms "C"], Avail (inM InTerms "f")] []))
+        `shouldBe` Right
+          ( Just
+              ( Brought
+                  (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
+                  (Map.fromList [(OpName "T", Set.fromList [(InTerms, OpName "C")])])
+              )
+          )
+
+    it "does not take a type for exported where only its field is" $
+      fmap
+        (fmap broughtNames . interfaceExports)
+        (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTerms "field"]] []))
+        `shouldBe` Right (Just (Set.fromList [(InTerms, OpName "field")]))
+
   describe "sections it has no use for" $
     it "is not confused by the rest of the file" $ do
       let out =
@@ -221,3 +241,7 @@ carries =
   maybe [] (fmap (fmap Set.toList) . Map.toList . interfaceChildren)
     . parseInterface "M"
     . (header "M" <>)
+
+-- | A name the module @M@ declares.
+inM :: Namespace -> Text -> HiName
+inM namespace = HiName "M" namespace . OpName
