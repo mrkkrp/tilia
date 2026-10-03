@@ -848,7 +848,11 @@ data Resolver = Resolver
     -- it gave up on last. Asked only of the modules 'askFixities' gave up
     -- on, and only so that a message can name the exact problematic module
     -- rather than the import that happens to sit above it.
-    askChain :: Text -> IO [Text]
+    askChain :: Text -> IO [Text],
+    -- | Every name a module brings into scope, by namespace, where its
+    -- compiled interface says. Asked only where another import could not be
+    -- read, since only then does it settle anything.
+    askBrought :: Text -> IO (Maybe (Set (Namespace, OpName)))
   }
 
 -- | Build a new 'Resolver'.
@@ -968,6 +972,9 @@ newResolverVia caching routes plan = do
       archiveOf tarball =
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
+      brought modName
+        | Map.member modName local = pure Nothing
+        | otherwise = (interfaceExports =<<) <$> interfaceOf modName
       children visiting modName
         | modName `Set.member` visiting = pure Map.empty
         | otherwise =
@@ -978,7 +985,8 @@ newResolverVia caching routes plan = do
       { askFixities = reach Set.empty,
         askChildren = children Set.empty,
         askExportNames = exports Set.empty,
-        askChain = chain Set.empty
+        askChain = chain Set.empty,
+        askBrought = brought
       }
 
 -- | Answers filed under the names they are about, each worked out once.
@@ -1193,6 +1201,14 @@ scopeFor resolver implicitPrelude configurations = do
       unread = [m | (m, Nothing) <- answers]
   names <- Map.fromList <$> inParallel (\m -> (m,) <$> askExportNames resolver m) unread
   chains <- Map.fromList <$> inParallel (\m -> (m,) <$> askChain resolver m) unread
+  brought <-
+    if null unread
+      then pure Map.empty
+      else
+        Map.fromList
+          <$> inParallel
+            (\m -> (m,) <$> askBrought resolver m)
+            (Set.toList (Set.fromList [m | (m, Just _) <- answers]))
   kept <-
     Map.fromList
       <$> inParallel
@@ -1205,7 +1221,8 @@ scopeFor resolver implicitPrelude configurations = do
         { knownFixities = \m -> Map.findWithDefault Nothing m table,
           knownChildren = \m -> Map.findWithDefault Map.empty m kept,
           knownExportNames = \m -> Map.findWithDefault Nothing m names,
-          knownChain = \m -> Map.findWithDefault [] m chains
+          knownChain = \m -> Map.findWithDefault [] m chains,
+          knownBrought = \m -> Map.findWithDefault Nothing m brought
         }
       configurations
 
@@ -1398,7 +1415,8 @@ asInterface fixities =
   Interface
     { interfaceDeclares = fixities,
       interfaceReexports = [],
-      interfaceChildren = Map.empty
+      interfaceChildren = Map.empty,
+      interfaceExports = Nothing
     }
 
 -- | The fixities a compiled interface reports, and those it passes on.

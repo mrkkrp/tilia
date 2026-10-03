@@ -121,6 +121,12 @@
   line of its own, and keep several such conditionals in a row apart as
   written rather than nest them and repeat the items of one in both
   branches of the other. [Issue 69](https://github.com/mrkkrp/tilia/issues/69).
+* Do not blame an operator on a module that could not be read where it
+  cannot have come from there: a name the module defines itself, one a
+  local binding captures, or one an import that could be read brings in.
+  A module that hands a name on is no longer held up by an unreadable
+  import that could not have supplied it, such as one under another
+  qualifier. [Issue 67](https://github.com/mrkkrp/tilia/issues/67).
 * Give an operator a local binding captures the fixity its binding group
   declares, or `infixl 9`, rather than that of an import of the same name.
   [Issue 67](https://github.com/mrkkrp/tilia/issues/67).

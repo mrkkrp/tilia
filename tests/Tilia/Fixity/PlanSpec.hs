@@ -1401,6 +1401,15 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> askChain rs "Prelude" `shouldReturn` []
 
+  describe "what a module brings in" $ do
+    it "is every name its interface exports" $ do
+      brought <- askBrought resolver "Data.List"
+      fmap (Set.member (InTerms, OpName "isPrefixOf")) brought `shouldBe` Just True
+
+    it "is not known for one of the project's own modules" $
+      withFakeProject [("src/Opaque.hs", opaqueSource)] $
+        \rs -> askBrought rs "Opaque" `shouldReturn` Nothing
+
   describe "the whole pipeline, from source text to a fixity" $ do
     it "resolves an operator through a real import" $
       endToEnd resolver "module M where\nimport Prettyprinter\n" $ \scope ->
@@ -1439,6 +1448,13 @@ withPlan plan = do
       endToEnd resolver "module M where\nimport No.Such.Module\n" $ \scope ->
         lookupFixity scope InTerms Nothing (OpName "<!@#>")
           `shouldBe` Unresolved (unreadOnly "No.Such.Module")
+
+    it "settles a name a boot import brings in, despite an unreadable import" $
+      endToEnd resolver "module M where\nimport Data.List\nimport No.Such.Module\n" $ \scope -> do
+        lookupFixity scope InTerms Nothing (OpName "min")
+          `shouldBe` Resolved defaultFixity ReportDefault
+        lookupFixity scope InTerms Nothing (OpName "isPrefixOf")
+          `shouldBe` Resolved defaultFixity ReportDefault
 
     it "still answers for what it did find, despite an unreadable import" $
       endToEnd resolver "module M where\nimport Prettyprinter\nimport No.Such.Module\n" $ \scope ->

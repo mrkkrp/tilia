@@ -66,6 +66,7 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Bifunctor (first)
+import Data.Char (isUpper)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
@@ -439,14 +440,25 @@ admits ::
   Bool
 admits carries op i = case importNames i of
   Nothing -> True
-  Just (True, hidden) -> not (any (names False) hidden)
-  Just (False, shown) -> any (names True) shown
-  where
-    names unknown = \case
-      ImportedName n -> n == op
-      ImportedSome parent ns -> parent == op || op `elem` ns
-      ImportedAll parent ->
-        parent == op || maybe unknown (Set.member op) (Map.lookup parent carries)
+  Just (True, hidden) -> not (any (namedBy carries False op) hidden)
+  Just (False, shown) -> any (namedBy carries True op) shown
+
+-- | Does an item of an import list name the operator, taking a @T(..)@ whose
+-- members are not known to name it or not as told?
+namedBy ::
+  -- | What each name in the list keeps under it, where that is known.
+  Map OpName (Set OpName) ->
+  -- | What a @T(..)@ whose members are not known is taken to say.
+  Bool ->
+  -- | The operator being looked for.
+  OpName ->
+  ImportItem ->
+  Bool
+namedBy carries unknown op = \case
+  ImportedName n -> n == op
+  ImportedSome parent ns -> parent == op || op `elem` ns
+  ImportedAll parent ->
+    parent == op || maybe unknown (Set.member op) (Map.lookup parent carries)
 
 -- | Could this import supply the operator to a use written under this
 -- qualifier?
@@ -464,6 +476,29 @@ supplies carries qualifier op i =
   maybe (not (importQualified i)) (== importAlias i) qualifier
     && admits carries op i
 
+-- | Does this import bring the name in for certain, as far as its list says?
+--
+-- Where the list could leave the name out, it is taken to: a @T(..)@ whose
+-- members are not known hides anything, and of what a list shows, only a
+-- variable written on its own counts.
+brings ::
+  -- | What each name in the import's list keeps under it, where that is
+  -- known.
+  Map OpName (Set OpName) ->
+  -- | The name, and the namespace it is in.
+  (Namespace, OpName) ->
+  Import ->
+  Bool
+brings carries (namespace, op) i = case importNames i of
+  Nothing -> True
+  Just (True, hidden) -> not (any (namedBy carries True op) hidden)
+  Just (False, shown) ->
+    ImportedName op `elem` shown && namespace == InTerms && isVariable op
+  where
+    isVariable (OpName t) = case T.uncons t of
+      Just (c, _) -> not (isUpper c) && c /= ':'
+      Nothing -> False
+
 -- | What is known about the imported modules.
 data KnownModules = KnownModules
   { -- | The fixities a module exports, or 'Nothing' if that could not be
@@ -479,7 +514,9 @@ data KnownModules = KnownModules
     -- it gave up on last. Asked only about modules 'knownFixities' could
     -- not answer for, and only so that a message can name the module that
     -- is really in the way.
-    knownChain :: Text -> [Text]
+    knownChain :: Text -> [Text],
+    -- | Every name a module exports, by namespace, where that is known.
+    knownBrought :: Text -> Maybe (Set (Namespace, OpName))
   }
 
 -- | No known modules.
@@ -489,7 +526,8 @@ noKnownModules =
     { knownFixities = const Nothing,
       knownChildren = const Map.empty,
       knownExportNames = const Nothing,
-      knownChain = const []
+      knownChain = const [],
+      knownBrought = const Nothing
     }
 
 -- | Which of Haskell's two namespaces an operator is written in.
@@ -564,8 +602,9 @@ data Reach = Reach
     -- names and the fixity it brings.
     reachAmbiguous :: Map (Maybe Text, OpName) (NonEmpty (Text, Fixity)),
     -- | The uses a module that was read speaks for in this namespace, as they
-    -- would be written: of a name the module defines itself, which no unread
-    -- import can give another fixity.
+    -- would be written: of a name the module defines itself, or one an import
+    -- that was read certainly brings in, which no unread import can give
+    -- another fixity.
     reachSpokenFor :: Set (Maybe Text, OpName)
   }
   deriving (Eq, Show)
@@ -605,12 +644,21 @@ resolveScope implicitPrelude known configurations =
               (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
               (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom)),
           reachSpokenFor =
-            Set.fromList
+            Set.fromList $
               [ (qualifier, op)
               | c <- toList configurations,
                 op <- Set.toList (inNamespace (declaredNamespaces c)),
                 qualifier <- Nothing : fmap Just ownNames
               ]
+                <> [ (qualifier, op)
+                   | i <- imports,
+                     Just _ <- [knownFixities known (importModule i)],
+                     Just names <- [knownBrought known (importModule i)],
+                     (n, op) <- Set.toList names,
+                     n == namespace,
+                     brings (knownChildren known (importModule i)) (n, op) i,
+                     qualifier <- [Nothing | not (importQualified i)] <> [Just (importAlias i)]
+                   ]
         }
       where
         inNamespace = case namespace of
