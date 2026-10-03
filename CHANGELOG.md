@@ -92,6 +92,10 @@
   names, since imports hiding different names bring in more together than
   one hiding all of them would. [PR
   76](https://github.com/mrkkrp/tilia/pull/76).
+* Keep a name in a `hiding` list apart from the same name with its own
+  parentheses, rather than fold them together, since alone it also hides
+  any data constructor of that name. [PR
+  76](https://github.com/mrkkrp/tilia/pull/76).
 
 ## Tilia 0.0.2.0
 
