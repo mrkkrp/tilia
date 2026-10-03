@@ -127,7 +127,7 @@ import System.Process
   )
 import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
-import Tilia.Cpp.Macros (Macros (..))
+import Tilia.Cpp.Macros (Macros (..), noMacros)
 import Tilia.Fixity
 import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.ByHand (byHandFixities, hscFixities)
@@ -370,7 +370,7 @@ checkedOutIn distDir plan = do
 -- | The version macros a plan settles.
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
-  Macros
+  noMacros
     { macroVersions =
         Map.fromList
           ( [ ("MIN_VERSION_" <> underscored name, version)

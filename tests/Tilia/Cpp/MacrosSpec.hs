@@ -14,7 +14,7 @@ import Tilia.Cpp.Macros
 -- | A plan with one dependency at 1.2.3 and GHC at 9.10.3.
 macros :: Macros
 macros =
-  Macros
+  noMacros
     { macroVersions =
         Map.fromList
           [ ("MIN_VERSION_thing", [1, 2, 3]),
@@ -143,6 +143,42 @@ spec = do
     it "says nothing about a guard whose keyword asks nothing" $
       fmap answer ["else", "endif", "define FOO 1"]
         `shouldBe` [Nothing, Nothing, Nothing]
+
+  describe "a guard about a macro known to be defined or not" $ do
+    let known = noMacros{macroDefined = Set.fromList ["ON"], macroUndefined = Set.fromList ["OFF"]}
+        knownAnswer = guardHolds known
+
+    it "takes one that is not defined for 0" $
+      fmap knownAnswer ["if OFF", "if !OFF", "if OFF > 1"]
+        `shouldBe` [Just False, Just True, Just False]
+
+    it "says whether each is defined" $
+      fmap knownAnswer ["ifdef ON", "ifndef ON", "ifdef OFF", "if defined(OFF)"]
+        `shouldBe` [Just True, Just False, Just False, Just False]
+
+    it "says nothing about the value of one that is defined" $
+      knownAnswer "if ON" `shouldBe` Nothing
+
+  describe "what a guard tells about which macros are defined" $ do
+    it "reads it off a guard asking whether one is" $
+      fmap
+        (definedness True)
+        ["ifdef A", "ifndef A", "if defined(A)", "if defined A", "if !defined(A)"]
+        `shouldBe` [[("A", True)], [("A", False)], [("A", True)], [("A", True)], [("A", False)]]
+
+    it "takes a failing guard to say the opposite" $
+      fmap (definedness False) ["ifdef A", "if !defined(A)"]
+        `shouldBe` [[("A", False)], [("A", True)]]
+
+    it "takes a macro that is not 0 for one that is defined" $
+      fmap (definedness True) ["if A", "elif A"] `shouldBe` [[("A", True)], [("A", True)]]
+
+    it "learns nothing from a macro that is 0, which it may be by not being defined" $
+      (definedness False "if A", definedness True "if !A") `shouldBe` ([], [])
+
+    it "learns nothing from a guard asking more than one thing" $
+      fmap (definedness True) ["if defined(A) && defined(B)", "if A > 1", "if 1"]
+        `shouldBe` [[], [], []]
 
   describe "blanking the branches a plan rules out" $ do
     it "leaves the taken branch and blanks the rest" $

@@ -121,6 +121,11 @@
   line of its own, and keep several such conditionals in a row apart as
   written rather than nest them and repeat the items of one in both
   branches of the other. [Issue 69](https://github.com/mrkkrp/tilia/issues/69).
+* Leave out configurations that no definition of the macros gives, such as
+  one taking the branch of `#if X` but no branch of `#ifdef X`, so that a
+  module turning an extension on under `#ifdef X` and using it under `#if X`
+  is no longer declined over them. [Issue
+  65](https://github.com/mrkkrp/tilia/issues/65).
 
 ## Tilia 0.0.2.0
 

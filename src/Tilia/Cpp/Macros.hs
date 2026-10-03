@@ -2,10 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Inferences regarding CPP macros that we can make based on the build
--- plan.
+-- plan and on the answers a configuration gives.
 module Tilia.Cpp.Macros
   ( Macros (..),
+    noMacros,
     guardHolds,
+    definedness,
   )
 where
 
@@ -17,7 +19,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 
--- | Known macro expansions.
+-- | What is known about macros.
 data Macros = Macros
   { -- | The macros that take a version apart and compare it:
     -- @MIN_VERSION_containers@ and the like, each under the version the
@@ -27,11 +29,23 @@ data Macros = Macros
     -- | The macros that stand for a number, which is @__GLASGOW_HASKELL__@
     -- and its patch levels.
     macroNumbers :: Map Text Integer,
-    -- | The macros known not to be defined, which are those of the
-    -- compilers other than the one the plan is for, such as @__MHS__@.
+    -- | The macros known to be defined, though not to what.
+    macroDefined :: Set Text,
+    -- | The macros known not to be defined, such as those of the compilers
+    -- other than the one the plan is for, like @__MHS__@.
     macroUndefined :: Set Text
   }
   deriving (Eq, Show)
+
+-- | Nothing known about any macro.
+noMacros :: Macros
+noMacros =
+  Macros
+    { macroVersions = Map.empty,
+      macroNumbers = Map.empty,
+      macroDefined = Set.empty,
+      macroUndefined = Set.empty
+    }
 
 -- | Does a conditional's guard hold, where what is known settles it?
 -- 'Nothing' is no answer rather than a negative one.
@@ -53,10 +67,32 @@ guardHolds macros written = case T.span isNameChar (T.stripStart written) of
 -- | Whether a macro is defined, where that is known.
 isDefined :: Macros -> Text -> Maybe Bool
 isDefined macros n
-  | Map.member n (macroVersions macros) || Map.member n (macroNumbers macros) =
+  | Map.member n (macroVersions macros)
+      || Map.member n (macroNumbers macros)
+      || Set.member n (macroDefined macros) =
       Just True
   | Set.member n (macroUndefined macros) = Just False
   | otherwise = Nothing
+
+-- | What a guard holding, or failing, tells about which macros are defined:
+-- each macro it settles, and whether it is defined.
+--
+-- Only a guard that asks about one macro alone settles anything.
+definedness :: Bool -> Text -> [(Text, Bool)]
+definedness holds written = case T.span isNameChar (T.stripStart written) of
+  (keyword, rest) -> case tokensOf rest of
+    Just [Name n]
+      | keyword `elem` ["ifdef", "elifdef"] -> [(n, holds)]
+      | keyword `elem` ["ifndef", "elifndef"] -> [(n, not holds)]
+    Just ts | keyword `elem` ["if", "elif"] -> asked holds ts
+    _ -> []
+  where
+    asked h = \case
+      Punct "!" : ts -> asked (not h) ts
+      [Name "defined", Name n] -> [(n, h)]
+      [Name "defined", Punct "(", Name n, Punct ")"] -> [(n, h)]
+      [Name n] | h -> [(n, True)]
+      _ -> []
 
 -- | What the expression of an @#if@ or @#elif@ evaluates to, if anything.
 valueOf :: Macros -> Text -> Maybe Integer

@@ -21,6 +21,8 @@ module Tilia.Cpp.Directives
     untouched,
     leaves,
     branchLeaves,
+    implied,
+    settledBranch,
     correspondingBranches,
     ruledOutBranch,
     unconditionalErrors,
@@ -52,11 +54,12 @@ import Data.Char (isSpace)
 import Data.List (sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (listToMaybe, maybeToList)
+import Data.Maybe (fromMaybe, isJust, listToMaybe, maybeToList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
-import Tilia.Cpp.Macros (Macros, guardHolds)
+import Tilia.Cpp.Macros (Macros (..), definedness, guardHolds, noMacros)
 import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source (directiveOnLine)
@@ -95,11 +98,16 @@ withoutRuledOut macros source = case scanConditionals source of
 
 -- | Which branch of a conditional the macros settle on.
 branchTaken :: Macros -> GroupSpec -> Maybe Int
-branchTaken macros = go 0 . gsGuards
+branchTaken macros = branchFor (guardHolds macros . guardText)
+
+-- | Which branch of a conditional is taken, given which of its guards hold
+-- where that is settled.
+branchFor :: (Guard -> Maybe Bool) -> GroupSpec -> Maybe Int
+branchFor holds = go 0 . gsGuards
   where
     go i = \case
       [] -> Just i
-      g : rest -> case guardHolds macros (guardText g) of
+      g : rest -> case holds g of
         Just True -> Just i
         Just False -> go (i + 1) rest
         Nothing -> Nothing
@@ -251,7 +259,12 @@ branchLeaves source = do
     resolved
     ( filter
         (null . unconditionalErrors)
-        (distinct (fmap (\a -> configurationOf forest a source) (branchAssignments forest)))
+        ( distinct
+            [ configurationOf forest a source
+            | a <- branchAssignments forest,
+              possible forest (completed forest a)
+            ]
+        )
     )
   where
     distinct = Map.elems . Map.fromList . fmap (\t -> (t, t))
@@ -277,14 +290,82 @@ branchAssignments forest =
         ]
 
 -- | The configuration of a module an assignment selects, a conditional it
--- does not mention taking its first branch.
+-- does not mention taking the branch the assignment settles it on, or else
+-- its first.
 configurationOf :: [GroupSpec] -> Assignment -> Text -> Text
 configurationOf forest assignment =
   blanking
     [ r
     | gs <- allGroups forest,
-      r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) assignment)
+      r <- blankingFor gs (Map.findWithDefault 0 (gsGuards gs) answers)
     ]
+  where
+    answers = completed forest assignment
+
+-- | Answer every conditional a configuration reaches that an assignment
+-- does not mention with the branch the answers settle it on, or else with
+-- its first.
+completed :: [GroupSpec] -> Assignment -> Assignment
+completed forest assignment = fst (visiting (assignment, []) forest)
+  where
+    visiting = foldl' visit
+    visit (asked, given) gs =
+      let i = case Map.lookup (gsGuards gs) asked of
+            Just j -> j
+            Nothing ->
+              fromMaybe 0 (implied (given <> Map.toList assignment) >>= (`settledBranch` gs))
+       in visiting (Map.insert (gsGuards gs) i asked, (gsGuards gs, i) : given) (nestedIn gs i)
+
+-- | The answers an assignment gives the conditionals a configuration
+-- reaches.
+reachedBy :: [GroupSpec] -> Assignment -> [([Guard], Int)]
+reachedBy forest assignment = concatMap reach forest
+  where
+    reach gs =
+      let i = Map.findWithDefault 0 (gsGuards gs) assignment
+       in (gsGuards gs, i) : concatMap reach (nestedIn gs i)
+
+-- | Is there a definition of the macros that answers the conditionals a
+-- configuration reaches as an assignment does?
+possible :: [GroupSpec] -> Assignment -> Bool
+possible forest = isJust . implied . reachedBy forest
+
+-- | What answering these questions as given implies about which macros are
+-- defined, or 'Nothing' where no definition of the macros answers them so.
+implied :: [([Guard], Int)] -> Maybe Macros
+implied answers
+  | Set.null (Set.intersection defined notDefined),
+    all consistent answers =
+      Just known
+  | otherwise = Nothing
+  where
+    said =
+      concat
+        [ concatMap (definedness False . guardText) (take i gs)
+            <> concatMap (definedness True . guardText) (take 1 (drop i gs))
+        | (gs, i) <- answers
+        ]
+    defined = Set.fromList [n | (n, True) <- said]
+    notDefined = Set.fromList [n | (n, False) <- said]
+    known = noMacros{macroDefined = defined, macroUndefined = notDefined}
+    consistent (gs, i) =
+      all ((/= Just True) . settledGuard known) (take i gs)
+        && all ((/= Just False) . settledGuard known) (take 1 (drop i gs))
+
+-- | Which branch of a conditional what is known about the macros settles it
+-- on, where the conditional does not settle itself.
+--
+-- An @#if 0@ is how code is put aside, and is formatted as though it asked
+-- something.
+settledBranch :: Macros -> GroupSpec -> Maybe Int
+settledBranch known = branchFor (settledGuard known)
+
+-- | Does a guard hold, where what is known settles it and the guard does
+-- not settle itself?
+settledGuard :: Macros -> Guard -> Maybe Bool
+settledGuard known (Guard written) = case guardHolds noMacros written of
+  Just _ -> Nothing
+  Nothing -> guardHolds known written
 
 -- | The line of the first directive whose branch holds something although
 -- a conditional around it, asking the same question, rules that branch out.
@@ -327,8 +408,14 @@ correspondingBranches ::
 correspondingBranches before after = do
   left <- readConditionals before
   right <- readConditionals after
-  let defaults = Map.fromList [(gsGuards gs, 0) | gs <- allGroups (left <> right)]
-      choices = Map.keys (Map.fromList [(Map.union a defaults, ()) | a <- branchAssignments left <> branchAssignments right])
+  let forest = left <> right
+      choices =
+        Map.keys . Map.fromList $
+          [ (answers, ())
+          | a <- branchAssignments left <> branchAssignments right,
+            let answers = completed forest a,
+            possible forest answers
+          ]
   traverse (\a -> (,) <$> reading before left a <*> reading after right a) choices
   where
     reading source forest assignment =
@@ -355,7 +442,8 @@ unconditionalErrors source =
 linearLeaves :: Text -> Either CppError [Text]
 linearLeaves = fmap (fmap snd) . answeredLinearLeaves
 
--- | How many configurations a module has, without building any of them.
+-- | How many configurations a module has, without building any of them,
+-- and so counting those no definition of the macros gives.
 countLeaves :: Text -> Either CppError Integer
 countLeaves source = do
   forest <- readConditionals source
@@ -390,9 +478,10 @@ repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
 guardsToTie :: Integer
 guardsToTie = 4096
 
--- | Every configuration, and the answers that reach it.
+-- | Every configuration some definition of the macros gives, and the
+-- answers that reach it.
 answeredLeaves :: Text -> Either CppError [(Assignment, Text)]
-answeredLeaves = go Map.empty
+answeredLeaves = fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
   where
     go answers source = case configurations source of
       Nothing | not (null (unconditionalErrors source)) -> Right []
@@ -409,7 +498,7 @@ type Assignment = Map [Guard] Int
 -- | The same, labelled by the answers that reach each one, and for the same
 -- reason as 'answeredLeaves'.
 answeredLinearLeaves :: Text -> Either CppError [(Assignment, Text)]
-answeredLinearLeaves = go Map.empty
+answeredLinearLeaves = fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
   where
     go answers source = case configurations source of
       Nothing -> (\t -> [(answers, t)]) <$> resolved source
