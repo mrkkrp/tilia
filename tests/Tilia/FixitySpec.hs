@@ -236,6 +236,34 @@ spec = do
         (pure (pmGathered (parsed usesUnknown)))
         `shouldBe` []
 
+    it "passes over every one for a name the module defines itself" $
+      lookupFixity (fullScope definesItsOwn) InTerms Nothing (OpName "clamp")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "passes over every one for a use under the module's own name" $
+      lookupFixity (fullScope definesItsOwn) InTerms (Just "M") (OpName "clamp")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "still blames one for a use under the qualifier it is imported as" $
+      lookupFixity
+        (fullScope "module M where\nimport qualified Opaque as O\nclamp = max\n")
+        InTerms
+        (Just "O")
+        (OpName "clamp")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "still blames one for a type when the module defines only a constructor" $
+      lookupFixity
+        (fullScope "module M where\nimport Opaque\ndata T = Int :+: Int\n")
+        InTypes
+        Nothing
+        (OpName ":+:")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "lets a file be formatted that uses what it defines itself" $
+      unknownOperators (fullScope definesItsOwn) (pure (pmGathered (parsed definesItsOwn)))
+        `shouldBe` []
+
   describe "what a name carries with it" $ do
     it "takes a type's constructors" $
       childrenIn "module M where\ndata T = A | Int :| Int\n"
@@ -667,6 +695,12 @@ unreadOnly m = ModuleChain (m :| []) :| []
 -- import that could not be read.
 usesUnknown :: Text
 usesUnknown = "module M where\nimport Opaque\nf a b = a <??> b\n"
+
+-- | A module that uses a function it defines itself infix, alongside an
+-- import that could not be read.
+definesItsOwn :: Text
+definesItsOwn =
+  "module M where\nimport Opaque\nw = 1 `clamp` 2\nclamp :: Int -> Int -> Int\nclamp = max\n"
 
 -- | The same, with a second unread import to tell apart from the first.
 twoUnread :: Text

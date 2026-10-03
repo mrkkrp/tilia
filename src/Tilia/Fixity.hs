@@ -560,7 +560,11 @@ data Reach = Reach
     -- would have to be written to run into it—without a qualifier, or under
     -- the alias the disagreeing imports share—with the module each import
     -- names and the fixity it brings.
-    reachAmbiguous :: Map (Maybe Text, OpName) (NonEmpty (Text, Fixity))
+    reachAmbiguous :: Map (Maybe Text, OpName) (NonEmpty (Text, Fixity)),
+    -- | The uses a module that was read speaks for in this namespace, as they
+    -- would be written: of a name the module defines itself, which no unread
+    -- import can give another fixity.
+    reachSpokenFor :: Set (Maybe Text, OpName)
   }
   deriving (Eq, Show)
 
@@ -597,9 +601,20 @@ resolveScope implicitPrelude known configurations =
           reachAmbiguous =
             Map.union
               (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
-              (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom))
+              (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom)),
+          reachSpokenFor =
+            Set.fromList
+              [ (qualifier, op)
+              | c <- toList configurations,
+                op <- Set.toList (inNamespace (declaredNamespaces c)),
+                qualifier <- Nothing : fmap Just ownNames
+              ]
         }
       where
+        inNamespace = case namespace of
+          InTypes -> fst
+          InTerms -> snd
+        ownNames = concatMap (toList . moduleName) configurations
         own = Map.map (,DeclaredHere) (fixitiesIn namespace declared)
         offered m = fixitiesIn namespace <$> knownFixities known m
         unqualified =
@@ -613,7 +628,7 @@ resolveScope implicitPrelude known configurations =
         ownQualified =
           Map.fromList
             [ ((m, op), entry)
-            | m <- concatMap (toList . moduleName) configurations,
+            | m <- ownNames,
               (op, entry) <- Map.toList own
             ]
         qualifiedFrom =
@@ -695,7 +710,7 @@ lookupFixity ::
 lookupFixity scope namespace qualifier op =
   case fixityInScope scope namespace qualifier op of
     Just (_, (fixity, provenance)) -> Resolved fixity provenance
-    Nothing -> case nonEmpty (unreadThatMightDeclare scope qualifier op) of
+    Nothing -> case nonEmpty (unreadThatMightDeclare scope namespace qualifier op) of
       Nothing -> Resolved defaultFixity ReportDefault
       Just missing -> Unresolved missing
 
@@ -729,6 +744,8 @@ fixityInScope scope namespace qualifier op =
 unreadThatMightDeclare ::
   -- | The scope.
   Scope ->
+  -- | The namespace the operator is written in.
+  Namespace ->
   -- | The qualifier written at the use site, if any.
   Maybe Text ->
   -- | Operator being resolved.
@@ -736,13 +753,15 @@ unreadThatMightDeclare ::
   -- | The imports that could hold the answer, each down to the module that
   -- actually stopped us, and each module once.
   [ModuleChain]
-unreadThatMightDeclare scope qualifier op =
-  nub
-    [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
-    | u <- scopeUnread scope,
-      supplies (unreadChildren u) qualifier op (unreadImport u),
-      maybe True (Set.member op) (unreadExportNames u)
-    ]
+unreadThatMightDeclare scope namespace qualifier op
+  | Set.member (qualifier, op) (reachSpokenFor (reachIn namespace scope)) = []
+  | otherwise =
+      nub
+        [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
+        | u <- scopeUnread scope,
+          supplies (unreadChildren u) qualifier op (unreadImport u),
+          maybe True (Set.member op) (unreadExportNames u)
+        ]
 
 ----------------------------------------------------------------------------
 -- What could not be answered
@@ -794,7 +813,7 @@ unknownOperators scope found =
         Just (answering, _) ->
           ((qualifier, op),) . Ambiguous
             <$> Map.lookup (qualifier, op) (reachAmbiguous (reachIn answering scope))
-        Nothing -> case nonEmpty (unreadThatMightDeclare scope qualifier op) of
+        Nothing -> case nonEmpty (unreadThatMightDeclare scope namespace qualifier op) of
           Just missing -> Just ((qualifier, op), NotRead missing)
           Nothing -> Nothing
 
