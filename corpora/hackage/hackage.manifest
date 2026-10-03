@@ -460,7 +460,7 @@ formatted       cc37d9bcd159  QuickCheck-2.18.0.0/examples/Lambda.hs
 formatted       56c98d50971f  QuickCheck-2.18.0.0/examples/Merge.hs
 formatted       6506a17a91ff  QuickCheck-2.18.0.0/examples/Set.hs
 formatted       598740b3d57c  QuickCheck-2.18.0.0/examples/Simple.hs
-partly-checked  5234e8085ba9  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
+partly-checked  60e8b863c9c4  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
 formatted       02ad02d885d3  QuickCheck-2.18.0.0/src/Test/QuickCheck/All.hs
 partly-checked  3c4a2dba1b36  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
 formatted       b394fbd4debb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Compat.hs
@@ -2727,7 +2727,7 @@ formatted       d367b2f46d9f  idris-1.3.4/src/Idris/Parser/Data.hs
 formatted       9475514d3152  idris-1.3.4/src/Idris/Parser/Expr.hs
 formatted       1c16d75635f7  idris-1.3.4/src/Idris/Parser/Helpers.hs
 formatted       00297a830b2d  idris-1.3.4/src/Idris/Parser/Ops.hs
-formatted       4c95439ef192  idris-1.3.4/src/Idris/Parser/Stack.hs
+formatted       3cf1ce8dabb7  idris-1.3.4/src/Idris/Parser/Stack.hs
 formatted       f0e3821f6651  idris-1.3.4/src/Idris/PartialEval.hs
 formatted       58ad84ded5d8  idris-1.3.4/src/Idris/Primitives.hs
 formatted       55a7e58fbd43  idris-1.3.4/src/Idris/ProofSearch.hs

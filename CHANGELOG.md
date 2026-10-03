@@ -104,6 +104,10 @@
   defined under a build plan for GHC, so that what only those compilers see,
   such as an import of a module GHC does not have, is not in scope. [Issue
   70](https://github.com/mrkkrp/tilia/issues/70).
+* Keep a conditional nested where it was written when a conditional asking
+  the same question holds a `LANGUAGE` pragma, rather than pull it outside
+  the conditional around it and copy what that one holds into both of its
+  branches. [Issue 64](https://github.com/mrkkrp/tilia/issues/64).
 
 ## Tilia 0.0.2.0
 

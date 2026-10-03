@@ -6,20 +6,14 @@
 module Terminal.Key
   ( Key (..),
     keyCode,
-#if defined(HAVE_PATTERNS)
 #ifndef NO_NAMES
     keyName,
     keyLabel,
+#if defined(HAVE_PATTERNS)
     pattern Escape,
     pattern Enter,
-    keyGlyph,
 #endif
-#else
-#ifndef NO_NAMES
-    keyName,
-    keyLabel,
     keyGlyph,
-#endif
 #endif
   )
 where
