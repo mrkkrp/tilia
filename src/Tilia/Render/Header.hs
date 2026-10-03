@@ -282,12 +282,17 @@ ieItem ctx here withComma = \case
       <> txt "(..)"
       <> comma'
       <> itemDocumentation doc
-  IEThingWith (warning, _) n wildcard members doc ->
+  IEThingWith (warning, (open, _, _, close)) n wildcard members doc ->
     align
       ( exportWarning warning
           <> at ctx n (wrappedName ctx)
-          <> breakOrSpace
-          <> indent (parens (insideBrackets here (commaSep (align <$> withWildcard))))
+          <> layoutWithin
+            ctx
+            here
+            (tokenSpan open <> tokenSpan close <|> here)
+            ( breakOrSpace
+                <> indent (parens (insideBrackets here (commaSep (align <$> withWildcard))))
+            )
           <> comma'
       )
       <> itemDocumentation doc

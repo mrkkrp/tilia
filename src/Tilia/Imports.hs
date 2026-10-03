@@ -24,7 +24,7 @@ import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
 import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
 import Tilia.Span (endPoint, isSingleLine, startPoint)
-import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
+import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan, tokenSpan)
 
 -- | Sort and fold together a module's imports.
 normalizeImports ::
@@ -258,9 +258,9 @@ wider written (L ann kept) (L other folded) =
     combine a b = case (a, b) of
       (IEThingAll x n _, _) -> IEThingAll x n Nothing
       (_, IEThingAll x n _) -> IEThingAll x n Nothing
-      (IEThingWith x n wildcard subs _, IEThingWith _ _ wildcard' subs' _) ->
+      (IEThingWith x n wildcard subs _, IEThingWith x' _ wildcard' subs' _) ->
         IEThingWith
-          x
+          (parensAcross x x')
           n
           (eitherWildcard wildcard wildcard')
           (dedupeSubnames (subs <> subs'))
@@ -275,6 +275,12 @@ wider written (L ann kept) (L other folded) =
     eitherWildcard a b = case (a, b) of
       (NoIEWildcard, NoIEWildcard) -> NoIEWildcard
       _ -> IEWildcard 0
+
+    parensAcross (warning, (open, dots, comma, close)) (_, (open', _, _, close'))
+      | onOneLine open close && not (onOneLine open' close') =
+          (warning, (open', dots, comma, close'))
+      | otherwise = (warning, (open, dots, comma, close))
+    onOneLine open close = all isSingleLine (tokenSpan open <> tokenSpan close)
 
 -- | An entry with the names in its own brackets sorted and deduplicated.
 sortSubnames :: IE GhcPs -> IE GhcPs
