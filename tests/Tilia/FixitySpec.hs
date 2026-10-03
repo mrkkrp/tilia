@@ -265,6 +265,90 @@ spec = do
       unknownOperators (fullScope definesItsOwn) (pure (pmGathered (parsed definesItsOwn)))
         `shouldBe` []
 
+    it "passes over every one for a name an import it could read brings in" $
+      lookupFixity (scopeBringing preludeBringsMin "import Opaque\n") InTerms Nothing (OpName "min")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "passes over every one for a name brought in under the qualifier used" $
+      lookupFixity
+        (scopeBringing [("Data.List", [(InTerms, "isPrefixOf")])] "import qualified Data.List as L\nimport qualified Opaque as L\n")
+        InTerms
+        (Just "L")
+        (OpName "isPrefixOf")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "still blames one for a name brought in only under another qualifier" $
+      lookupFixity
+        (scopeBringing [("Data.List", [(InTerms, "isPrefixOf")])] "import qualified Data.List as L\nimport Opaque\n")
+        InTerms
+        Nothing
+        (OpName "isPrefixOf")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "passes over every one for a variable an import list names" $
+      lookupFixity
+        (scopeBringing [("Data.List", [(InTerms, "isPrefixOf")])] "import Data.List (isPrefixOf)\nimport Opaque\n")
+        InTerms
+        Nothing
+        (OpName "isPrefixOf")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "still blames one for a name an import list leaves out" $
+      lookupFixity
+        (scopeBringing [("Data.List", [(InTerms, "isPrefixOf")])] "import Data.List (nub)\nimport Opaque\n")
+        InTerms
+        Nothing
+        (OpName "isPrefixOf")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "still blames one for a name a hiding list may hide along with a type" $
+      lookupFixity
+        (scopeBringing [("Readable", [(InTerms, ":|")])] "import Readable hiding (T (..))\nimport Opaque\n")
+        InTerms
+        Nothing
+        (OpName ":|")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "still blames one for a constructor brought in only as a type" $
+      lookupFixity
+        (scopeBringing [("Readable", [(InTypes, ":+:")])] "import Readable\nimport Opaque\n")
+        InTerms
+        Nothing
+        (OpName ":+:")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "does not take what an unread module says it brings in" $
+      lookupFixity (scopeBringing [("Opaque", [(InTerms, "min")])] "import Opaque\n") InTerms Nothing (OpName "min")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
+    it "lets a file be formatted whose every unsettled name is accounted for" $
+      let source =
+            T.unlines
+              [ "module C (w) where",
+                "import A",
+                "w :: Int",
+                "w = (y `clamp` 2) `min` 3 + n `roundTo` 2",
+                "  where",
+                "    n = 7",
+                "    a `roundTo` b = a * b",
+                "clamp :: Int -> Int -> Int",
+                "clamp = max"
+              ]
+          scope =
+            resolveScope
+              (Is #implicitPrelude)
+              knowingExports
+                { knownFixities = \case
+                    "A" -> Nothing
+                    "Prelude" -> Just (inBothNamespaces (Map.fromList [(OpName "+", Fixity LeftAssoc 6), (OpName "*", Fixity LeftAssoc 7)]))
+                    m -> exportsOf m,
+                  knownBrought = \case
+                    "Prelude" -> Just (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")])
+                    _ -> Nothing
+                }
+              (pure (pmModule (parsed source)))
+       in unknownOperators scope (pure (pmGathered (parsed source))) `shouldBe` []
+
   describe "a use a local binding captures" $ do
     it "is captured by a function its equation binds under where" $
       capturedIn "f = 1 `roundTo` 2\n  where\n    a `roundTo` b = a * b\n"
@@ -767,6 +851,23 @@ usesUnknown = "module M where\nimport Opaque\nf a b = a <??> b\n"
 definesItsOwn :: Text
 definesItsOwn =
   "module M where\nimport Opaque\nw = 1 `clamp` 2\nclamp :: Int -> Int -> Int\nclamp = max\n"
+
+-- | A Prelude that brings @min@ in, which declares no fixity for it.
+preludeBringsMin :: [(Text, [(Namespace, Text)])]
+preludeBringsMin = [("Prelude", [(InTerms, "min")])]
+
+-- | A scope over a module with these imports, in a world where the modules
+-- listed bring these names in, by namespace.
+scopeBringing :: [(Text, [(Namespace, Text)])] -> Text -> Scope
+scopeBringing said source =
+  resolveScope
+    (Is #implicitPrelude)
+    knowingExports{knownBrought = broughtBy}
+    (pure (pmModule (parsed ("module M where\n" <> source))))
+  where
+    broughtBy m =
+      Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]
+        <$ lookup m said
 
 -- | The same, with a second unread import to tell apart from the first.
 twoUnread :: Text

@@ -36,7 +36,10 @@ data Interface = Interface
     interfaceReexports :: [(Text, OpName)],
     -- | What it exports under each name. This is what @T(..)@ in an import
     -- list stands for.
-    interfaceChildren :: Map OpName (Set OpName)
+    interfaceChildren :: Map OpName (Set OpName),
+    -- | Every name it exports, by namespace, where the interface was decoded
+    -- rather than read off what @ghc --show-iface@ prints.
+    interfaceExports :: Maybe (Set (Namespace, OpName))
   }
   deriving (Eq, Show)
 
@@ -85,7 +88,9 @@ fromHiFile modName HiFile{..}
                         first : rest | first == parent -> rest
                         _ -> named,
                   not (null kids)
-                ]
+                ],
+            interfaceExports =
+              Just (Set.fromList [(namespace, op) | names <- exports, (_, namespace, op) <- names])
           }
   where
     resolved = \case
@@ -113,7 +118,8 @@ parseInterface modName out
                 (Map.fromList (concatMap declared (sectionsNamed "fixities"))),
             interfaceReexports = concatMap reexports (sectionsNamed "exports:"),
             interfaceChildren =
-              Map.unionsWith Set.union (fmap childrenIn (sectionsNamed "exports:"))
+              Map.unionsWith Set.union (fmap childrenIn (sectionsNamed "exports:")),
+            interfaceExports = Nothing
           }
   where
     holdsModule l = case T.words l of
