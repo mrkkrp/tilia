@@ -317,9 +317,16 @@ spec = do
         (OpName ":+:")
         `shouldBe` Unresolved (unreadOnly "Opaque")
 
-    it "does not take what an unread module says it brings in" $
-      lookupFixity (scopeBringing [("Opaque", [(InTerms, "min")])] "import Opaque\n") InTerms Nothing (OpName "min")
-        `shouldBe` Unresolved (unreadOnly "Opaque")
+    it "does not take a name a module brings in for settled where it leaves the name unsettled" $
+      let leavingMin = \case
+            "Opaque" ->
+              mempty
+                { establishedBrought = Brought (Set.singleton (InTerms, OpName "min")) Map.empty,
+                  establishedUnsettled = Map.singleton [] (Set.singleton (InTerms, OpName "min"))
+                }
+            m -> knowingExports m
+          scope = resolveScope (Is #implicitPrelude) leavingMin (pure (pmModule (parsed "module M where\nimport Opaque\n")))
+       in lookupFixity scope InTerms Nothing (OpName "min") `shouldBe` Unresolved (unreadOnly "Opaque")
 
     it "lets a file be formatted whose every unsettled name is accounted for" $
       let source =
@@ -337,15 +344,17 @@ spec = do
           scope =
             resolveScope
               (Is #implicitPrelude)
-              knowingExports
-                { knownFixities = \case
-                    "A" -> Nothing
-                    "Prelude" -> Just (inBothNamespaces (Map.fromList [(OpName "+", Fixity LeftAssoc 6), (OpName "*", Fixity LeftAssoc 7)]))
-                    m -> exportsOf m,
-                  knownBrought = \case
-                    "Prelude" -> Just (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")])
-                    _ -> Nothing
-                }
+              ( \case
+                  "A" -> unreadable
+                  "Prelude" ->
+                    mempty
+                      { establishedFixities =
+                          inBothNamespaces (Map.fromList [(OpName "+", Fixity LeftAssoc 6), (OpName "*", Fixity LeftAssoc 7)]),
+                        establishedBrought =
+                          Brought (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")]) Map.empty
+                      }
+                  m -> knowingExports m
+              )
               (pure (pmModule (parsed source)))
        in unknownOperators scope (pure (pmGathered (parsed source))) `shouldBe` []
 
@@ -446,9 +455,9 @@ spec = do
       exportedChildrenIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
         `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
 
-    it "hands on nothing under a type it does not declare" $
+    it "says nothing of what a type it does not declare carries" $
       exportedChildrenIn "module M (T (..)) where\nimport Elsewhere\n"
-        `shouldBe` [(OpName "T", [])]
+        `shouldBe` []
 
   describe "layer 2: imports" $ do
     it "brings in an operator a type carries" $
@@ -832,8 +841,8 @@ conditionalImports =
     ]
 
 -- | What is known in a world made of 'exportsOf' alone.
-knowingExports :: KnownModules
-knowingExports = noKnownModules{knownFixities = exportsOf}
+knowingExports :: Text -> Established
+knowingExports = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
 
 -- | The one import blamed for an operator, unread on its own account and so
 -- with nothing below it. What every answer here was before a chain could be
@@ -862,18 +871,18 @@ scopeBringing :: [(Text, [(Namespace, Text)])] -> Text -> Scope
 scopeBringing said source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports{knownBrought = broughtBy}
+    (\m -> (knowingExports m){establishedBrought = broughtBy m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     broughtBy m =
-      Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]
-        <$ lookup m said
+      Brought (Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]) Map.empty
 
 -- | The same, with a second unread import to tell apart from the first.
 twoUnread :: Text
 twoUnread = "module M where\nimport Opaque\nimport Other.Opaque\nf a b = a <??> b\n"
 
--- | A scope in which the unread modules listed say what they export.
+-- | A scope in which the unread modules listed say which names they leave
+-- unsettled.
 --
 -- A module absent from the list says nothing, which is what 'fullScope'
 -- assumes of every one of them.
@@ -881,12 +890,16 @@ scopeKnowing :: [(Text, [Text])] -> Text -> Scope
 scopeKnowing said =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports{knownExportNames = exportNamesOf}
+    (\m -> maybe (knowingExports m) leaving (lookup m said))
     . pure
     . pmModule
     . parsed
   where
-    exportNamesOf m = Set.fromList . fmap OpName <$> lookup m said
+    leaving ops =
+      mempty
+        { establishedUnsettled =
+            Map.singleton [] (Set.fromList [(namespace, OpName op) | op <- ops, namespace <- [InTypes, InTerms]])
+        }
 
 -- | The uses of an operator a local binding captures in a module made of
 -- these declarations, by where each operator starts.
@@ -916,7 +929,7 @@ scopeCarrying :: Text -> Scope
 scopeCarrying source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports{knownChildren = childrenOf}
+    (\m -> (knowingExports m){establishedChildren = childrenOf m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     childrenOf = \case
@@ -939,7 +952,7 @@ scopeSuspecting :: [(Text, [(Text, [Text])])] -> Text -> Scope
 scopeSuspecting carries source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports{knownChildren = childrenOf}
+    (\m -> (knowingExports m){establishedChildren = childrenOf m})
     (pure (pmModule (parsed ("module M where\n" <> source <> "f a b = a <??> b\n"))))
   where
     childrenOf m =
@@ -972,8 +985,8 @@ usingItBothWays = takesItsPreludeElsewhere <> "f a b = a <%> b\n"
 --
 -- Kept out of 'exportsOf' so that a Prelude which declares something does
 -- not have to be reckoned with by every other test in the file.
-disagreeingAboutPrelude :: KnownModules
-disagreeingAboutPrelude = noKnownModules{knownFixities = said}
+disagreeingAboutPrelude :: Text -> Established
+disagreeingAboutPrelude = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . said
   where
     said = \case
       "Prelude" -> whichever [(OpName "<%>", Fixity RightAssoc 6)]

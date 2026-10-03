@@ -357,7 +357,7 @@ arithmetic =
                   (OpName "*", (Fixity LeftAssoc 7, DeclaredHere))
                 ]
           },
-      scopeUnread = []
+      scopeUnsettled = []
     }
 
 -- | A namespace with nothing in it.

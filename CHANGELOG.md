@@ -134,6 +134,11 @@
   from its source, brings in as settling the name's fixity despite an
   unreadable import, as one read from an interface file already did. [Issue
   84](https://github.com/mrkkrp/tilia/issues/84).
+* Settle each name a module hands on by itself, rather than give up on all
+  of them because one could have come from a module that cannot be read. A
+  module that imports `Test.QuickCheck` is no longer declined on a name
+  that `Test.QuickCheck.Property`, which does not parse, cannot supply.
+  [Issue 86](https://github.com/mrkkrp/tilia/issues/86).
 
 ## Tilia 0.0.2.0
 
