@@ -94,11 +94,11 @@ fixityNotes ::
   (Text -> IO [Text]) ->
   -- | The scope the module was formatted under.
   Scope ->
-  -- | The module.
-  ParsedModule ->
+  -- | The module's configurations.
+  NonEmpty ParsedModule ->
   IO FixityNotes
-fixityNotes implicitPrelude resolve chainOf scope parsed = do
-  brought <- traverse alongside (moduleImports implicitPrelude (pmModule parsed))
+fixityNotes implicitPrelude resolve chainOf scope configurations = do
+  brought <- traverse alongside (moduleImports implicitPrelude (fmap pmModule configurations))
   pure
     FixityNotes
       { notedImports = brought,
@@ -127,7 +127,7 @@ fixityNotes implicitPrelude resolve chainOf scope parsed = do
       Map.elems
         ( Map.fromList
             [ ((namespace, uncurry operatorSpelling u), (namespace, u))
-            | (namespace, u) <- operatorsUsed (pmGathered parsed)
+            | (namespace, u) <- concatMap (operatorsUsed . pmGathered) configurations
             ]
         )
 

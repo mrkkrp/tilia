@@ -173,13 +173,13 @@ notesThrough ::
   IO [Text]
 notesThrough chains world source =
   renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . exportsOf) chainOf scope parsed
+    <$> fixityNotes (Is #implicitPrelude) (pure . exportsOf) chainOf scope (pure parsed)
   where
     scope =
       resolveScope
         (Is #implicitPrelude)
         noKnownModules{knownFixities = exportsOf, knownChain = chainFor}
-        hsModule
+        (pure hsModule)
     chainFor m = maybe [] id (lookup m chains)
     chainOf = pure . chainFor
     hsModule = pmModule parsed

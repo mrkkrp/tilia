@@ -51,6 +51,15 @@ spec = describe "formatting what an editor holds" $ do
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
         `shouldReturn` CameDeclined 15
 
+  it "takes fixities for a buffer whose branches do not parse together" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Checks.hs") alternatives `shouldReturn` CameOut
+
+  it "declines an operator it cannot settle where the branches do not parse together" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Uses.hs") alternativesUsingUnknown
+        `shouldReturn` CameDeclined 15
+
   it "leaves alone a file the project's .tiliaignore excludes" $
     withProject $ \buffer ->
       buffer ("src" </> "Generated.hs") "module Generated where\nx=1\n"
@@ -73,6 +82,50 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #checkIdempotence)
           (Don't #debugFixity)
         `shouldReturn` Just 2
+
+-- | A formatted module with a conditional around two alternatives, which do
+-- not parse one after the other.
+alternatives :: Text
+alternatives =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "",
+      "module Checks where",
+      "",
+      "g :: IO ()",
+      "g =",
+      "#ifdef CHECK",
+      "  id $",
+      "    do",
+      "      print 1",
+      "#else",
+      "  do",
+      "    print 1",
+      "#endif",
+      "",
+      "h :: Int -> String",
+      "h n =",
+      "  error $",
+      "    \"count: \" ++ show n"
+    ]
+
+-- | The same kind of alternatives, using an operator from a module that
+-- cannot be read.
+alternativesUsingUnknown :: Text
+alternativesUsingUnknown =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Uses where",
+      "import Nowhere",
+      "x =",
+      "#ifdef CHECK",
+      "  id $ do",
+      "    a <?> b",
+      "#else",
+      "  do",
+      "    a <?> b",
+      "#endif"
+    ]
 
 -- | What formatting a buffer came to, with errors told apart by the status
 -- they exit with.

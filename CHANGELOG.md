@@ -82,6 +82,12 @@
   across lines. The same goes for the names given with a type, as in `Maybe
   (Just, Nothing)`, in import and export lists. [PR
   73](https://github.com/mrkkrp/tilia/pull/73).
+* Work out the fixities in scope of a CPP module whose branches do not
+  parse together from each configuration, rather than format the whole
+  module without fixities and without checking for operators of unknown
+  fixity. Formatting often gives a module such branches, so a second pass
+  could lay out its operators differently. [Issue
+  60](https://github.com/mrkkrp/tilia/issues/60).
 
 ## Tilia 0.0.2.0
 
