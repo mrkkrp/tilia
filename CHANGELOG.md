@@ -108,9 +108,10 @@
   the same question holds a `LANGUAGE` pragma, rather than pull it outside
   the conditional around it and copy what that one holds into both of its
   branches. [Issue 64](https://github.com/mrkkrp/tilia/issues/64).
-* Keep a comment written before the closing bracket of a list comprehension
-  or an arithmetic sequence inside the brackets, rather than move it after
-  them or, when nothing follows, out of the declaration.
+* Keep a comment written before the closing bracket of a list
+  comprehension, an arithmetic sequence or a Template Haskell quote inside
+  the brackets, rather than move it after them or, when nothing follows,
+  out of the declaration. [PR 79](https://github.com/mrkkrp/tilia/pull/79).
 
 ## Tilia 0.0.2.0
 
