@@ -145,12 +145,11 @@ restoreUnprinted source found doc = do
       (putDirective written)
       noted
       (filter (not . inComment . dLine) (opaqueDirectives source))
-  let (under, over) =
-        runsInto
-          (summaryHaddocks found)
-          (Set.fromList [commentSpan c | c <- notes, not (bracketed c)])
-          placed
-  pure (keptApart under over placed)
+  pure $
+    keptApart
+      (summaryHaddocks found)
+      (Set.fromList [commentSpan c | c <- notes, not (bracketed c)])
+      placed
   where
     written = linesOf (Written source)
     directiveAt n = maybe False isDirective (lineAt n written)
@@ -166,57 +165,44 @@ data Printed
     Apart
   | -- | A Haddock written as @--@ lines.
     AHaddock
-  | -- | A comment written as @--@ lines, and where.
-    ANote Span
+  | -- | A comment written as @--@ lines.
+    ANote
+  deriving (Eq)
 
--- | The comments written as @--@ lines that come out right under a Haddock
--- written the same way, and would be read as more of it; and those that
--- come out right above one, which a comment is kept apart from when the
--- two are written like that.
-runsInto ::
+-- | Put an empty line between a comment written as @--@ lines and a Haddock
+-- written the same way wherever one comes out right under the other: under
+-- a Haddock a comment would be read as more of it, and above one it is kept
+-- apart from it.
+keptApart ::
   -- | Where the Haddocks written as @--@ lines are.
   Set Span ->
   -- | Where the comments written as @--@ lines are.
   Set Span ->
   Doc ->
-  (Set Span, Set Span)
-runsInto haddocks notes = snd . go Apart
+  Doc
+keptApart haddocks notes = snd . go Apart
   where
     go before = \case
       DLocated s x
-        | Set.member s notes -> case before of
-            AHaddock -> (ANote s, (Set.singleton s, Set.empty))
-            _ -> (ANote s, mempty)
-        | Set.member s haddocks -> case before of
-            ANote n -> (AHaddock, (Set.empty, Set.singleton n) <> snd (go Apart x))
-            _ -> (AHaddock, snd (go Apart x))
-        | otherwise -> go before x
-      DFence _ x -> go before x
+        | Set.member s notes ->
+            (ANote, DLocated s (includeWhen (before == AHaddock) blankLine <> x))
+        | Set.member s haddocks ->
+            (AHaddock, DLocated s (includeWhen (before == ANote) blankLine <> snd (go Apart x)))
+        | otherwise -> DLocated s <$> go before x
+      DFence s x -> DFence s <$> go before x
       DCat a b ->
-        let (between, found) = go before a
-            (after, found') = go between b
-         in (after, found <> found')
-      DNest _ x -> go before x
-      DAlign x -> go before x
-      DGroup _ x -> go before x
-      DVariant _ b -> go before b
-      d@DCppChoice{} -> (Apart, foldChildren (snd . go Apart) d)
+        let (between, a') = go before a
+            (after, b') = go between b
+         in (after, DCat a' b')
+      DNest n x -> DNest n <$> go before x
+      DAlign x -> DAlign <$> go before x
+      DGroup l x -> DGroup l <$> go before x
+      DCppMarginNote x -> DCppMarginNote <$> go before x
+      DVariant a b -> DVariant (snd (go before a)) <$> go before b
+      d@DCppChoice{} -> (Apart, mapChildren (snd . go Apart) d)
       d
-        | onlySpacing d -> (before, mempty)
-        | otherwise -> (Apart, mempty)
-
--- | Put an empty line above the comments at the first spans, and below
--- those at the second.
-keptApart :: Set Span -> Set Span -> Doc -> Doc
-keptApart under over = go
-  where
-    go = \case
-      DLocated s x ->
-        DLocated s $
-          includeWhen (Set.member s under) blankLine
-            <> go x
-            <> includeWhen (Set.member s over) blankLine
-      d -> mapChildren go d
+        | onlySpacing d -> (before, d)
+        | otherwise -> (Apart, d)
 
 -- | Widen every region to take in the conditionals printed inside it.
 widened :: Doc -> Doc
