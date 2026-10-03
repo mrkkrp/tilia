@@ -295,7 +295,7 @@ variations forest source
                     cfgTexts = [held (varying k i) | i <- [0 .. gsCount gs - 1]],
                     cfgDropped = [gone (varying k i) | i <- [0 .. gsCount gs - 1]],
                     cfgWholes = Varied [gsWhole gs],
-                    cfgDirectiveLines = [gsOwnLines gs]
+                    cfgConditionals = [gsConditional gs]
                   }
               | (k, gs) <- zip [0 ..] forest
               ]
@@ -533,7 +533,7 @@ configurationBudget = 64
 mergeOf :: Configurations -> [Doc] -> Doc
 mergeOf c =
   merge
-    (fmap Conditional (cfgDirectiveLines c))
+    (cfgConditionals c)
     (cfgGuards c)
     (cfgWholes c)
 

@@ -197,15 +197,23 @@ instance Semigroup Doc where
 instance Monoid Doc where
   mempty = DEmpty
 
--- | A conditional as its author wrote it: the lines of its directives, the
--- @#if@ first and the @#endif@ last.
-newtype Conditional = Conditional{conditionalLines :: [Int]}
+-- | A conditional as its author wrote it.
+data Conditional = Conditional
+  { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
+    conditionalLines :: [Int],
+    -- | What follows the keyword of its @#else@.
+    conditionalElse :: Text,
+    -- | What follows the keyword of its @#endif@.
+    conditionalEndif :: Text
+  }
   deriving (Eq, Ord, Show)
 
 -- | The lines of a conditional's @#if@ and @#endif@.
 conditionalRange :: Conditional -> Maybe (Int, Int)
-conditionalRange (Conditional ls) =
+conditionalRange c =
   (,) <$> listToMaybe ls <*> fmap snd (unsnoc ls)
+  where
+    ls = conditionalLines c
 
 -- | Whether a group is laid out on one line or across several.
 data Layout
@@ -390,13 +398,17 @@ go env = \case
     Broken -> go env brokenD
   DLocated _ d -> go env d
   DFence _ d -> go env d
-  DCppChoice _ branches fallback ->
-    foldr (flip (.)) id . concat $
-      [ [directive type' ("#" <> guard'), go env taken]
-      | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
-      ]
-        <> [[directive CppDirectiveContinues "#else", go env fallback] | not (printsNothing fallback)]
-        <> [[directive CppDirectiveCloses "#endif"]]
+  DCppChoice cs branches fallback ->
+    let afterElse = foldMap conditionalElse (listToMaybe cs)
+        afterEndif = foldMap conditionalEndif (listToMaybe cs)
+     in foldr (flip (.)) id . concat $
+          [ [directive type' ("#" <> guard'), go env taken]
+          | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
+          ]
+            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go env fallback]
+               | not (printsNothing fallback && T.null afterElse)
+               ]
+            <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
 
 -- | Record whether the line holds nothing but a note, given whether what is

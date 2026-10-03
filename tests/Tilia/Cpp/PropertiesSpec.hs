@@ -39,6 +39,12 @@ spec = modifyMaxSuccess (const 5000) $
               | (_, t) <- configurations
               ]
 
+    it "keeps what its directives say after their keyword" $
+      property $ \m -> formatted m $ \out ->
+        let remarked = Set.fromList . filter ("/*" `T.isInfixOf`) . T.lines
+            lost = Set.difference (remarked (sourceOf m)) (remarked out)
+         in counterexample (T.unpack (T.unlines ("lost:" : Set.toList lost))) (Set.null lost)
+
     it "is read as configurations it already had, once a plan rules some out" $
       property $ \m ->
         let source = sourceOf m
@@ -206,5 +212,12 @@ written = \case
   Cond g yes no ->
     ["#" <> g]
       <> concatMap written yes
-      <> (if null no then [] else "#else" : concatMap written no)
-      <> ["#endif"]
+      <> (if null no && T.null (remark g) then [] else ("#else" <> remark g) : concatMap written no)
+      <> ["#endif" <> remark g]
+
+-- | What a conditional asking this writes after its @#else@ and @#endif@,
+-- the same for every one of them, since the merge can print several as one.
+remark :: Text -> Text
+remark = \case
+  "ifdef OTHER" -> " /* OTHER */"
+  _ -> ""
