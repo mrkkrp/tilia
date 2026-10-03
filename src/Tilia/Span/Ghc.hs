@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | Turning the compiler's positions into ours.
 module Tilia.Span.Ghc
   ( spanOfReal,
@@ -6,11 +8,18 @@ module Tilia.Span.Ghc
     spansOf,
     tokenSpan,
     annSpan,
+    bracketsSpan,
   )
 where
 
 import Data.Maybe (mapMaybe)
-import GHC.Parser.Annotation (EpToken, HasLoc, getEpTokenSrcSpan, getHasLoc)
+import GHC.Parser.Annotation
+  ( AnnListBrackets (..),
+    EpToken,
+    HasLoc,
+    getEpTokenSrcSpan,
+    getHasLoc,
+  )
 import GHC.Types.SrcLoc (GenLocated)
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Span (Span, mkSpan)
@@ -37,6 +46,15 @@ tokenSpan = spanOfSrcSpan . getEpTokenSrcSpan
 -- | Where an annotation says something was written.
 annSpan :: (HasLoc l) => l -> Maybe Span
 annSpan = spanOfSrcSpan . getHasLoc
+
+-- | Where a list's brackets were written, from the opening one to the
+-- closing one.
+bracketsSpan :: AnnListBrackets -> Maybe Span
+bracketsSpan = \case
+  ListParens open close -> tokenSpan open <> tokenSpan close
+  ListBraces open close -> tokenSpan open <> tokenSpan close
+  ListSquare open close -> tokenSpan open <> tokenSpan close
+  _ -> Nothing
 
 -- | The span covering every located thing in the list.
 spansOf :: (HasLoc l) => [GenLocated l a] -> Maybe Span

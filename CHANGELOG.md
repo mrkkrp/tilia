@@ -77,6 +77,12 @@
   63](https://github.com/mrkkrp/tilia/issues/63).
 * Keep what is written after `#else` and `#endif`, such as a comment naming
   the condition. [Issue 61](https://github.com/mrkkrp/tilia/issues/61).
+* Print an import list on one line when its parentheses were written on
+  one line, rather than whenever the import was written on one, so that a
+  `hiding` clause behind a CPP conditional or a list put on the next line
+  no longer comes out with one name per line. A list merged out of several
+  is broken if any of them was written across lines. [PR
+  73](https://github.com/mrkkrp/tilia/pull/73).
 
 ## Tilia 0.0.2.0
 

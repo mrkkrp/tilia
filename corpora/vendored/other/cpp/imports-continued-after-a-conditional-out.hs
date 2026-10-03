@@ -9,9 +9,7 @@ import Data.Text
 import Data.List
 #endif
 #if MIN_VERSION_base(4,20,0)
-  hiding
-  ( lines,
-  )
+  hiding (lines)
 #endif
 import Data.Char (isSpace)
 

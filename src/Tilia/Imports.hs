@@ -23,8 +23,8 @@ import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
 import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
-import Tilia.Span (endPoint, startPoint)
-import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
+import Tilia.Span (endPoint, isSingleLine, startPoint)
+import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 
 -- | Sort and fold together a module's imports.
 normalizeImports ::
@@ -197,8 +197,21 @@ combineImports written (L ann kept) (L other folded) =
     kept{ideclImportList = both (ideclImportList kept) (ideclImportList folded)}
   where
     both (Just (interpretation, L l xs)) (Just (_, L l' ys)) =
-      Just (interpretation, L (widened written l l') (tidyImportItems written (xs <> ys)))
+      Just
+        ( interpretation,
+          L (bracketsAcross (widened written l l') l') (tidyImportItems written (xs <> ys))
+        )
     both _ _ = Nothing
+
+-- | Take the second list's brackets where only they were written across
+-- lines, so that a list folded out of several breaks if any of them did.
+bracketsAcross :: EpAnn (AnnList a) -> EpAnn (AnnList a) -> EpAnn (AnnList a)
+bracketsAcross kept folded
+  | onOneLine kept && not (onOneLine folded) =
+      kept{anns = (anns kept){al_brackets = al_brackets (anns folded)}}
+  | otherwise = kept
+  where
+    onOneLine = all isSingleLine . bracketsSpan . al_brackets . anns
 
 -- | An import with its list sorted and the entries naming one thing folded
 -- together. An import with no list is left as it is.

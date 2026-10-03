@@ -11,6 +11,7 @@ module Tilia.Render.Header
   )
 where
 
+import Control.Applicative ((<|>))
 import Data.Function (on)
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
@@ -379,13 +380,12 @@ importDecl ctx ImportDecl{..} =
       let hidden = case interpretation of
             Exactly -> mempty
             EverythingBut -> keywordAt ctx (tokenSpan (fst (al_rest (anns listLoc)))) "hiding"
-       in hidden
-            <> breakOrSpace
-            <> parens
-              ( insideBrackets
-                  (spanOfSrcSpan (locA listLoc))
-                  (importExportItems ctx xs)
-              )
+          listSpan = spanOfSrcSpan (locA listLoc)
+          parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
+       in layoutWithin ctx listSpan parensSpan $
+            hidden
+              <> breakOrSpace
+              <> parens (insideBrackets listSpan (importExportItems ctx xs))
 
 -- | The keyword an import's level is written with.
 declLevel :: ImportDeclLevel -> Doc
