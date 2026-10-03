@@ -156,12 +156,16 @@ exprBody ctx site here = \case
         <> indent (hsSigType ctx hswc_body)
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
   HsTypedBracket (bracketAnn, _) e ->
-    txt opener <> breakOrNothing <> hsExpr ctx e <> breakOrNothing <> txt "||]"
+    txt opener
+      <> breakOrNothing
+      <> insideBrackets here (hsExpr ctx e)
+      <> breakOrNothing
+      <> txt "||]"
     where
       opener = case bracketAnn of
         BracketNoE{} -> "[||"
         BracketHasE{} -> "[e||"
-  HsUntypedBracket _ q -> quotation ctx q
+  HsUntypedBracket _ q -> quotation ctx here q
   HsTypedSplice _ (HsTypedSpliceExpr _ e) -> spliceTH ctx (Is #typed) e DollarSplice
   HsUntypedSplice _ splice -> untypedSplice ctx DollarSplice splice
   HsProc _ p e ->
@@ -1155,8 +1159,8 @@ spliceTH ctx typed e = \case
     spliced = at ctx e (align . exprBody ctx plainSite (spanOf e))
 
 -- | A Template Haskell quotation.
-quotation :: Ctx -> HsQuote GhcPs -> Doc
-quotation ctx = \case
+quotation :: Ctx -> Maybe Span -> HsQuote GhcPs -> Doc
+quotation ctx here = \case
   ExpBr (bracketAnn, _) e -> quoted (flavour bracketAnn) (hsExpr ctx e)
     where
       flavour = \case
@@ -1174,7 +1178,7 @@ quotation ctx = \case
         <> txt flavour
         <> txt "|"
         <> breakOrNothing
-        <> indent (body <> breakOrNothing <> txt "|]")
+        <> indent (insideBrackets here body <> breakOrNothing <> txt "|]")
     starGuard x body
       | risky = space <> body <> space
       | otherwise = body
