@@ -1188,6 +1188,7 @@ broughtOfModule :: Workings -> Set Text -> Text -> IO (Maybe Brought)
 broughtOfModule
   Workings
     { wkRoutes,
+      wkCache,
       wkLocal,
       wkIndex,
       wkInterfaceOf,
@@ -1207,10 +1208,16 @@ broughtOfModule
         FromInterface -> (interfaceExports =<<) <$> wkInterfaceOf modName
         FromSource -> case Map.lookup modName wkIndex of
           Nothing -> pure Nothing
-          Just (_, tarball) ->
-            wkModuleInArchive tarball modName >>= \case
-              Just (Haskell text) -> inSource (Just text)
-              _ -> pure Nothing
+          Just (package, tarball) ->
+            join
+              <$> recalled
+                (cachedBrought wkCache package modName)
+                (storeBrought wkCache package modName)
+                ( wkModuleInArchive tarball modName >>= \case
+                    Just (Haskell text) -> Just <$> inSource (Just text)
+                    Just ForHsc -> pure (Just Nothing)
+                    Nothing -> pure Nothing
+                )
       firstAnswer = \case
         [] -> pure Nothing
         route : rest -> route >>= maybe (firstAnswer rest) (pure . Just)

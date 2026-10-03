@@ -198,6 +198,42 @@ spec = do
         storeChildren cache "one-1.0" "M" (Map.singleton (OpName "T") (Set.singleton (OpName ":|")))
         cachedChildren cache "two-1.0" "M" `shouldReturn` Nothing
 
+    describe "what a module brings in" $ do
+      it "round-trips its names and what its types carry, by namespace" $ \cache -> do
+        let brought =
+              Brought
+                ( Set.fromList
+                    [ (InTypes, OpName "T"),
+                      (InTerms, OpName "T"),
+                      (InTerms, OpName ":|"),
+                      (InTypes, OpName "Empty")
+                    ]
+                )
+                ( Map.fromList
+                    [ (OpName "T", Set.fromList [(InTerms, OpName "T"), (InTypes, OpName "F")]),
+                      (OpName "Empty", Set.empty)
+                    ]
+                )
+        storeBrought cache "thing-1.0" "M" (Just brought)
+        cachedBrought cache "thing-1.0" "M" `shouldReturn` Just (Just brought)
+
+      it "remembers a module that could not be told" $ \cache -> do
+        storeBrought cache "thing-1.0" "Quiet" Nothing
+        cachedBrought cache "thing-1.0" "Quiet" `shouldReturn` Just Nothing
+
+      it "tells one that brings in nothing from one that could not be told" $ \cache -> do
+        storeBrought cache "thing-1.0" "Bare" (Just mempty)
+        storeBrought cache "thing-1.0" "Quiet" Nothing
+        cachedBrought cache "thing-1.0" "Bare" `shouldReturn` Just (Just mempty)
+        cachedBrought cache "thing-1.0" "Quiet" `shouldReturn` Just Nothing
+
+      it "knows nothing about a module it was never told about" $ \cache ->
+        cachedBrought cache "thing-1.0" "Unasked" `shouldReturn` Nothing
+
+      it "keeps packages apart" $ \cache -> do
+        storeBrought cache "one-1.0" "M" (Just (Brought (Set.singleton (InTerms, OpName "f")) Map.empty))
+        cachedBrought cache "two-1.0" "M" `shouldReturn` Nothing
+
     describe "what the project's own modules say" $ do
       it "round-trips every kind of thing a summary holds" $ \cache -> do
         let summaries = Just (crowded :| [bare, unlisted])
