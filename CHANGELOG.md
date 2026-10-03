@@ -88,6 +88,10 @@
   fixity. Formatting often gives a module such branches, so a second pass
   could lay out its operators differently. [Issue
   60](https://github.com/mrkkrp/tilia/issues/60).
+* Merge imports of one module that hide names only when they hide the same
+  names, since imports hiding different names bring in more together than
+  one hiding all of them would. [PR
+  76](https://github.com/mrkkrp/tilia/pull/76).
 
 ## Tilia 0.0.2.0
 
