@@ -23,9 +23,9 @@ import Tilia.Corpus.Manifest
 import Tilia.Cpp
   ( answeredLeaves,
     answeredLinearLeaves,
-    blankCpp,
     countLeaves,
     describeCppError,
+    everyBranch,
     formatWithCpp,
     usesCpp,
   )
@@ -359,7 +359,7 @@ checkPure palette path package source expected
     render parsed =
       printDoc
         defaultRenderOptions
-        (renderModule (exampleRenderConfig package source parsed) parsed)
+        (renderModule (exampleRenderConfig package source (pure parsed)) parsed)
 
 ----------------------------------------------------------------------------
 -- Checking an example that involved the preprocessor
@@ -413,7 +413,7 @@ checkCpp palette path package source expected = case formatWithCpp parser render
         (Right went, Right came)
           | (why : _) <- alongside went came ->
               told formatted Broken (why <> "\n" <> against formatted)
-          | otherwise -> case formatWithCpp parser render path formatted of
+          | otherwise -> case formatWithCpp parser (renderConfigFor parser path package formatted) path formatted of
               Left why ->
                 told formatted Broken ("the output cannot be formatted again: " <> describeCppError why)
               Right settled
@@ -507,6 +507,4 @@ configurationsToCheck = 64
 -- | What to print an example's configurations with.
 renderConfigFor :: ParserConfig -> FilePath -> [Extension] -> Text -> RenderConfig
 renderConfigFor parser path package source =
-  case parseModule parser path (blankCpp source) of
-    Right whole -> exampleRenderConfig package source whole
-    Left _ -> defaultRenderConfig
+  maybe defaultRenderConfig (exampleRenderConfig package source) (everyBranch parser path source)

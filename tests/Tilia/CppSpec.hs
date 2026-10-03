@@ -160,6 +160,19 @@ spec = do
       (said (length <$> branchLeaves (sideBySide 20)), said (countLeaves (sideBySide 20)))
         `shouldBe` (Right 21, Right (2 ^ (20 :: Int)))
 
+  describe "parsing every branch" $ do
+    it "parses branches that parse together as one module" $
+      branchesParsed atDeclarations `shouldBe` Just 1
+
+    it "parses alternatives that do not parse together a branch leaf at a time" $
+      branchesParsed alternatives `shouldBe` Just 2
+
+    it "leaves out a branch leaf that does not parse" $
+      branchesParsed oneAlternativeParses `shouldBe` Just 1
+
+    it "has nothing where no branch leaf parses" $
+      branchesParsed noAlternativeParses `shouldBe` Nothing
+
   describe "varying one conditional at a time" $ do
     it "is the baseline and one configuration per further branch" $
       said (length <$> linearLeaves (sideBySide 63)) `shouldBe` Right 64
@@ -474,6 +487,34 @@ guardAtTwoDepths =
       "#endif"
     ]
 
+-- | A conditional around two alternatives, which do not parse one after the
+-- other.
+alternatives :: Text
+alternatives =
+  T.unlines
+    [ "module M where",
+      "",
+      "g =",
+      "#ifdef CHECK",
+      "  id $",
+      "    do",
+      "      print 1",
+      "#else",
+      "  do",
+      "    print 1",
+      "#endif"
+    ]
+
+-- | Two alternatives, only one of which parses.
+oneAlternativeParses :: Text
+oneAlternativeParses =
+  T.unlines ["module M where", "", "#ifdef FOO", "f = 1", "#else", "f = (", "#endif"]
+
+-- | Two alternatives, neither of which parses.
+noAlternativeParses :: Text
+noAlternativeParses =
+  T.unlines ["module M where", "", "#ifdef FOO", "f = (", "#else", "f = [", "#endif"]
+
 -- | An @#if@ with nothing to close it.
 unbalanced :: Text
 unbalanced = T.unlines ["module M where", "", "#ifdef FOO", "f = 1"]
@@ -570,6 +611,10 @@ sameBranch (Just input, Just output) = sameProgram input output
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
 sameBranch _ = Left "preprocessing changed between succeeding and failing"
+
+-- | How many modules parsing every branch of a module comes to.
+branchesParsed :: Text -> Maybe Int
+branchesParsed = fmap length . everyBranch defaultParserConfig "example.hs"
 
 -- | A refusal as words, which is the only place these tests want one.
 said :: Either CppError a -> Either Text a

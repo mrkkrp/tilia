@@ -39,9 +39,9 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cpp
   ( CppError (..),
-    blankCpp,
     correspondingBranches,
     describeCppError,
+    everyBranch,
     formatWithCpp,
     usesCpp,
     withoutRuledOut,
@@ -303,14 +303,13 @@ formatSource session path source = runExceptT $ do
   package <- orElse (NoPackage path) =<< liftIO (sessionPackage session path)
   let resolver = sessionResolver session
       config = parserConfigFor package
-      reading = blankCpp . withoutRuledOut (sessionMacros session)
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
          in (Set.fromList declared, usesCpp declared text)
       renderConfigFor extensions parsed = do
         let implicitPrelude =
               fromBool (Set.member ImplicitPrelude extensions)
-        scope <- liftIO (scopeFor resolver implicitPrelude (pmModule parsed))
+        scope <- liftIO (scopeFor resolver implicitPrelude (fmap pmModule parsed))
         liftIO $ case sessionFixityNotes session of
           Nothing -> pure ()
           Just ref -> do
@@ -322,7 +321,7 @@ formatSource session path source = runExceptT $ do
                 scope
                 parsed
             atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
-        case unknownOperators scope (pmGathered parsed) of
+        case unknownOperators scope (fmap pmGathered parsed) of
           [] ->
             pure
               defaultRenderConfig
@@ -332,9 +331,9 @@ formatSource session path source = runExceptT $ do
           unknown -> throwE (UnknownFixity path unknown)
       formatting (extensions, cpp) already text
         | cpp = do
-            render <- case parseModule config path (reading text) of
-              Left _ -> pure defaultRenderConfig{rcExtensions = extensions}
-              Right whole -> renderConfigFor extensions whole
+            render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
+              Nothing -> pure defaultRenderConfig{rcExtensions = extensions}
+              Just branches -> renderConfigFor extensions branches
             printed <-
               orElse
                 (CppUnsupported path)
@@ -343,7 +342,7 @@ formatSource session path source = runExceptT $ do
         | otherwise = do
             parsed <-
               maybe (orElse NotParsed (parseModule config path text)) pure already
-            render <- renderConfigFor extensions parsed
+            render <- renderConfigFor extensions (pure parsed)
             pure
               ( printDoc defaultRenderOptions (renderModule render parsed),
                 Just parsed

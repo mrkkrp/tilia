@@ -68,6 +68,7 @@ import Data.Bifunctor (first)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
+import Data.List (nub, sortOn)
 import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -85,6 +86,7 @@ import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
+import Tilia.Span.Ghc (spanOf)
 import Tilia.Utils (collected, spellList)
 
 ----------------------------------------------------------------------------
@@ -375,16 +377,17 @@ data ImportItem
 
 instance NFData ImportItem
 
--- | The imports of a module.
+-- | The imports of a module, all its configurations taken together.
 moduleImports ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | Parsed module.
-  HsModule GhcPs ->
+  -- | The module's configurations, parsed.
+  NonEmpty (HsModule GhcPs) ->
   [Import]
-moduleImports implicitPrelude hsModule = prelude <> written
+moduleImports implicitPrelude configurations = prelude <> written
   where
-    written = fmap (fromDecl . unLoc) (hsmodImports hsModule)
+    written =
+      nub (fmap (fromDecl . unLoc) (sortOn spanOf (concatMap hsmodImports configurations)))
     prelude
       | not (isTrue implicitPrelude) = []
       | any ((== "Prelude") . importModule) written = []
@@ -574,18 +577,18 @@ resolveScope ::
   Choice "implicitPrelude" ->
   -- | What is known about the modules this one imports.
   KnownModules ->
-  -- | Parsed module.
-  HsModule GhcPs ->
+  -- | The module's configurations, parsed.
+  NonEmpty (HsModule GhcPs) ->
   Scope
-resolveScope implicitPrelude known hsModule =
+resolveScope implicitPrelude known configurations =
   Scope
     { scopeInTypes = reachAmong InTypes,
       scopeInTerms = reachAmong InTerms,
       scopeUnread = unread
     }
   where
-    imports = moduleImports implicitPrelude hsModule
-    declared = declaredFixities hsModule
+    imports = moduleImports implicitPrelude configurations
+    declared = Map.unions (fmap declaredFixities configurations)
 
     reachAmong namespace =
       Reach
@@ -610,7 +613,7 @@ resolveScope implicitPrelude known hsModule =
         ownQualified =
           Map.fromList
             [ ((m, op), entry)
-            | m <- toList (moduleName hsModule),
+            | m <- concatMap (toList . moduleName) configurations,
               (op, entry) <- Map.toList own
             ]
         qualifiedFrom =
@@ -731,14 +734,15 @@ unreadThatMightDeclare ::
   -- | Operator being resolved.
   OpName ->
   -- | The imports that could hold the answer, each down to the module that
-  -- actually stopped us.
+  -- actually stopped us, and each module once.
   [ModuleChain]
 unreadThatMightDeclare scope qualifier op =
-  [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
-  | u <- scopeUnread scope,
-    supplies (unreadChildren u) qualifier op (unreadImport u),
-    maybe True (Set.member op) (unreadExportNames u)
-  ]
+  nub
+    [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
+    | u <- scopeUnread scope,
+      supplies (unreadChildren u) qualifier op (unreadImport u),
+      maybe True (Set.member op) (unreadExportNames u)
+    ]
 
 ----------------------------------------------------------------------------
 -- What could not be answered
@@ -781,9 +785,9 @@ operatorsUsed found =
 --
 -- Empty is the only acceptable answer: an operator whose fixity is not
 -- known cannot be laid out, only guessed at.
-unknownOperators :: Scope -> Gathered -> [((Maybe Text, OpName), Unknown)]
+unknownOperators :: Scope -> NonEmpty Gathered -> [((Maybe Text, OpName), Unknown)]
 unknownOperators scope found =
-  Map.toList (Map.fromList (mapMaybe unsettled (operatorsUsed found)))
+  Map.toList (Map.fromList (mapMaybe unsettled (concatMap operatorsUsed found)))
   where
     unsettled (namespace, (qualifier, op)) =
       case fixityInScope scope namespace qualifier op of
@@ -872,7 +876,7 @@ summarize implicitPrelude hsModule =
   ModuleSummary
     { summaryName = moduleName hsModule,
       summaryExports = moduleExports hsModule,
-      summaryImports = moduleImports implicitPrelude hsModule,
+      summaryImports = moduleImports implicitPrelude (pure hsModule),
       summaryFixities = declaredFixities hsModule,
       summaryNames = declaredNames hsModule,
       summaryDeclaredChildren = declaredChildren hsModule,

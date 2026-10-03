@@ -1177,12 +1177,13 @@ scopeFor ::
   -- | Whether @ImplicitPrelude@ is on, which the module's own pragmas
   -- and its package's @default-extensions@ decide between them.
   Choice "implicitPrelude" ->
-  -- | The module whose scope is wanted, already parsed.
-  HsModule GhcPs ->
+  -- | The configurations of the module whose scope is wanted, already
+  -- parsed.
+  NonEmpty (HsModule GhcPs) ->
   -- | Everything that module can see, and what it could not find out.
   IO Scope
-scopeFor resolver implicitPrelude hsModule = do
-  let imports = moduleImports implicitPrelude hsModule
+scopeFor resolver implicitPrelude configurations = do
+  let imports = moduleImports implicitPrelude configurations
   answers <- inParallel (\m -> (m,) <$> askFixities resolver m) (fmap importModule imports)
   let table = Map.fromList answers
       unread = [m | (m, Nothing) <- answers]
@@ -1202,7 +1203,7 @@ scopeFor resolver implicitPrelude hsModule = do
           knownExportNames = \m -> Map.findWithDefault Nothing m names,
           knownChain = \m -> Map.findWithDefault [] m chains
         }
-      hsModule
+      configurations
 
 -- | Does an import's list name a @T(..)@, which only the module imported
 -- can tell the members of?

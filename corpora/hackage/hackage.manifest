@@ -554,7 +554,7 @@ formatted       b61b87ef28b1  aeson-2.3.1.0/src/Data/Aeson/Internal/Text.hs
 formatted       e83337edc6e6  aeson-2.3.1.0/src/Data/Aeson/Internal/Unescape.hs
 formatted       20257ed727b2  aeson-2.3.1.0/src/Data/Aeson/Internal/UnescapeFromText.hs
 formatted       1052e9d7d311  aeson-2.3.1.0/src/Data/Aeson/Key.hs
-formatted       e049e4e7b728  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
+formatted       db2fa5b74e15  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
 formatted       a8f98f92bb33  aeson-2.3.1.0/src/Data/Aeson/Parser/Time.hs
 formatted       34673c7e3119  aeson-2.3.1.0/src/Data/Aeson/QQ/Simple.hs
 formatted       8c47510bfe90  aeson-2.3.1.0/src/Data/Aeson/RFC8785.hs
@@ -785,10 +785,10 @@ formatted       75daea597c6a  aws-0.25.3/tests/DynamoDb/Utils.hs
 formatted       5886bbdd46c9  aws-0.25.3/tests/S3/Main.hs
 formatted       44336eea1e26  aws-0.25.3/tests/Sqs/Main.hs
 formatted       001f1d1eb163  aws-0.25.3/tests/Utils.hs
-formatted       c4588035d2e2  base64-bytestring-1.2.1.0/Data/ByteString/Base64.hs
+formatted       b1dc0288cc34  base64-bytestring-1.2.1.0/Data/ByteString/Base64.hs
 formatted       2897fc80ce31  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Internal.hs
 formatted       dae9abac8bd0  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Lazy.hs
-formatted       f0e7d8a34f4b  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL.hs
+formatted       3a5cbd3642e2  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL.hs
 formatted       0d8bf6b77f56  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL/Lazy.hs
 formatted       e865ae48f11b  base64-bytestring-1.2.1.0/Setup.hs
 formatted       0328dc0c3c7c  base64-bytestring-1.2.1.0/benchmarks/BM.hs
@@ -1891,7 +1891,7 @@ formatted       9cd66d1b3ed2  esqueleto-3.6.0.3/src/Database/Esqueleto/MySQL.hs
 formatted       236ac6325e8b  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL.hs
 formatted       c9c85bd4863e  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL/JSON.hs
 formatted       df35c8f3b6bf  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL/JSON/Instances.hs
-formatted       cc6164c7daf2  esqueleto-3.6.0.3/src/Database/Esqueleto/Record.hs
+formatted       bfa22ec5fd41  esqueleto-3.6.0.3/src/Database/Esqueleto/Record.hs
 formatted       167fa1cef38a  esqueleto-3.6.0.3/src/Database/Esqueleto/SQLite.hs
 formatted       791ffee464be  esqueleto-3.6.0.3/test/Common/Record.hs
 formatted       3d260d3951bd  esqueleto-3.6.0.3/test/Common/Test.hs
@@ -2255,7 +2255,7 @@ formatted       0923e680c5d2  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/JSONLD.hs
 formatted       a3dbe80d0b45  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/OpenGraph.hs
 formatted       a3b6503b2c4a  hakyll-4.17.0.0/lib/Hakyll/Web/Meta/TwitterCard.hs
 formatted       47b99b2ffc3a  hakyll-4.17.0.0/lib/Hakyll/Web/Paginate.hs
-formatted       7adbb7485405  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc.hs
+formatted       b95f8f27cbd7  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc.hs
 formatted       c168dc9fdb41  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/Biblio.hs
 formatted       63c711e3ed6f  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/Binary.hs
 formatted       3a4e2b3a9791  hakyll-4.17.0.0/lib/Hakyll/Web/Pandoc/FileType.hs
@@ -2293,7 +2293,7 @@ formatted       66153c16e099  hakyll-4.17.0.0/web/site.hs
 formatted       9226007b6541  hashable-1.5.1.0/Setup.hs
 formatted       ca97ac3a2690  hashable-1.5.1.0/examples/Main.hs
 formatted       eeae7da4f236  hashable-1.5.1.0/src/Data/Hashable.hs
-partly-checked  dcaee9f125c7  hashable-1.5.1.0/src/Data/Hashable/Class.hs
+partly-checked  2e8cf27fae14  hashable-1.5.1.0/src/Data/Hashable/Class.hs
 formatted       63527ee9cd6b  hashable-1.5.1.0/src/Data/Hashable/FFI.hs
 formatted       d2be5b809f2a  hashable-1.5.1.0/src/Data/Hashable/Generic.hs
 formatted       d0ab998f02db  hashable-1.5.1.0/src/Data/Hashable/Generic/Instances.hs
@@ -2314,7 +2314,7 @@ formatted       5b1c04eff76f  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       d831d20c5b60  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
 formatted       05bc0ffa5edc  haxl-2.5.1.1/Haxl/Core/Memo.hs
-formatted       8dde76ebd719  haxl-2.5.1.1/Haxl/Core/Monad.hs
+formatted       ce3d66c8bf75  haxl-2.5.1.1/Haxl/Core/Monad.hs
 formatted       59de6a1f9ba8  haxl-2.5.1.1/Haxl/Core/Parallel.hs
 formatted       0c9d4b9d05db  haxl-2.5.1.1/Haxl/Core/Profile.hs
 formatted       72749066756e  haxl-2.5.1.1/Haxl/Core/RequestStore.hs
@@ -2446,7 +2446,7 @@ formatted       5ecebf30e886  hlint-3.10/src/Config/Compute.hs
 formatted       76a1b906c927  hlint-3.10/src/Config/Haskell.hs
 formatted       747182f5f5c1  hlint-3.10/src/Config/Read.hs
 formatted       36ef2b52eee9  hlint-3.10/src/Config/Type.hs
-formatted       defa750904be  hlint-3.10/src/Config/Yaml.hs
+formatted       e06888dfabb0  hlint-3.10/src/Config/Yaml.hs
 formatted       871e24292ba2  hlint-3.10/src/EmbedData.hs
 formatted       a0cce8b000d7  hlint-3.10/src/Extension.hs
 formatted       232c5ddbbb9b  hlint-3.10/src/Fixity.hs
@@ -2496,7 +2496,7 @@ formatted       97865215d682  hlint-3.10/src/Report.hs
 formatted       5752f0cb1c82  hlint-3.10/src/SARIF.hs
 formatted       3a554bc4caa1  hlint-3.10/src/Summary.hs
 formatted       3b64750323e1  hlint-3.10/src/Test/All.hs
-formatted       2dbc7a87e003  hlint-3.10/src/Test/Annotations.hs
+formatted       6ad1fa09b796  hlint-3.10/src/Test/Annotations.hs
 formatted       d9f760fed213  hlint-3.10/src/Test/InputOutput.hs
 formatted       265163b13605  hlint-3.10/src/Test/Util.hs
 formatted       0f5eb69b44dd  hlint-3.10/src/Timing.hs
@@ -2521,12 +2521,12 @@ formatted       dfaf22b9e266  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/I
 formatted       61fffea8ad44  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Option.hs
 formatted       2c1d2b4038d2  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Spec.hs
 formatted       090871045b95  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Tree.hs
-formatted       9a4c4c61d167  hspec-core-2.11.17/src/Test/Hspec/Core/FailureReport.hs
+formatted       53c4bba788e8  hspec-core-2.11.17/src/Test/Hspec/Core/FailureReport.hs
 formatted       a49d2bd24295  hspec-core-2.11.17/src/Test/Hspec/Core/Format.hs
 formatted       b8b03afd38ee  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters.hs
 formatted       0f6c87760ec2  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Diff.hs
 formatted       3cff8cbca823  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Internal.hs
-formatted       7b21864b9eed  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
+formatted       82742648d869  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
 formatted       71e26cb11ffa  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Parser.hs
 formatted       07264fb33ca8  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Unicode.hs
 formatted       32564aeda195  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/V1.hs
@@ -2541,7 +2541,7 @@ formatted       1be2d9c4a008  hspec-core-2.11.17/src/Test/Hspec/Core/Runner.hs
 formatted       559e8587e33c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Eval.hs
 formatted       45d877a0b59c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/JobQueue.hs
 formatted       486c3e882e3e  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/PrintSlowSpecItems.hs
-formatted       36777b3d173e  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
+formatted       9e3db3aeeaf6  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
 formatted       d699e2b567f5  hspec-core-2.11.17/src/Test/Hspec/Core/Shuffle.hs
 formatted       929d1248e847  hspec-core-2.11.17/src/Test/Hspec/Core/Spec.hs
 formatted       36dcfb961aa9  hspec-core-2.11.17/src/Test/Hspec/Core/Spec/Monad.hs
@@ -2632,7 +2632,7 @@ formatted       9a3fe7ad6e47  http-types-0.12.6/test/Network/HTTP/Types/URISpec.
 formatted       5ac67585c5a1  http-types-0.12.6/test/Network/HTTP/Types/VersionSpec.hs
 formatted       2fbd14b119a4  http-types-0.12.6/test/Spec.hs
 formatted       6d7c004ed36a  http-types-0.12.6/test/doctests.hs
-formatted       d9dd9e461aa1  idris-1.3.4/Setup.hs
+formatted       a98abaa3cc37  idris-1.3.4/Setup.hs
 formatted       6c39a6764f61  idris-1.3.4/codegen/idris-codegen-c/Main.hs
 formatted       66ce632c5bcb  idris-1.3.4/codegen/idris-codegen-javascript/Main.hs
 formatted       06a7843d0cd6  idris-1.3.4/codegen/idris-codegen-node/Main.hs
@@ -2752,7 +2752,7 @@ formatted       ff2fc4a7a778  idris-1.3.4/test/TestData.hs
 formatted       720af8681b46  idris-1.3.4/test/TestRun.hs
 formatted       e865ae48f11b  intero-0.1.40/Setup.hs
 formatted       41797b039ec2  intero-0.1.40/src/Completion.hs
-formatted       3cb1551c3e6d  intero-0.1.40/src/GhciFind.hs
+formatted       808924ac99ff  intero-0.1.40/src/GhciFind.hs
 partly-checked  59a2fae2f33f  intero-0.1.40/src/GhciInfo.hs
 formatted       ca4cd509270a  intero-0.1.40/src/GhciMonad.hs
 formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
@@ -2801,7 +2801,7 @@ formatted       6bea42aabf13  leksah-0.16.2.2/src/IDE/Pane/HLint.hs
 formatted       3ca32b10d0e9  leksah-0.16.2.2/src/IDE/Pane/Info.hs
 formatted       c7434d9e9ac6  leksah-0.16.2.2/src/IDE/Pane/Log.hs
 formatted       5d22dc5b5afd  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
-formatted       957e7aee8840  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
+formatted       02bc4ba82afc  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
 formatted       e551f5f880ef  leksah-0.16.2.2/src/IDE/Pane/PackageFlags.hs
 formatted       e64bb971efe8  leksah-0.16.2.2/src/IDE/Pane/Search.hs
 formatted       15f516dab248  leksah-0.16.2.2/src/IDE/Pane/SourceBuffer.hs
@@ -3055,7 +3055,7 @@ formatted       121629e38e36  pandoc-3.10.2/src/Text/Pandoc/Class/CommonState.hs
 formatted       e2b41d9d63a2  pandoc-3.10.2/src/Text/Pandoc/Class/IO.hs
 formatted       554e3fd3f722  pandoc-3.10.2/src/Text/Pandoc/Class/PandocIO.hs
 formatted       c65acaaeb3de  pandoc-3.10.2/src/Text/Pandoc/Class/PandocMonad.hs
-formatted       3aaf785f1470  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
+formatted       632f793920eb  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
 formatted       0b8f40903d65  pandoc-3.10.2/src/Text/Pandoc/Class/Sandbox.hs
 formatted       407b6ea8dcf3  pandoc-3.10.2/src/Text/Pandoc/Data.hs
 formatted       a40ce7ee511d  pandoc-3.10.2/src/Text/Pandoc/Data/BakedIn.hs
@@ -3949,7 +3949,7 @@ formatted       4a9defd159ee  resourcet-1.3.0/Data/Acquire/Internal.hs
 formatted       27565132aa25  resourcet-1.3.0/UnliftIO/Resource.hs
 formatted       1434a2ae8bde  resourcet-1.3.0/test/main.hs
 formatted       e865ae48f11b  retry-0.9.3.1/Setup.hs
-formatted       f3e4dea1008c  retry-0.9.3.1/src/Control/Retry.hs
+formatted       89288db2c195  retry-0.9.3.1/src/Control/Retry.hs
 formatted       cce7cb264472  retry-0.9.3.1/src/UnliftIO/Retry.hs
 formatted       94b4a78445b3  retry-0.9.3.1/test/Main.hs
 formatted       08af947c789a  retry-0.9.3.1/test/Tests/Control/Retry.hs
@@ -4190,7 +4190,7 @@ formatted       48ec6eca2417  shake-0.19.9/src/Test/BuiltinOverride.hs
 formatted       10efc06e6c7b  shake-0.19.9/src/Test/C.hs
 formatted       53e433c2fd6d  shake-0.19.9/src/Test/Cache.hs
 formatted       2d7ccbb45ced  shake-0.19.9/src/Test/Cleanup.hs
-formatted       448b76c4e03f  shake-0.19.9/src/Test/CloseFileHandles.hs
+formatted       ca28e238b42b  shake-0.19.9/src/Test/CloseFileHandles.hs
 formatted       52e8e06b790c  shake-0.19.9/src/Test/Command.hs
 formatted       5ea96ce5a74d  shake-0.19.9/src/Test/Config.hs
 formatted       1f3180d02ce5  shake-0.19.9/src/Test/Database.hs
@@ -4508,7 +4508,7 @@ formatted       3a05c951a914  text-2.1.4/src/Data/Text/Internal/Builder/Function
 formatted       f5f871c975a4  text-2.1.4/src/Data/Text/Internal/Builder/Int/Digits.hs
 formatted       ab51e88834e1  text-2.1.4/src/Data/Text/Internal/Builder/RealFloat/Functions.hs
 formatted       7fa192160c9b  text-2.1.4/src/Data/Text/Internal/ByteStringCompat.hs
-formatted       93bf75d205d6  text-2.1.4/src/Data/Text/Internal/Encoding.hs
+formatted       4d88d6f18176  text-2.1.4/src/Data/Text/Internal/Encoding.hs
 formatted       43a1a670b3db  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion.hs
 formatted       07ceae987c37  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion/Common.hs
 formatted       875961737225  text-2.1.4/src/Data/Text/Internal/Encoding/Utf16.hs
@@ -4571,7 +4571,7 @@ formatted       b7037d3f07cc  text-2.1.4/tests/Tests/ShareEmpty.hs
 formatted       f4e9f36f6be9  text-2.1.4/tests/Tests/SlowFunctions.hs
 formatted       375091fbe743  text-2.1.4/tests/Tests/Utils.hs
 formatted       e865ae48f11b  th-abstraction-0.7.2.0/Setup.hs
-formatted       4909f05359bd  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs
+formatted       423b291594a1  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs
 formatted       b67b7b9c968e  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/Internal.hs
 formatted       505471744185  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/TyVarBndr.hs
 formatted       5179ef6dc11e  th-abstraction-0.7.2.0/test/Harness.hs
@@ -4913,7 +4913,7 @@ formatted       6b1b4aea2361  vector-0.13.2.0/benchmarks/Main.hs
 formatted       77ce7d3b1eda  vector-0.13.2.0/internal/GenUnboxTuple.hs
 formatted       2d5540e98f44  vector-0.13.2.0/src/Data/Vector.hs
 formatted       5524402837b5  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle.hs
-formatted       63fb94fb769c  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Monadic.hs
+formatted       2da6c234d40e  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Monadic.hs
 formatted       281a320dd1fd  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Size.hs
 formatted       8b09b3b8c680  vector-0.13.2.0/src/Data/Vector/Fusion/Stream/Monadic.hs
 formatted       b52b6135f86c  vector-0.13.2.0/src/Data/Vector/Fusion/Util.hs
@@ -5001,7 +5001,7 @@ formatted       9b74f110bcea  warp-3.4.15/Network/Wai/Handler/Warp/Response.hs
 formatted       27cae25ae83a  warp-3.4.15/Network/Wai/Handler/Warp/ResponseHeader.hs
 formatted       0dfcb2ec1882  warp-3.4.15/Network/Wai/Handler/Warp/Run.hs
 formatted       47a04a642ad1  warp-3.4.15/Network/Wai/Handler/Warp/SendFile.hs
-formatted       2a075f475b15  warp-3.4.15/Network/Wai/Handler/Warp/Settings.hs
+formatted       1df580e8094c  warp-3.4.15/Network/Wai/Handler/Warp/Settings.hs
 formatted       bc4925a06045  warp-3.4.15/Network/Wai/Handler/Warp/ShuttingDown.hs
 formatted       d916df760bae  warp-3.4.15/Network/Wai/Handler/Warp/Types.hs
 formatted       f1ff20ab87da  warp-3.4.15/Network/Wai/Handler/Warp/Windows.hs

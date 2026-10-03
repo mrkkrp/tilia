@@ -290,7 +290,7 @@ importedByOwn own =
   Set.toList . Set.fromList $
     [ importModule i
     | (_, Just hsModule) <- own,
-      i <- moduleImports (Is #implicitPrelude) hsModule,
+      i <- moduleImports (Is #implicitPrelude) (pure hsModule),
       not ("Paths_" `T.isPrefixOf` importModule i)
     ]
 
@@ -306,8 +306,8 @@ unsettledIn ::
   (FilePath, HsModule GhcPs) ->
   IO [String]
 unsettledIn resolver (path, hsModule) = do
-  scope <- scopeFor resolver (Is #implicitPrelude) hsModule
+  scope <- scopeFor resolver (Is #implicitPrelude) (pure hsModule)
   pure
     [ path <> ": " <> T.unpack (operatorSpelling qualifier op) <> " " <> show why
-    | ((qualifier, op), why) <- unknownOperators scope (gathered hsModule)
+    | ((qualifier, op), why) <- unknownOperators scope (pure (gathered hsModule))
     ]

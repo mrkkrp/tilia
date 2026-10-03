@@ -10,6 +10,7 @@ module Tilia.TestConfig
 where
 
 import Data.Choice (pattern Is)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
@@ -40,7 +41,8 @@ exampleRenderConfig ::
   -- | What the package around it puts in force, if it is a module of one.
   [Extension] ->
   Text ->
-  ParsedModule ->
+  -- | Its configurations, parsed.
+  NonEmpty ParsedModule ->
   RenderConfig
 exampleRenderConfig package source parsed =
   defaultRenderConfig
@@ -49,7 +51,7 @@ exampleRenderConfig package source parsed =
       rcScope =
         Just
           ( underEveryQualifier
-              (resolveScope (Is #implicitPrelude) known (pmModule parsed))
+              (resolveScope (Is #implicitPrelude) known (fmap pmModule parsed))
           )
     }
   where
@@ -66,7 +68,7 @@ exampleRenderConfig package source parsed =
               (reachQualified reach)
               ( Map.fromList
                   [ ((qualifier, op), (fixity, DeclaredIn qualifier))
-                  | (_, (Just qualifier, op)) <- operatorsUsed (pmGathered parsed),
+                  | (_, (Just qualifier, op)) <- concatMap (operatorsUsed . pmGathered) parsed,
                     Just exported <- [exportsOf qualifier],
                     Just fixity <- [Map.lookup (InTerms, op) exported]
                   ]

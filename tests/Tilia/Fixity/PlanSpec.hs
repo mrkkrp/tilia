@@ -1216,7 +1216,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parse "module M where\nimport Facade (T (..))\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pmModule m)
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName ":|")
           `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Facade")
 
@@ -1344,7 +1344,7 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
           let m = parse "module M where\nimport Opaque\n"
-          scope <- scopeFor rs (Is #implicitPrelude) (pmModule m)
+          scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<??>")
             `shouldBe` Resolved defaultFixity ReportDefault
 
@@ -1352,7 +1352,7 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
           let m = parse "module M where\nimport Opaque\n"
-          scope <- scopeFor rs (Is #implicitPrelude) (pmModule m)
+          scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<+>")
             `shouldBe` Unresolved (ModuleChain ("Opaque" :| ["No.Such.Module"]) :| [])
 
@@ -1579,7 +1579,7 @@ endToEnd resolver source assertion =
   case parseModule defaultParserConfig "test.hs" source of
     Left _ -> expectationFailure "the test input did not parse"
     Right pm -> do
-      scope <- scopeFor resolver (Is #implicitPrelude) (pmModule pm)
+      scope <- scopeFor resolver (Is #implicitPrelude) (pure (pmModule pm))
       assertion scope
 
 -- | Check one expected fixity, returning a description of any mismatch.

@@ -12,6 +12,7 @@ module Tilia.Cpp
     usesCpp,
     blankCpp,
     withoutRuledOut,
+    everyBranch,
     CppError (..),
     describeCppError,
 
@@ -41,6 +42,7 @@ import Data.Foldable (traverse_)
 import Data.Function (on)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (groupBy, maximumBy, sort, sortOn, stripPrefix, transpose, unsnoc)
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
@@ -67,9 +69,11 @@ import Tilia.Doc.Internal
     spineAt,
   )
 import Tilia.Parser
-  ( ParserConfig,
+  ( ParsedModule,
+    ParserConfig,
     importLayout,
     parseConfiguration,
+    parseModule,
     pmSource,
     readAlike,
   )
@@ -136,6 +140,27 @@ formatWithCpp parser render path source = do
               (importBarriers parser source . allGroups)
               (scanConditionals source)
         }
+
+-- | A module's branches, parsed: as one module where they parse together,
+-- and otherwise as the branch leaves that parse.
+everyBranch ::
+  -- | What to parse with.
+  ParserConfig ->
+  -- | The file this is, for the positions in a parse error.
+  FilePath ->
+  -- | The module, directives and all.
+  Text ->
+  -- | 'Nothing' where nothing parses.
+  Maybe (NonEmpty ParsedModule)
+everyBranch parser path source =
+  case parseModule parser path (blankCpp source) of
+    Right whole -> Just (pure whole)
+    Left _ ->
+      nonEmpty
+        [ parsed
+        | Right texts <- [branchLeaves source],
+          Right parsed <- fmap (parseModule parser path) texts
+        ]
 
 -- | The lines imports must not be sorted across: the directives of every
 -- conditional but one that only continues the item above it, such as a
