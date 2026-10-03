@@ -1,6 +1,6 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5147 formatted.
+5202 examples, 5148 formatted.
 
 ==========================================================================
 broken (3)
@@ -215,7 +215,7 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (14)
+declined (13)
 ==========================================================================
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
@@ -236,7 +236,7 @@ intero-0.1.40/src/InteractiveUI.hs
                  = [pan |
                       (_, pan) <- ticks ! line,
                       realSrcSpanEnd (toRealSrcSpan pan) >= realSrcSpanEnd src]
-           return . head . sortBy leftmost_largest $ enclosing_spans, in the configuration taking #if __GLASGOW_HASKELL__ >= 800, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ < 709, then #if MIN_VERSION_directory(1,2,3), then #ifndef mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 802, then #if mingw32_HOST_OS, then #if defined(mingw32_HOST_OS), then #ifdef mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 710, then #if  __GLASGOW_HASKELL__ < 800, then #if __GLASGOW_HASKELL__ < 800, then #if  __GLASGOW_HASKELL__ >= 800, then #if  __GLASGOW_HASKELL__ >= 800
+           return . head . sortBy leftmost_largest $ enclosing_spans, in the configuration taking #if __GLASGOW_HASKELL__ >= 800, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ >= 802, then #if __GLASGOW_HASKELL__ < 709, then #if MIN_VERSION_directory(1,2,3), then #ifndef mingw32_HOST_OS, then no branch of #if mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 802, then #if defined(mingw32_HOST_OS), then #ifdef mingw32_HOST_OS, then #if __GLASGOW_HASKELL__ >= 710, then #if  __GLASGOW_HASKELL__ < 800, then #if __GLASGOW_HASKELL__ < 800, then #if  __GLASGOW_HASKELL__ >= 800, then #if  __GLASGOW_HASKELL__ >= 800
 
 lens-5.3.6/tests/properties.hs
     lens-5.3.6/tests/properties.hs:118:26-28: parse error on input `KVS'
@@ -261,9 +261,6 @@ shake-0.19.9/src/General/EscCodes.hs
 
 shake-0.19.9/src/General/FileLock.hs
     shake-0.19.9/src/General/FileLock.hs:28:16-23: parse error on input `CALLCONV', in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
-
-time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
-    time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs:35:16-19: parse error on input `capi', in the configuration taking no branch of #if !defined(javascript_HOST_ARCH), then #ifndef mingw32_HOST_OS, then no branch of #if defined(javascript_HOST_ARCH) || defined(__MHS__)
 
 unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
     unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs:(266,9)-(267,31): Unexpected case expression in function application:

@@ -13,7 +13,7 @@ import Test.Hspec hiding (after, before)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
 import Tilia.Cpp (answeredLeaves, formatWithCpp, withoutRuledOut)
-import Tilia.Cpp.Macros (Macros (..))
+import Tilia.Cpp.Macros (Macros (..), noMacros)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
@@ -83,12 +83,7 @@ spec = modifyMaxSuccess (const 5000) $
 -- else, so that a module comes out with some of its conditionals answered
 -- and some of them left open.
 macros :: Macros
-macros =
-  Macros
-    { macroVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])],
-      macroNumbers = Map.empty,
-      macroUndefined = Set.empty
-    }
+macros = noMacros{macroVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
 
 format :: Text -> Either Text Text
 format source = case formatWithCpp defaultParserConfig defaultRenderConfig "M.hs" source of
