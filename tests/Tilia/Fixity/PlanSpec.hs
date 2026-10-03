@@ -46,6 +46,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.Info qualified
 import System.Timeout (timeout)
 import Test.Hspec
+import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb
   ( Installed (..),
@@ -64,6 +65,7 @@ spec :: Spec
 spec = do
   preparation
   tokens
+  compilerMacros
   reexports
   hscModules
   generatedModuleSpec
@@ -114,6 +116,18 @@ tokens = describe "the token a plan is cached under" $ do
                 }
             ]
         }
+
+-- | What a plan says about the macros of the compiler it is for.
+compilerMacros :: Spec
+compilerMacros = describe "the macros a plan settles" $ do
+  it "has those of other compilers undefined under a plan for GHC" $
+    macroUndefined (macrosOf (planFor "ghc-9.10.3"))
+      `shouldBe` Set.fromList ["__MHS__", "__HUGS__"]
+
+  it "has nothing undefined under a plan for another compiler" $
+    macroUndefined (macrosOf (planFor "mhs-0.15.4.0")) `shouldBe` Set.empty
+  where
+    planFor compiler = BuildPlan{bpCompiler = compiler, bpPackages = []}
 
 -- | 'Plan.checkReadiness', with the cache in use as it is by default.
 checkReadiness :: [PlanComponent] -> FilePath -> IO Readiness
