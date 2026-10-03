@@ -613,6 +613,13 @@ merge conditionals guards varied = go Broken
                         choice xs
                   _ -> DGroup inside merged
       DAlign _ | Just ds <- every (\case DAlign d -> Just d; _ -> Nothing) -> DAlign (go layout ds)
+      DCppChoice ws bs _
+        | Just alternatives <-
+            every $ \case
+              DCppChoice ws' cs e | ws' == ws, fmap fst cs == fmap fst bs -> Just (fmap snd cs <> [e])
+              _ -> Nothing,
+          Just (merged, fallback) <- unsnoc (fmap (go layout) (transpose alternatives)) ->
+            Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
       _
         | Just spans <- traverse regionOf xs,
           Just opened <- unwrapping layout spans xs ->
