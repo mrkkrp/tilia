@@ -116,6 +116,11 @@
   last, rather than around it and the argument before it, which then came
   out once more under the `#else` of a second conditional. [Issue
   66](https://github.com/mrkkrp/tilia/issues/66).
+* Put the comma before items at the end of a list that only some
+  configurations have on the line of the first of them, rather than on a
+  line of its own, and keep several such conditionals in a row apart as
+  written rather than nest them and repeat the items of one in both
+  branches of the other. [Issue 69](https://github.com/mrkkrp/tilia/issues/69).
 
 ## Tilia 0.0.2.0
 
