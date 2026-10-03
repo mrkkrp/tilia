@@ -316,8 +316,7 @@ formatSource session path source = runExceptT $ do
             told <-
               fixityNotes
                 implicitPrelude
-                (askFixities resolver)
-                (askChain resolver)
+                (askModule resolver)
                 scope
                 parsed
             atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))

@@ -8,16 +8,17 @@ module Tilia.Fixity.DebugSpec (spec) where
 
 import Data.Choice (pattern Is)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Fixity
   ( Direction (..),
+    Established (..),
     Fixity (..),
-    KnownModules (..),
     OpName (..),
     inBothNamespaces,
-    noKnownModules,
     resolveScope,
   )
 import Tilia.Fixity.Debug (fixityNotes, renderFixityNotes)
@@ -173,15 +174,12 @@ notesThrough ::
   IO [Text]
 notesThrough chains world source =
   renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . exportsOf) chainOf scope (pure parsed)
+    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure parsed)
   where
-    scope =
-      resolveScope
-        (Is #implicitPrelude)
-        noKnownModules{knownFixities = exportsOf, knownChain = chainFor}
-        (pure hsModule)
-    chainFor m = maybe [] id (lookup m chains)
-    chainOf = pure . chainFor
+    scope = resolveScope (Is #implicitPrelude) answerOf (pure hsModule)
+    answerOf m = case exportsOf m of
+      Just fixities -> mempty{establishedFixities = fixities}
+      Nothing -> mempty{establishedUntold = Set.singleton (fromMaybe [] (lookup m chains))}
     hsModule = pmModule parsed
     parsed = case parseModule defaultParserConfig "M.hs" ("module M where\n" <> source) of
       Left problem -> error (T.unpack (describeParseError problem))

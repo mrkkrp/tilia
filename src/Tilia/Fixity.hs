@@ -29,13 +29,11 @@ module Tilia.Fixity
     moduleImports,
     supplies,
     brings,
-    KnownModules (..),
-    noKnownModules,
+    speaksFor,
     Namespace (..),
     Fixities,
     inBothNamespaces,
     Brought (..),
-    UnreadModule (..),
     ModuleChain (..),
     spellModuleChain,
     Scope (..),
@@ -63,6 +61,9 @@ module Tilia.Fixity
 
     -- * What reading a module established
     Established (..),
+    unreadable,
+    settlesEverything,
+    unsettledThrough,
   )
 where
 
@@ -77,7 +78,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -343,8 +344,7 @@ moduleChildren hsModule = case hsmodExports hsModule of
   where
     declared = Map.map (Set.map snd) (declaredChildren hsModule)
     fromIE = \case
-      IEThingAll _ n _ ->
-        [(nameOf n, Map.findWithDefault Set.empty (nameOf n) declared)]
+      IEThingAll _ n _ -> [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
       IEThingWith _ n _ ns _ -> [(nameOf n, Set.fromList (fmap nameOf ns))]
       _ -> []
     nameOf = opName . ieWrappedName . unLoc
@@ -504,36 +504,22 @@ brings carries (namespace, op) i = case importNames i of
       Just (c, _) -> not (isUpper c) && c /= ':'
       Nothing -> False
 
--- | What is known about the imported modules.
-data KnownModules = KnownModules
-  { -- | The fixities a module exports, or 'Nothing' if that could not be
-    -- determined.
-    knownFixities :: Text -> Maybe Fixities,
-    -- | What a module keeps under each of its names, so that a @T(..)@ in
-    -- an import list can be told what it brings in.
-    knownChildren :: Text -> Map OpName (Set OpName),
-    -- | The operators a module's export list names, following what it
-    -- reexports. 'Nothing' where a module it hands on could not be read.
-    knownExportNames :: Text -> Maybe (Set OpName),
-    -- | The modules reading a module went through before giving up, the one
-    -- it gave up on last. Asked only about modules 'knownFixities' could
-    -- not answer for, and only so that a message can name the module that
-    -- is really in the way.
-    knownChain :: Text -> [Text],
-    -- | Every name a module exports, where that is known.
-    knownBrought :: Text -> Maybe (Set (Namespace, OpName))
-  }
-
--- | No known modules.
-noKnownModules :: KnownModules
-noKnownModules =
-  KnownModules
-    { knownFixities = const Nothing,
-      knownChildren = const Map.empty,
-      knownExportNames = const Nothing,
-      knownChain = const [],
-      knownBrought = const Nothing
-    }
+-- | Does this import certainly bring the name in, from a module that
+-- settles its fixity?
+--
+-- If so, no other import can give a use of the name another fixity: it
+-- either brings in the same thing or makes the use ambiguous.
+speaksFor ::
+  -- | What reading the module imported established.
+  Established ->
+  -- | The name, and the namespace it is in.
+  (Namespace, OpName) ->
+  Import ->
+  Bool
+speaksFor established name i =
+  Set.member name (broughtNames (establishedBrought established))
+    && brings (establishedChildren established) name i
+    && null (unsettledThrough established name)
 
 -- | Which of Haskell's two namespaces an operator is written in.
 data Namespace = InTypes | InTerms
@@ -573,23 +559,6 @@ instance Semigroup Brought where
 instance Monoid Brought where
   mempty = Brought Set.empty Map.empty
 
--- | An import whose module could not be read, and what is known about it
--- regardless.
-data UnreadModule = UnreadModule
-  { -- | The import as written.
-    unreadImport :: Import,
-    -- | The operators its export list names, as 'knownExportNames' gives
-    -- them.
-    unreadExportNames :: Maybe (Set OpName),
-    -- | What it keeps under each of its names, as 'knownChildren' gives
-    -- them, for expanding a @T(..)@ in the import list.
-    unreadChildren :: Map OpName (Set OpName),
-    -- | The modules reading went through before giving up, as 'knownChain'
-    -- gives them.
-    unreadChain :: [Text]
-  }
-  deriving (Eq, Show)
-
 -- | An import that could not be read, and the way down to the module that
 -- actually stopped us. The head is the import as the file being formatted
 -- writes it, and the last name is where reading gave up.
@@ -608,9 +577,9 @@ data Scope = Scope
     scopeInTypes :: Reach,
     -- | What is in scope for one written among terms.
     scopeInTerms :: Reach,
-    -- | The imports whose modules could not be read, and what is
-    -- nonetheless known about each.
-    scopeUnread :: [UnreadModule]
+    -- | The imports whose modules leave the fixities of some names
+    -- unsettled, each with what reading its module established.
+    scopeUnsettled :: [(Import, Established)]
   }
   deriving (Eq, Show)
 
@@ -645,8 +614,8 @@ reachIn = \case
 resolveScope ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | What is known about the modules this one imports.
-  KnownModules ->
+  -- | What reading each module this one imports established.
+  (Text -> Established) ->
   -- | The module's configurations, parsed.
   NonEmpty (HsModule GhcPs) ->
   Scope
@@ -654,7 +623,12 @@ resolveScope implicitPrelude known configurations =
   Scope
     { scopeInTypes = reachAmong InTypes,
       scopeInTerms = reachAmong InTerms,
-      scopeUnread = unread
+      scopeUnsettled =
+        [ (i, established)
+        | i <- imports,
+          let established = known (importModule i),
+          not (settlesEverything established)
+        ]
     }
   where
     imports = moduleImports implicitPrelude configurations
@@ -677,11 +651,10 @@ resolveScope implicitPrelude known configurations =
               ]
                 <> [ (qualifier, op)
                    | i <- imports,
-                     Just _ <- [knownFixities known (importModule i)],
-                     Just names <- [knownBrought known (importModule i)],
-                     (n, op) <- Set.toList names,
+                     let established = known (importModule i),
+                     name@(n, op) <- Set.toList (broughtNames (establishedBrought established)),
                      n == namespace,
-                     brings (knownChildren known (importModule i)) (n, op) i,
+                     speaksFor established name i,
                      qualifier <- [Nothing | not (importQualified i)] <> [Just (importAlias i)]
                    ]
         }
@@ -691,7 +664,7 @@ resolveScope implicitPrelude known configurations =
           InTerms -> snd
         ownNames = concatMap (toList . moduleName) configurations
         own = Map.map (,DeclaredHere) (fixitiesIn namespace declared)
-        offered m = fixitiesIn namespace <$> knownFixities known m
+        offered m = fixitiesIn namespace (establishedFixities (known m))
         unqualified =
           Map.unionsWith
             (<>)
@@ -713,17 +686,6 @@ resolveScope implicitPrelude known configurations =
             | i <- imports
             ]
 
-    unread =
-      [ UnreadModule
-          { unreadImport = i,
-            unreadExportNames = knownExportNames known (importModule i),
-            unreadChildren = knownChildren known (importModule i),
-            unreadChain = knownChain known (importModule i)
-          }
-      | i <- imports,
-        Nothing <- [knownFixities known (importModule i)]
-      ]
-
     settled ((m, fixity) :| _) = (fixity, DeclaredIn m)
 
     disagreeing brought@((_, fixity) :| _)
@@ -732,8 +694,8 @@ resolveScope implicitPrelude known configurations =
 
     visible offered i =
       Map.filterWithKey
-        (\op _ -> admits (knownChildren known (importModule i)) op i)
-        (Map.map (\fixity -> (importModule i, fixity) :| []) (fromMaybe Map.empty (offered (importModule i))))
+        (\op _ -> admits (establishedChildren (known (importModule i))) op i)
+        (Map.map (\fixity -> (importModule i, fixity) :| []) (offered (importModule i)))
 
 -- | The fixities in one namespace, by the operator alone.
 fixitiesIn :: Namespace -> Fixities -> Map OpName Fixity
@@ -807,13 +769,16 @@ fixityInScope scope namespace qualifier op =
     (answer : _) -> Just answer
     [] -> Nothing
   where
-    promotedFrom = \case
-      InTypes -> [InTerms]
-      InTerms -> []
     found n =
       (n,) <$> case qualifier of
         Nothing -> Map.lookup op (reachUnqualified (reachIn n scope))
         Just q -> Map.lookup (q, op) (reachQualified (reachIn n scope))
+
+-- | The namespaces a use written in this one may also refer to.
+promotedFrom :: Namespace -> [Namespace]
+promotedFrom = \case
+  InTypes -> [InTerms]
+  InTerms -> []
 
 -- | The unread imports that could have declared this operator.
 unreadThatMightDeclare ::
@@ -829,14 +794,17 @@ unreadThatMightDeclare ::
   -- actually stopped us, and each module once.
   [ModuleChain]
 unreadThatMightDeclare scope namespace qualifier op
+  | null blamed = []
   | Set.member (qualifier, op) (reachSpokenFor (reachIn namespace scope)) = []
-  | otherwise =
-      nub
-        [ ModuleChain (importModule (unreadImport u) :| unreadChain u)
-        | u <- scopeUnread scope,
-          supplies (unreadChildren u) qualifier op (unreadImport u),
-          maybe True (Set.member op) (unreadExportNames u)
-        ]
+  | otherwise = nub blamed
+  where
+    blamed =
+      [ ModuleChain (importModule i :| chain)
+      | (i, established) <- scopeUnsettled scope,
+        supplies (establishedChildren established) qualifier op i,
+        n <- namespace : promotedFrom namespace,
+        chain <- unsettledThrough established (n, op)
+      ]
 
 ----------------------------------------------------------------------------
 -- What could not be answered
@@ -1060,11 +1028,58 @@ summarize implicitPrelude hsModule =
 ----------------------------------------------------------------------------
 -- What reading a module established
 
--- | What reading a module established about its operators.
-data Established
-  = -- | It was read, and declares these.
-    Declares Fixities
-  | -- | It could not be read. The expensive answer of the two, because
-    -- reaching it means exhausting every way of reading the module.
-    Unreadable (Maybe Text)
+-- | What reading a module established about the names it exports.
+data Established = Established
+  { -- | The fixities declared for the names it exports, leaving out the ones
+    -- 'establishedUnsettled' leaves unsettled.
+    establishedFixities :: Fixities,
+    -- | The names whose fixities could not be established, under the way
+    -- down to the module where reading gave up, which is empty where that
+    -- is this module.
+    establishedUnsettled :: Map [Text] (Set (Namespace, OpName)),
+    -- | The ways down through which it may export names that cannot be
+    -- told, which leaves every name it does not certainly bring in
+    -- unsettled.
+    establishedUntold :: Set [Text],
+    -- | What it certainly brings in for a module that imports it whole.
+    establishedBrought :: Brought,
+    -- | What it keeps under each of its names, so that a @T(..)@ in an
+    -- import list can be told what it brings in. Every type
+    -- 'establishedBrought' says what it carries for is among them.
+    establishedChildren :: Map OpName (Set OpName)
+  }
   deriving (Eq, Show)
+
+instance Semigroup Established where
+  a <> b =
+    Established
+      { establishedFixities = Map.union (establishedFixities a) (establishedFixities b),
+        establishedUnsettled =
+          Map.unionWith Set.union (establishedUnsettled a) (establishedUnsettled b),
+        establishedUntold = Set.union (establishedUntold a) (establishedUntold b),
+        establishedBrought = establishedBrought a <> establishedBrought b,
+        establishedChildren =
+          Map.unionWith Set.union (establishedChildren a) (establishedChildren b)
+      }
+
+instance Monoid Established where
+  mempty = Established Map.empty Map.empty Set.empty mempty Map.empty
+
+-- | What is established about a module that could not be read: nothing.
+unreadable :: Established
+unreadable = mempty{establishedUntold = Set.singleton []}
+
+-- | Does reading a module settle the fixity of every name it exports?
+settlesEverything :: Established -> Bool
+settlesEverything established =
+  Map.null (establishedUnsettled established) && Set.null (establishedUntold established)
+
+-- | The ways down to a module that could not be read that leave the fixity
+-- of a name unsettled.
+unsettledThrough :: Established -> (Namespace, OpName) -> [[Text]]
+unsettledThrough established name =
+  [chain | (chain, names) <- Map.toList (establishedUnsettled established), Set.member name names]
+    <> [ chain
+       | Set.notMember name (broughtNames (establishedBrought established)),
+         chain <- Set.toList (establishedUntold established)
+       ]

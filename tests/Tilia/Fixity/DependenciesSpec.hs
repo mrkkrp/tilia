@@ -52,10 +52,10 @@ spec = withProjectPlan withPlan
 withPlan :: BuildPlan -> Spec
 withPlan plan = do
   installed <- runIO readInstalledPackages
-  fromSource <- runIO (askFixities <$> newResolverVia (Do #useCache) [FromSource] plan)
-  fromInterface <- runIO (askFixities <$> newResolverVia (Do #useCache) [FromInterface] plan)
+  fromSource <- runIO (fixitiesThrough <$> newResolverVia (Do #useCache) [FromSource] plan)
+  fromInterface <- runIO (fixitiesThrough <$> newResolverVia (Do #useCache) [FromInterface] plan)
   resolver <- runIO (newResolver plan)
-  let resolve = askFixities resolver
+  let resolve = fixitiesThrough resolver
   own <- runIO ownModules
   let isShippedModule m = Map.member m builtinFixities
   dependencies <- runIO (dependenciesOf (not . isShippedModule) plan installed)
@@ -283,6 +283,14 @@ haskellFilesIn dir = do
       if isDir
         then haskellFilesIn path
         else pure [path | ".hs" `isSuffixOf` path]
+
+-- | What a module exports, where reading it settles every name.
+fixitiesThrough :: Resolver -> Text -> IO (Maybe Fixities)
+fixitiesThrough resolver modName = settled <$> askModule resolver modName
+  where
+    settled established
+      | settlesEverything established = Just (establishedFixities established)
+      | otherwise = Nothing
 
 -- | Every module this project's own source imports.
 importedByOwn :: [(FilePath, Maybe (HsModule GhcPs))] -> [Text]

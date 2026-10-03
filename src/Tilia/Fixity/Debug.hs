@@ -20,7 +20,8 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Fixity
-  ( Fixities,
+  ( Brought (..),
+    Established (..),
     Fixity (..),
     Import (..),
     OpName (..),
@@ -64,10 +65,11 @@ data ImportNote = ImportNote
     -- | How many operators it was read for, or 'Nothing' when it could not
     -- be read at all.
     noteBrought :: Maybe Int,
-    -- | Where reading it went before giving up, ending at the module that
-    -- actually stopped it. Empty for an import that was read, and for one
-    -- unread on its own account.
-    noteChain :: [Text]
+    -- | Where reading it went before giving up, for each way that left some
+    -- names unsettled, ending at the module that actually stopped it. Empty
+    -- for an import that settles every name; a way is empty for one unread
+    -- on its own account.
+    noteUnsettled :: [[Text]]
   }
   deriving (Eq, Show)
 
@@ -87,17 +89,15 @@ fixityNotes ::
   -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed among
   -- the imports exactly when the module actually has it.
   Choice "implicitPrelude" ->
-  -- | What each module in scope exports, as the resolver answers it.
-  (Text -> IO (Maybe (Fixities))) ->
-  -- | Where reading a module went before giving up, asked only of the ones
-  -- the line above gave up on.
-  (Text -> IO [Text]) ->
+  -- | What reading each module in scope established, as the resolver
+  -- answers it.
+  (Text -> IO Established) ->
   -- | The scope the module was formatted under.
   Scope ->
   -- | The module's configurations.
   NonEmpty ParsedModule ->
   IO FixityNotes
-fixityNotes implicitPrelude resolve chainOf scope configurations = do
+fixityNotes implicitPrelude resolve scope configurations = do
   brought <- traverse alongside (moduleImports implicitPrelude (fmap pmModule configurations))
   pure
     FixityNotes
@@ -108,9 +108,11 @@ fixityNotes implicitPrelude resolve chainOf scope configurations = do
   where
     alongside i = do
       answer <- resolve (importModule i)
-      below <- case answer of
-        Just _ -> pure []
-        Nothing -> chainOf (importModule i)
+      let fixities = establishedFixities answer
+          readNothing =
+            Map.null fixities
+              && Set.null (broughtNames (establishedBrought answer))
+              && not (Set.null (establishedUntold answer))
       pure
         ImportNote
           { noteModule = importModule i,
@@ -119,8 +121,12 @@ fixityNotes implicitPrelude resolve chainOf scope configurations = do
                 then Nothing
                 else Just (importAlias i),
             noteQualified = importQualified i,
-            noteBrought = Set.size . Set.fromList . fmap snd . Map.keys <$> answer,
-            noteChain = below
+            noteBrought =
+              if readNothing
+                then Nothing
+                else Just (Set.size (Set.map snd (Map.keysSet fixities))),
+            noteUnsettled =
+              Set.toList (Map.keysSet (establishedUnsettled answer) <> establishedUntold answer)
           }
 
     used =
@@ -180,12 +186,14 @@ aboutFile palette notes =
         <> qualification i
         <> ": "
         <> case noteBrought i of
-          Nothing -> "could not be read" <> through (noteChain i)
-          Just n -> operators n
+          Nothing -> "could not be read" <> through (noteUnsettled i)
+          Just n
+            | null (noteUnsettled i) -> operators n
+            | otherwise -> operators n <> ", not settling every name" <> through (noteUnsettled i)
 
-    through = \case
+    through ways = case filter (not . null) ways of
       [] -> ""
-      below -> ", through " <> T.intercalate " → " (fmap named below)
+      below -> ", through " <> T.intercalate " or " (fmap (T.intercalate " → " . fmap named) below)
 
     qualification i = case (noteQualified i, noteAlias i) of
       (True, Just alias) -> " qualified as " <> named alias
