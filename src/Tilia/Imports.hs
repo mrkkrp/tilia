@@ -45,7 +45,7 @@ normalizeImports implicitPrelude barriers written imports =
     stretch is =
       foldRuns
         (combineImports written)
-        [((importIdentity implicitPrelude i, alone i), i) | i <- is]
+        [((importIdentity implicitPrelude i, hiddenNames i, alone i), i) | i <- is]
     alone i
       | any strands (spanOf i) = startLineOf i
       | otherwise = 0
@@ -59,6 +59,23 @@ normalizeImports implicitPrelude barriers written imports =
     startLineOf i = case srcSpanStart (getLocA i) of
       RealSrcLoc l _ -> srcLocLine l
       _ -> 0
+
+-- | The names an import hides, where it hides any, so that only imports
+-- hiding the same names are folded together.
+hiddenNames ::
+  LImportDecl GhcPs ->
+  Maybe [(NameIdentity, Maybe (Bool, [NameIdentity]))]
+hiddenNames (L _ decl) = case ideclImportList decl of
+  Just (EverythingBut, L _ items) -> Just (fmap (hidden . unLoc) items)
+  _ -> Nothing
+  where
+    hidden item = (nameIdentity item, subordinates item)
+    subordinates = \case
+      IEThingAll{} -> Just (True, [])
+      IEThingWith _ _ NoIEWildcard subs _ -> Just (False, names subs)
+      IEThingWith _ _ (IEWildcard _) subs _ -> Just (True, names subs)
+      _ -> Nothing
+    names = fmap (wrappedNameIdentity . unLoc)
 
 -- | Where every name an import lists begins, each as a line and a column.
 --
