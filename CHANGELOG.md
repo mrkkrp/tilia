@@ -75,6 +75,8 @@
 * Keep an empty line written under a comment that carries on a trailing
   comment on the line above. [Issue
   63](https://github.com/mrkkrp/tilia/issues/63).
+* Keep what is written after `#else` and `#endif`, such as a comment naming
+  the condition. [Issue 61](https://github.com/mrkkrp/tilia/issues/61).
 
 ## Tilia 0.0.2.0
 

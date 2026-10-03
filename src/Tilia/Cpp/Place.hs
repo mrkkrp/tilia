@@ -118,7 +118,7 @@ restoreUnprinted ::
 restoreUnprinted source found doc = do
   forest <- readConditionals source
   let groups = [gs | gs <- allGroups forest, not (inComment (fst (gsWhole gs)))]
-      scope = scopeIn (fmap (Conditional . gsOwnLines) groups)
+      scope = scopeIn (fmap gsConditional groups)
       notes =
         [ if any directiveAt [spanStartLine s + 1 .. spanEndLine s - 1]
             then transcendentComment written c
@@ -257,7 +257,7 @@ scopeIn conditionals s =
     ( sortOn
         (Down . fst)
         [ (from, to)
-        | Conditional ls <- conditionals,
+        | ls <- fmap conditionalLines conditionals,
           (from, to) <- zip ls (drop 1 ls),
           from < spanStartLine s,
           spanEndLine s < to
@@ -365,8 +365,8 @@ anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
       Everywhere -> True
       Only i -> i == k
       Nowhere -> False
-    anchors (Conditional ls) = case ls of
-      opening : _ ->
+    anchors c = case conditionalLines c of
+      ls@(opening : _) ->
         (opening, mkSpan (opening, 1) (opening, 2))
           : [ (closing, mkSpan (closing - 1, farRight) (closing - 1, farRight))
             | (from, closing) <- take 1 (drop k (zip ls (drop 1 ls))),
@@ -400,7 +400,7 @@ restoreConditional written doc gs =
   placeAt realized' (Just written) opening shell doc
   where
     realized' ctx = any (all (`elem` ctx)) (realizations c doc)
-    c = Conditional (gsOwnLines gs)
+    c = gsConditional gs
     (opening, closing) = gsWhole gs
     guards = fmap guardText (gsGuards gs)
     shell =
@@ -541,7 +541,7 @@ alternativeAt n cs = case branches of
   where
     branches =
       [ k
-      | Conditional ls <- cs,
+      | ls <- fmap conditionalLines cs,
         (k, (from, to)) <- zip [0 ..] (zip ls (drop 1 ls)),
         from < n,
         n < to

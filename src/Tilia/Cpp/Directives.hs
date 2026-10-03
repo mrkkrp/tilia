@@ -37,6 +37,7 @@ module Tilia.Cpp.Directives
     scanConditionals,
     isDirective,
     GroupSpec (..),
+    gsOwnLines,
     gsCount,
     nestedIn,
     allGroups,
@@ -56,6 +57,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import Tilia.Cpp.Macros (Macros, guardHolds)
+import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source (directiveOnLine)
 import Tilia.Span
@@ -185,8 +187,8 @@ data Configurations = Configurations
     cfgDropped :: [[(Int, Int)]],
     -- | From each tied group's @#if@ to its @#endif@, inclusive.
     cfgWholes :: Varied,
-    -- | The lines of each tied group's directives, in the same order.
-    cfgDirectiveLines :: [[Int]]
+    -- | Each tied group as its author wrote it, in the same order.
+    cfgConditionals :: [Conditional]
   }
   deriving (Eq, Show)
 
@@ -218,7 +220,7 @@ configurationsOn gs forest source =
       cfgDropped =
         [concatMap (`droppedFor` i) tied | i <- [0 .. gsCount gs - 1]],
       cfgWholes = Varied (fmap gsWhole tied),
-      cfgDirectiveLines = fmap gsOwnLines tied
+      cfgConditionals = fmap gsConditional tied
     }
   where
     tied = sameGuard gs forest
@@ -554,7 +556,7 @@ opaqueKeywords =
 data GroupSpec = GroupSpec
   { gsGuards :: [Guard],
     gsHasElse :: Bool,
-    gsOwnLines :: [Int],
+    gsConditional :: Conditional,
     gsOwnRanges :: [(Int, Int)],
     gsBranches :: [(Int, Int)],
     gsWhole :: (Int, Int),
@@ -577,7 +579,12 @@ groupSpec opener later end nested =
   GroupSpec
     { gsGuards = [Guard (dText d) | d <- opener : later, dKeyword d /= "else"],
       gsHasElse = any ((== "else") . dKeyword) later,
-      gsOwnLines = fmap dLine group,
+      gsConditional =
+        Conditional
+          { conditionalLines = fmap dLine group,
+            conditionalElse = foldMap afterKeyword (filter ((== "else") . dKeyword) later),
+            conditionalEndif = afterKeyword end
+          },
       gsOwnRanges = [(dLine d, dLastLine d) | d <- group],
       gsBranches = [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
       gsWhole = (dLine opener, dLastLine end),
@@ -585,6 +592,11 @@ groupSpec opener later end nested =
     }
   where
     group = opener : later <> [end]
+    afterKeyword d = T.drop (T.length (dKeyword d)) (dText d)
+
+-- | The lines of a group's directives, the @#if@ first and the @#endif@ last.
+gsOwnLines :: GroupSpec -> [Int]
+gsOwnLines = conditionalLines . gsConditional
 
 -- | How many configurations a group has: one per condition, and one more
 -- for when none of them holds.

@@ -462,14 +462,14 @@ formatted       6506a17a91ff  QuickCheck-2.18.0.0/examples/Set.hs
 formatted       598740b3d57c  QuickCheck-2.18.0.0/examples/Simple.hs
 partly-checked  5234e8085ba9  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
 formatted       02ad02d885d3  QuickCheck-2.18.0.0/src/Test/QuickCheck/All.hs
-partly-checked  c9428f921dc1  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+partly-checked  8a8de3dbc5b3  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
 formatted       b394fbd4debb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Compat.hs
 partly-checked  06fafd04e06a  QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
 formatted       24dc2fbcd085  QuickCheck-2.18.0.0/src/Test/QuickCheck/Features.hs
 partly-checked  5f3ea51a9b76  QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
 formatted       061130c71dd5  QuickCheck-2.18.0.0/src/Test/QuickCheck/Gen.hs
 formatted       0488daa21096  QuickCheck-2.18.0.0/src/Test/QuickCheck/Gen/Unsafe.hs
-formatted       6b7aa6169be8  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
+formatted       d0bc975a773e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.hs
 formatted       c2a1cdea0773  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
 formatted       a94b9d13da2f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monoids.hs
 formatted       0c4f8c706edf  QuickCheck-2.18.0.0/src/Test/QuickCheck/Poly.hs
