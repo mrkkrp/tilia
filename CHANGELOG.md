@@ -182,6 +182,12 @@
   such as `Test.QuickCheck.Property` is now formatted, and the fixities it
   declares are read from its source rather than written into Tilia. [PR
   111](https://github.com/mrkkrp/tilia/pull/111).
+* Leave out configurations that no definition of the macros gives, such as
+  one taking the branch of `#if X` but no branch of `#ifdef X`, or one
+  taking the branch of `#if MIN_VERSION_base(4,11,0)` but no branch of `#if
+  MIN_VERSION_base(4,10,0)`, so that a module turning an extension on under
+  one of them and using it under the other is no longer declined over them.
+  [Issue 65](https://github.com/mrkkrp/tilia/issues/65).
 
 ## Tilia 0.0.2.0
 

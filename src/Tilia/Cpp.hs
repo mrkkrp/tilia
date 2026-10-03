@@ -45,8 +45,10 @@ import Data.List (groupBy, maximumBy, sort, sortOn, stripPrefix, transpose, unsn
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Monoid (Any (..))
 import Data.Ord (comparing)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Traversable (for)
@@ -445,16 +447,40 @@ together ::
   Configurations ->
   Spending (Doc, CommentSummary)
 together parser render path reached c = do
-  formatted <- fmap catMaybes . for (zip [0 ..] (cfgTexts c)) $ \(i, t) ->
-    if null (unconditionalErrors t)
-      then Just . (,) i <$> formatAllConfigs parser render path (answering c i reached) t
-      else pure Nothing
-  docs <- except (traverse (complete (fmap (fmap fst) formatted)) (zip [0 ..] (cfgTexts c)))
-  pure (mergeOf c docs, foldMap (snd . snd) formatted)
+  (found, blind) <- formatted differentlyRead
+  if blind then fst <$> formatted False else pure found
   where
-    complete formatted (i, t) = case lookup i formatted of
+    differentlyRead =
+      or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
+    texts = cfgTexts c
+    formatted settle = do
+      let (settledBy, answers) =
+            unzip . (if settle then settling else fmap ((,) [])) $
+              [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
+      found <- fmap catMaybes . for (zip [0 ..] answers) $ \(i, (r, t)) ->
+        if null (unconditionalErrors t)
+          then Just . (,) i <$> formatAllConfigs parser render path r t
+          else pure Nothing
+      docs <-
+        except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
+      let settledIn i
+            | Just _ <- lookup i found = settledBy !! i
+            | otherwise = foldMap ((settledBy !!) . fst) (listToMaybe found)
+          settled = settledAcross (fmap settledIn [0 .. length answers - 1])
+          ranges = mapMaybe (conditionalRange . settledConditional) settled
+          varied = Varied (variedLines (cfgWholes c) <> ranges)
+          merged = merge (cfgConditionals c) (cfgGuards c) varied settled docs
+      pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
+    blindOver ranges d = case d of
+      DCppChoice [] bs _
+        | fmap fst bs == fmap guardText (cfgGuards c),
+          any (\(a, b) -> any (\(from, to) -> a <= to && from <= b) ranges) $
+            printedFrom d ->
+            True
+      _ -> getAny (foldChildren (Any . blindOver ranges) d)
+    complete found (i, t) = case lookup i found of
       Just d -> Right d
-      Nothing -> case listToMaybe formatted >>= errorBranch (cfgWholes c) t . snd of
+      Nothing -> case listToMaybe found >>= errorBranch (cfgWholes c) t . snd of
         Just d -> Right d
         Nothing ->
           Left
@@ -550,6 +576,68 @@ without :: [(Int, Int)] -> Reached -> Reached
 without gone reached =
   reached{reachedLines = dropping gone (reachedLines reached)}
 
+-- | Take, in every conditional the answers to one question settle, the
+-- branch they settle it on, as the preprocessor would, where an answer
+-- leaving it open prints its other branches.
+settling ::
+  -- | Each answer, and the configuration it gives.
+  [(Reached, Text)] ->
+  -- | Each answer's settled conditionals and its configuration with them
+  -- taken.
+  [([(GroupSpec, Int)], (Reached, Text))]
+settling given =
+  [ (settled, (reached', blanking (concatMap (uncurry blankingFor) settled) t))
+  | ((reached, t), (candidates, _)) <- zip given found,
+    let settled = [s | s@(gs, _) <- candidates, Set.member (gsWhole gs) open],
+    let reached' =
+          reached
+            { reachedAnswers =
+                reachedAnswers reached
+                  <> [(gsGuards gs, k) | (gs, k) <- settled],
+              reachedLines =
+                dropping
+                  (concatMap (uncurry droppedFor) settled)
+                  (reachedLines reached)
+            }
+  ]
+  where
+    found =
+      [ if null (unconditionalErrors t)
+          then walk (implied (reachedAnswers r)) (scanConditionals t)
+          else ([], [])
+      | (r, t) <- given
+      ]
+    open = Set.fromList (concatMap snd found)
+    walk (Just known) (Just forest) = foldMap (visit known) forest
+    walk _ _ = ([], [])
+    visit known gs = case settledBranch known gs of
+      Just k -> ([(gs, k)], []) <> foldMap (visit known) (nestedIn gs k)
+      Nothing ->
+        ([], [gsWhole gs]) <> foldMap (foldMap (visit known)) (gsNested gs)
+
+-- | A conditional other than the one asked about that answering a question
+-- settles, for some answers at least.
+data Settled = Settled
+  { -- | The conditional, as written.
+    settledConditional :: Conditional,
+    -- | The branch each answer settles it on, or 'Nothing' where it is
+    -- left open.
+    settledBranches :: [Maybe Int]
+  }
+
+-- | The conditionals some answer settles, given what each answer settles.
+settledAcross :: [[(GroupSpec, Int)]] -> [Settled]
+settledAcross perAnswer =
+  [ Settled
+      { settledConditional = gsConditional gs,
+        settledBranches =
+          [ lookup (gsWhole gs) [(gsWhole g, k) | (g, k) <- ss]
+          | ss <- perAnswer
+          ]
+      }
+  | gs <- Map.elems (Map.fromList [(gsWhole g, g) | (g, _) <- concat perAnswer])
+  ]
+
 -- | How many times over one call may format the lines of a module.
 configurationBudget :: Int
 configurationBudget = 64
@@ -561,6 +649,7 @@ mergeOf c =
     (cfgConditionals c)
     (cfgGuards c)
     (cfgWholes c)
+    []
 
 -- | Merge the documents one conditional's branches printed to.
 --
@@ -573,10 +662,12 @@ merge ::
   [Guard] ->
   -- | The lines its answer can change.
   Varied ->
+  -- | The other conditionals its answers settle.
+  [Settled] ->
   -- | One document per answer.
   [Doc] ->
   Doc
-merge conditionals guards varied = go Broken
+merge conditionals guards varied settledOthers = go Broken
   where
     go _ [] = mempty
     go layout ds@(d : rest)
@@ -658,12 +749,26 @@ merge conditionals guards varied = go Broken
         _ -> False
 
     factored layout ss =
-      let same = agree varied layout
-          shared = foldl1 (lcs same) ss
-          cut = fmap (segments (anchored same) shared) ss
-          stretches = transpose (fmap fst cut)
-          anchors = transpose (fmap snd cut)
+      let annotated = fmap (fmap (\x -> (x, settledLines x))) ss
+          same (x, a) (y, b) = agree varied layout x y || (isJust a && a == b)
+          shared = foldl1 (lcs (anchoring . fst) same) annotated
+          cut =
+            fmap
+              (segments (\a b -> anchoring (fst a) && same a b) shared)
+              annotated
+          stretches = transpose (fmap (fmap (fmap fst) . fst) cut)
+          anchors = transpose (fmap (fmap fst . snd) cut)
        in mconcat (woven layout stretches (fmap (go layout) anchors))
+
+    settledLines x
+      | null settledOthers = Nothing
+      | any (\(a, b) -> any (\(from, to) -> a <= to && from <= b) own) lines' =
+          Nothing
+      | otherwise = foldr widen Nothing lines'
+      where
+        lines' = printedFrom x
+        widen (a, b) = Just . maybe (a, b) (\(c, d) -> (min a c, max b d))
+        own = mapMaybe conditionalRange conditionals
 
     woven layout (s : ss) (c : cs) = foldMap (varying layout) (cutAtConditionals s) : c : woven layout ss cs
     woven layout ss [] = fmap (foldMap (varying layout) . cutAtConditionals) ss
@@ -675,7 +780,7 @@ merge conditionals guards varied = go Broken
     -- where every element falls inside one of them, in the order they were
     -- written; what lies between them, space aside, is the stretch's own.
     cutAtConditionals ss
-      | _ : _ : _ <- conditionals,
+      | _ : _ : _ <- ranges,
         Just owners <- traverse (traverse ownerOf) ss,
         present@(first' : _ : _) <- foldr insertOrdered [] [o | Just o <- concat owners],
         let assigned = fmap (settled first') owners,
@@ -685,10 +790,13 @@ merge conditionals guards varied = go Broken
           ]
       | otherwise = [ss]
       where
-        ranges = mapMaybe conditionalRange conditionals
+        ranges =
+          mapMaybe
+            conditionalRange
+            (conditionals <> fmap settledConditional settledOthers)
         ownerOf x = case printedFrom x of
           [] -> Just Nothing
-          lines' -> case sortOn fst [r | r@(from, to) <- ranges, all (\(a, b) -> from < a && b < to) lines'] of
+          lines' -> case sortOn fst [r | r@(from, to) <- ranges, all (\(a, b) -> from <= a && b <= to) lines'] of
             outermost : _ -> Just (Just outermost)
             [] -> Nothing
         settled first' os = case [o | Just o <- os] of
@@ -860,6 +968,8 @@ merge conditionals guards varied = go Broken
       DCloseLineUnlessAfterOpener _ -> True
       _ -> False
 
+    choice ds
+      | (d : _) <- mapMaybe (settledChoice ds) settledOthers = d
     choice ds = case unsnoc ds of
       Just (branches, fallback) ->
         Doc.cppChoice
@@ -867,6 +977,18 @@ merge conditionals guards varied = go Broken
           (zip (fmap guardText guards) branches)
           fallback
       Nothing -> mempty
+
+    settledChoice ds s = do
+      open' <- listToMaybe [d | (d, Nothing) <- zip ds (settledBranches s)]
+      (bs, e) <- case filter (not . onlySpacing) (spine open') of
+        [DCppChoice cs bs e] | settledConditional s `elem` cs -> Just (bs, e)
+        _ -> Nothing
+      let printed = maybe open' (\k -> maybe e snd (listToMaybe (drop k bs)))
+          printsAlike a b =
+            agree varied Broken a b || (printsNothing a && printsNothing b)
+      if and (zipWith (printsAlike . printed) (settledBranches s) ds)
+        then Just open'
+        else Nothing
 
     evidenced ds c = case conditionalRange c of
       Just (from, to) -> any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)
@@ -1079,7 +1201,7 @@ changesAgainst ::
   [Doc] ->
   [Doc] ->
   [Change]
-changesAgainst varied same bs xs = go 0 bs xs (lcs same bs xs)
+changesAgainst varied same bs xs = go 0 bs xs (lcs anchoring same bs xs)
   where
     anchor = anchored same
 
@@ -1198,10 +1320,11 @@ weigh layout = go
       _ -> 0
 
 -- | The longest run of elements two spines have in common, in order,
--- allowing for anything either of them has that the other does not.
-lcs :: (Doc -> Doc -> Bool) -> [Doc] -> [Doc] -> [Doc]
-lcs same xs ys =
-  filter anchoring opening <> table middleX middleY <> filter anchoring closing
+-- allowing for anything either of them has that the other does not, of
+-- those that could hold them together.
+lcs :: (a -> Bool) -> (a -> a -> Bool) -> [a] -> [a] -> [a]
+lcs holds same xs ys =
+  filter holds opening <> table middleX middleY <> filter holds closing
   where
     agreeing as bs = length (takeWhile id (zipWith same as bs))
 
@@ -1223,7 +1346,7 @@ lcs same xs ys =
               (n, acc) : case rest of
                 [] -> []
                 ((y, (dn, ds), (an, as')) : more)
-                  | anchoring x, same x y -> cells (dn + 1) (x : ds) more
+                  | holds x, same x y -> cells (dn + 1) (x : ds) more
                   | n >= an -> cells n acc more
                   | otherwise -> cells an as' more
 
@@ -1265,13 +1388,13 @@ anchoring = \case
 -- inside a region the conditional leaves alone.
 segments ::
   -- | Whether an element of the spine is the shared one being looked for.
-  (Doc -> Doc -> Bool) ->
+  (a -> a -> Bool) ->
   -- | The shared elements, in order, to cut at.
-  [Doc] ->
+  [a] ->
   -- | The spine to cut.
-  [Doc] ->
+  [a] ->
   -- | The stretches between the cuts, and the elements cut at.
-  ([[Doc]], [Doc])
+  ([[a]], [a])
 segments same = go
   where
     go [] s = ([s], [])

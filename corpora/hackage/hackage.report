@@ -1,9 +1,9 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5149 formatted.
+5202 examples, 5151 formatted.
 
 ==========================================================================
-broken (2)
+broken (1)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -60,19 +60,6 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
      import Agda.TypeChecking.Constraints
      import Agda.TypeChecking.Conversion.Pure (pureCompareAs, runPureConversion)
     +import Agda.TypeChecking.Da
-
-dlist-1.0/Data/DList.hs
-    a configuration of the input does not parse: 54:13: parse error on input `Nil'
-    --- input
-    +++ output
-    @@ -54,7 +54,6 @@
-         pattern Nil,
-         pattern Cons,
-     #endif
-    -
-     #endif
-     
-         -- * Conversion
 
 ==========================================================================
 does-not-parse (1)
@@ -198,7 +185,7 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (13)
+declined (12)
 ==========================================================================
 
 cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
@@ -241,9 +228,6 @@ shake-0.19.9/src/General/EscCodes.hs
 
 shake-0.19.9/src/General/FileLock.hs
     shake-0.19.9/src/General/FileLock.hs:28:16-23: parse error on input `CALLCONV', in the configuration taking #ifdef mingw32_HOST_OS, then #ifdef x86_64_HOST_ARCH
-
-time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
-    time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs:35:16-19: parse error on input `capi', in the configuration taking no branch of #if !defined(javascript_HOST_ARCH), then #ifndef mingw32_HOST_OS, then no branch of #if defined(javascript_HOST_ARCH) || defined(__MHS__)
 
 unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
     unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs:(266,9)-(267,31): Unexpected case expression in function application:

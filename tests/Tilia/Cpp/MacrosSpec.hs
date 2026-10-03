@@ -14,7 +14,7 @@ import Tilia.Cpp.Macros
 -- | A plan with one dependency at 1.2.3 and GHC at 9.10.3.
 macros :: Macros
 macros =
-  Macros
+  mempty
     { macroVersions =
         Map.fromList
           [ ("MIN_VERSION_thing", [1, 2, 3]),
@@ -143,6 +143,100 @@ spec = do
     it "says nothing about a guard whose keyword asks nothing" $
       fmap answer ["else", "endif", "define FOO 1"]
         `shouldBe` [Nothing, Nothing, Nothing]
+
+  describe "a guard about a macro known to be defined or not" $ do
+    let known = mempty{macroDefined = Set.fromList ["ON"], macroUndefined = Set.fromList ["OFF"]}
+        knownAnswer = guardHolds known
+
+    it "takes one that is not defined for 0" $
+      fmap knownAnswer ["if OFF", "if !OFF", "if OFF > 1"]
+        `shouldBe` [Just False, Just True, Just False]
+
+    it "says whether each is defined" $
+      fmap knownAnswer ["ifdef ON", "ifndef ON", "ifdef OFF", "if defined(OFF)"]
+        `shouldBe` [Just True, Just False, Just False, Just False]
+
+    it "says nothing about the value of one that is defined" $
+      knownAnswer "if ON" `shouldBe` Nothing
+
+  describe "what a guard implies about which macros are defined" $ do
+    let defined n = mempty{macroDefined = Set.singleton n}
+        notDefined n = mempty{macroUndefined = Set.singleton n}
+
+    it "reads it off a guard asking whether one is" $
+      fmap
+        (impliedBy True)
+        ["ifdef A", "ifndef A", "if defined(A)", "if defined A", "if !defined(A)"]
+        `shouldBe` [ defined "A",
+                     notDefined "A",
+                     defined "A",
+                     defined "A",
+                     notDefined "A"
+                   ]
+
+    it "takes a failing guard to say the opposite" $
+      fmap (impliedBy False) ["ifdef A", "if !defined(A)"]
+        `shouldBe` [notDefined "A", defined "A"]
+
+    it "takes a macro that is not 0 for one that is defined" $
+      fmap (impliedBy True) ["if A", "elif A"] `shouldBe` [defined "A", defined "A"]
+
+    it "learns nothing from a macro that is 0, which it may be by not being defined" $
+      (impliedBy False "if A", impliedBy True "if !A") `shouldBe` (mempty, mempty)
+
+    it "reads both sides of a conjunction that holds and of a disjunction that fails" $
+      ( impliedBy True "if defined(A) && !defined(B)",
+        impliedBy False "if defined(A) || defined(B)"
+      )
+        `shouldBe` (defined "A" <> notDefined "B", notDefined "A" <> notDefined "B")
+
+    it "learns nothing from a conjunction that fails or a disjunction that holds" $
+      (impliedBy False "if defined(A) && defined(B)", impliedBy True "if defined(A) || defined(B)")
+        `shouldBe` (mempty, mempty)
+
+    it "learns nothing from a call of a macro other than a version test" $
+      fmap (impliedBy True) ["if CHECK(1,2)", "if MIN_VERSION_base(x)", "if 1"]
+        `shouldBe` [mempty, mempty, mempty]
+
+  describe "a guard under what other guards imply about versions" $ do
+    let knownAnswer =
+          guardHolds
+            ( impliedBy True "if MIN_VERSION_base(4,10,0) && !(MIN_VERSION_base(4,12,0))"
+                <> impliedBy True "if MIN_VERSION_base(4,9)"
+            )
+
+    it "is settled where the bounds they put on the version decide it" $
+      fmap
+        knownAnswer
+        [ "if MIN_VERSION_base(4,9,0)",
+          "if MIN_VERSION_base(4,10)",
+          "if MIN_VERSION_base(4,12)",
+          "if MIN_VERSION_base(5,0,0)",
+          "if MIN_VERSION_base(4,11,0)"
+        ]
+        `shouldBe` [Just True, Just True, Just False, Just False, Nothing]
+
+    it "reads each comparison of a macro with a number as bounds on it" $
+      fmap
+        ( \op ->
+            fmap
+              (guardHolds (impliedBy True ("if __GLASGOW_HASKELL__ " <> op <> " 908")))
+              ["if __GLASGOW_HASKELL__ >= 908", "if __GLASGOW_HASKELL__ >= 909"]
+        )
+        [">=", ">", "<", "<=", "==", "!="]
+        `shouldBe` [ [Just True, Nothing],
+                     [Just True, Just True],
+                     [Just False, Just False],
+                     [Nothing, Just False],
+                     [Just True, Just False],
+                     [Nothing, Nothing]
+                   ]
+
+    it "is settled by a failing guard as well" $
+      fmap
+        (guardHolds (impliedBy False "if __GLASGOW_HASKELL__ >= 908"))
+        ["if __GLASGOW_HASKELL__ < 908", "if __GLASGOW_HASKELL__ > 910"]
+        `shouldBe` [Just True, Just False]
 
   describe "blanking the branches a plan rules out" $ do
     it "leaves the taken branch and blanks the rest" $
