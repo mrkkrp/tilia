@@ -148,11 +148,11 @@ spec = do
 
     it "keeps the qualifier a name was written under" $
       exportsOfSource "module M ((Disp.<+>)) where\n"
-        `shouldBe` Just [ExportName (Just "Disp") (OpName "<+>")]
+        `shouldBe` Just [ExportName InTerms (Just "Disp") (OpName "<+>")]
 
     it "has none for a name written plainly" $
       exportsOfSource "module M ((<+>)) where\n"
-        `shouldBe` Just [ExportName Nothing (OpName "<+>")]
+        `shouldBe` Just [ExportName InTerms Nothing (OpName "<+>")]
 
     it "reads a whole module passed on as the module it names" $
       exportsOfSource "module M (module Data.Map) where\n"
@@ -415,25 +415,25 @@ spec = do
         `shouldBe` [(Nothing, OpName "roundTo")]
 
   describe "what a name carries with it" $ do
-    it "takes a type's constructors" $
+    it "takes a type's constructors, among terms" $
       childrenIn "module M where\ndata T = A | Int :| Int\n"
-        `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
+        `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
 
-    it "takes a record's fields, which may be operators" $
+    it "takes a record's fields, which may be operators, among terms" $
       childrenIn "module M where\ndata T = T {(#) :: Int, name :: Int}\n"
-        `shouldBe` [(OpName "T", [OpName "#", OpName "T", OpName "name"])]
+        `shouldBe` [(OpName "T", [(InTerms, OpName "#"), (InTerms, OpName "T"), (InTerms, OpName "name")])]
 
-    it "takes a GADT's constructors" $
+    it "takes a GADT's constructors, among terms" $
       childrenIn "module M where\ndata T where\n  A :: T\n  (:|) :: T -> T\n"
-        `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
+        `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
 
-    it "takes a class's methods" $
+    it "takes a class's methods, among terms" $
       childrenIn "module M where\nclass C a where\n  (.=) :: a -> a -> Int\n  named :: a\n"
-        `shouldBe` [(OpName "C", [OpName ".=", OpName "named"])]
+        `shouldBe` [(OpName "C", [(InTerms, OpName ".="), (InTerms, OpName "named")])]
 
-    it "takes a class's associated families" $
+    it "takes a class's associated families, among types" $
       childrenIn "module M where\nclass C a where\n  type F a\n"
-        `shouldBe` [(OpName "C", [OpName "F"])]
+        `shouldBe` [(OpName "C", [(InTypes, OpName "F")])]
 
     it "has nothing to say about a type synonym" $
       childrenIn "module M where\ntype T = Int\n" `shouldBe` []
@@ -896,9 +896,10 @@ capturedIn decls =
   | (s, fixity) <- Map.toList (capturedUses (pmGathered (parsed ("module M where\n" <> decls))))
   ]
 
--- | What each name a module declares carries with it, in a settled order.
-childrenIn :: Text -> [(OpName, [OpName])]
-childrenIn = settled . declaredChildren . pmModule . parsed
+-- | What each name a module declares carries with it, by namespace, in a
+-- settled order.
+childrenIn :: Text -> [(OpName, [(Namespace, OpName)])]
+childrenIn = fmap (fmap Set.toList) . Map.toList . declaredChildren . pmModule . parsed
 
 -- | The same, as the module's export list hands them on.
 exportedChildrenIn :: Text -> [(OpName, [OpName])]

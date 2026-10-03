@@ -28,11 +28,13 @@ module Tilia.Fixity
     ImportItem (..),
     moduleImports,
     supplies,
+    brings,
     KnownModules (..),
     noKnownModules,
     Namespace (..),
     Fixities,
     inBothNamespaces,
+    Brought (..),
     UnreadModule (..),
     ModuleChain (..),
     spellModuleChain,
@@ -183,7 +185,7 @@ declaredNamespaces hsModule =
       ValD _ b -> boundNames b
       SigD _ sig -> signedNames sig
       ForD _ f -> [opName (unLoc (fd_name f))]
-      TyClD _ d@DataDecl{} -> membersOf d
+      TyClD _ d@DataDecl{} -> fmap snd (membersOf d)
       TyClD _ ClassDecl{tcdSigs} -> concatMap (classMethods . unLoc) tcdSigs
       _ -> []
 
@@ -194,18 +196,19 @@ classMethods = \case
   ClassOpSig _ _ ns _ -> fmap (opName . unLoc) ns
   _ -> []
 
--- | The names a declaration carries under the name it declares: a data
--- type's constructors and record fields, a class's methods and the
--- families it keeps.
+-- | The names a declaration carries under the name it declares, by
+-- namespace: a data type's constructors and record fields, a class's
+-- methods and the families it keeps.
 --
 -- These are what @T(..)@ stands for, and each of them can carry a fixity of
 -- its own—@:|@ is a constructor and @infixr 5@ all the same.
-membersOf :: TyClDecl GhcPs -> [OpName]
+membersOf :: TyClDecl GhcPs -> [(Namespace, OpName)]
 membersOf = \case
-  DataDecl{tcdDataDefn} -> concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn))
+  DataDecl{tcdDataDefn} ->
+    fmap (InTerms,) (concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn)))
   ClassDecl{tcdSigs, tcdATs} ->
-    concatMap (classMethods . unLoc) tcdSigs
-      <> [opName (unLoc (fdLName (unLoc f))) | f <- tcdATs]
+    fmap (InTerms,) (concatMap (classMethods . unLoc) tcdSigs)
+      <> [(InTypes, opName (unLoc (fdLName (unLoc f)))) | f <- tcdATs]
   _ -> []
   where
     consOf :: DataDefnCons (LConDecl GhcPs) -> [LConDecl GhcPs]
@@ -255,9 +258,8 @@ opName = OpName . T.pack . occNameString . rdrNameOcc
 -- declarations. This one is asked of an export list: a name a module
 -- exports and also defines needs no chasing, and one it merely reexports
 -- does.
-declaredNames :: HsModule GhcPs -> Set OpName
-declaredNames hsModule =
-  Set.unions [types, terms, Set.map snd (Map.keysSet (declaredFixities hsModule))]
+declaredNames :: HsModule GhcPs -> Set (Namespace, OpName)
+declaredNames hsModule = Set.map (InTypes,) types <> Set.map (InTerms,) terms
   where
     (types, terms) = declaredNamespaces hsModule
 
@@ -283,13 +285,16 @@ moduleName = fmap (T.pack . moduleNameString . unLoc) . hsmodName
 
 -- | One entry of a module's export list.
 data ExportItem
-  = -- | A name, which may or may not be declared in this module, under the
-    -- qualifier it was written with if it was written with one.
-    ExportName (Maybe Text) OpName
+  = -- | A name, which may or may not be declared in this module, in the
+    -- namespace the list writes it in, under the qualifier it was written
+    -- with if it was written with one.
+    ExportName Namespace (Maybe Text) OpName
   | -- | @T(..)@: the name, and with it whatever the module has to give
     -- under that name. Which names those are cannot be read off the list;
     -- it takes the declaration of @T@, or the module @T@ came from.
     ExportAll (Maybe Text) OpName
+  | -- | @T(a, b)@: the name, and the members written out beside it.
+    ExportSome (Maybe Text) OpName [OpName]
   | -- | @module M@, re-exporting everything that module brought in.
     ExportModule Text
   deriving (Eq, Show, Generic)
@@ -302,13 +307,13 @@ moduleExports =
   fmap (concatMap (fromIE . unLoc) . unLoc) . hsmodExports
   where
     fromIE = \case
-      IEVar _ n _ -> [named n]
-      IEThingAbs _ n _ -> [named n]
+      IEVar _ n _ -> [as (ExportName InTerms) n]
+      IEThingAbs _ n _ -> [as (ExportName InTypes) n]
       IEThingAll _ n _ -> [as ExportAll n]
-      IEThingWith _ n _ ns _ -> named n : fmap named ns
+      IEThingWith _ n _ ns _ ->
+        [as ExportSome n (fmap (opName . ieWrappedName . unLoc) ns)]
       IEModuleContents _ m -> [ExportModule (T.pack (moduleNameString (unLoc m)))]
       _ -> []
-    named = as ExportName
     as item n =
       let rdr = ieWrappedName (unLoc n)
        in item (qualifierOf rdr) (opName rdr)
@@ -320,7 +325,7 @@ qualifierOf = \case
   _ -> Nothing
 
 -- | What each type or class a module declares carries with it.
-declaredChildren :: HsModule GhcPs -> Map OpName (Set OpName)
+declaredChildren :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
 declaredChildren =
   Map.fromListWith Set.union . concatMap (fromDecl . unLoc) . hsmodDecls
   where
@@ -336,7 +341,7 @@ moduleChildren hsModule = case hsmodExports hsModule of
   Nothing -> declared
   Just items -> Map.fromListWith Set.union (concatMap (fromIE . unLoc) (unLoc items))
   where
-    declared = declaredChildren hsModule
+    declared = Map.map (Set.map snd) (declaredChildren hsModule)
     fromIE = \case
       IEThingAll _ n _ ->
         [(nameOf n, Map.findWithDefault Set.empty (nameOf n) declared)]
@@ -515,7 +520,7 @@ data KnownModules = KnownModules
     -- not answer for, and only so that a message can name the module that
     -- is really in the way.
     knownChain :: Text -> [Text],
-    -- | Every name a module exports, by namespace, where that is known.
+    -- | Every name a module exports, where that is known.
     knownBrought :: Text -> Maybe (Set (Namespace, OpName))
   }
 
@@ -536,7 +541,7 @@ data Namespace = InTypes | InTerms
 
 instance NFData Namespace
 
--- | The fixities a module offers, by the namespace each is written in.
+-- | The fixities a module offers.
 type Fixities = Map (Namespace, OpName) Fixity
 
 -- | Take fixities that say nothing about namespaces to govern both.
@@ -547,6 +552,26 @@ inBothNamespaces declared =
     | (op, fixity) <- Map.toList declared,
       namespace <- [InTypes, InTerms]
     ]
+
+-- | What a module brings into scope for a module that imports it whole.
+data Brought = Brought
+  { -- | Every name it exports.
+    broughtNames :: Set (Namespace, OpName),
+    -- | What each type or class it exports carries.
+    broughtChildren :: Map OpName (Set (Namespace, OpName))
+  }
+  deriving (Eq, Show)
+
+instance Semigroup Brought where
+  a <> b =
+    Brought
+      { broughtNames = broughtNames a <> broughtNames b,
+        broughtChildren =
+          Map.unionWith Set.union (broughtChildren a) (broughtChildren b)
+      }
+
+instance Monoid Brought where
+  mempty = Brought Set.empty Map.empty
 
 -- | An import whose module could not be read, and what is known about it
 -- regardless.
@@ -1003,9 +1028,9 @@ data ModuleSummary = ModuleSummary
     -- | The fixities it declares.
     summaryFixities :: Fixities,
     -- | Every name it defines.
-    summaryNames :: Set OpName,
+    summaryNames :: Set (Namespace, OpName),
     -- | What each type or class it declares carries with it.
-    summaryDeclaredChildren :: Map OpName (Set OpName),
+    summaryDeclaredChildren :: Map OpName (Set (Namespace, OpName)),
     -- | What it offers under each name, as its export list offers it.
     summaryChildren :: Map OpName (Set OpName)
   }

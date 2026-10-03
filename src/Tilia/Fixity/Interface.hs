@@ -16,7 +16,7 @@ import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe, maybeToList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -37,9 +37,9 @@ data Interface = Interface
     -- | What it exports under each name. This is what @T(..)@ in an import
     -- list stands for.
     interfaceChildren :: Map OpName (Set OpName),
-    -- | Every name it exports, by namespace, where the interface was decoded
-    -- rather than read off what @ghc --show-iface@ prints.
-    interfaceExports :: Maybe (Set (Namespace, OpName))
+    -- | What it brings into scope, where the interface was decoded rather
+    -- than read off what @ghc --show-iface@ prints.
+    interfaceExports :: Maybe Brought
   }
   deriving (Eq, Show)
 
@@ -69,6 +69,17 @@ fromHiFile modName HiFile{..}
   | hiModule /= modName = Left ("the interface of " <> hiModule)
   | otherwise = do
       exports <- concat <$> traverse resolved hiExports
+      exported <- concat <$> traverse exportedNames hiExports
+      let carrying =
+            Map.fromListWith
+              Set.union
+              [ (op, Set.fromList [(namespace, kid) | (_, namespace, kid) <- kids])
+              | parent@(_, _, op) : named <- exports,
+                let kids = case named of
+                      first : rest | first == parent -> rest
+                      _ -> named,
+                not (null kids)
+              ]
       pure
         Interface
           { interfaceDeclares =
@@ -79,20 +90,18 @@ fromHiFile modName HiFile{..}
                 (Just m, _, op) <- names,
                 m /= hiModule
               ],
-            interfaceChildren =
-              Map.fromListWith
-                Set.union
-                [ (op, Set.fromList [kid | (_, _, kid) <- kids])
-                | parent@(_, _, op) : named <- exports,
-                  let kids = case named of
-                        first : rest | first == parent -> rest
-                        _ -> named,
-                  not (null kids)
-                ],
+            interfaceChildren = Map.map (Set.map snd) carrying,
             interfaceExports =
-              Just (Set.fromList [(namespace, op) | names <- exports, (_, namespace, op) <- names])
+              Just
+                Brought
+                  { broughtNames = Set.fromList [(namespace, op) | (_, namespace, op) <- exported],
+                    broughtChildren = carrying
+                  }
           }
   where
+    exportedNames = \case
+      Avail n -> maybeToList <$> known n
+      AvailTC _ ns -> catMaybes <$> traverse known ns
     resolved = \case
       Avail n -> maybe [] (pure . pure) <$> known n
       AvailTC p ns -> do

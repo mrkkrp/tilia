@@ -235,10 +235,13 @@ crowded =
     { summaryName = Just "M.N",
       summaryExports =
         Just
-          [ ExportName Nothing (OpName "<+>"),
-            ExportName (Just "Q") (OpName "<->"),
+          [ ExportName InTerms Nothing (OpName "<+>"),
+            ExportName InTerms (Just "Q") (OpName "<->"),
+            ExportName InTypes Nothing (OpName ":|:"),
             ExportAll Nothing (OpName "T"),
             ExportAll (Just "Q") (OpName "U"),
+            ExportSome Nothing (OpName "C") [OpName "method", OpName "F"],
+            ExportSome (Just "Q") (OpName "V") [],
             ExportModule "Data.List"
           ],
       summaryImports =
@@ -265,10 +268,17 @@ crowded =
             ((InTypes, OpName ":|:"), Fixity RightAssoc 5),
             ((InTerms, OpName "div"), Fixity NoAssoc 7)
           ],
-      summaryNames = Set.fromList [OpName "<+>", OpName "T", OpName ":|:"],
+      summaryNames =
+        Set.fromList
+          [ (InTerms, OpName "<+>"),
+            (InTypes, OpName "T"),
+            (InTerms, OpName "T"),
+            (InTypes, OpName ":|:")
+          ],
       summaryDeclaredChildren =
         Map.fromList
-          [ (OpName "T", Set.fromList [OpName "A", OpName ":|:"]),
+          [ (OpName "T", Set.fromList [(InTerms, OpName "A"), (InTerms, OpName ":|:")]),
+            (OpName "C", Set.fromList [(InTerms, OpName "method"), (InTypes, OpName "F")]),
             (OpName "Empty", Set.empty)
           ],
       summaryChildren = Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
