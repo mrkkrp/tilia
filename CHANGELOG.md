@@ -149,6 +149,10 @@
 * Take a constructor, field or method that an import list brings in through
   `T(..)` or `T(a, b)` as settling the name's fixity despite an unreadable
   import, as a variable named on its own already did.
+* Keep a comment apart from a Haddock under it only where it comes out
+  right above one, rather than in every branch of a conditional it is
+  printed in, which a second pass then undid. [Issue
+  82](https://github.com/mrkkrp/tilia/issues/82).
 
 ## Tilia 0.0.2.0
 
