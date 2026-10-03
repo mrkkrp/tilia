@@ -72,6 +72,9 @@
   first, rather than around it and every argument after it, which then
   came out once in each branch. [PR
   57](https://github.com/mrkkrp/tilia/pull/57).
+* Keep an empty line written under a comment that carries on a trailing
+  comment on the line above. [Issue
+  63](https://github.com/mrkkrp/tilia/issues/63).
 
 ## Tilia 0.0.2.0
 

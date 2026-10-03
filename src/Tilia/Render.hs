@@ -10,6 +10,7 @@ where
 import Data.Choice (fromBool)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -20,6 +21,7 @@ import GHC.Types.SrcLoc (getLoc)
 import Tilia.Comments
   ( Comment (..),
     bracketed,
+    carriedOnFrom,
     closesItself,
     commentTrailing,
     escapeTrigger,
@@ -101,6 +103,9 @@ renderConfiguration settings parsed =
           ctxScope = rcScope settings,
           ctxSource = pmSource parsed,
           ctxLineComments = indexOn (filter (not . closesItself) loose),
+          ctxCarryingOn =
+            Set.fromList
+              (startPoint . commentSpan <$> filter (isJust . carriedOnFrom loose) loose),
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot
         }

@@ -79,6 +79,8 @@ data Ctx = Ctx
     ctxScope :: Maybe Scope,
     -- | The comments that take whole lines, by starting position.
     ctxLineComments :: Map (Int, Int) Comment,
+    -- | Where each comment that carries on a trailing comment begins.
+    ctxCarryingOn :: Set (Int, Int),
     -- | The module as its author wrote it.
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
@@ -188,13 +190,20 @@ nextPrinted ::
   Maybe Span ->
   Maybe Span
 nextPrinted ctx (Just a) mb@(Just b) =
-  case filter (not . commentTrailing) (Map.elems inTheGap) of
+  case filter (not . printedAfter) (Map.elems inTheGap) of
     (c : _) -> Just (commentSpan c)
     [] -> mb
   where
     inTheGap =
       Map.takeWhileAntitone (< startPoint b) $
         Map.dropWhileAntitone (< endPoint a) (ctxLineComments ctx)
+    printedAfter c =
+      commentTrailing c
+        || ( Set.member (startPoint s) (ctxCarryingOn ctx)
+               && spanStartColumn b < spanStartColumn s
+           )
+      where
+        s = commentSpan c
 nextPrinted _ _ mb = mb
 
 -- | Is a comment going to be printed between the two spans?
