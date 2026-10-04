@@ -153,6 +153,10 @@
   right above one, rather than in every branch of a conditional it is
   printed in, which a second pass then undid. [Issue
   82](https://github.com/mrkkrp/tilia/issues/82).
+* Lay out a module with one declaration the way one with several is laid
+  out, so that where a conditional changes how many declarations there are,
+  the code after it is not repeated under both branches of another
+  conditional. [Issue 82](https://github.com/mrkkrp/tilia/issues/82).
 
 ## Tilia 0.0.2.0
 

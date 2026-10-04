@@ -196,8 +196,11 @@ hsModule ctx pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       <> hardBreak
       <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
       <> hardBreak
-      <> layoutFrom ctx (spansOf hsmodDecls) (decls ctx Free hsmodDecls)
+      <> declarationLayout (decls ctx Free hsmodDecls)
   where
+    declarationLayout = case hsmodDecls of
+      _ : _ : _ -> layoutFrom ctx (spansOf hsmodDecls)
+      _ -> broken
     exports = maybe [] unLoc hsmodExports
     headerSpan = foldMap spanOf hsmodDeprecMessage <> foldMap spanOf hsmodExports
     headerLayout
