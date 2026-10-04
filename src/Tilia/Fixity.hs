@@ -719,6 +719,8 @@ data Provenance
     DeclaredHere
   | -- | An @infix@ declaration in the named imported module.
     DeclaredIn Text
+  | -- | The language itself, as for @:@, whatever is in scope.
+    BuiltIn
   | -- | No declaration exists anywhere in scope, and every module in scope
     -- was successfully consulted, so the Report's @infixl 9@ applies.
     ReportDefault
@@ -764,15 +766,23 @@ fixityInScope ::
   -- | The fixity and where it came from, under the namespace that supplied
   -- it. 'Nothing' where the scope has no answer.
   Maybe (Namespace, (Fixity, Provenance))
-fixityInScope scope namespace qualifier op =
-  case mapMaybe found (namespace : promotedFrom namespace) of
-    (answer : _) -> Just answer
-    [] -> Nothing
+fixityInScope scope namespace qualifier op
+  | Just fixity <- Map.lookup op builtInSyntax =
+      Just (namespace, (fixity, BuiltIn))
+  | otherwise =
+      case mapMaybe found (namespace : promotedFrom namespace) of
+        (answer : _) -> Just answer
+        [] -> Nothing
   where
     found n =
       (n,) <$> case qualifier of
         Nothing -> Map.lookup op (reachUnqualified (reachIn n scope))
         Just q -> Map.lookup (q, op) (reachQualified (reachIn n scope))
+
+-- | The operators the language gives a fixity, rather than a declaration
+-- anywhere: @:@ alone.
+builtInSyntax :: Map OpName Fixity
+builtInSyntax = Map.singleton (OpName ":") (Fixity RightAssoc 5)
 
 -- | The namespaces a use written in this one may also refer to.
 promotedFrom :: Namespace -> [Namespace]

@@ -215,6 +215,7 @@ aboutFile palette notes =
     from = \case
       DeclaredHere -> "declared in this module"
       DeclaredIn m -> "declared in " <> named m
+      BuiltIn -> "built into the language"
       ReportDefault -> "the Report's default, nothing in scope declaring it"
 
     ambiguously o = case noteDisagreement o of

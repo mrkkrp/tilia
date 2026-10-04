@@ -642,6 +642,17 @@ spec = do
        in lookupFixity s InTerms Nothing (OpName "<+>")
             `shouldBe` Resolved (Fixity RightAssoc 3) DeclaredHere
 
+    it "takes the fixity of : from the language, whatever is in scope" $
+      let s =
+            scopeAboutPrelude
+              (Isn't #implicitPrelude)
+              "module M where\nimport Opaque\n"
+          cons = Resolved (Fixity RightAssoc 5) BuiltIn
+       in ( lookupFixity s InTerms Nothing (OpName ":"),
+            lookupFixity s InTypes Nothing (OpName ":")
+          )
+            `shouldBe` (cons, cons)
+
     it "does not find a qualified-only operator unqualified" $
       let s = fullScope "module M where\nimport qualified Data.Map\n"
        in lookupFixity s InTerms Nothing (OpName "!")

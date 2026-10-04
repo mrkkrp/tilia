@@ -137,6 +137,8 @@
 * Settle each name a module re-exports individually, rather than give up on
   all of them because one could have come from a module that cannot be read.
   [Issue 86](https://github.com/mrkkrp/tilia/issues/86).
+* Give `:` its fixity wherever it is written, rather than only where the
+  `Prelude` is in scope.
 
 ## Tilia 0.0.2.0
 
