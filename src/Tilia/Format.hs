@@ -79,11 +79,9 @@ import Tilia.Parser
     parserConfigFor,
     pmGathered,
     pmModule,
-    pmSource,
   )
 import Tilia.Pragma (effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
-import Tilia.Source (comments)
 import Tilia.Utils (collected, spellList, tshow)
 
 -- | Why a file could not be formatted.
@@ -407,10 +405,7 @@ rewritten config cpp path (before, printedFrom') after
   where
     comparing b' a' =
       syntaxDifference (pmModule b') (pmModule a')
-        <|> commentDifference
-          (pmModule b', pmModule a')
-          (comments (pmSource b'))
-          (comments (pmSource a'))
+        <|> commentDifference b' a'
     whatParsed = either (const Nothing) Just
     underCpp = case correspondingBranches before after of
       Left _ -> Just "the input or output could not be split into configurations"

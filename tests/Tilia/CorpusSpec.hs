@@ -42,7 +42,6 @@ import Tilia.Parser
   )
 import Tilia.Pragma (effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig, defaultRenderConfig, renderModule)
-import Tilia.Source (comments)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig (exampleRenderConfig)
@@ -321,11 +320,7 @@ checkPure palette path package source expected
                           <> "\n"
                           <> against "output"
                       )
-                | Just difference <-
-                    commentDifference
-                      (pmModule before, pmModule after)
-                      (comments (pmSource before))
-                      (comments (pmSource after)) ->
+                | Just difference <- commentDifference before after ->
                     told
                       formatted
                       Broken
@@ -461,11 +456,7 @@ checkCpp palette path package source expected = case formatWithCpp parser render
       (Right before, Right after)
         | Just difference <- syntaxDifference (pmModule before) (pmModule after) ->
             Just ("a different program, in one configuration: " <> difference)
-        | Just difference <-
-            commentDifference
-              (pmModule before, pmModule after)
-              (comments (pmSource before))
-              (comments (pmSource after)) ->
+        | Just difference <- commentDifference before after ->
             Just ("comments, in one configuration: " <> difference)
         | otherwise -> Nothing
 
