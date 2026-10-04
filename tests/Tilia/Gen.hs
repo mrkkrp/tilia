@@ -148,6 +148,7 @@ shrinkDoc = \case
   DHardBreak -> [DEmpty]
   DVerbatimBreak _ _ -> [DEmpty]
   DCloseLine -> [DEmpty]
+  DCloseLineUnlessOpened _ -> [DEmpty, DCloseLine]
   DHoldBack t -> DHoldBack <$> filter (not . T.null) (T.inits t)
   DCat a b -> [DEmpty, a, b] <> [DCat a' b | a' <- shrinkDoc a] <> [DCat a b' | b' <- shrinkDoc b]
   DNest n d -> [DEmpty, d] <> [DNest n d' | d' <- shrinkDoc d]
@@ -175,6 +176,7 @@ docTexts = \case
   DHardBreak -> []
   DVerbatimBreak _ _ -> []
   DCloseLine -> []
+  DCloseLineUnlessOpened _ -> []
   DHoldBack t -> [t]
   DCat a b -> docTexts a <> docTexts b
   DNest _ d -> docTexts d

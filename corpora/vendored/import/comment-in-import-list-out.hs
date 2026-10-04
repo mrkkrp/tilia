@@ -1,6 +1,5 @@
 import Alpha
-  (
-    -- nothing taken yet
+  ( -- nothing taken yet
   )
 import Beta
   ( one,
