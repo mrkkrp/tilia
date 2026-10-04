@@ -202,7 +202,9 @@ hsModule ctx pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       _ : _ : _ -> layoutFrom ctx (spansOf hsmodDecls)
       _ -> broken
     exports = maybe [] unLoc hsmodExports
-    headerSpan = foldMap spanOf hsmodDeprecMessage <> foldMap spanOf hsmodExports
+    headerSpan =
+      foldMap (\w -> foldMap spanOf hsmodName <> spanOf w) hsmodDeprecMessage
+        <> foldMap spanOf hsmodExports
     headerLayout
       | any (isDocEntry . unLoc) exports = broken
       | otherwise = layoutFrom ctx headerSpan
