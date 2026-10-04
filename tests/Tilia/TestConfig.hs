@@ -16,6 +16,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension)
+import Tilia.BootFixities (bootFixities)
 import Tilia.Fixity
   ( Direction (..),
     Established (..),
@@ -31,7 +32,6 @@ import Tilia.Fixity
     resolveScope,
     unreadable,
   )
-import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig)
@@ -79,13 +79,13 @@ exampleRenderConfig package source parsed =
 exportsOf :: Text -> Maybe Fixities
 exportsOf name = Just (Map.union ours (inBothNamespaces elsewhere))
   where
-    ours = case Map.lookup name builtinFixities of
+    ours = case Map.lookup name bootFixities of
       Just exact -> exact
       Nothing -> everythingKnown
 
 -- | Every operator any boot module exports.
 everythingKnown :: Fixities
-everythingKnown = Map.unions (Map.elems builtinFixities)
+everythingKnown = Map.unions (Map.elems bootFixities)
 
 -- | Operators the examples use that no boot package exports.
 --

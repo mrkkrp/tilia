@@ -23,8 +23,13 @@ import Data.Text qualified as T
 import Data.Word (Word64)
 import Test.Hspec
 import Tilia.Fixity (Fixities, Namespace (..), OpName (..))
-import Tilia.Fixity.Builtin (builtinFixities)
-import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
+import Tilia.Fixity.HiFile
+  ( HiExport (..),
+    HiFile (..),
+    HiName (..),
+    decodeHiFile,
+    primopFixities,
+  )
 import Tilia.Fixity.Interface (Interface (..), fromHiFile, parseInterface)
 import Tilia.Fixity.PackageDb (readInstalledPackages)
 import Tilia.Fixity.Plan (BuildPlan)
@@ -46,7 +51,7 @@ withPlan plan = do
   dependencies <- runIO (dependenciesOf (const True) plan installed)
   let modules = concatMap depModules dependencies
   declaredIn <- runIO (Map.fromList . concat <$> traverse declarations modules)
-  let declared m = Map.lookup m declaredIn <|> Map.lookup m builtinFixities
+  let declared m = Map.lookup m declaredIn <|> Map.lookup m primopFixities
   describe "interface files read directly" $ do
     it "are there to read" $
       length modules `shouldSatisfy` (>= 500)

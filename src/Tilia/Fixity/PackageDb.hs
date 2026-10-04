@@ -30,9 +30,11 @@ data InstalledPackage = InstalledPackage
     ipName :: Text,
     -- | Package version
     ipVersion :: Text,
-    -- | Every module it holds, hidden ones included, with re-export clauses
-    -- dropped.
+    -- | Every module it holds, hidden ones included.
     ipModules :: [Text],
+    -- | The modules it exposes that another package holds, each with its
+    -- name there.
+    ipReexports :: [(Text, Text)],
     -- | Where its compiled interfaces are.
     ipImportDirs :: [FilePath]
   }
@@ -50,7 +52,8 @@ data Installed = Installed
 
 -- | Everything the compiler can see, and where it read it from.
 --
--- Empty if @ghc-pkg@ cannot be run, which is not fatal.
+-- Empty if @ghc-pkg@ cannot be run, which leaves the packages that come with
+-- the compiler unread.
 --
 -- @ghc-pkg@ is invoked rather than a database read off disk because where
 -- the databases are is not knowable from outside: under Nix the wrapper
@@ -110,6 +113,8 @@ fromFields fields = do
           concatMap
             (maybe [] moduleNames . (`Map.lookup` fields))
             ["exposed-modules", "hidden-modules"],
+        ipReexports =
+          maybe [] reexportedModules (Map.lookup "exposed-modules" fields),
         ipImportDirs =
           maybe
             []
@@ -123,9 +128,9 @@ rooted fields path = case Map.lookup "pkgroot" fields of
   Nothing -> path
   Just root -> T.replace "${pkgroot}" (unquote root) path
 
--- | The module names in an @exposed-modules@ field.
+-- | The modules an @exposed-modules@ field names that the package holds.
 moduleNames :: Text -> [Text]
-moduleNames = go . filter (not . T.null) . concatMap (T.split (== ',')) . T.words
+moduleNames = go . moduleTokens
   where
     go = \case
       (_ : "from" : _ : rest) -> go rest
@@ -135,6 +140,21 @@ moduleNames = go . filter (not . T.null) . concatMap (T.split (== ',')) . T.word
     looksLikeModule m = case T.uncons m of
       Just (c, _) -> c `elem` ['A' .. 'Z'] && not (T.any (== ':') m)
       Nothing -> False
+
+-- | The modules an @exposed-modules@ field names that another package
+-- holds, each with its name there.
+reexportedModules :: Text -> [(Text, Text)]
+reexportedModules = go . moduleTokens
+  where
+    go = \case
+      (m : "from" : original : rest) ->
+        (m, T.takeWhileEnd (/= ':') original) : go rest
+      (_ : rest) -> go rest
+      [] -> []
+
+-- | The words of a field that lists modules.
+moduleTokens :: Text -> [Text]
+moduleTokens = filter (not . T.null) . concatMap (T.split (== ',')) . T.words
 
 -- | Split a record into its fields.
 parseFields :: Text -> Map.Map Text Text

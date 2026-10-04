@@ -30,7 +30,7 @@ import Data.Foldable (toList, traverse_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -362,20 +362,25 @@ cachedInstalled cache = quietly Nothing $ do
       still <- traverse unchanged written
       pure $
         if not (null written) && and still
-          then Just (mapMaybe installedFrom ls)
+          then traverse installedFrom [l | ("pkg" : l) <- fmap fields ls]
           else Nothing
   where
     unchanged (path, stamp) =
       quietly False ((== stamp) . T.pack . show <$> getModificationTime path)
-    installedFrom l = case fields l of
-      ("pkg" : name : version : modules : dirs) ->
-        Just
+    installedFrom = \case
+      name : version : modules : reexports : dirs -> do
+        pairs <- traverse reexport (T.words reexports)
+        pure
           InstalledPackage
             { ipName = name,
               ipVersion = version,
               ipModules = T.words modules,
+              ipReexports = pairs,
               ipImportDirs = fmap T.unpack dirs
             }
+      _ -> Nothing
+    reexport pair = case T.splitOn "=" pair of
+      [visible, original] -> Just (visible, original)
       _ -> Nothing
     fields = T.splitOn "\t"
 
@@ -389,7 +394,15 @@ storeInstalled cache found
       writeAtomically (at cache ["installed", tokenOf cache]) . T.unlines $
         [T.intercalate "\t" ["db", T.pack path, stamp] | (path, stamp) <- stamps]
           <> [ T.intercalate "\t" $
-                 ["pkg", ipName p, ipVersion p, T.unwords (ipModules p)]
+                 [ "pkg",
+                   ipName p,
+                   ipVersion p,
+                   T.unwords (ipModules p),
+                   T.unwords
+                     [ visible <> "=" <> original
+                     | (visible, original) <- ipReexports p
+                     ]
+                 ]
                    <> fmap T.pack (ipImportDirs p)
              | p <- installedPackages found
              ]

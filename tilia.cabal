@@ -54,7 +54,6 @@ library
     Tilia.Editor
     Tilia.Equivalence
     Tilia.Fixity
-    Tilia.Fixity.Builtin
     Tilia.Fixity.ByHand
     Tilia.Fixity.Cabal
     Tilia.Fixity.Cache
@@ -191,6 +190,7 @@ test-suite tests
   hs-source-dirs: tests
   other-modules:
     Spec
+    Tilia.BootFixities
     Tilia.Cabal.PackageSpec
     Tilia.Cabal.ProjectSpec
     Tilia.Cabal.TargetSpec
