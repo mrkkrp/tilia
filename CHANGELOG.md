@@ -164,6 +164,10 @@
   than with what follows, so that a second comment between a name and its
   `=` no longer moves after the `=`. [Issue
   94](https://github.com/mrkkrp/tilia/issues/94).
+* Leave the empty line between the header and the imports where it is when
+  sorting moves the first import further down, rather than carry it into
+  the imports with a comment written right on top of that import. [Issue
+  92](https://github.com/mrkkrp/tilia/issues/92).
 
 ## Tilia 0.0.2.0
 
