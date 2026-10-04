@@ -8,6 +8,7 @@ module Tilia.Fixity.HiFile
     HiName (..),
     HiExport (..),
     decodeHiFile,
+    primopFixities,
   )
 where
 
@@ -23,7 +24,13 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word (Word32, Word8)
-import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..), OpName (..))
+import Tilia.Fixity
+  ( Direction (..),
+    Fixities,
+    Fixity (..),
+    Namespace (..),
+    OpName (..),
+  )
 import Tilia.Fixity.KnownKeys.Ghc910 qualified as Ghc910
 import Tilia.Fixity.KnownKeys.Ghc912 qualified as Ghc912
 import Tilia.Fixity.KnownKeys.Ghc914 qualified as Ghc914
@@ -46,10 +53,9 @@ data HiName
   | -- | Built-in syntax, such as @:@, which GHC writes without the module
     -- that defines it.
     BuiltInSyntax Namespace OpName
-  | -- | A name GHC writes as a key that no fixity depends on.
+  | -- | A name GHC writes as a key outside the table for its series, such
+    -- as a tuple's, which no fixity depends on.
     Unneeded
-  | -- | A name GHC knows by its unique alone, which only GHC can resolve.
-    KnownKey Word32
   deriving (Eq, Show)
 
 -- | One entry of an export list.
@@ -73,9 +79,8 @@ data Series = Series910 | Series912 | Series914
 data Tables = Tables
   { tablesStrings :: Array Int ByteString,
     tablesNames :: Array Int (Int, Namespace, Int),
-    -- | The names the series writes as keys that fixities depend on, if
-    -- there is a table of them for the series.
-    tablesKeyed :: Maybe (Map Word32 HiName)
+    -- | The names the series writes as keys.
+    tablesKeyed :: Map Word32 HiName
   }
 
 -- | An interface file, from its header as far as its fixities.
@@ -222,16 +227,15 @@ name tables = do
             <*> pure namespace
             <*> (OpName <$> fastString (tablesStrings tables) occ)
       | otherwise -> failure "name index out of range"
-    0x80000000 -> pure (maybe (KnownKey w) (Map.findWithDefault Unneeded w) (tablesKeyed tables))
+    0x80000000 -> pure (Map.findWithDefault Unneeded w (tablesKeyed tables))
     _ -> failure "unknown name tag"
 
--- | The names a series writes as keys that fixities depend on, where there
--- is a table of them for the series.
-keyedNames :: Series -> Maybe (Map Word32 HiName)
+-- | The names a series writes as keys.
+keyedNames :: Series -> Map Word32 HiName
 keyedNames = \case
-  Series910 -> Just (keyed Ghc910.knownKeys)
-  Series912 -> Just (keyed Ghc912.knownKeys)
-  Series914 -> Just (keyed Ghc914.knownKeys)
+  Series910 -> keyed Ghc910.knownKeys
+  Series912 -> keyed Ghc912.knownKeys
+  Series914 -> keyed Ghc914.knownKeys
   where
     keyed entries =
       Map.fromList
@@ -240,6 +244,17 @@ keyedNames = \case
           )
         | (tag, index, namespace, printedWith, n) <- entries
         ]
+
+-- | The fixities of the primitive operations, by the name each series gives
+-- the module GHC keeps them in, which has no interface file to read them
+-- from.
+primopFixities :: Map Text Fixities
+primopFixities =
+  Map.fromListWith
+    Map.union
+    [ (m, Map.fromList [((InTerms, OpName op), f) | (op, f) <- declared])
+    | (m, declared) <- [Ghc910.primops, Ghc912.primops, Ghc914.primops]
+    ]
 
 -- | One entry of an export list.
 export :: Tables -> Get HiExport

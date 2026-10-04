@@ -139,6 +139,9 @@
   [Issue 86](https://github.com/mrkkrp/tilia/issues/86).
 * Give `:` its fixity wherever it is written, rather than only where the
   `Prelude` is in scope.
+* Read every name an interface file refers to by key, so that a name such as
+  `fmap` settles a use of it despite an unreadable import, as other names
+  already did.
 
 ## Tilia 0.0.2.0
 
