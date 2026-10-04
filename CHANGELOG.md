@@ -157,6 +157,9 @@
   out, so that where a conditional changes how many declarations there are,
   the code after it is not repeated under both branches of another
   conditional. [Issue 82](https://github.com/mrkkrp/tilia/issues/82).
+* Keep a module header with a `DEPRECATED` or `WARNING` pragma written on a
+  line of its own on several lines when it has no export list, rather than
+  join it onto one line. [Issue 96](https://github.com/mrkkrp/tilia/issues/96).
 
 ## Tilia 0.0.2.0
 
