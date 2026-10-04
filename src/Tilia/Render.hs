@@ -10,11 +10,11 @@ where
 import Data.Choice (fromBool)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, maybeToList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Hs (HsModule (..), XModulePs (..))
+import GHC.Hs (AnnsModule (..), HsModule (..), XModulePs (..), anns)
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc)
@@ -41,7 +41,7 @@ import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, take
 import Tilia.Render.Signature (sigDecl)
 import Tilia.Source (Lines, comments, sourceLines)
 import Tilia.Span
-import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
+import Tilia.Span.Ghc (spanOf, spanOfSrcSpan, tokenSpan)
 
 -- | What the printer needs to know about the module beyond its text.
 data RenderConfig = RenderConfig
@@ -88,7 +88,7 @@ renderConfiguration settings parsed =
     plain = heldOff haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
-    loose = heldOffModuleDoc hsMod haddocks pragmas uncovered
+    loose = openingImports hsMod pragmas (heldOffModuleDoc hsMod haddocks pragmas uncovered)
     implicitPrelude =
       fromBool (Set.member ImplicitPrelude (rcExtensions settings))
     sorted m =
@@ -170,6 +170,26 @@ heldOffModuleDoc hsMod haddocks pragmas cs
       XModulePs{hsmodHaddockModHeader = Just d} -> spanOfSrcSpan (getLoc d)
       _ -> Nothing
     startOfModuleLine = spanStartLine <$> (spanOf =<< hsmodName hsMod)
+
+-- | Leave the empty line above the imports to the module rather than to the
+-- comments written right on top of the first import, which sorting carries
+-- along with it.
+openingImports :: HsModule GhcPs -> [HeaderPragma] -> [Comment] -> [Comment]
+openingImports hsMod pragmas cs
+  | (firstImport : _) <- hsmodImports hsMod,
+    Just first <- spanStartLine <$> spanOf firstImport,
+    (before', c : after') <- break (onTop first) cs,
+    not (any commentGapBelow (filter (onTop first) (c : after'))) =
+      before' <> (c{commentGapAbove = False} : after')
+  | otherwise = cs
+  where
+    onTop first c =
+      headerEnd < spanStartLine (commentSpan c)
+        && spanEndLine (commentSpan c) < first
+    headerEnd = maximum (0 : whereLine <> pragmaLines)
+    whereLine = case hsmodExt hsMod of
+      XModulePs{hsmodAnn = ann} -> maybeToList (spanEndLine <$> tokenSpan (am_where (anns ann)))
+    pragmaLines = fmap (spanEndLine . hpSpan) pragmas
 
 -- | The lines above the module, put back exactly as they were written.
 prologue :: [Text] -> Doc
