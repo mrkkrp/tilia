@@ -485,7 +485,8 @@ maySupply members qualifier op i =
 --
 -- Where the list could leave the name out, it is taken to: a @T(..)@ whose
 -- members are not known hides anything, and of what a list shows, only a
--- variable written on its own counts.
+-- variable written on its own, a member written under its type, and a member
+-- of a @T(..)@ whose members are known count.
 certainlyBrings ::
   -- | The members of each name in the import's list, where they are
   -- known.
@@ -497,9 +498,12 @@ certainlyBrings ::
 certainlyBrings members (namespace, op) i = case importNames i of
   Nothing -> True
   Just (True, hidden) -> not (any (namedBy members True op) hidden)
-  Just (False, shown) ->
-    ImportedName op `elem` shown && namespace == InTerms && isVariable op
+  Just (False, shown) -> namespace == InTerms && any listed shown
   where
+    listed = \case
+      ImportedName n -> n == op && isVariable op
+      ImportedSome _ ns -> op `elem` ns
+      ImportedAll parent -> maybe False (Set.member op) (Map.lookup parent members)
     isVariable (OpName t) = case T.uncons t of
       Just (c, _) -> not (isUpper c) && c /= ':'
       Nothing -> False

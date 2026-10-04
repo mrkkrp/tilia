@@ -548,6 +548,34 @@ spec = do
       let (unq, _, _) = scopeOf "module M where\nimport Data.Map\ninfixr 3 !\n"
        in unq `shouldBe` [(OpName "!", Fixity RightAssoc 3)]
 
+  describe "what an import list certainly brings in" $ do
+    it "is a variable written on its own" $
+      certainlyBrings Map.empty (InTerms, OpName "f") (listing [ImportedName (OpName "f")])
+        `shouldBe` True
+
+    it "is a member written out beside its type" $
+      certainlyBrings
+        Map.empty
+        (InTerms, OpName ":|")
+        (listing [ImportedSome (OpName "NonEmpty") [OpName ":|"]])
+        `shouldBe` True
+
+    it "is a member of a T(..) whose members are known" $
+      certainlyBrings nonEmptyMembers (InTerms, OpName ":|") (listing [ImportedAll (OpName "NonEmpty")])
+        `shouldBe` True
+
+    it "is not a member of a T(..) whose members are not known" $
+      certainlyBrings Map.empty (InTerms, OpName ":|") (listing [ImportedAll (OpName "NonEmpty")])
+        `shouldBe` False
+
+    it "is not a member of a type written on its own" $
+      certainlyBrings nonEmptyMembers (InTerms, OpName ":|") (listing [ImportedName (OpName "NonEmpty")])
+        `shouldBe` False
+
+    it "is not what a T(..) has under it in the type namespace" $
+      certainlyBrings nonEmptyMembers (InTypes, OpName ":|") (listing [ImportedAll (OpName "NonEmpty")])
+        `shouldBe` False
+
   describe "ambiguity" $ do
     it "reports an operator imported with two different fixities" $
       let (_, _, amb) = scopeOf "module M where\nimport Data.Map\nimport Other\n"
@@ -946,6 +974,20 @@ scopeWithMembers source =
     membersIn = \case
       "Members" -> Map.fromList [(OpName "T", Set.fromList [OpName ":|"])]
       _ -> Map.empty
+
+-- | An unqualified import of M with this list.
+listing :: [ImportItem] -> Import
+listing items =
+  Import
+    { importModule = "M",
+      importQualified = False,
+      importAlias = "M",
+      importNames = Just (False, items)
+    }
+
+-- | What @NonEmpty@ has under it, as an interface tells it.
+nonEmptyMembers :: Map.Map OpName (Set.Set OpName)
+nonEmptyMembers = Map.singleton (OpName "NonEmpty") (Set.singleton (OpName ":|"))
 
 -- | A scope over the two modules that spell @:>@ in different namespaces.
 scopeOfBoth :: Text -> Scope

@@ -399,8 +399,12 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M ((Disp.<+>)) where\nimport qualified No.Such.Module as Disp\nimport qualified Text.PrettyPrint as Disp\n"
       `shouldReturn` Just (Fixity LeftAssoc 6)
 
-  it "is still not answered when an unread import could have supplied it and none brings it in for certain" $
+  it "comes from a T(..) that certainly brings it in, though an unread import could have supplied it" $
     chased "module M ((Disp.<+>)) where\nimport qualified No.Such.Module as Disp\nimport qualified Text.PrettyPrint as Disp (Doc (..))\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is still not answered when an unread import could have supplied it and none brings it in for certain" $
+    chased "module M ((Disp.<+>)) where\nimport qualified No.Such.Module as Disp\nimport qualified Text.PrettyPrint as Disp (Doc)\n"
       `shouldReturn` Nothing
 
   it "comes from the import that decides its type, though an unread one could have supplied the name" $
@@ -1563,6 +1567,30 @@ withPlan plan = do
         lookupFixity scope InTerms Nothing (OpName ":+:")
           `shouldBe` Unresolved (unreadOnly "A")
 
+    it "settles a constructor a T(..) brings in, despite an unreadable module another re-exports"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ("src/Core.hs", "module Core (module A) where\nimport A\n"),
+          ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
+        ]
+      $ \rs -> do
+        let m = parse "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "Node")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "leaves a constructor of a type imported on its own to that unreadable module"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ("src/Core.hs", "module Core (module A) where\nimport A\n"),
+          ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
+        ]
+      $ \rs -> do
+        let m = parse "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "Node")
+          `shouldBe` Unresolved (ModuleChain ("Core" :| ["A"]) :| [])
+
   describe "the whole pipeline, from source text to a fixity" $ do
     it "resolves an operator through a real import" $
       endToEnd resolver "module M where\nimport Prettyprinter\n" $ \scope ->
@@ -1608,6 +1636,30 @@ withPlan plan = do
           `shouldBe` Resolved defaultFixity ReportDefault
         lookupFixity scope InTerms Nothing (OpName "isPrefixOf")
           `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "settles a constructor a T(..) brings in, despite an unreadable import"
+      $ endToEnd
+        resolver
+        "module M where\nimport Data.Ord (Down (..))\nimport No.Such.Module\n"
+      $ \scope ->
+        lookupFixity scope InTerms Nothing (OpName "Down")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "settles one written out beside its type, despite an unreadable import"
+      $ endToEnd
+        resolver
+        "module M where\nimport Data.Ord (Down (Down))\nimport No.Such.Module\n"
+      $ \scope ->
+        lookupFixity scope InTerms Nothing (OpName "Down")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "leaves a constructor of a type imported on its own to the unreadable import"
+      $ endToEnd
+        resolver
+        "module M where\nimport Data.Ord (Down)\nimport No.Such.Module\n"
+      $ \scope ->
+        lookupFixity scope InTerms Nothing (OpName "Down")
+          `shouldBe` Unresolved (unreadOnly "No.Such.Module")
 
     it "still answers for what it did find, despite an unreadable import" $
       endToEnd resolver "module M where\nimport Prettyprinter\nimport No.Such.Module\n" $ \scope ->

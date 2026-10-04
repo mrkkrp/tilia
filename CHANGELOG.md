@@ -146,6 +146,9 @@
 * Read every name an interface file refers to by key, so that a name such as
   `fmap` settles a use of it despite an unreadable import, as other names
   already did.
+* Take a constructor, field or method that an import list brings in through
+  `T(..)` or `T(a, b)` as settling the name's fixity despite an unreadable
+  import, as a variable named on its own already did.
 
 ## Tilia 0.0.2.0
 
