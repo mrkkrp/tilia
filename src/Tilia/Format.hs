@@ -149,8 +149,8 @@ describeFormatError palette = \case
           single = length ops == 1
           because = case why of
             NotRead missing -> "may be declared in " <> spellUnreadIn palette missing
-            Ambiguous brought ->
-              (if single then "is " else "are ") <> spellDisagreement palette brought
+            Ambiguous offers ->
+              (if single then "is " else "are ") <> spellDisagreement palette offers
   where
     file = paint palette Place . T.pack
     located t = case T.breakOn ":" t of

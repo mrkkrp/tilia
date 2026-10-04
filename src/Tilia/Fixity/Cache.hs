@@ -129,21 +129,21 @@ cachedEstablished cache package modName =
       _ -> Nothing
   where
     assembled entries = do
-      guard (all (`elem` ["fixity", "unsettled", "untold", "names", "member", "kept"]) (concatMap (take 1) entries))
+      guard (all (`elem` ["fixity", "unsettled", "untold", "names", "member", "members"]) (concatMap (take 1) entries))
       fixities <- traverse (parseFixity . T.intercalate "\t") [fields | "fixity" : fields <- entries]
       unsettled <- traverse unsettledEntry [fields | "unsettled" : fields <- entries]
       untold <- traverse untoldEntry [fields | "untold" : fields <- entries]
       names <- concat <$> traverse parseByNamespace [fields | "names" : fields <- entries]
-      members <- traverse (memberEntry parseByNamespace) [fields | "member" : fields <- entries]
-      kept <- traverse (memberEntry (Just . fmap OpName)) [fields | "kept" : fields <- entries]
+      certain <- traverse (memberEntry parseByNamespace) [fields | "member" : fields <- entries]
+      members <- traverse (memberEntry (Just . fmap OpName)) [fields | "members" : fields <- entries]
       pure
         Established
           { establishedFixities = Map.fromList fixities,
             establishedUnsettled = Map.fromListWith Set.union unsettled,
             establishedUntold = Set.fromList untold,
-            establishedBrought = Brought (Set.fromList names) (Map.fromListWith Set.union members),
-            establishedChildren =
-              Map.union (Map.fromListWith Set.union kept) (Map.fromListWith Set.union (fmap (fmap (Set.map snd)) members))
+            establishedCertain = Certain (Set.fromList names) (Map.fromListWith Set.union certain),
+            establishedMembers =
+              Map.union (Map.fromListWith Set.union members) (Map.fromListWith Set.union (fmap (fmap (Set.map snd)) certain))
           }
     unsettledEntry = \case
       token : chain : names
@@ -177,21 +177,21 @@ storeEstablished cache package modName established =
         <> [ T.intercalate "\t" ["untold", tokenOf cache, T.unwords chain]
            | chain <- Set.toList (establishedUntold established)
            ]
-        <> [T.intercalate "\t" ("names" : fields) | fields <- renderByNamespace (broughtNames brought)]
+        <> [T.intercalate "\t" ("names" : fields) | fields <- renderByNamespace (certainNames certain)]
         <> [ T.intercalate "\t" ("member" : parent : fields)
-           | (OpName parent, kids) <- Map.toList (broughtChildren brought),
+           | (OpName parent, kids) <- Map.toList (certainMembers certain),
              fields <- case renderByNamespace kids of
                [] -> [[]]
                grouped -> grouped
            ]
-        -- What a name keeps is mostly what its type certainly carries, which
-        -- the lines above already say.
-        <> [ T.intercalate "\t" ("kept" : parent : [kid | OpName kid <- Set.toAscList kids])
-           | (OpName parent, kids) <- Map.toList (establishedChildren established),
-             Just kids /= fmap (Set.map snd) (Map.lookup (OpName parent) (broughtChildren brought))
+        -- The members of a name are mostly its certain members, which the
+        -- lines above already say.
+        <> [ T.intercalate "\t" ("members" : parent : [kid | OpName kid <- Set.toAscList kids])
+           | (OpName parent, kids) <- Map.toList (establishedMembers established),
+             Just kids /= fmap (Set.map snd) (Map.lookup (OpName parent) (certainMembers certain))
            ]
   where
-    brought = establishedBrought established
+    certain = establishedCertain established
 
 -- | What each configuration of one of the project's own modules says, if it
 -- was last read from what the stamp stands for.
@@ -246,8 +246,8 @@ renderSummaries = \case
         <> [ T.intercalate "\t" ["defines", renderNamespace namespace, op]
            | (namespace, OpName op) <- Set.toAscList (summaryNames s)
            ]
-        <> fmap declares (Map.toList (summaryDeclaredChildren s))
-        <> fmap offers (Map.toList (summaryChildren s))
+        <> fmap declares (Map.toList (summaryDeclaredMembers s))
+        <> fmap offers (Map.toList (summaryListedMembers s))
     declares (OpName parent, kids) =
       T.intercalate "\t" ("declares" : parent : renderNamespaced kids)
     offers (OpName parent, kids) =
@@ -318,9 +318,9 @@ parseSummaries = \case
         go s{summaryNames = Set.insert (n, OpName op) (summaryNames s)} rest
       ("declares" : parent : kids) : rest -> do
         namespaced <- parseNamespaced kids
-        go s{summaryDeclaredChildren = Map.insert (OpName parent) (Set.fromList namespaced) (summaryDeclaredChildren s)} rest
+        go s{summaryDeclaredMembers = Map.insert (OpName parent) (Set.fromList namespaced) (summaryDeclaredMembers s)} rest
       ("offers" : parent : kids) : rest ->
-        go s{summaryChildren = Map.insert (OpName parent) (names kids) (summaryChildren s)} rest
+        go s{summaryListedMembers = Map.insert (OpName parent) (names kids) (summaryListedMembers s)} rest
       _ -> Nothing
     names = Set.fromList . fmap OpName
     qualifier q = if T.null q then Nothing else Just q

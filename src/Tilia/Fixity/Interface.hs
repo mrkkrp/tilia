@@ -34,12 +34,12 @@ data Interface = Interface
     interfaceDeclares :: Fixities,
     -- | The names it reexports, each with the source module.
     interfaceReexports :: [(Text, OpName)],
-    -- | What it exports under each name. This is what @T(..)@ in an import
-    -- list stands for.
-    interfaceChildren :: Map OpName (Set OpName),
-    -- | What it brings into scope, where the interface was decoded rather
-    -- than read off what @ghc --show-iface@ prints.
-    interfaceExports :: Maybe Brought
+    -- | The members it exports with each name, which is what @T(..)@ in an
+    -- import list stands for.
+    interfaceMembers :: Map OpName (Set OpName),
+    -- | What it certainly brings into scope, where the interface was decoded
+    -- rather than read off what @ghc --show-iface@ prints.
+    interfaceExports :: Maybe Certain
   }
   deriving (Eq, Show)
 
@@ -77,18 +77,18 @@ fromHiFile modName HiFile{..}
                 (Just m, _, op) <- names,
                 m /= hiModule
               ],
-            interfaceChildren = Map.map (Set.map snd) carrying,
+            interfaceMembers = Map.map (Set.map snd) members,
             interfaceExports =
               Just
-                Brought
-                  { broughtNames = Set.fromList [(namespace, op) | (_, namespace, op) <- exported],
-                    broughtChildren = carrying
+                Certain
+                  { certainNames = Set.fromList [(namespace, op) | (_, namespace, op) <- exported],
+                    certainMembers = members
                   }
           }
   where
     exports = concatMap resolved hiExports
     exported = concatMap exportedNames hiExports
-    carrying =
+    members =
       Map.fromListWith
         Set.union
         [ (op, Set.fromList [(namespace, kid) | (_, namespace, kid) <- kids])
@@ -123,8 +123,8 @@ parseInterface modName out
                 (typeNamesIn out)
                 (Map.fromList (concatMap declared (sectionsNamed "fixities"))),
             interfaceReexports = concatMap reexports (sectionsNamed "exports:"),
-            interfaceChildren =
-              Map.unionsWith Set.union (fmap childrenIn (sectionsNamed "exports:")),
+            interfaceMembers =
+              Map.unionsWith Set.union (fmap membersIn (sectionsNamed "exports:")),
             interfaceExports = Nothing
           }
   where
@@ -138,7 +138,7 @@ parseInterface modName out
       ]
     declared = mapMaybe fixityEntry . T.splitOn ","
     reexports = concatMap reexportsIn . T.words
-    childrenIn section =
+    membersIn section =
       Map.fromListWith
         Set.union
         [ (nameOnly parent, Set.fromList (fmap nameOnly kids))

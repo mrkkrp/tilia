@@ -367,5 +367,5 @@ nothingReaches =
     { reachUnqualified = Map.empty,
       reachQualified = Map.empty,
       reachAmbiguous = Map.empty,
-      reachSpokenFor = Set.empty
+      reachDecided = Set.empty
     }

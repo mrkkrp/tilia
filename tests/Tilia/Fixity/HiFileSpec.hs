@@ -127,12 +127,12 @@ disagreements declared m direct shown =
       || byOperator (interfaceDeclares direct) /= byOperator (interfaceDeclares shown)
   ]
     <> ["offered fixities" | offered declared m direct /= offered declared m shown]
-    <> ["what types carry" | carrying direct /= carrying shown]
+    <> ["members" | members direct /= members shown]
   where
     inTypes = Map.filterWithKey (\(namespace, _) _ -> namespace == InTypes)
-    carrying i =
+    members i =
       Map.filter (not . Set.null) $
-        Map.map (Set.filter (`Set.member` withFixities)) (interfaceChildren i)
+        Map.map (Set.filter (`Set.member` withFixities)) (interfaceMembers i)
     withFixities = Set.map (OpName . fst) (offered declared m direct)
 
 -- | Every fixity a module offers, its own and those of what it reexports,
