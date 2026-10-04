@@ -61,6 +61,10 @@ data Doc
   | -- | Close the line, and let a break that immediately follows know that
     -- it has nothing left to do.
     DCloseLine
+  | -- | Close the line, and leave an empty line under it if told to, unless
+    -- all it holds is an opening bracket, a bar or an equals sign, which
+    -- what follows then shares.
+    DCloseLineUnlessOpened !Bool
   | -- | A line break between two lines of text that is being reproduced
     -- rather than laid out.
     DVerbatimBreak !LineStart !TrailingWhitespace
@@ -187,6 +191,7 @@ onlySpacing = \case
   DSoftBreak -> True
   DHardBreak -> True
   DCloseLine -> True
+  DCloseLineUnlessOpened _ -> True
   _ -> False
 
 instance Semigroup Doc where
@@ -384,6 +389,12 @@ go env = \case
     Broken -> breakLine (envIndent env)
   DHoldBack t -> putHeldBack (envIndent env) t . noting False
   DCloseLine -> closeLine (envIndent env)
+  DCloseLineUnlessOpened gap -> \out ->
+    if holdsOnlyOpener out
+      then putSpace out
+      else go env (gapped <> DCloseLine) out
+    where
+      gapped = if gap then DCloseLine <> DHardBreak <> DHardBreak else DEmpty
   DHardBreak -> breakLine (envIndent env)
   DVerbatimBreak lineStart trailing -> verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
@@ -572,6 +583,14 @@ atStart out = null (outLines out) && not (hasContent out)
 -- it reproduces starting it at the margin?
 started :: Out -> Bool
 started out = not (null (outCurrent out)) || linePinned (outLine out)
+
+-- | Does the current line hold nothing but an opening bracket, a bar or an
+-- equals sign, with nothing held back for its end?
+holdsOnlyOpener :: Out -> Bool
+holdsOnlyOpener out =
+  null (outHeldBack out)
+    && T.strip (T.concat (reverse (outCurrent out)))
+      `elem` ["(", "(#", "=", "[", "{", "|"]
 
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool

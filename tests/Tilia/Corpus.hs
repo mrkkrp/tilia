@@ -343,7 +343,8 @@ ormoluSkip =
     "declaration" </> "value" </> "function" </> "parallel-comprehensions-complex.hs",
     "other" </> "comment-opening-a-list.hs",
     "declaration" </> "class" </> "newlines-between-methods.hs",
-    "declaration" </> "instance" </> "newlines-between-methods.hs"
+    "declaration" </> "instance" </> "newlines-between-methods.hs",
+    "other" </> "comment-in-empty-list.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

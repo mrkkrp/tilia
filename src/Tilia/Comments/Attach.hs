@@ -191,6 +191,7 @@ opensWithHaddock = maybe False opensHaddock . listToMaybe . fst . firstLine Brok
       DVariant a b -> firstLine layout (case layout of Flat -> a; Broken -> b)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
+      DCloseLineUnlessOpened _ -> ([], True)
       DBreak -> ([], layout == Broken)
       DSoftBreak -> ([], layout == Broken)
       _ -> ([], False)
@@ -217,10 +218,10 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     After -> space <> body <> space
   EndsTheLine -> space <> body <> closeLine <> gapBelow
   HeldBack -> holdBack (renderComment c)
-  OnItsOwnLines -> gapAbove <> closeLine <> body <> closeLine <> gapBelow
+  OnItsOwnLines ->
+    closeLineUnlessOpened (commentGapAbove c) <> body <> closeLine <> gapBelow
   where
     body = commentText margin c
-    gapAbove = includeWhen (commentGapAbove c) (closeLine <> blankLine)
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
 -- | A comment, and the spacing that goes with it, as one region.
@@ -253,3 +254,8 @@ holdBack = DHoldBack
 -- it immediately (if any) will have no effect.
 closeLine :: Doc
 closeLine = DCloseLine
+
+-- | 'closeLine', with an empty line under it if told to, unless all the
+-- line holds is an opening bracket, a bar or an equals sign.
+closeLineUnlessOpened :: Bool -> Doc
+closeLineUnlessOpened = DCloseLineUnlessOpened

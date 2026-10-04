@@ -857,6 +857,7 @@ merge conditionals guards varied = go Broken
       DSoftBreak -> True
       DHardBreak -> True
       DCloseLine -> True
+      DCloseLineUnlessOpened _ -> True
       _ -> False
 
     choice ds = case unsnoc ds of
@@ -909,6 +910,7 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
       (DSoftBreak, DSoftBreak) -> True
       (DHardBreak, DHardBreak) -> True
       (DCloseLine, DCloseLine) -> True
+      (DCloseLineUnlessOpened g, DCloseLineUnlessOpened h) -> g == h
       _ -> False
 
 -- | What a run of space comes to on the page.
@@ -924,6 +926,9 @@ spaceOf layout = go 0 False False
       d : ds -> case d of
         DSpace -> go ended closed True ds
         DCloseLine
+          | closed -> go ended closed apart ds
+          | otherwise -> go (ended + 1) True apart ds
+        DCloseLineUnlessOpened _
           | closed -> go ended closed apart ds
           | otherwise -> go (ended + 1) True apart ds
         DHardBreak -> broke ds
@@ -1159,6 +1164,7 @@ opensWithBreak layout d = case dropWhile quiet (spineAt layout d) of
     DFence _ y -> opensWithBreak layout y
     DHardBreak -> True
     DCloseLine -> True
+    DCloseLineUnlessOpened _ -> True
     DBreak -> layout == Broken
     DSoftBreak -> layout == Broken
     DCppDirective _ _ -> True
@@ -1234,6 +1240,7 @@ anchoring = \case
   DSoftBreak -> False
   DHardBreak -> False
   DCloseLine -> False
+  DCloseLineUnlessOpened _ -> False
   DVerbatimBreak _ _ -> False
   DText "," -> False
   DNest _ d -> located d || not (printsNothing d)

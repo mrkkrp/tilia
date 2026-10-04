@@ -1,6 +1,5 @@
 data Empty = Empty
-  {
-    -- room for fields later
+  { -- room for fields later
   }
 
 data One = One
