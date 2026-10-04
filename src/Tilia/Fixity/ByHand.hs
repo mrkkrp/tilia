@@ -28,37 +28,7 @@ byHandFixities =
           (".||.", RightAssoc, 1),
           ("===", NoAssoc, 4),
           ("=/=", NoAssoc, 4)
-        ],
-      -- @network@ writes its system calls as @foreign import CALLCONV@, and
-      -- @CALLCONV@ is a macro out of @HsNetDef.h@ standing where the
-      -- calling convention goes. It has to be expanded for the line to be
-      -- Haskell at all, so no configuration of these five parses.
-      entry "Network.Socket.If" [],
-      entry "Network.Socket.Internal" [],
-      entry "Network.Socket.Name" [],
-      entry "Network.Socket.Shutdown" [],
-      entry "Network.Socket.Syscall" [],
-      -- @Data.HashMap.Internal.Array@ defines @CHECK_BOUNDS@ and calls it
-      -- where an expression goes, with the guarded @case@ on the line
-      -- below. Unexpanded it reads as a function applied to that @case@,
-      -- and both branches of the @#if@ that defines it leave the call
-      -- standing, so there is no configuration to fall back on.
-      entry "Data.HashMap.Internal.Array" [],
-      -- @monad-logger@ writes one method body once and hands it to sixteen
-      -- instances: @#define DEF monadLoggerLog a b c d = …@, and then
-      -- @instance … where DEF@ for each of them. A @where@ with a bare name
-      -- after it is not Haskell, and the @#define@ sits outside every
-      -- conditional, so there is no configuration in which it is.
-      entry "Control.Monad.Logger" [],
-      -- @cereal@ writes its generic sum instances through three macros, and
-      -- the one that matters expands into a guard and its right-hand side
-      -- at once: @gPut | PUTSUM(Word8) | …@. Unexpanded that is a guard
-      -- with nothing after it.
-      entry "Data.Serialize" [],
-      -- @th-lift-instances@ has @LIFT_TYPED_DEFAULT@, defined three ways
-      -- against the @template-haskell@ version and to nothing at all in the
-      -- oldest of them, and written bare in five instance bodies.
-      entry "Instances.TH.Lift" []
+        ]
     ]
   where
     entry name ops =
