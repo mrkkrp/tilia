@@ -36,10 +36,11 @@ import Tilia.Cpp.Directives
     allGroups,
     dSpan,
     isDirective,
+    macroLines,
     opaqueDirectives,
     readConditionals,
   )
-import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen)
+import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen, indent)
 import Tilia.Doc.Internal
   ( Conditional (..),
     Doc (..),
@@ -140,11 +141,16 @@ restoreUnprinted source found doc = do
           { marginLine = isDirective,
             marginComment = isNothing . commentPragma
           }
-  placed <-
+  directed <-
     foldM
       (putDirective written)
       noted
       (filter (not . inComment . dLine) (opaqueDirectives source))
+  placed <-
+    foldM
+      (putMacroLine written)
+      directed
+      (filter (not . inComment . fst) macros)
   pure $
     keptApart
       (summaryHaddocks found)
@@ -152,7 +158,9 @@ restoreUnprinted source found doc = do
       placed
   where
     written = linesOf (Written source)
-    directiveAt n = maybe False isDirective (lineAt n written)
+    macros = macroLines source
+    directiveAt n =
+      maybe False isDirective (lineAt n written) || any ((== n) . fst) macros
     inComment n =
       any
         (\s -> spanStartLine s < n && n < spanEndLine s)
@@ -346,7 +354,7 @@ anchoredIn ::
   Doc
 anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
   where
-    anchor x (n, s) = placeAt (const False) Nothing n (DLocated s mempty) x
+    anchor x (n, s) = placeAt (const False) Nothing n (DLocated s mempty) id x
     here n = case alternativeAt n cs of
       Everywhere -> True
       Only i -> i == k
@@ -383,7 +391,7 @@ regionOf = \case
 -- written if the merge left it out.
 restoreConditional :: Lines -> Doc -> GroupSpec -> Doc
 restoreConditional written doc gs =
-  placeAt realized' (Just written) opening shell doc
+  placeAt realized' (Just written) opening shell id doc
   where
     realized' ctx = any (all (`elem` ctx)) (realizations c doc)
     c = gsConditional gs
@@ -397,14 +405,25 @@ restoreConditional written doc gs =
 putDirective :: Lines -> Doc -> Directive -> Either CppError Doc
 putDirective written doc d
   | quotedAt doc (dLine d) = Left (DirectiveInQuotedText (dLine d) (dKeyword d))
-  | otherwise = Right (placeAt (const False) (Just written) (dLine d) body doc)
+  | otherwise = Right (placeAt (const False) (Just written) (dLine d) body id doc)
   where
     body =
       DCppDirective (dSpan d) (dText d)
         <> includeWhen (any (`blankAt` written) [dLastLine d, dLastLine d + 1]) blankLine
 
+-- | Put a line using a macro back where it was written, at the indentation
+-- of the code around it, since what it stands for is code.
+putMacroLine :: Lines -> Doc -> (Int, Text) -> Either CppError Doc
+putMacroLine written doc (n, t)
+  | quotedAt doc n = Left (MacroInQuotedText n t)
+  | otherwise = Right (placeAt (const False) (Just written) n body indent doc)
+  where
+    body =
+      DLocated (mkSpan (n, 1) (n, 1)) (DCloseLine <> DText t <> DCloseLine)
+        <> includeWhen (blankAt (n + 1) written) blankLine
+
 -- | Is this line inside something the document reproduces verbatim, such
--- as a quasi-quotation, where a directive cannot be put back?
+-- as a quasi-quotation, where a line cannot be put back?
 quotedAt :: Doc -> Int -> Bool
 quotedAt doc n = any inside (located doc)
   where
@@ -435,49 +454,56 @@ placeAt ::
   Int ->
   -- | What to put there.
   Doc ->
+  -- | How to put it among the lines of something that begins above it, at
+  -- that thing's own indentation.
+  (Doc -> Doc) ->
   Doc ->
   Doc
-placeAt present written n body = among []
+placeAt present written n body continuing = among [] body
   where
-    within ctx d = case d of
-      DNest k x -> DNest k (within ctx x)
-      DAlign x -> DAlign (within ctx x)
-      DGroup l x -> DGroup l (within ctx x)
-      DVariant a b -> DVariant (within ctx a) (within ctx b)
-      DLocated s x -> DLocated s (within ctx x)
-      DFence s x -> DFence s (within ctx x)
+    within ctx b d = case d of
+      DNest 0 x -> DNest 0 (within ctx b x)
+      DNest k x -> DNest k (within ctx body x)
+      DAlign x -> DAlign (within ctx body x)
+      DGroup l x -> DGroup l (within ctx b x)
+      DVariant x y -> DVariant (within ctx b x) (within ctx b y)
+      DLocated s x
+        | spanStartLine s > n -> among ctx b d
+        | DCppChoice{} <- x -> DLocated s (within ctx b x)
+        | otherwise -> DLocated s (within ctx (continuing body) x)
+      DFence s x -> DFence s (within ctx b x)
       DCppChoice cs bs e
         | present ctx -> d
         | otherwise -> case alternativeAt n cs of
             Everywhere ->
               DCppChoice
                 cs
-                [(g, among (ctx <> [(cs, k)]) x) | (k, (g, x)) <- zip [0 ..] bs]
-                (among (ctx <> [(cs, length bs)]) e)
+                [(g, among (ctx <> [(cs, k)]) b x) | (k, (g, x)) <- zip [0 ..] bs]
+                (among (ctx <> [(cs, length bs)]) b e)
             Only k
               | k < length bs ->
                   DCppChoice
                     cs
-                    (replaced k (among (ctx <> [(cs, k)]) (maybe mempty snd (listToMaybe (drop k bs)))) bs)
+                    (replaced k (among (ctx <> [(cs, k)]) b (maybe mempty snd (listToMaybe (drop k bs)))) bs)
                     e
-              | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) e)
+              | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) b e)
             Nowhere -> d
-      _ -> among ctx d
+      _ -> among ctx b d
 
-    among ctx d
+    among ctx b d
       | present ctx = d
       | otherwise = case break startsAfter (spine d) of
           (before, after)
             | Just (earlier, holder, spacing) <- lastBounded before,
               maybe False (>= n) (endOf holder) ->
-                mconcat (earlier <> [within ctx holder] <> spacing <> after)
+                mconcat (earlier <> [within ctx b holder] <> spacing <> after)
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
                 if any (`blankAt` ls) [from .. n - 1] || not (all onlySpacing spacing)
-                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
-                  else mconcat (printed <> [anchor, body] <> spacing <> after)
-            | otherwise -> mconcat (before <> [body] <> after)
+                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, b] <> after)
+                  else mconcat (printed <> [anchor, b] <> spacing <> after)
+            | otherwise -> mconcat (before <> [b] <> after)
 
     startsAfter = \case
       DLocated s _ | spanStartColumn s == farRight -> spanStartLine s >= n

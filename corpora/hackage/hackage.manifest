@@ -473,7 +473,7 @@ formatted       27b454ea364e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.
 formatted       09230f4d022f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
 formatted       a94b9d13da2f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monoids.hs
 formatted       0c4f8c706edf  QuickCheck-2.18.0.0/src/Test/QuickCheck/Poly.hs
-declined        -             QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
+formatted       1f921598b283  QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
 formatted       d248979763fb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Random.hs
 formatted       67a6c49f2d76  QuickCheck-2.18.0.0/src/Test/QuickCheck/State.hs
 formatted       4d4983c7c06e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs
@@ -1617,10 +1617,10 @@ formatted       e88811d40513  criterion-1.6.5.0/tests/Cleanup.hs
 formatted       78253dc00e1a  criterion-1.6.5.0/tests/Properties.hs
 formatted       a99e4edb542c  criterion-1.6.5.0/tests/Sanity.hs
 formatted       f8a8d8f2c4ae  criterion-1.6.5.0/tests/Tests.hs
-formatted       44af498375d5  cryptonite-0.30/Crypto/Cipher/AES.hs
+formatted       1638196fb215  cryptonite-0.30/Crypto/Cipher/AES.hs
 formatted       2240267dad51  cryptonite-0.30/Crypto/Cipher/AES/Primitive.hs
 formatted       5694da9617bf  cryptonite-0.30/Crypto/Cipher/AESGCMSIV.hs
-formatted       ab05e6ed96e9  cryptonite-0.30/Crypto/Cipher/Blowfish.hs
+formatted       17a919edeac4  cryptonite-0.30/Crypto/Cipher/Blowfish.hs
 formatted       98e1845904ad  cryptonite-0.30/Crypto/Cipher/Blowfish/Box.hs
 formatted       23c195272bfd  cryptonite-0.30/Crypto/Cipher/Blowfish/Primitive.hs
 formatted       7ece5bd42232  cryptonite-0.30/Crypto/Cipher/CAST5.hs
@@ -3943,7 +3943,7 @@ formatted       37b2a0b086b3  recursion-schemes-5.2.3/src/Data/Functor/Base.hs
 formatted       3ca7a5ae5fb0  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
 formatted       60333913c12d  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
 formatted       1581398eb1b5  resourcet-1.3.0/Control/Monad/Trans/Resource.hs
-formatted       5aec92d93345  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
+formatted       e95ee3fdd7fb  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
 formatted       22ba33396e6e  resourcet-1.3.0/Data/Acquire.hs
 formatted       4a9defd159ee  resourcet-1.3.0/Data/Acquire/Internal.hs
 formatted       27565132aa25  resourcet-1.3.0/UnliftIO/Resource.hs
@@ -4932,7 +4932,7 @@ formatted       a312fe3ca55a  vector-0.13.2.0/src/Data/Vector/Storable/Mutable.h
 formatted       5d2141562890  vector-0.13.2.0/src/Data/Vector/Strict.hs
 formatted       3bc69095cb4d  vector-0.13.2.0/src/Data/Vector/Strict/Mutable.hs
 formatted       5a349caedbaf  vector-0.13.2.0/src/Data/Vector/Unboxed.hs
-formatted       dcdc405891cb  vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs
+formatted       97d502692ff9  vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs
 formatted       58ff39d532e3  vector-0.13.2.0/src/Data/Vector/Unboxed/Mutable.hs
 formatted       f4e17f002657  vector-0.13.2.0/tests-inspect/Inspect.hs
 formatted       992258e8ec96  vector-0.13.2.0/tests-inspect/Inspect/DerivingVia.hs
@@ -4949,7 +4949,7 @@ formatted       89d6f5f286c7  vector-0.13.2.0/tests/Tests/Vector/Storable.hs
 formatted       cc9e0bc6f8e0  vector-0.13.2.0/tests/Tests/Vector/Strict.hs
 formatted       891ffe33c45c  vector-0.13.2.0/tests/Tests/Vector/Unboxed.hs
 formatted       9a90ef543177  vector-0.13.2.0/tests/Tests/Vector/UnitTests.hs
-formatted       9c35c5c38daf  vector-0.13.2.0/tests/Utilities.hs
+formatted       4e35b27641cf  vector-0.13.2.0/tests/Utilities.hs
 formatted       88ed51490944  vector-0.13.2.0/tests/doctests.hs
 formatted       5561dc5bc4a0  vector-algorithms-0.9.1.0/bench/simple/Blocks.hs
 formatted       8f4b8b5057e3  vector-algorithms-0.9.1.0/bench/simple/Main.hs
@@ -5060,7 +5060,7 @@ formatted       810a9b2932db  yesod-core-1.7.0.0/src/Yesod/Core.hs
 formatted       76a91abab9c7  yesod-core-1.7.0.0/src/Yesod/Core/Class/Breadcrumbs.hs
 formatted       d94322757109  yesod-core-1.7.0.0/src/Yesod/Core/Class/Dispatch.hs
 formatted       4e0e4c27884b  yesod-core-1.7.0.0/src/Yesod/Core/Class/Dispatch/ToParentRoute.hs
-formatted       f5e77d45ac7f  yesod-core-1.7.0.0/src/Yesod/Core/Class/Handler.hs
+formatted       96d18ec66a91  yesod-core-1.7.0.0/src/Yesod/Core/Class/Handler.hs
 formatted       55ca7aed8601  yesod-core-1.7.0.0/src/Yesod/Core/Class/Yesod.hs
 formatted       7b7185683c72  yesod-core-1.7.0.0/src/Yesod/Core/Content.hs
 formatted       8f8e6e5fb762  yesod-core-1.7.0.0/src/Yesod/Core/Dispatch.hs

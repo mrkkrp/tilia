@@ -8,5 +8,5 @@ class Described a
 instance Described ty where { \
   }                           \
 
-describe (Int)
-describe (Bool)
+describe(Int)
+describe(Bool)
