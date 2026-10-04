@@ -525,7 +525,7 @@ about op = Declined (UnknownFixity "A.hs" [((Nothing, OpName op), Ambiguous (lef
 
 -- | A case about @<+>@, which the imports bring in as given.
 disagreeing :: NonEmpty (Text, Fixity) -> Outcome
-disagreeing brought = Declined (UnknownFixity "A.hs" [((Nothing, OpName "<+>"), Ambiguous brought)])
+disagreeing offers = Declined (UnknownFixity "A.hs" [((Nothing, OpName "<+>"), Ambiguous offers)])
 
 -- | What two disagreeing imports bring.
 leftSix, rightFive :: (Text, Fixity)

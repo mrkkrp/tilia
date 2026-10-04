@@ -108,8 +108,8 @@ spec = do
                      ("GHC.Internal.Bits", OpName "complement")
                    ]
 
-    it "takes them as what such a type carries" $
-      carries "exports:\n  GHC.Internal.Base.Alternative|{GHC.Internal.Base.<|> GHC.Internal.Base.empty}\n"
+    it "takes them as the members of such a type" $
+      members "exports:\n  GHC.Internal.Base.Alternative|{GHC.Internal.Base.<|> GHC.Internal.Base.empty}\n"
         `shouldBe` [(OpName "Alternative", [OpName "<|>", OpName "empty"])]
 
   describe "which namespace a fixity governs" $ do
@@ -141,40 +141,40 @@ spec = do
       declaresIn "fixities infixl 9 !\nab12\n  data Other a b where\n  (!) :: Int\n"
         `shouldBe` [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
 
-  describe "what a name carries with it" $ do
+  describe "the members of a name" $ do
     it "takes the members an entry wears in braces" $
-      carries "exports:\n  GHC.Internal.Base.NonEmpty{GHC.Internal.Base.:|}\n"
+      members "exports:\n  GHC.Internal.Base.NonEmpty{GHC.Internal.Base.:|}\n"
         `shouldBe` [(OpName "NonEmpty", [OpName ":|"])]
 
     it "takes every one of them" $
-      carries
+      members
         "exports:\n\
         \  GHC.Internal.Base.Applicative{GHC.Internal.Base.*> GHC.Internal.Base.<*> GHC.Internal.Base.pure}\n"
         `shouldBe` [(OpName "Applicative", [OpName "*>", OpName "<*>", OpName "pure"])]
 
     it "takes them from a partial export, which still says what it has" $
-      carries "exports:\n  GHC.Internal.Base.Functor|{GHC.Internal.Base.<$}\n"
+      members "exports:\n  GHC.Internal.Base.Functor|{GHC.Internal.Base.<$}\n"
         `shouldBe` [(OpName "Functor", [OpName "<$"])]
 
     it "takes a name this module declared, written without a module" $
-      carries "exports:\n  WrappedArrow{WrapArrow unwrapArrow}\n"
+      members "exports:\n  WrappedArrow{WrapArrow unwrapArrow}\n"
         `shouldBe` [(OpName "WrappedArrow", [OpName "WrapArrow", OpName "unwrapArrow"])]
 
     it "keeps entries apart where several sit on one line" $
-      carries "exports:\n  A{B} C{D}\n"
+      members "exports:\n  A{B} C{D}\n"
         `shouldBe` [(OpName "A", [OpName "B"]), (OpName "C", [OpName "D"])]
 
-    it "has nothing to say about a name that carries nothing" $
-      carries "exports:\n  decode'\n  Data.Aeson.Types.FromJSON..:\n" `shouldBe` []
+    it "has nothing to say about a name without members" $
+      members "exports:\n  decode'\n  Data.Aeson.Types.FromJSON..:\n" `shouldBe` []
 
   describe "what a decoded interface brings in" $ do
-    it "is every name it exports, by namespace, and what each type carries" $
+    it "is every name it exports, by namespace, and the members of each type" $
       fmap
         interfaceExports
         (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTypes "T", inM InTerms "C"], Avail (inM InTerms "f")] []))
         `shouldBe` Right
           ( Just
-              ( Brought
+              ( Certain
                   (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
                   (Map.fromList [(OpName "T", Set.fromList [(InTerms, OpName "C")])])
               )
@@ -182,7 +182,7 @@ spec = do
 
     it "does not take a type for exported where only its field is" $
       fmap
-        (fmap broughtNames . interfaceExports)
+        (fmap certainNames . interfaceExports)
         (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTerms "field"]] []))
         `shouldBe` Right (Just (Set.fromList [(InTerms, OpName "field")]))
 
@@ -235,10 +235,10 @@ declaresIn =
 passesOn :: Text -> [(Text, OpName)]
 passesOn = maybe [] interfaceReexports . parseInterface "M" . (header "M" <>)
 
--- | What each exported name carries with it, in a settled order.
-carries :: Text -> [(OpName, [OpName])]
-carries =
-  maybe [] (fmap (fmap Set.toList) . Map.toList . interfaceChildren)
+-- | The members of each exported name, in a settled order.
+members :: Text -> [(OpName, [OpName])]
+members =
+  maybe [] (fmap (fmap Set.toList) . Map.toList . interfaceMembers)
     . parseInterface "M"
     . (header "M" <>)
 

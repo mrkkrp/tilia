@@ -138,10 +138,10 @@ spec = do
         cachedEstablished cache "thing-1.0" "M"
           `shouldReturn` Just (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
 
-      it "round-trips what each name keeps, a name that keeps nothing among them" $ \cache -> do
+      it "round-trips the members of each name, a name without members among them" $ \cache -> do
         let established =
               mempty
-                { establishedChildren =
+                { establishedMembers =
                     Map.fromList
                       [ (OpName "Empty", Set.empty),
                         (OpName "NonEmpty", Set.fromList [OpName ":|"]),
@@ -151,11 +151,11 @@ spec = do
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
 
-      it "round-trips what it brings in and what its types carry, by namespace" $ \cache -> do
+      it "round-trips what it certainly brings in and the members of its types, by namespace" $ \cache -> do
         let established =
               mempty
-                { establishedBrought =
-                    Brought
+                { establishedCertain =
+                    Certain
                       ( Set.fromList
                           [ (InTypes, OpName "T"),
                             (InTerms, OpName "T"),
@@ -168,7 +168,7 @@ spec = do
                             (OpName "Empty", Set.empty)
                           ]
                       ),
-                  establishedChildren =
+                  establishedMembers =
                     Map.fromList
                       [ (OpName "T", Set.fromList [OpName "T", OpName "F"]),
                         (OpName "Empty", Set.empty)
@@ -177,14 +177,14 @@ spec = do
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
 
-      it "round-trips what a name keeps beyond what its type certainly carries" $ \cache -> do
+      it "round-trips the members of a name beyond its certain members" $ \cache -> do
         let established =
               mempty
-                { establishedBrought =
-                    Brought
+                { establishedCertain =
+                    Certain
                       (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "A")])
                       (Map.singleton (OpName "T") (Set.singleton (InTerms, OpName "A"))),
-                  establishedChildren =
+                  establishedMembers =
                     Map.fromList
                       [ (OpName "T", Set.fromList [OpName "A", OpName "B"]),
                         (OpName "U", Set.empty)
@@ -199,11 +199,11 @@ spec = do
                 { establishedFixities = Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6),
                   establishedUnsettled = Map.singleton ["Below"] (Set.singleton (InTerms, OpName "==>")),
                   establishedUntold = Set.fromList [["Below"], ["Other", "Further"]],
-                  establishedBrought =
-                    Brought
+                  establishedCertain =
+                    Certain
                       (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "==>")])
                       Map.empty,
-                  establishedChildren = Map.singleton (OpName "T") (Set.singleton (OpName "A"))
+                  establishedMembers = Map.singleton (OpName "T") (Set.singleton (OpName "A"))
                 }
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
@@ -285,13 +285,13 @@ crowded =
             (InTerms, OpName "T"),
             (InTypes, OpName ":|:")
           ],
-      summaryDeclaredChildren =
+      summaryDeclaredMembers =
         Map.fromList
           [ (OpName "T", Set.fromList [(InTerms, OpName "A"), (InTerms, OpName ":|:")]),
             (OpName "C", Set.fromList [(InTerms, OpName "method"), (InTypes, OpName "F")]),
             (OpName "Empty", Set.empty)
           ],
-      summaryChildren = Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
+      summaryListedMembers = Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
     }
 
 -- | A summary with nothing in it, not even a name.

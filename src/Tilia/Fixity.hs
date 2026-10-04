@@ -20,20 +20,20 @@ module Tilia.Fixity
     -- * Module exports
     ExportItem (..),
     moduleExports,
-    declaredChildren,
-    moduleChildren,
+    declaredMembers,
+    listedMembers,
 
     -- * Module imports
     Import (..),
     ImportItem (..),
     moduleImports,
-    supplies,
-    brings,
-    speaksFor,
+    maySupply,
+    certainlyBrings,
+    decides,
     Namespace (..),
     Fixities,
     inBothNamespaces,
-    Brought (..),
+    Certain (..),
     ModuleChain (..),
     spellModuleChain,
     Scope (..),
@@ -197,9 +197,9 @@ classMethods = \case
   ClassOpSig _ _ ns _ -> fmap (opName . unLoc) ns
   _ -> []
 
--- | The names a declaration carries under the name it declares, by
+-- | The members of the type or class a declaration declares, by
 -- namespace: a data type's constructors and record fields, a class's
--- methods and the families it keeps.
+-- methods and associated families.
 --
 -- These are what @T(..)@ stands for, and each of them can carry a fixity of
 -- its own—@:|@ is a constructor and @infixr 5@ all the same.
@@ -325,9 +325,9 @@ qualifierOf = \case
   Qual m _ -> Just (T.pack (moduleNameString m))
   _ -> Nothing
 
--- | What each type or class a module declares carries with it.
-declaredChildren :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
-declaredChildren =
+-- | The members of each type or class a module declares.
+declaredMembers :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
+declaredMembers =
   Map.fromListWith Set.union . concatMap (fromDecl . unLoc) . hsmodDecls
   where
     fromDecl = \case
@@ -336,13 +336,13 @@ declaredChildren =
       _ -> []
     entry name d = (opName (unLoc name), Set.fromList (membersOf d))
 
--- | What a module offers under each name, as its export list offers it.
-moduleChildren :: HsModule GhcPs -> Map OpName (Set OpName)
-moduleChildren hsModule = case hsmodExports hsModule of
+-- | The members a module's export list offers with each name.
+listedMembers :: HsModule GhcPs -> Map OpName (Set OpName)
+listedMembers hsModule = case hsmodExports hsModule of
   Nothing -> declared
   Just items -> Map.fromListWith Set.union (concatMap (fromIE . unLoc) (unLoc items))
   where
-    declared = Map.map (Set.map snd) (declaredChildren hsModule)
+    declared = Map.map (Set.map snd) (declaredMembers hsModule)
     fromIE = \case
       IEThingAll _ n _ -> [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
       IEThingWith _ n _ ns _ -> [(nameOf n, Set.fromList (fmap nameOf ns))]
@@ -377,7 +377,7 @@ instance NFData Import
 data ImportItem
   = -- | A plain name.
     ImportedName OpName
-  | -- | @T(..)@: the name, and everything the module offers under it.
+  | -- | @T(..)@: the name, and every member the module offers with it.
     ImportedAll OpName
   | -- | @T(a, b)@: the name and the members written out beside it.
     ImportedSome OpName [OpName]
@@ -436,22 +436,22 @@ importedItem = \case
 --
 -- A @T(..)@ whose members are not known is taken to bring anything in, and
 -- to hide nothing but @T@ itself.
-admits ::
-  -- | What each name in the list keeps under it, where that is known.
+mayBring ::
+  -- | The members of each name in the list, where they are known.
   Map OpName (Set OpName) ->
   -- | The operator being looked for.
   OpName ->
   Import ->
   Bool
-admits carries op i = case importNames i of
+mayBring members op i = case importNames i of
   Nothing -> True
-  Just (True, hidden) -> not (any (namedBy carries False op) hidden)
-  Just (False, shown) -> any (namedBy carries True op) shown
+  Just (True, hidden) -> not (any (namedBy members False op) hidden)
+  Just (False, shown) -> any (namedBy members True op) shown
 
 -- | Does an item of an import list name the operator, taking a @T(..)@ whose
 -- members are not known to name it or not as told?
 namedBy ::
-  -- | What each name in the list keeps under it, where that is known.
+  -- | The members of each name in the list, where they are known.
   Map OpName (Set OpName) ->
   -- | What a @T(..)@ whose members are not known is taken to say.
   Bool ->
@@ -459,16 +459,16 @@ namedBy ::
   OpName ->
   ImportItem ->
   Bool
-namedBy carries unknown op = \case
+namedBy members unknown op = \case
   ImportedName n -> n == op
   ImportedSome parent ns -> parent == op || op `elem` ns
   ImportedAll parent ->
-    parent == op || maybe unknown (Set.member op) (Map.lookup parent carries)
+    parent == op || maybe unknown (Set.member op) (Map.lookup parent members)
 
 -- | Could this import supply the operator to a use written under this
 -- qualifier?
-supplies ::
-  -- | What each name in the import's list keeps under it, where that is
+maySupply ::
+  -- | The members of each name in the import's list, where they are
   -- known.
   Map OpName (Set OpName) ->
   -- | The qualifier written at the use site, if any.
@@ -477,26 +477,26 @@ supplies ::
   OpName ->
   Import ->
   Bool
-supplies carries qualifier op i =
+maySupply members qualifier op i =
   maybe (not (importQualified i)) (== importAlias i) qualifier
-    && admits carries op i
+    && mayBring members op i
 
 -- | Does this import bring the name in for certain, as far as its list says?
 --
 -- Where the list could leave the name out, it is taken to: a @T(..)@ whose
 -- members are not known hides anything, and of what a list shows, only a
 -- variable written on its own counts.
-brings ::
-  -- | What each name in the import's list keeps under it, where that is
+certainlyBrings ::
+  -- | The members of each name in the import's list, where they are
   -- known.
   Map OpName (Set OpName) ->
   -- | The name, and the namespace it is in.
   (Namespace, OpName) ->
   Import ->
   Bool
-brings carries (namespace, op) i = case importNames i of
+certainlyBrings members (namespace, op) i = case importNames i of
   Nothing -> True
-  Just (True, hidden) -> not (any (namedBy carries True op) hidden)
+  Just (True, hidden) -> not (any (namedBy members True op) hidden)
   Just (False, shown) ->
     ImportedName op `elem` shown && namespace == InTerms && isVariable op
   where
@@ -504,21 +504,21 @@ brings carries (namespace, op) i = case importNames i of
       Just (c, _) -> not (isUpper c) && c /= ':'
       Nothing -> False
 
--- | Does this import certainly bring the name in, from a module that
--- settles its fixity?
+-- | Does this import decide the name's fixity, by certainly bringing it
+-- in from a module that settles it?
 --
 -- If so, no other import can give a use of the name another fixity: it
 -- either brings in the same thing or makes the use ambiguous.
-speaksFor ::
+decides ::
   -- | What reading the module imported established.
   Established ->
   -- | The name, and the namespace it is in.
   (Namespace, OpName) ->
   Import ->
   Bool
-speaksFor established name i =
-  Set.member name (broughtNames (establishedBrought established))
-    && brings (establishedChildren established) name i
+decides established name i =
+  Set.member name (certainNames (establishedCertain established))
+    && certainlyBrings (establishedMembers established) name i
     && null (unsettledThrough established name)
 
 -- | Which of Haskell's two namespaces an operator is written in.
@@ -539,25 +539,26 @@ inBothNamespaces declared =
       namespace <- [InTypes, InTerms]
     ]
 
--- | What a module brings into scope for a module that imports it whole.
-data Brought = Brought
-  { -- | Every name it exports.
-    broughtNames :: Set (Namespace, OpName),
-    -- | What each type or class it exports carries.
-    broughtChildren :: Map OpName (Set (Namespace, OpName))
+-- | What a module certainly brings into scope for a module that imports
+-- it whole.
+data Certain = Certain
+  { -- | Every name it certainly exports.
+    certainNames :: Set (Namespace, OpName),
+    -- | The members it certainly exports with each type or class.
+    certainMembers :: Map OpName (Set (Namespace, OpName))
   }
   deriving (Eq, Show)
 
-instance Semigroup Brought where
+instance Semigroup Certain where
   a <> b =
-    Brought
-      { broughtNames = broughtNames a <> broughtNames b,
-        broughtChildren =
-          Map.unionWith Set.union (broughtChildren a) (broughtChildren b)
+    Certain
+      { certainNames = certainNames a <> certainNames b,
+        certainMembers =
+          Map.unionWith Set.union (certainMembers a) (certainMembers b)
       }
 
-instance Monoid Brought where
-  mempty = Brought Set.empty Map.empty
+instance Monoid Certain where
+  mempty = Certain Set.empty Map.empty
 
 -- | An import that could not be read, and the way down to the module that
 -- actually stopped us. The head is the import as the file being formatted
@@ -595,11 +596,11 @@ data Reach = Reach
     -- the alias the disagreeing imports share—with the module each import
     -- names and the fixity it brings.
     reachAmbiguous :: Map (Maybe Text, OpName) (NonEmpty (Text, Fixity)),
-    -- | The uses a module that was read speaks for in this namespace, as they
+    -- | The uses a module that was read decides in this namespace, as they
     -- would be written: of a name the module defines itself, or one an import
     -- that was read certainly brings in, which no unread import can give
     -- another fixity.
-    reachSpokenFor :: Set (Maybe Text, OpName)
+    reachDecided :: Set (Maybe Text, OpName)
   }
   deriving (Eq, Show)
 
@@ -642,7 +643,7 @@ resolveScope implicitPrelude known configurations =
             Map.union
               (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
               (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom)),
-          reachSpokenFor =
+          reachDecided =
             Set.fromList $
               [ (qualifier, op)
               | c <- toList configurations,
@@ -652,9 +653,9 @@ resolveScope implicitPrelude known configurations =
                 <> [ (qualifier, op)
                    | i <- imports,
                      let established = known (importModule i),
-                     name@(n, op) <- Set.toList (broughtNames (establishedBrought established)),
+                     name@(n, op) <- Set.toList (certainNames (establishedCertain established)),
                      n == namespace,
-                     speaksFor established name i,
+                     decides established name i,
                      qualifier <- [Nothing | not (importQualified i)] <> [Just (importAlias i)]
                    ]
         }
@@ -688,13 +689,13 @@ resolveScope implicitPrelude known configurations =
 
     settled ((m, fixity) :| _) = (fixity, DeclaredIn m)
 
-    disagreeing brought@((_, fixity) :| _)
-      | all ((== fixity) . snd) brought = Nothing
-      | otherwise = Just (NE.nub brought)
+    disagreeing offers@((_, fixity) :| _)
+      | all ((== fixity) . snd) offers = Nothing
+      | otherwise = Just (NE.nub offers)
 
     visible offered i =
       Map.filterWithKey
-        (\op _ -> admits (establishedChildren (known (importModule i))) op i)
+        (\op _ -> mayBring (establishedMembers (known (importModule i))) op i)
         (Map.map (\fixity -> (importModule i, fixity) :| []) (offered (importModule i)))
 
 -- | The fixities in one namespace, by the operator alone.
@@ -805,13 +806,13 @@ unreadThatMightDeclare ::
   [ModuleChain]
 unreadThatMightDeclare scope namespace qualifier op
   | null blamed = []
-  | Set.member (qualifier, op) (reachSpokenFor (reachIn namespace scope)) = []
+  | Set.member (qualifier, op) (reachDecided (reachIn namespace scope)) = []
   | otherwise = nub blamed
   where
     blamed =
       [ ModuleChain (importModule i :| chain)
       | (i, established) <- scopeUnsettled scope,
-        supplies (establishedChildren established) qualifier op i,
+        maySupply (establishedMembers established) qualifier op i,
         n <- namespace : promotedFrom namespace,
         chain <- unsettledThrough established (n, op)
       ]
@@ -980,8 +981,8 @@ spellDisagreement ::
   -- | What each import brings, as 'Ambiguous' gives it.
   NonEmpty (Text, Fixity) ->
   Text
-spellDisagreement palette brought =
-  case fmap bringing (collected [(fixity, m) | (m, fixity) <- toList brought]) of
+spellDisagreement palette offers =
+  case fmap bringing (collected [(fixity, m) | (m, fixity) <- toList offers]) of
     [one, other] -> one <> " but " <> other
     each -> spellList each
   where
@@ -1007,10 +1008,10 @@ data ModuleSummary = ModuleSummary
     summaryFixities :: Fixities,
     -- | Every name it defines.
     summaryNames :: Set (Namespace, OpName),
-    -- | What each type or class it declares carries with it.
-    summaryDeclaredChildren :: Map OpName (Set (Namespace, OpName)),
-    -- | What it offers under each name, as its export list offers it.
-    summaryChildren :: Map OpName (Set OpName)
+    -- | The members of each type or class it declares.
+    summaryDeclaredMembers :: Map OpName (Set (Namespace, OpName)),
+    -- | The members its export list offers with each name.
+    summaryListedMembers :: Map OpName (Set OpName)
   }
   deriving (Eq, Show, Generic)
 
@@ -1031,8 +1032,8 @@ summarize implicitPrelude hsModule =
       summaryImports = moduleImports implicitPrelude (pure hsModule),
       summaryFixities = declaredFixities hsModule,
       summaryNames = declaredNames hsModule,
-      summaryDeclaredChildren = declaredChildren hsModule,
-      summaryChildren = moduleChildren hsModule
+      summaryDeclaredMembers = declaredMembers hsModule,
+      summaryListedMembers = listedMembers hsModule
     }
 
 ----------------------------------------------------------------------------
@@ -1052,11 +1053,11 @@ data Established = Established
     -- unsettled.
     establishedUntold :: Set [Text],
     -- | What it certainly brings in for a module that imports it whole.
-    establishedBrought :: Brought,
-    -- | What it keeps under each of its names, so that a @T(..)@ in an
-    -- import list can be told what it brings in. Every type
-    -- 'establishedBrought' says what it carries for is among them.
-    establishedChildren :: Map OpName (Set OpName)
+    establishedCertain :: Certain,
+    -- | The members of each of its names, so that a @T(..)@ in an import
+    -- list can be told what it brings in. Every type 'establishedCertain'
+    -- gives members of is among them.
+    establishedMembers :: Map OpName (Set OpName)
   }
   deriving (Eq, Show)
 
@@ -1067,9 +1068,9 @@ instance Semigroup Established where
         establishedUnsettled =
           Map.unionWith Set.union (establishedUnsettled a) (establishedUnsettled b),
         establishedUntold = Set.union (establishedUntold a) (establishedUntold b),
-        establishedBrought = establishedBrought a <> establishedBrought b,
-        establishedChildren =
-          Map.unionWith Set.union (establishedChildren a) (establishedChildren b)
+        establishedCertain = establishedCertain a <> establishedCertain b,
+        establishedMembers =
+          Map.unionWith Set.union (establishedMembers a) (establishedMembers b)
       }
 
 instance Monoid Established where
@@ -1090,6 +1091,6 @@ unsettledThrough :: Established -> (Namespace, OpName) -> [[Text]]
 unsettledThrough established name =
   [chain | (chain, names) <- Map.toList (establishedUnsettled established), Set.member name names]
     <> [ chain
-       | Set.notMember name (broughtNames (establishedBrought established)),
+       | Set.notMember name (certainNames (establishedCertain established)),
          chain <- Set.toList (establishedUntold established)
        ]

@@ -20,7 +20,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Fixity
-  ( Brought (..),
+  ( Certain (..),
     Established (..),
     Fixity (..),
     Import (..),
@@ -64,7 +64,7 @@ data ImportNote = ImportNote
     noteQualified :: Bool,
     -- | How many operators it was read for, or 'Nothing' when it could not
     -- be read at all.
-    noteBrought :: Maybe Int,
+    noteOperatorCount :: Maybe Int,
     -- | Where reading it went before giving up, for each way that left some
     -- names unsettled, ending at the module that actually stopped it. Empty
     -- for an import that settles every name; a way is empty for one unread
@@ -98,10 +98,10 @@ fixityNotes ::
   NonEmpty ParsedModule ->
   IO FixityNotes
 fixityNotes implicitPrelude resolve scope configurations = do
-  brought <- traverse alongside (moduleImports implicitPrelude (fmap pmModule configurations))
+  importNotes <- traverse alongside (moduleImports implicitPrelude (fmap pmModule configurations))
   pure
     FixityNotes
-      { notedImports = brought,
+      { notedImports = importNotes,
         notedOperators = fmap aboutOperator used,
         notedDeclarations = here
       }
@@ -111,7 +111,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
       let fixities = establishedFixities answer
           readNothing =
             Map.null fixities
-              && Set.null (broughtNames (establishedBrought answer))
+              && Set.null (certainNames (establishedCertain answer))
               && not (Set.null (establishedUntold answer))
       pure
         ImportNote
@@ -121,7 +121,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
                 then Nothing
                 else Just (importAlias i),
             noteQualified = importQualified i,
-            noteBrought =
+            noteOperatorCount =
               if readNothing
                 then Nothing
                 else Just (Set.size (Set.map snd (Map.keysSet fixities))),
@@ -185,7 +185,7 @@ aboutFile palette notes =
       named (noteModule i)
         <> qualification i
         <> ": "
-        <> case noteBrought i of
+        <> case noteOperatorCount i of
           Nothing -> "could not be read" <> through (noteUnsettled i)
           Just n
             | null (noteUnsettled i) -> operators n
@@ -220,8 +220,8 @@ aboutFile palette notes =
 
     ambiguously o = case noteDisagreement o of
       Nothing -> ""
-      Just brought ->
-        ", and the imports disagree about it: " <> spellDisagreement palette brought
+      Just offers ->
+        ", and the imports disagree about it: " <> spellDisagreement palette offers
 
     named = paint palette Place
     operator = paint palette Operator

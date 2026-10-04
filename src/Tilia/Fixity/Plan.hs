@@ -1241,7 +1241,7 @@ asInterface fixities =
   Interface
     { interfaceDeclares = fixities,
       interfaceReexports = [],
-      interfaceChildren = Map.empty,
+      interfaceMembers = Map.empty,
       interfaceExports = Nothing
     }
 
@@ -1280,8 +1280,8 @@ fromInterface interfaceOf modName =
                   Nothing <- [declarer m]
                 ],
             establishedUntold = Set.empty,
-            establishedBrought = fromMaybe mempty (interfaceExports iface),
-            establishedChildren = interfaceChildren iface
+            establishedCertain = fromMaybe mempty (interfaceExports iface),
+            establishedMembers = interfaceMembers iface
           }
   where
     asked m = do
@@ -1401,9 +1401,9 @@ agreeing answers =
                 : fmap establishedUnsettled (toList counted)
             ),
         establishedUntold = foldMap establishedUntold counted,
-        establishedBrought = foldr1 inEvery (fmap establishedBrought counted),
-        establishedChildren =
-          Map.unionsWith Set.union (fmap establishedChildren counted)
+        establishedCertain = foldr1 inEvery (fmap establishedCertain counted),
+        establishedMembers =
+          Map.unionsWith Set.union (fmap establishedMembers counted)
       }
   where
     counted =
@@ -1417,13 +1417,13 @@ agreeing answers =
       if all (== fixity) rest then Just fixity else Nothing
     disagreed = inhabited (Map.keysSet (Map.filter (isNothing . sole) declared))
     inEvery a b =
-      Brought
-        { broughtNames = Set.intersection (broughtNames a) (broughtNames b),
-          broughtChildren =
+      Certain
+        { certainNames = Set.intersection (certainNames a) (certainNames b),
+          certainMembers =
             Map.intersectionWith
               Set.intersection
-              (broughtChildren a)
-              (broughtChildren b)
+              (certainMembers a)
+              (certainMembers b)
         }
 
 -- | Where each module that lives in a directory rather than an archive is.
@@ -1487,7 +1487,7 @@ withReexports reach modName summary =
                    && importAlias i
                      `elem` [m | ExportModule m <- items]
                )
-      let carried =
+      let reexported =
             Map.fromList
               [ ((qualifier, parent), membersFrom listed qualifier parent)
               | ExportAll qualifier parent <- items,
@@ -1495,7 +1495,7 @@ withReexports reach modName summary =
               ]
           members =
             [ (qualifier, kid)
-            | ((qualifier, _), Just kids) <- Map.toList carried,
+            | ((qualifier, _), Just kids) <- Map.toList reexported,
               kid <- Set.toList kids,
               Set.notMember kid defined
             ]
@@ -1505,27 +1505,27 @@ withReexports reach modName summary =
       pure . together $
         mempty
           { establishedFixities = summaryFixities summary,
-            establishedChildren = summaryChildren summary
+            establishedMembers = summaryListedMembers summary
           }
-          : fmap (exported answers carried) items
+          : fmap (exported answers reexported) items
   where
     imports = summaryImports summary
-    declared = summaryDeclaredChildren summary
+    declared = summaryDeclaredMembers summary
     defined =
       Set.map snd (summaryNames summary)
         <> Set.map snd (Map.keysSet (summaryFixities summary))
     own =
       mempty
         { establishedFixities = summaryFixities summary,
-          establishedBrought = Brought (summaryNames summary) declared,
-          establishedChildren = Map.map (Set.map snd) declared
+          establishedCertain = Certain (summaryNames summary) declared,
+          establishedMembers = Map.map (Set.map snd) declared
         }
     reached wanted =
       Map.fromList
         <$> traverse
           (\m -> (m,) <$> reach m)
           (Set.toList (Set.fromList [importModule i | i <- imports, wanted i]))
-    suppliedBy i (qualifier, op) = supplies Map.empty qualifier op i
+    suppliedBy i (qualifier, op) = maySupply Map.empty qualifier op i
     named = \case
       ExportName _ qualifier op ->
         [(qualifier, op) | Set.notMember op defined]
@@ -1535,7 +1535,7 @@ withReexports reach modName summary =
         [(qualifier, op) | op <- parent : kids, Set.notMember op defined]
       ExportModule _ -> []
 
-    exported answers carried = \case
+    exported answers reexported = \case
       ExportName namespace qualifier op ->
         settled answers True qualifier (namespace, op)
           <> certainly (Set.singleton (namespace, op)) Map.empty
@@ -1543,15 +1543,16 @@ withReexports reach modName summary =
         | Just kids <- Map.lookup parent declared -> withMembers parent kids
         | otherwise ->
             let found = settled answers True qualifier (InTypes, parent)
-                kids = Map.findWithDefault Nothing (qualifier, parent) carried
+                kids =
+                  Map.findWithDefault Nothing (qualifier, parent) reexported
              in found
                   <> mempty{establishedUntold = Map.keysSet (establishedUnsettled found)}
                   <> foldMap (member answers qualifier parent) (foldMap Set.toList kids)
                   <> case kids of
                     Nothing -> certainly (Set.singleton (InTypes, parent)) Map.empty
                     Just known ->
-                      withMembers parent (certainMembers answers qualifier parent)
-                        <> mempty{establishedChildren = Map.singleton parent known}
+                      withMembers parent (certainMembersOf answers qualifier parent)
+                        <> mempty{establishedMembers = Map.singleton parent known}
       ExportSome qualifier parent kids ->
         settled answers True qualifier (InTypes, parent)
           <> foldMap (member answers qualifier parent) kids
@@ -1560,7 +1561,7 @@ withReexports reach modName summary =
             ( Set.filter
                 ((`elem` kids) . snd)
                 ( fromMaybe
-                    (certainMembers answers qualifier parent)
+                    (certainMembersOf answers qualifier parent)
                     (Map.lookup parent declared)
                 )
             )
@@ -1570,26 +1571,27 @@ withReexports reach modName summary =
             (whole answers)
             [i | i <- imports, not (importQualified i), importAlias i == m]
 
-    certainly names children = mempty{establishedBrought = Brought names children}
+    certainly names members = mempty{establishedCertain = Certain names members}
     withMembers parent kids =
       certainly (Set.insert (InTypes, parent) kids) (Map.singleton parent kids)
     member answers qualifier parent kid
       | Set.member kid defined = mempty
       | otherwise =
-          case [ (i, established, carried)
+          case [ (i, established, certainKids)
                | (i, established) <- candidates answers qualifier parent,
-                 speaksFor established (InTypes, parent) i,
-                 let carried =
+                 decides established (InTypes, parent) i,
+                 let certainKids =
                        Set.filter
                          ((== kid) . snd)
                          ( Map.findWithDefault
                              Set.empty
                              parent
-                             (broughtChildren (establishedBrought established))
+                             (certainMembers (establishedCertain established))
                          ),
-                 not (Set.null carried)
+                 not (Set.null certainKids)
                ] of
-            (i, established, carried) : _ -> foldMap (from [(i, established)]) carried
+            (i, established, certainKids) : _ ->
+              foldMap (from [(i, established)]) certainKids
             [] ->
               foldMap
                 ( \namespace ->
@@ -1601,7 +1603,7 @@ withReexports reach modName summary =
       [ (i, established)
       | i <- imports,
         Just established <- [Map.lookup (importModule i) answers],
-        supplies (establishedChildren established) qualifier op i
+        maySupply (establishedMembers established) qualifier op i
       ]
 
     settled answers certain qualifier name@(_, op)
@@ -1609,9 +1611,9 @@ withReexports reach modName summary =
       | otherwise = case [ (i, established)
                          | certain,
                            (i, established) <- found,
-                           speaksFor established name i
+                           decides established name i
                          ] of
-          speaker : _ -> from [speaker] name
+          decider : _ -> from [decider] name
           [] -> from found name
       where
         found = candidates answers qualifier op
@@ -1641,18 +1643,18 @@ withReexports reach modName summary =
 
     membersFrom answers qualifier parent =
       case mapMaybe
-        (Map.lookup parent . establishedChildren . snd)
+        (Map.lookup parent . establishedMembers . snd)
         (candidates answers qualifier parent) of
         [] -> Nothing
         kids -> Just (Set.unions kids)
 
-    certainMembers answers qualifier parent =
+    certainMembersOf answers qualifier parent =
       Set.unions
-        [ Set.filter (\kid -> brings (establishedChildren established) kid i) kids
+        [ Set.filter (\kid -> certainlyBrings (establishedMembers established) kid i) kids
         | (i, established) <- candidates answers qualifier parent,
-          let brought = establishedBrought established,
-          Set.member (InTypes, parent) (broughtNames brought),
-          Just kids <- [Map.lookup parent (broughtChildren brought)]
+          let certain = establishedCertain established,
+          Set.member (InTypes, parent) (certainNames certain),
+          Just kids <- [Map.lookup parent (certainMembers certain)]
         ]
 
     whole answers i =
@@ -1672,24 +1674,24 @@ withReexports reach modName summary =
             Set.map
               (importModule i :)
               (establishedUntold established),
-          establishedBrought =
-            Brought
-              { broughtNames = Set.filter certain (broughtNames brought),
-                broughtChildren =
+          establishedCertain =
+            Certain
+              { certainNames = Set.filter included (certainNames certain),
+                certainMembers =
                   Map.map
-                    (Set.filter certain)
+                    (Set.filter included)
                     ( Map.filterWithKey
-                        (\parent _ -> certain (InTypes, parent))
-                        (broughtChildren brought)
+                        (\parent _ -> included (InTypes, parent))
+                        (certainMembers certain)
                     )
               },
-          establishedChildren = establishedChildren established
+          establishedMembers = establishedMembers established
         }
       where
         established = Map.findWithDefault mempty (importModule i) answers
-        brought = establishedBrought established
-        admitted op = supplies (establishedChildren established) Nothing op i
-        certain name = brings (establishedChildren established) name i
+        certain = establishedCertain established
+        admitted op = maySupply (establishedMembers established) Nothing op i
+        included name = certainlyBrings (establishedMembers established) name i
 
 -- | The parts of what a module exports, together.
 --
@@ -1711,7 +1713,7 @@ together parts =
       Set.unions
         [ Set.filter
             (null . unsettledThrough part)
-            (broughtNames (establishedBrought part))
+            (certainNames (establishedCertain part))
         | part <- parts
         ]
 

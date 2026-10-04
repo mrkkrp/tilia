@@ -199,7 +199,7 @@ spec = do
         (OpName "<??>")
         `shouldBe` Unresolved (unreadOnly "Opaque")
 
-    it "passes over one whose import list carries no such operator" $
+    it "passes over one whose import list names no such operator" $
       lookupFixity
         (scopeSuspecting [("Opaque", [("T", ["<+>"])])] "import Opaque (T (..))\n")
         InTerms
@@ -207,7 +207,7 @@ spec = do
         (OpName "<??>")
         `shouldBe` Resolved defaultFixity ReportDefault
 
-    it "blames one whose import list carries it" $
+    it "blames one whose import list names it" $
       lookupFixity
         (scopeSuspecting [("Opaque", [("T", ["<??>"])])] "import Opaque (T (..))\n")
         InTerms
@@ -321,7 +321,7 @@ spec = do
       let leavingMin = \case
             "Opaque" ->
               mempty
-                { establishedBrought = Brought (Set.singleton (InTerms, OpName "min")) Map.empty,
+                { establishedCertain = Certain (Set.singleton (InTerms, OpName "min")) Map.empty,
                   establishedUnsettled = Map.singleton [] (Set.singleton (InTerms, OpName "min"))
                 }
             m -> knowingExports m
@@ -350,8 +350,8 @@ spec = do
                     mempty
                       { establishedFixities =
                           inBothNamespaces (Map.fromList [(OpName "+", Fixity LeftAssoc 6), (OpName "*", Fixity LeftAssoc 7)]),
-                        establishedBrought =
-                          Brought (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")]) Map.empty
+                        establishedCertain =
+                          Certain (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")]) Map.empty
                       }
                   m -> knowingExports m
               )
@@ -423,70 +423,70 @@ spec = do
       fmap fst (unsettledIn "module M where\nimport Opaque\nf = 1 `roundTo` 2\n")
         `shouldBe` [(Nothing, OpName "roundTo")]
 
-  describe "what a name carries with it" $ do
+  describe "the members of a name" $ do
     it "takes a type's constructors, among terms" $
-      childrenIn "module M where\ndata T = A | Int :| Int\n"
+      declaredMembersIn "module M where\ndata T = A | Int :| Int\n"
         `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
 
     it "takes a record's fields, which may be operators, among terms" $
-      childrenIn "module M where\ndata T = T {(#) :: Int, name :: Int}\n"
+      declaredMembersIn "module M where\ndata T = T {(#) :: Int, name :: Int}\n"
         `shouldBe` [(OpName "T", [(InTerms, OpName "#"), (InTerms, OpName "T"), (InTerms, OpName "name")])]
 
     it "takes a GADT's constructors, among terms" $
-      childrenIn "module M where\ndata T where\n  A :: T\n  (:|) :: T -> T\n"
+      declaredMembersIn "module M where\ndata T where\n  A :: T\n  (:|) :: T -> T\n"
         `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
 
     it "takes a class's methods, among terms" $
-      childrenIn "module M where\nclass C a where\n  (.=) :: a -> a -> Int\n  named :: a\n"
+      declaredMembersIn "module M where\nclass C a where\n  (.=) :: a -> a -> Int\n  named :: a\n"
         `shouldBe` [(OpName "C", [(InTerms, OpName ".="), (InTerms, OpName "named")])]
 
     it "takes a class's associated families, among types" $
-      childrenIn "module M where\nclass C a where\n  type F a\n"
+      declaredMembersIn "module M where\nclass C a where\n  type F a\n"
         `shouldBe` [(OpName "C", [(InTypes, OpName "F")])]
 
     it "has nothing to say about a type synonym" $
-      childrenIn "module M where\ntype T = Int\n" `shouldBe` []
+      declaredMembersIn "module M where\ntype T = Int\n" `shouldBe` []
 
     it "keeps to what an export list hands on" $
-      exportedChildrenIn "module M (T (A)) where\ndata T = A | Int :| Int\n"
+      listedMembersIn "module M (T (A)) where\ndata T = A | Int :| Int\n"
         `shouldBe` [(OpName "T", [OpName "A"])]
 
-    it "hands on everything under a name exported with (..)" $
-      exportedChildrenIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
+    it "hands on every member of a name exported with (..)" $
+      listedMembersIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
         `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
 
-    it "says nothing of what a type it does not declare carries" $
-      exportedChildrenIn "module M (T (..)) where\nimport Elsewhere\n"
+    it "says nothing of the members of a type it does not declare" $
+      listedMembersIn "module M (T (..)) where\nimport Elsewhere\n"
         `shouldBe` []
 
   describe "layer 2: imports" $ do
-    it "brings in an operator a type carries" $
-      lookupFixity (scopeCarrying "import Carrier (T (..))\n") InTerms Nothing (OpName ":|")
-        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Carrier")
+    it "brings in an operator among the members of a type" $
+      lookupFixity (scopeWithMembers "import Members (T (..))\n") InTerms Nothing (OpName ":|")
+        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Members")
 
-    it "leaves out an operator the type does not carry" $
-      lookupFixity (scopeCarrying "import Carrier (T (..))\n") InTerms Nothing (OpName "<+>")
+    it "leaves out an operator not among the members of the type" $
+      lookupFixity (scopeWithMembers "import Members (T (..))\n") InTerms Nothing (OpName "<+>")
         `shouldBe` Resolved defaultFixity ReportDefault
 
     it "hides an operator hidden along with its type" $
-      lookupFixity (scopeCarrying "import Carrier hiding (T (..))\n") InTerms Nothing (OpName ":|")
+      lookupFixity (scopeWithMembers "import Members hiding (T (..))\n") InTerms Nothing (OpName ":|")
         `shouldBe` Resolved defaultFixity ReportDefault
 
     it "keeps what a hiding list leaves alone" $
-      lookupFixity (scopeCarrying "import Carrier hiding (T (..))\n") InTerms Nothing (OpName "<+>")
-        `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Carrier")
+      lookupFixity (scopeWithMembers "import Members hiding (T (..))\n") InTerms Nothing (OpName "<+>")
+        `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Members")
 
-    it "brings in one a T(..) may carry, where nothing is known" $
+    it "brings in one a T(..) may stand for, where its members are not known" $
       lookupFixity
-        (fullScope "module M where\nimport Carrier (T (..))\n")
+        (fullScope "module M where\nimport Members (T (..))\n")
         InTerms
         Nothing
         (OpName ":|")
-        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Carrier")
+        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Members")
 
-    it "leaves out one no item of that list could carry" $
+    it "leaves out one no item of that list could name" $
       lookupFixity
-        (fullScope "module M where\nimport Carrier (f)\n")
+        (fullScope "module M where\nimport Members (f)\n")
         InTerms
         Nothing
         (OpName ":|")
@@ -494,19 +494,19 @@ spec = do
 
     it "keeps one a hiding T(..) cannot be shown to have hidden" $
       lookupFixity
-        (fullScope "module M where\nimport Carrier hiding (T (..))\n")
+        (fullScope "module M where\nimport Members hiding (T (..))\n")
         InTerms
         Nothing
         (OpName ":|")
-        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Carrier")
+        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Members")
 
     it "brings it in under a qualifier too" $
       lookupFixity
-        (scopeCarrying "import qualified Carrier as C (T (..))\n")
+        (scopeWithMembers "import qualified Members as C (T (..))\n")
         InTerms
         (Just "C")
         (OpName ":|")
-        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Carrier")
+        `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Members")
 
     it "sees an unqualified import in both scopes" $
       scopeOf "module M where\nimport Data.Map\n"
@@ -780,7 +780,7 @@ exportsOf = \case
       ]
   "Other" -> whichever [(OpName "!", Fixity RightAssoc 4)]
   "Agreeing" -> whichever [(OpName "!", Fixity LeftAssoc 9)]
-  "Carrier" ->
+  "Members" ->
     whichever
       [ (OpName ":|", Fixity RightAssoc 5),
         (OpName "<+>", Fixity LeftAssoc 6)
@@ -882,11 +882,11 @@ scopeBringing :: [(Text, [(Namespace, Text)])] -> Text -> Scope
 scopeBringing said source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedBrought = broughtBy m})
+    (\m -> (knowingExports m){establishedCertain = certain m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
-    broughtBy m =
-      Brought (Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]) Map.empty
+    certain m =
+      Certain (Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]) Map.empty
 
 -- | The same, with a second unread import to tell apart from the first.
 twoUnread :: Text
@@ -920,31 +920,31 @@ capturedIn decls =
   | (s, fixity) <- Map.toList (capturedUses (pmGathered (parsed ("module M where\n" <> decls))))
   ]
 
--- | What each name a module declares carries with it, by namespace, in a
+-- | The members of each name a module declares, by namespace, in a
 -- settled order.
-childrenIn :: Text -> [(OpName, [(Namespace, OpName)])]
-childrenIn = fmap (fmap Set.toList) . Map.toList . declaredChildren . pmModule . parsed
+declaredMembersIn :: Text -> [(OpName, [(Namespace, OpName)])]
+declaredMembersIn = fmap (fmap Set.toList) . Map.toList . declaredMembers . pmModule . parsed
 
 -- | The same, as the module's export list hands them on.
-exportedChildrenIn :: Text -> [(OpName, [OpName])]
-exportedChildrenIn = settled . moduleChildren . pmModule . parsed
+listedMembersIn :: Text -> [(OpName, [OpName])]
+listedMembersIn = settled . listedMembers . pmModule . parsed
 
 settled :: Map.Map OpName (Set.Set OpName) -> [(OpName, [OpName])]
 settled = fmap (fmap Set.toList) . Map.toList
 
--- | A scope over a world where Carrier keeps @:|@ under @T@.
+-- | A scope over a world where Members exports @T@ with the member @:|@.
 --
--- Carrier declares @<+>@ as well, under nothing, so that a list naming
+-- Members declares @<+>@ as well, a member of nothing, so that a list naming
 -- @T(..)@ can be seen to bring the one in and leave the other out.
-scopeCarrying :: Text -> Scope
-scopeCarrying source =
+scopeWithMembers :: Text -> Scope
+scopeWithMembers source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedChildren = childrenOf m})
+    (\m -> (knowingExports m){establishedMembers = membersIn m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
-    childrenOf = \case
-      "Carrier" -> Map.fromList [(OpName "T", Set.fromList [OpName ":|"])]
+    membersIn = \case
+      "Members" -> Map.fromList [(OpName "T", Set.fromList [OpName ":|"])]
       _ -> Map.empty
 
 -- | A scope over the two modules that spell @:>@ in different namespaces.
@@ -955,21 +955,21 @@ scopeOfBoth source =
     knowingExports
     (pure (pmModule (parsed ("module M where\n" <> source))))
 
--- | A scope over an unread module, told what it keeps under its names.
+-- | A scope over an unread module, told the members of its names.
 --
 -- Opaque cannot be read for fixities and says nothing about what it
 -- exports, so what the import list brings in is all there is to go on.
 scopeSuspecting :: [(Text, [(Text, [Text])])] -> Text -> Scope
-scopeSuspecting carries source =
+scopeSuspecting members source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedChildren = childrenOf m})
+    (\m -> (knowingExports m){establishedMembers = membersIn m})
     (pure (pmModule (parsed ("module M where\n" <> source <> "f a b = a <??> b\n"))))
   where
-    childrenOf m =
+    membersIn m =
       Map.fromList
         [ (OpName parent, Set.fromList (fmap OpName kids))
-        | (parent, kids) <- Map.findWithDefault [] m (Map.fromList carries)
+        | (parent, kids) <- Map.findWithDefault [] m (Map.fromList members)
         ]
 
 -- | The uses of an operator a module makes that its scope cannot settle.
