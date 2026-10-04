@@ -76,7 +76,7 @@ prepare =
 fetchMissingSources :: BuildPlan -> IO ()
 fetchMissingSources plan = do
   installed <- readInstalledPackages
-  let unread = shippedIn installed <> modulelessIn installed
+  let unread = modulelessIn installed
   absent <-
     filterM (fmap not . doesFileExist . snd)
       . filter (not . (`Set.member` unread) . ppName . fst)

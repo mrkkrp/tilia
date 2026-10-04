@@ -126,9 +126,10 @@ withPlan plan = do
     -- reached it, and which module of the cycle gives way is whichever was
     -- entered first. Measured over ghc-lib-parser's 450 modules, sweeping
     -- them forwards, backwards and from twelve threads moved two of them
-    -- either way, and over the whole tree the figure has been seen between
-    -- 74% and 80%. The check is here to catch the route collapsing, not to
-    -- pin a number that is not pinned.
+    -- either way, and over the whole tree, the boot packages read from
+    -- source too, the figure has been seen at 93% on GHC 9.10. The check is
+    -- here to catch the route collapsing, not to pin a number that is not
+    -- pinned.
     it "reads most of them out of source alone" $ do
       answers <- traverse (fromSource . fst) modules
       let reached = length [() | Just _ <- answers]
