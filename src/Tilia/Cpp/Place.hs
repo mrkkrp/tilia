@@ -474,7 +474,7 @@ placeAt present written n body = among []
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
-                if any (`blankAt` ls) [from + 1 .. n - 1] || not (all onlySpacing spacing)
+                if any (`blankAt` ls) [from .. n - 1] || not (all onlySpacing spacing)
                   then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, body] <> after)
                   else mconcat (printed <> [anchor, body] <> spacing <> after)
             | otherwise -> mconcat (before <> [body] <> after)
