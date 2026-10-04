@@ -1615,6 +1615,12 @@ withPlan plan = do
         lookupFixity scope InTerms Nothing (OpName "<+>")
           `shouldBe` Resolved (Fixity RightAssoc 6) (DeclaredIn "Prettyprinter")
 
+    it "brings in only the methods of a class an import list names with (..)" $
+      endToEnd resolver "module M where\nimport Text.ParserCombinators.ReadP\nimport Text.Read (Read (..))\n" $ \scope -> do
+        lookupFixity scope InTerms Nothing (OpName "+++")
+          `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Text.ParserCombinators.ReadP")
+        Map.keys (reachAmbiguous (reachIn InTerms scope)) `shouldBe` []
+
     it "honours a hiding list" $
       endToEnd resolver "module M where\nimport Prettyprinter hiding ((<+>))\n" $ \scope ->
         lookupFixity scope InTerms Nothing (OpName "<+>")
