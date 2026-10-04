@@ -16,7 +16,7 @@ import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe, maybeToList)
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -62,25 +62,12 @@ readInterface modName path =
           Nothing -> pure Nothing
           Just out -> pure (parseInterface modName out)
 
--- | What a decoded interface file says, if it is this module's and names
--- nothing only GHC can resolve.
+-- | What a decoded interface file says, if it is this module's.
 fromHiFile :: Text -> HiFile -> Either Text Interface
 fromHiFile modName HiFile{..}
   | hiModule /= modName = Left ("the interface of " <> hiModule)
-  | otherwise = do
-      exports <- concat <$> traverse resolved hiExports
-      exported <- concat <$> traverse exportedNames hiExports
-      let carrying =
-            Map.fromListWith
-              Set.union
-              [ (op, Set.fromList [(namespace, kid) | (_, namespace, kid) <- kids])
-              | parent@(_, _, op) : named <- exports,
-                let kids = case named of
-                      first : rest | first == parent -> rest
-                      _ -> named,
-                not (null kids)
-              ]
-      pure
+  | otherwise =
+      Right
         Interface
           { interfaceDeclares =
               Map.fromList [((namespace, op), fixity) | (namespace, op, fixity) <- hiFixities],
@@ -99,20 +86,30 @@ fromHiFile modName HiFile{..}
                   }
           }
   where
+    exports = concatMap resolved hiExports
+    exported = concatMap exportedNames hiExports
+    carrying =
+      Map.fromListWith
+        Set.union
+        [ (op, Set.fromList [(namespace, kid) | (_, namespace, kid) <- kids])
+        | parent@(_, _, op) : named <- exports,
+          let kids = case named of
+                first : rest | first == parent -> rest
+                _ -> named,
+          not (null kids)
+        ]
     exportedNames = \case
-      Avail n -> maybeToList <$> known n
-      AvailTC _ ns -> catMaybes <$> traverse known ns
+      Avail n -> maybeToList (known n)
+      AvailTC _ ns -> mapMaybe known ns
     resolved = \case
-      Avail n -> maybe [] (pure . pure) <$> known n
-      AvailTC p ns -> do
-        parent <- known p
-        kids <- catMaybes <$> traverse known ns
-        pure (maybe (fmap pure kids) (\named -> [named : kids]) parent)
+      Avail n -> maybe [] (pure . pure) (known n)
+      AvailTC p ns ->
+        let kids = mapMaybe known ns
+         in maybe (fmap pure kids) (\named -> [named : kids]) (known p)
     known = \case
-      HiName m namespace op -> Right (Just (Just m, namespace, op))
-      BuiltInSyntax namespace op -> Right (Just (Nothing, namespace, op))
-      Unneeded -> Right Nothing
-      KnownKey _ -> Left "a name only GHC can resolve"
+      HiName m namespace op -> Just (Just m, namespace, op)
+      BuiltInSyntax namespace op -> Just (Nothing, namespace, op)
+      Unneeded -> Nothing
 
 -- | Read what @ghc --show-iface@ printed, if it is this module's interface.
 parseInterface :: Text -> Text -> Maybe Interface
