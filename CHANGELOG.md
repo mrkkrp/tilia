@@ -172,6 +172,10 @@
   as a heading over all the imports, at the top of the imports when sorting
   moves that import further down, rather than move it along. [Issue
   92](https://github.com/mrkkrp/tilia/issues/92).
+* Put a directive written under the empty line that ends a `#define`
+  going on with a backslash under that empty line too, rather than right
+  under the `#define`, where it became part of the definition. [PR
+  111](https://github.com/mrkkrp/tilia/pull/111).
 
 ## Tilia 0.0.2.0
 
