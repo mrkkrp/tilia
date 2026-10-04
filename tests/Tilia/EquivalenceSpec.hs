@@ -9,7 +9,6 @@ import Data.Text qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import Test.Hspec
-import Tilia.Comments (Comment)
 import Tilia.Equivalence
 import Tilia.Parser
   ( ParsedModule,
@@ -17,9 +16,7 @@ import Tilia.Parser
     describeParseError,
     parseModule,
     pmModule,
-    pmSource,
   )
-import Tilia.Source (comments)
 
 spec :: Spec
 spec = do
@@ -159,17 +156,10 @@ losesTheCommentsOf went came =
 
 -- | What 'commentDifference' makes of two spellings of a module.
 difference :: Text -> Text -> Maybe Text
-difference went came =
-  commentDifference
-    (treeOf went, treeOf came)
-    (commentsOf went)
-    (commentsOf came)
+difference went came = commentDifference (parsed went) (parsed came)
 
 treeOf :: Text -> HsModule GhcPs
 treeOf = pmModule . parsed
-
-commentsOf :: Text -> [Comment]
-commentsOf = comments . pmSource . parsed
 
 parsed :: Text -> ParsedModule
 parsed source = case parseModule defaultParserConfig "Test.hs" source of

@@ -15,7 +15,6 @@ module Tilia.Comments
     singleLine,
     carriedOnFrom,
     widenTrigger,
-    escapeTrigger,
     asOrdinary,
     triggerEscaped,
     opensHaddock,
@@ -356,7 +355,7 @@ asOrdinary ls c
               }
       pure (commentAt ls piece DocComment (sliceSpan (lineTexts ls) piece))
 
--- | Has this comment been through 'escapeTrigger'?
+-- | Has 'asOrdinary' escaped this comment's trigger?
 --
 -- What it was written as cannot be read off the comment any more—that is
 -- the point of escaping—so anything wanting to know whether a comment

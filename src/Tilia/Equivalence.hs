@@ -59,14 +59,15 @@ import Language.Haskell.Syntax.Module.Name (ModuleName)
 import System.IO.Unsafe (unsafePerformIO)
 import Tilia.Comments
   ( Comment (..),
-    CommentStyle (..),
     Pragma (..),
+    asOrdinary,
     commentPragma,
     commentTrailing,
-    escapeTrigger,
     triggerEscaped,
   )
 import Tilia.Imports (normalizeImports)
+import Tilia.Parser (ParsedModule (..))
+import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOf, spansOf)
 import Tilia.Utils (tshow)
@@ -438,13 +439,12 @@ typeNameOf = dataTypeName . dataTypeOf
 -- documents has to become @-- | x@—so the text is not expected to survive,
 -- but the comment is.
 commentDifference ::
-  -- | The module each stream came from, which is asked only how far down its
-  -- header reaches.
-  (HsModule GhcPs, HsModule GhcPs) ->
-  [Comment] ->
-  [Comment] ->
+  -- | The module as written.
+  ParsedModule ->
+  -- | The module as printed.
+  ParsedModule ->
   Maybe Text
-commentDifference (moduleBefore, moduleAfter) before0 after0
+commentDifference parsedBefore parsedAfter
   | not (Set.null lost) = Just ("lost the pragma " <> pragmaList lost)
   | not (Set.null gained) = Just ("invented the pragma " <> pragmaList gained)
   | docsBefore /= docsAfter =
@@ -459,8 +459,12 @@ commentDifference (moduleBefore, moduleAfter) before0 after0
           (settled (withinHeader moduleBefore before))
           (settled (withinHeader moduleAfter after))
   where
-    before = escapedAndSplit before0
-    after = escapedAndSplit after0
+    moduleBefore = pmModule parsedBefore
+    moduleAfter = pmModule parsedAfter
+    before = asRead parsedBefore
+    after = asRead parsedAfter
+    asRead m =
+      concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
     belowHeader m = filter (not . inHeader m) . ordinary
     withinHeader m = filter (inHeader m) . ordinary
@@ -469,20 +473,6 @@ commentDifference (moduleBefore, moduleAfter) before0 after0
     inHeader m c = case lastRearrangedLine m of
       Nothing -> False
       Just lastLine -> spanStartLine (commentSpan c) <= lastLine
-
-    escapedAndSplit = concatMap explode
-
-    explode c = case commentStyle c of
-      DocComment
-        | "--" `T.isPrefixOf` NE.head (commentBody c) ->
-            [ c{commentBody = l :| [], commentCodeBeforeStopsAt = before'}
-            | (n, l) <- zip [0 :: Int ..] (NE.toList (body (escapeTrigger c))),
-              let before' =
-                    if n == 0 then commentCodeBeforeStopsAt c else Nothing
-            ]
-        | otherwise -> [escapeTrigger c]
-      _ -> [c]
-    body = commentBody
 
     lost = pragmasOf before `Set.difference` pragmasOf after
     gained = pragmasOf after `Set.difference` pragmasOf before
