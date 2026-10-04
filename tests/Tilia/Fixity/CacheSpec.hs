@@ -92,7 +92,7 @@ spec = do
                 { establishedUnsettled =
                     Map.fromList
                       [ (["Deep.Down"], Set.fromList [(InTypes, OpName ":+:"), (InTerms, OpName "===")]),
-                        ([], Set.singleton (InTerms, OpName "<+>"))
+                        ([], Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "v")])
                       ]
                 }
         storeEstablished cache "thing-1.0" "M" established
@@ -246,6 +246,7 @@ crowded =
       summaryExports =
         Just
           [ ExportName InTerms Nothing (OpName "<+>"),
+            ExportName InTerms Nothing (OpName "-"),
             ExportName InTerms (Just "Q") (OpName "<->"),
             ExportName InTypes Nothing (OpName ":|:"),
             ExportAll Nothing (OpName "T"),
@@ -364,6 +365,13 @@ database = around withIsolatedCache $ do
     withDatabase $ \db -> do
       storeInstalled cache (Installed [prim] [db])
       cachedInstalled cache `shouldReturn` Just [prim]
+
+  it "keeps the spaces in a path" $ \cache ->
+    withSystemTempDirectory "tilia  db" $ \db -> do
+      setModificationTime db =<< getModificationTime "/"
+      let spaced = containers{ipImportDirs = ["/no where/containers  0.7"]}
+      storeInstalled cache (Installed [spaced] [db])
+      cachedInstalled cache `shouldReturn` Just [spaced]
   where
     containers =
       InstalledPackage

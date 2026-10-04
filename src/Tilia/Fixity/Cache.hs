@@ -24,7 +24,7 @@ module Tilia.Fixity.Cache
   )
 where
 
-import Control.Monad (guard, join)
+import Control.Monad (join)
 import Data.Choice (Choice, isFalse)
 import Data.Foldable (toList, traverse_)
 import Data.List.NonEmpty (NonEmpty)
@@ -37,6 +37,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Read qualified as T
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Directory
   ( XdgDirectory (XdgCache),
     createDirectoryIfMissing,
@@ -123,34 +124,38 @@ cachedEstablished ::
   -- left unsettled was left so under another plan.
   IO (Maybe Established)
 cachedEstablished cache package modName =
-  fmap join . readIfPresent (at cache ["established", package, modName]) $ \contents ->
-    case T.lines contents of
-      ("established" : entries) -> assembled (fmap (T.splitOn "\t") entries)
-      _ -> Nothing
+  fmap join . readIfPresent (at cache ["established", package, modName]) $
+    assembled . fmap T.words . T.lines
   where
     assembled entries = do
-      guard (all (`elem` ["fixity", "unsettled", "untold", "names", "member", "members"]) (concatMap (take 1) entries))
-      fixities <- traverse (parseFixity . T.intercalate "\t") [fields | "fixity" : fields <- entries]
-      unsettled <- traverse unsettledEntry [fields | "unsettled" : fields <- entries]
-      untold <- traverse untoldEntry [fields | "untold" : fields <- entries]
-      names <- concat <$> traverse parseByNamespace [fields | "names" : fields <- entries]
-      certain <- traverse (memberEntry parseByNamespace) [fields | "member" : fields <- entries]
-      members <- traverse (memberEntry (Just . fmap OpName)) [fields | "members" : fields <- entries]
+      let fieldsOf kind = [fields | k : fields <- entries, k == kind]
+      fixities <- traverse parseFixity (fieldsOf "fixity")
+      unsettled <- traverse unsettledEntry (fieldsOf "unsettled")
+      untold <- traverse untoldEntry (fieldsOf "untold")
+      names <- concat <$> traverse parseByNamespace (fieldsOf "names")
+      certain <- traverse (memberEntry parseByNamespace) (fieldsOf "member")
+      members <-
+        traverse (memberEntry (Just . fmap OpName)) (fieldsOf "members")
+      let byParent = Map.fromListWith Set.union certain
       pure
         Established
           { establishedFixities = Map.fromList fixities,
             establishedUnsettled = Map.fromListWith Set.union unsettled,
             establishedUntold = Set.fromList untold,
-            establishedCertain = Certain (Set.fromList names) (Map.fromListWith Set.union certain),
+            establishedCertain = Certain (Set.fromList names) byParent,
             establishedMembers =
-              Map.union (Map.fromListWith Set.union members) (Map.fromListWith Set.union (fmap (fmap (Set.map snd)) certain))
+              Map.union
+                (Map.fromListWith Set.union members)
+                (Map.map (Set.map snd) byParent)
           }
     unsettledEntry = \case
-      token : chain : names
-        | token == tokenOf cache -> (T.words chain,) . Set.fromList <$> parseNamespaced names
+      token : fields
+        | token == tokenOf cache ->
+            let (chain, names) = break (isJust . parseNamespace) fields
+             in (chain,) . Set.fromList <$> parseNamespaced names
       _ -> Nothing
     untoldEntry = \case
-      [token, chain] | token == tokenOf cache -> Just (T.words chain)
+      token : chain | token == tokenOf cache -> Just chain
       _ -> Nothing
     memberEntry kidsOf = \case
       parent : kids -> (OpName parent,) . Set.fromList <$> kidsOf kids
@@ -168,30 +173,32 @@ storeEstablished ::
   Established ->
   IO ()
 storeEstablished cache package modName established =
-  writeAtomically (at cache ["established", package, modName]) . T.unlines $
-    "established"
-      : fmap (("fixity\t" <>) . renderFixity) (Map.toList (establishedFixities established))
-        <> [ T.intercalate "\t" (["unsettled", tokenOf cache, T.unwords chain] <> renderNamespaced names)
-           | (chain, names) <- Map.toList (establishedUnsettled established)
-           ]
-        <> [ T.intercalate "\t" ["untold", tokenOf cache, T.unwords chain]
-           | chain <- Set.toList (establishedUntold established)
-           ]
-        <> [T.intercalate "\t" ("names" : fields) | fields <- renderByNamespace (certainNames certain)]
-        <> [ T.intercalate "\t" ("member" : parent : fields)
-           | (OpName parent, kids) <- Map.toList (certainMembers certain),
-             fields <- case renderByNamespace kids of
-               [] -> [[]]
-               grouped -> grouped
-           ]
-        -- The members of a name are mostly its certain members, which the
-        -- lines above already say.
-        <> [ T.intercalate "\t" ("members" : parent : [kid | OpName kid <- Set.toAscList kids])
-           | (OpName parent, kids) <- Map.toList (establishedMembers established),
-             Just kids /= fmap (Set.map snd) (Map.lookup (OpName parent) (certainMembers certain))
-           ]
+  writeAtomically path . renderLines $
+    fmap (("fixity" :) . renderFixity) (Map.toList fixities)
+      <> [ ["unsettled", tokenOf cache] <> chain <> renderNamespaced names
+         | (chain, names) <- Map.toList (establishedUnsettled established)
+         ]
+      <> [ "untold" : tokenOf cache : chain
+         | chain <- Set.toList (establishedUntold established)
+         ]
+      <> ["names" : fields | fields <- renderByNamespace (certainNames certain)]
+      <> [ "member" : parent : fields
+         | (OpName parent, kids) <- Map.toList (certainMembers certain),
+           fields <- case renderByNamespace kids of
+             [] -> [[]]
+             grouped -> grouped
+         ]
+      -- The members of a name are mostly its certain members, which the
+      -- lines above already say.
+      <> [ "members" : parent : [kid | OpName kid <- Set.toAscList kids]
+         | (OpName parent, kids) <- Map.toList (establishedMembers established),
+           Just kids /= Map.lookup (OpName parent) written
+         ]
   where
+    path = at cache ["established", package, modName]
+    fixities = establishedFixities established
     certain = establishedCertain established
+    written = Map.map (Set.map snd) (certainMembers certain)
 
 -- | What each configuration of one of the project's own modules says, if it
 -- was last read from what the stamp stands for.
@@ -230,49 +237,52 @@ storeSummaries cache key stamp summaries =
 -- versions of Tilia and of the parser that read it.
 readFrom :: Text -> Text
 readFrom stamp =
-  T.intercalate "\t" ["for", stamp, VERSION_tilia, VERSION_ghc_lib_parser]
+  T.unwords ["for", stamp, VERSION_tilia, VERSION_ghc_lib_parser]
 
 -- | Render what a module's configurations say, a line for each thing.
 renderSummaries :: Maybe (NonEmpty ModuleSummary) -> [Text]
 renderSummaries = \case
   Nothing -> ["unparsed"]
-  Just summaries -> concatMap (("configuration" :) . renderSummary) (toList summaries)
+  Just summaries ->
+    concatMap
+      (("configuration" :) . fmap T.unwords . renderSummary)
+      (toList summaries)
   where
     renderSummary s =
-      ["name\t" <> name | Just name <- [summaryName s]]
-        <> maybe [] (\items -> "exports" : fmap renderExport items) (summaryExports s)
+      [["name", name] | Just name <- [summaryName s]]
+        <> foldMap
+          (\items -> ["exports"] : fmap renderExport items)
+          (summaryExports s)
         <> concatMap renderImport (summaryImports s)
-        <> fmap (("fixity\t" <>) . renderFixity) (Map.toList (summaryFixities s))
-        <> [ T.intercalate "\t" ["defines", renderNamespace namespace, op]
+        <> fmap (("fixity" :) . renderFixity) (Map.toList (summaryFixities s))
+        <> [ ["defines", renderNamespace namespace, op]
            | (namespace, OpName op) <- Set.toAscList (summaryNames s)
            ]
         <> fmap declares (Map.toList (summaryDeclaredMembers s))
         <> fmap offers (Map.toList (summaryListedMembers s))
-    declares (OpName parent, kids) =
-      T.intercalate "\t" ("declares" : parent : renderNamespaced kids)
+    declares (OpName parent, kids) = "declares" : parent : renderNamespaced kids
     offers (OpName parent, kids) =
-      T.intercalate "\t" ("offers" : parent : [kid | OpName kid <- Set.toAscList kids])
+      "offers" : parent : [kid | OpName kid <- Set.toAscList kids]
     renderExport = \case
-      ExportName namespace qualifier (OpName op) ->
-        T.intercalate "\t" ["export", "name", renderNamespace namespace, fromMaybe "" qualifier, op]
-      ExportAll qualifier (OpName op) ->
-        T.intercalate "\t" ["export", "all", fromMaybe "" qualifier, op]
-      ExportSome qualifier (OpName op) kids ->
-        T.intercalate "\t" (["export", "some", fromMaybe "" qualifier, op] <> [kid | OpName kid <- kids])
-      ExportModule m -> "export\tmodule\t" <> m
+      ExportName namespace qualifier op ->
+        ["export", "name", renderNamespace namespace] <> under qualifier [op]
+      ExportAll qualifier op -> ["export", "all"] <> under qualifier [op]
+      ExportSome qualifier op kids ->
+        ["export", "some"] <> under qualifier (op : kids)
+      ExportModule m -> ["export", "module", m]
+    under qualifier ops = fromMaybe "-" qualifier : [op | OpName op <- ops]
     renderImport i =
-      T.intercalate
-        "\t"
-        ["import", importModule i, if importQualified i then "qualified" else "open", importAlias i]
+      ["import", importModule i, qualification i, importAlias i]
         : case importNames i of
           Nothing -> []
           Just (hiding, items) ->
-            (if hiding then "list\thiding" else "list\tonly") : fmap renderItem items
+            ["list", if hiding then "hiding" else "only"]
+              : fmap renderItem items
+    qualification i = if importQualified i then "qualified" else "open"
     renderItem = \case
-      ImportedName (OpName op) -> "item\tname\t" <> op
-      ImportedAll (OpName op) -> "item\tall\t" <> op
-      ImportedSome (OpName op) kids ->
-        T.intercalate "\t" ("item" : "some" : op : [kid | OpName kid <- kids])
+      ImportedName (OpName op) -> ["item", "name", op]
+      ImportedAll (OpName op) -> ["item", "all", op]
+      ImportedSome op kids -> "item" : "some" : [k | OpName k <- op : kids]
 
 -- | Parse what 'renderSummaries' rendered.
 parseSummaries :: [Text] -> Maybe (Maybe (NonEmpty ModuleSummary))
@@ -286,7 +296,7 @@ parseSummaries = \case
         let (these, more) = break (== "configuration") rest
          in (these :) <$> configurations more
       _ -> Nothing
-    parseSummary = go empty . fmap (T.splitOn "\t")
+    parseSummary = go empty . fmap T.words
       where
         empty = ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty
     go s = \case
@@ -311,7 +321,7 @@ parseSummaries = \case
         list <- importList listed
         go s{summaryImports = Import m qualified alias list : summaryImports s} rest'
       ("fixity" : fields) : rest -> do
-        (key, fixity) <- parseFixity (T.intercalate "\t" fields)
+        (key, fixity) <- parseFixity fields
         go s{summaryFixities = Map.insert key fixity (summaryFixities s)} rest
       ["defines", namespace, op] : rest -> do
         n <- parseNamespace namespace
@@ -323,7 +333,7 @@ parseSummaries = \case
         go s{summaryListedMembers = Map.insert (OpName parent) (names kids) (summaryListedMembers s)} rest
       _ -> Nothing
     names = Set.fromList . fmap OpName
-    qualifier q = if T.null q then Nothing else Just q
+    qualifier q = if q == "-" then Nothing else Just q
     exportItem = \case
       ["name", namespace, q, op] ->
         (\n -> ExportName n (qualifier q) (OpName op)) <$> parseNamespace namespace
@@ -357,59 +367,51 @@ cachedInstalled cache = quietly Nothing $ do
   readIfPresent (at cache ["installed", tokenOf cache]) T.lines >>= \case
     Nothing -> pure Nothing
     Just ls -> do
-      let written =
-            [(T.unpack path, stamp) | ["db", path, stamp] <- fmap fields ls]
+      let (databases, packages) = span (T.isPrefixOf "db ") ls
+          written =
+            [ (T.unpack (T.drop 1 path), stamp)
+            | Just database <- fmap (T.stripPrefix "db ") databases,
+              let (stamp, path) = T.breakOn " " database
+            ]
       still <- traverse unchanged written
       pure $
         if not (null written) && and still
-          then traverse installedFrom [l | ("pkg" : l) <- fmap fields ls]
+          then installedFrom packages
           else Nothing
   where
-    unchanged (path, stamp) =
-      quietly False ((== stamp) . T.pack . show <$> getModificationTime path)
+    unchanged (path, stamp) = quietly False ((== stamp) <$> stampOf path)
     installedFrom = \case
-      name : version : modules : reexports : dirs -> do
-        pairs <- traverse reexport (T.words reexports)
-        pure
-          InstalledPackage
-            { ipName = name,
-              ipVersion = version,
-              ipModules = T.words modules,
-              ipReexports = pairs,
-              ipImportDirs = fmap T.unpack dirs
-            }
-      _ -> Nothing
-    reexport pair = case T.splitOn "=" pair of
-      [visible, original] -> Just (visible, original)
-      _ -> Nothing
-    fields = T.splitOn "\t"
+      [] -> Just []
+      l : rest -> case T.words l of
+        "package" : name : version : modules ->
+          let (owned, more) = break (T.isPrefixOf "package ") rest
+              reexports = [(v, o) | ["reexport", v, o] <- fmap T.words owned]
+              dirs = [T.unpack d | Just d <- fmap (T.stripPrefix "dir ") owned]
+           in (InstalledPackage name version modules reexports dirs :)
+                <$> installedFrom more
+        _ -> Nothing
 
 -- | Remember a package the compiler can see, stamped so that a later run
 -- can tell whether it still does.
 storeInstalled :: Cache -> Installed -> IO ()
 storeInstalled cache found
-  | null (installedDatabases found) = pure ()
+  | null databases = pure ()
   | otherwise = quietly () $ do
-      stamps <- traverse stamped (installedDatabases found)
-      writeAtomically (at cache ["installed", tokenOf cache]) . T.unlines $
-        [T.intercalate "\t" ["db", T.pack path, stamp] | (path, stamp) <- stamps]
-          <> [ T.intercalate "\t" $
-                 [ "pkg",
-                   ipName p,
-                   ipVersion p,
-                   T.unwords (ipModules p),
-                   T.unwords
-                     [ visible <> "=" <> original
-                     | (visible, original) <- ipReexports p
-                     ]
-                 ]
-                   <> fmap T.pack (ipImportDirs p)
-             | p <- installedPackages found
-             ]
+      stamps <- traverse stampOf databases
+      writeAtomically (at cache ["installed", tokenOf cache]) . renderLines $
+        [["db", stamp, T.pack path] | (path, stamp) <- zip databases stamps]
+          <> concatMap packageLines (installedPackages found)
   where
-    stamped path = do
-      stamp <- T.pack . show <$> getModificationTime path
-      pure (path, stamp)
+    databases = installedDatabases found
+    packageLines p =
+      ("package" : ipName p : ipVersion p : ipModules p)
+        : [["reexport", v, o] | (v, o) <- ipReexports p]
+          <> [["dir", T.pack dir] | dir <- ipImportDirs p]
+
+-- | When a package database last changed, as one field.
+stampOf :: FilePath -> IO Text
+stampOf path =
+  T.pack . formatTime defaultTimeLocale "%s%Q" <$> getModificationTime path
 
 -- | Whether asking @cabal@ to solve this plan again has already been tried
 -- and left the plan exactly as before.
@@ -436,21 +438,23 @@ storeFutileFetch :: Cache -> [Text] -> IO ()
 storeFutileFetch cache =
   writeAtomically (at cache ["fetches", tokenOf cache]) . T.unlines
 
--- | Render a fixity declaration as 'Text'.
-renderFixity :: ((Namespace, OpName), Fixity) -> Text
+-- | Render a fixity declaration as fields.
+renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
 renderFixity ((namespace, OpName op), Fixity direction precedence) =
-  T.intercalate
-    "\t"
-    [op, renderNamespace namespace, renderDirection direction, T.pack (show precedence)]
+  [ op,
+    renderNamespace namespace,
+    renderDirection direction,
+    T.pack (show precedence)
+  ]
   where
     renderDirection = \case
       LeftAssoc -> "l"
       RightAssoc -> "r"
       NoAssoc -> "n"
 
--- | Parse a fixity declaration from 'Text'.
-parseFixity :: Text -> Maybe ((Namespace, OpName), Fixity)
-parseFixity line = case T.splitOn "\t" line of
+-- | Parse a fixity declaration from fields.
+parseFixity :: [Text] -> Maybe ((Namespace, OpName), Fixity)
+parseFixity = \case
   [op, namespace, direction, precedence] -> do
     n <- parseNamespace namespace
     d <- parseDirection direction
@@ -522,6 +526,10 @@ tokenOf :: Cache -> Text
 tokenOf = \case
   Cache _ (PlanToken token) -> token
   NoCache -> ""
+
+-- | Render lines of fields, the fields separated by spaces.
+renderLines :: [[Text]] -> Text
+renderLines = T.unlines . fmap T.unwords
 
 -- | Read and parse a file, or 'Nothing' where there is none to read.
 readIfPresent :: Maybe FilePath -> (Text -> a) -> IO (Maybe a)
