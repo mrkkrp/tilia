@@ -20,11 +20,11 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc)
 import Tilia.Comments
   ( Comment (..),
+    asOrdinary,
     bracketed,
     carriedOnFrom,
     closesItself,
     commentTrailing,
-    escapeTrigger,
     widenTrigger,
   )
 import Tilia.Comments.Attach (attachComments)
@@ -39,7 +39,7 @@ import Tilia.Render.Expression (hsCmd, hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
-import Tilia.Source (comments)
+import Tilia.Source (Lines, comments, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
 
@@ -80,7 +80,11 @@ renderConfiguration settings parsed =
   )
   where
     hsMod = pmModule parsed
-    (haddocks, loose') = splitHaddocks (pmGathered parsed) (comments (pmSource parsed))
+    (haddocks, loose') =
+      splitHaddocks
+        (sourceLines (pmSource parsed))
+        (pmGathered parsed)
+        (comments (pmSource parsed))
     plain = heldOff haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
@@ -185,19 +189,21 @@ knot =
 
 -- | Separate the comments the syntax tree also knows about from the rest.
 splitHaddocks ::
+  -- | The module's lines.
+  Lines ->
   -- | What the tree holds.
   Gathered ->
   -- | Every comment in the module.
   [Comment] ->
   -- | The ones the tree carries, and the ones it does not.
   ([Comment], [Comment])
-splitHaddocks found = foldr sort' ([], [])
+splitHaddocks ls found = foldr sort' ([], [])
   where
     inTree = Set.fromList (fmap startPoint (haddockSpans found))
     sort' c (docs, rest)
       | startPoint (commentSpan c) `Set.member` inTree =
           (widenTrigger c : docs, rest)
-      | otherwise = (docs, escapeTrigger c : rest)
+      | otherwise = (docs, asOrdinary ls c <> rest)
 
 -- | Index comments by where they begin.
 indexOn :: [Comment] -> Map (Int, Int) Comment

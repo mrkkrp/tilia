@@ -16,6 +16,7 @@ module Tilia.Comments
     carriedOnFrom,
     widenTrigger,
     escapeTrigger,
+    asOrdinary,
     triggerEscaped,
     opensHaddock,
     commentsWithin,
@@ -114,28 +115,33 @@ commentsOf ls loose annotated =
 
 -- | Build a comment from a token and the span it occupied.
 mkComment :: Lines -> GHC.RealSrcSpan -> GHC.EpaCommentTok -> Comment
-mkComment ls spn tok =
+mkComment ls spn tok = case tok of
+  GHC.EpaLineComment t -> commentAt ls s LineComment (T.pack t)
+  GHC.EpaBlockComment t -> commentAt ls s BlockComment (T.pack t)
+  GHC.EpaDocComment _ -> commentAt ls s DocComment (sliceSpan (lineTexts ls) s)
+  GHC.EpaDocOptions t -> commentAt ls s LineComment (T.pack t)
+  where
+    s = spanOfReal spn
+
+-- | Build a comment of this style from the span it occupied and its text.
+commentAt :: Lines -> Span -> CommentStyle -> Text -> Comment
+commentAt ls spn style raw =
   Comment
-    { commentSpan = spanOfReal spn,
+    { commentSpan = spn,
       commentBody = normalizeBody startColumn style raw,
       commentStyle = style,
       commentAbove = above,
       commentCodeBeforeStopsAt = codeBeforeStopsAt,
       commentFollowed = followed,
       commentGapAbove = above == BlankLine,
-      commentGapBelow = blankAt (GHC.srcSpanEndLine spn + 1) ls
+      commentGapBelow = blankAt (spanEndLine spn + 1) ls
     }
   where
-    (style, raw) = case tok of
-      GHC.EpaLineComment s -> (LineComment, T.pack s)
-      GHC.EpaBlockComment s -> (BlockComment, T.pack s)
-      GHC.EpaDocComment _ -> (DocComment, sliceSpan (lineTexts ls) spn)
-      GHC.EpaDocOptions s -> (LineComment, T.pack s)
-    startColumn = maybe 0 (`offsetOf` GHC.srcSpanStartCol spn) openingLine
-    openingLine = lineAt (GHC.srcSpanStartLine spn) ls
+    startColumn = maybe 0 (`offsetOf` spanStartColumn spn) openingLine
+    openingLine = lineAt (spanStartLine spn) ls
     lineAbove
-      | GHC.srcSpanStartLine spn <= 1 = Nothing
-      | otherwise = lineAt (GHC.srcSpanStartLine spn - 1) ls
+      | spanStartLine spn <= 1 = Nothing
+      | otherwise = lineAt (spanStartLine spn - 1) ls
     above = case lineAbove of
       Nothing -> TopOfFile
       Just l
@@ -145,8 +151,8 @@ mkComment ls spn tok =
       l <- openingLine
       let before' = T.stripEnd (T.take startColumn l)
       if T.null before' then Nothing else Just (columnOf l (T.length before'))
-    followed = case lineAt (GHC.srcSpanEndLine spn) ls of
-      Just l -> not (T.all isSpace (T.drop (offsetOf l (GHC.srcSpanEndCol spn)) l))
+    followed = case lineAt (spanEndLine spn) ls of
+      Just l -> not (T.all isSpace (T.drop (offsetOf l (spanEndColumn spn)) l))
       Nothing -> False
 
 -- | A comment, with its text read from the module as written rather than
@@ -204,7 +210,7 @@ spaceAfterDashes _ t = case T.stripPrefix "--" t of
       | otherwise -> "-- " <> rest
 
 -- | The text a span covers.
-sliceSpan :: [Text] -> GHC.RealSrcSpan -> Text
+sliceSpan :: [Text] -> Span -> Text
 sliceSpan sourceLines spn =
   T.intercalate "\n" (zipWith clip [startLine ..] covered)
   where
@@ -214,10 +220,10 @@ sliceSpan sourceLines spn =
       (if n == startLine then T.drop (offsetOf l startCol) else id)
         . (if n == endLine then T.take (offsetOf l endCol) else id)
         $ l
-    startLine = GHC.srcSpanStartLine spn
-    endLine = GHC.srcSpanEndLine spn
-    startCol = GHC.srcSpanStartCol spn
-    endCol = GHC.srcSpanEndCol spn
+    startLine = spanStartLine spn
+    endLine = spanEndLine spn
+    startCol = spanStartColumn spn
+    endCol = spanEndColumn spn
 
 -- | Put a comment back together as it will appear in the output.
 renderComment :: Comment -> Text
@@ -318,6 +324,37 @@ escapeTrigger c = case commentStyle c of
           triggered rest ->
             T.take n l <> (if T.null gap then " " else gap) <> "\\" <> rest
       _ -> l
+
+-- | A doc comment the compiler did not attach to anything, as the ordinary
+-- comments the next pass reads once its trigger is escaped.
+--
+-- Nothing joins the lines of a @--@ one any more, so each line is a comment
+-- of its own, placed on its own account.
+asOrdinary :: Lines -> Comment -> [Comment]
+asOrdinary ls c
+  | commentStyle c == DocComment,
+    not (bracketed c),
+    not (singleLine c) =
+      fmap escapeTrigger (mapMaybe lineOf [spanStartLine s .. spanEndLine s])
+  | otherwise = [escapeTrigger c]
+  where
+    s = commentSpan c
+    lineOf n = do
+      l <- lineAt n ls
+      let piece =
+            Span
+              { spanStartLine = n,
+                spanStartColumn =
+                  if n == spanStartLine s
+                    then spanStartColumn s
+                    else columnOf l (T.length (T.takeWhile isSpace l)),
+                spanEndLine = n,
+                spanEndColumn =
+                  if n == spanEndLine s
+                    then spanEndColumn s
+                    else columnOf l (T.length l)
+              }
+      pure (commentAt ls piece DocComment (sliceSpan (lineTexts ls) piece))
 
 -- | Has this comment been through 'escapeTrigger'?
 --

@@ -1,9 +1,9 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5147 formatted.
+5202 examples, 5148 formatted.
 
 ==========================================================================
-broken (3)
+broken (2)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -73,23 +73,6 @@ dlist-1.0/Data/DList.hs
      #endif
      
          -- * Conversion
-
-idris-1.3.4/src/Idris/AbsSyntax.hs
-    formatting is non-idempotent
-    --- first pass
-    +++ second pass
-    @@ -1517,9 +1517,8 @@
-         mkShadow (NS x s) = NS (mkShadow x) s
-     
-         en ::
-    -      Int -- \^ The quotation level - only transform terms that are used, not terms
-    -          -- that are merely mentioned.
-    -      ->
-    +      Int -> -- \^ The quotation level - only transform terms that are used, not terms
-    +      -- that are merely mentioned.
-           PTerm ->
-           PTerm
-         en 0 (PLam fc n nfc t s)
 
 ==========================================================================
 does-not-parse (1)

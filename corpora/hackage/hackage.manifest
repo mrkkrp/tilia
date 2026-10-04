@@ -2658,7 +2658,7 @@ formatted       54ee13488588  idris-1.3.4/src/IRTS/Portable.hs
 formatted       c092168371c9  idris-1.3.4/src/IRTS/Simplified.hs
 formatted       c149d514359b  idris-1.3.4/src/IRTS/System.hs
 formatted       0b84ce237bb8  idris-1.3.4/src/Idris/ASTUtils.hs
-broken          4ab968445573  idris-1.3.4/src/Idris/AbsSyntax.hs
+formatted       1ee21e344f93  idris-1.3.4/src/Idris/AbsSyntax.hs
 formatted       5d7408d71382  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
 formatted       9f032fa98b74  idris-1.3.4/src/Idris/Apropos.hs
 formatted       d0256ad5e06e  idris-1.3.4/src/Idris/CaseSplit.hs
