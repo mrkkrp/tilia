@@ -34,6 +34,25 @@ spec = do
         ]
         `shouldBe` Just ["/opt/ghc/lib/one", "/opt/ghc/lib/two"]
 
+    it "keeps a module another package holds apart, with its name there" $
+      fmap
+        (\p -> (ipModules p, ipReexports p))
+        ( fromFields . Map.fromList $
+            [ ("name", "ghc-prim"),
+              ("version", "0.13.1"),
+              ( "exposed-modules",
+                "GHC.Prim from ghc-internal-9.1401.0:GHC.Internal.Prim,\n\
+                \GHC.Types from ghc-internal-9.1401.0:GHC.Internal.Types, GHC.Own"
+              )
+            ]
+        )
+        `shouldBe` Just
+          ( ["GHC.Own"],
+            [ ("GHC.Prim", "GHC.Internal.Prim"),
+              ("GHC.Types", "GHC.Internal.Types")
+            ]
+          )
+
     it "says nothing of a record that names no package" $
       fromFields (Map.fromList [("import-dirs", "/opt/ghc/lib")])
         `shouldBe` Nothing

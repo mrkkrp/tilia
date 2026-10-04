@@ -129,7 +129,6 @@ import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
-import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.ByHand (byHandFixities, hscFixities)
 import Tilia.Fixity.Cabal
   ( cabalFileAtTop,
@@ -140,6 +139,7 @@ import Tilia.Fixity.Cabal
     sourceDirs,
   )
 import Tilia.Fixity.Cache
+import Tilia.Fixity.HiFile (primopFixities)
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
 import Tilia.Parser
@@ -887,19 +887,14 @@ newResolverVia caching routes plan = do
   interfacesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
   let interfaceOf modName =
-        memoized flights interfacesRead Nothing modName $ do
-          found <- case Map.lookup modName interfaces of
-            Nothing -> pure Nothing
-            Just (_, path) ->
-              bracket_ (waitQSem reading) (signalQSem reading) $
-                readInterface modName path
-          -- Being listed is not the same as being readable: @ghc-pkg@ names
-          -- @GHC.Prim@ among @ghc-prim@'s modules and there is no file at
-          -- the path that implies. So the table answers for a module with
-          -- nothing to read, however it came to have nothing.
-          pure $ case found of
-            Just _ -> found
-            Nothing -> asInterface <$> Map.lookup modName builtinFixities
+        memoized flights interfacesRead Nothing modName $
+          case Map.lookup modName primopFixities of
+            Just declared -> pure (Just (asInterface declared))
+            Nothing -> case Map.lookup modName interfaces of
+              Nothing -> pure Nothing
+              Just (_, path) ->
+                bracket_ (waitQSem reading) (signalQSem reading) $
+                  readInterface modName path
   let workings =
         Workings
           { wkRoutes = routes,
@@ -911,7 +906,9 @@ newResolverVia caching routes plan = do
             wkReach = reach,
             wkSummariesOf = summariesOf,
             wkModuleInArchive = moduleInArchive,
-            wkGenerated = generatedModules plan
+            wkGenerated = generatedModules plan,
+            wkReexported =
+              Map.fromList [pair | i <- installed, pair <- ipReexports i]
           }
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
@@ -1101,7 +1098,10 @@ data Workings = Workings
     wkModuleInArchive :: FilePath -> Text -> IO (Maybe InArchive),
     -- | The modules @cabal@ writes itself, which are therefore in no
     -- package's sources. See 'generatedModules'.
-    wkGenerated :: Set Text
+    wkGenerated :: Set Text,
+    -- | The modules an installed package exposes that another one holds,
+    -- each with its name there.
+    wkReexported :: Map Text Text
   }
 
 -- | What reading a module establishes, by the cheapest route that settles
@@ -1125,12 +1125,11 @@ resolveModule
       wkReach,
       wkSummariesOf,
       wkModuleInArchive,
-      wkGenerated
+      wkGenerated,
+      wkReexported
     }
   visiting
   modName
-    | Just builtin <- Map.lookup modName builtinFixities =
-        settledAs builtin <$> firstAnswer (fmap taking wkRoutes)
     | Just path <- Map.lookup modName wkLocal,
       writtenForHsc path =
         pure (hscDeclares modName)
@@ -1139,6 +1138,9 @@ resolveModule
           Nothing -> pure unreadable
           Just source ->
             fromSummaries (wkReach visiting') modName =<< wkSummariesOf modName source
+    | Just original <- Map.lookup modName wkReexported,
+      Map.notMember modName wkInterfaces =
+        wkReach visiting' original
     | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
     where
       visiting' = Set.insert modName visiting

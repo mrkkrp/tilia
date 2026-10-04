@@ -359,19 +359,37 @@ database = around withIsolatedCache $ do
     withDatabase $ \db -> do
       storeInstalled cache (Installed [containers, quiet] [db])
       cachedInstalled cache `shouldReturn` Just [containers, quiet]
+
+  it "carries what a package exposes that another one holds" $ \cache ->
+    withDatabase $ \db -> do
+      storeInstalled cache (Installed [prim] [db])
+      cachedInstalled cache `shouldReturn` Just [prim]
   where
     containers =
       InstalledPackage
         { ipName = "containers",
           ipVersion = "0.7",
           ipModules = ["Data.Map", "Data.Map.Strict", "Data.Set"],
+          ipReexports = [],
           ipImportDirs = ["/nowhere/containers-0.7"]
+        }
+    prim =
+      InstalledPackage
+        { ipName = "ghc-prim",
+          ipVersion = "0.13.1",
+          ipModules = [],
+          ipReexports =
+            [ ("GHC.Prim", "GHC.Internal.Prim"),
+              ("GHC.Types", "GHC.Internal.Types")
+            ],
+          ipImportDirs = ["/nowhere/ghc-prim-0.13.1"]
         }
     quiet =
       InstalledPackage
         { ipName = "rts",
           ipVersion = "1.0",
           ipModules = [],
+          ipReexports = [],
           ipImportDirs = []
         }
 

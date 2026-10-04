@@ -1076,12 +1076,21 @@ withPlan plan = do
         Map.lookup (InTerms, OpName "<+>") fixities `shouldBe` Just (Fixity RightAssoc 6)
 
   describe "boot packages" $ do
-    it "answers for Prelude from the built-in table" $
+    it "answers for Prelude from its interface" $
       needs resolve "Prelude" $ \fixities -> do
         Map.lookup (InTerms, OpName "$") fixities `shouldBe` Just (Fixity RightAssoc 0)
         Map.lookup (InTerms, OpName ">>=") fixities `shouldBe` Just (Fixity LeftAssoc 1)
         Map.lookup (InTerms, OpName ".") fixities `shouldBe` Just (Fixity RightAssoc 9)
-        Map.lookup (InTerms, OpName ":") fixities `shouldBe` Just (Fixity RightAssoc 5)
+
+    it "answers for the primitive operations, which have no interface" $
+      needs resolve "GHC.Exts" $ \fixities -> do
+        Map.lookup (InTerms, OpName "+#") fixities
+          `shouldBe` Just (Fixity LeftAssoc 6)
+        Map.lookup (InTerms, OpName "seq") fixities
+          `shouldBe` Just (Fixity RightAssoc 0)
+
+    it "answers for a module a package exposes but another one holds" $
+      needs resolve "GHC.Num.Integer" (\_ -> pure ())
 
     it "answers for Control.Applicative" $
       needs resolve "Control.Applicative" $ \fixities ->

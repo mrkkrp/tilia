@@ -30,9 +30,9 @@ import GHC.Hs.Extension (GhcPs)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
 import Test.Hspec
+import Tilia.BootFixities (bootFixities)
 import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
-import Tilia.Fixity.Builtin (builtinFixities)
 import Tilia.Fixity.Interface (Interface (..), readInterface)
 import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
@@ -57,7 +57,7 @@ withPlan plan = do
   resolver <- runIO (newResolver plan)
   let resolve = fixitiesThrough resolver
   own <- runIO ownModules
-  let isShippedModule m = Map.member m builtinFixities
+  let isShippedModule m = Map.member m bootFixities
   dependencies <- runIO (dependenciesOf (not . isShippedModule) plan installed)
   preloaded <- runIO (dependenciesOf isShippedModule plan installed)
   shippedPackages <- runIO compilerShipped
@@ -153,10 +153,10 @@ withPlan plan = do
 ----------------------------------------------------------------------------
 -- The dependencies
 
--- | Where the built-in table and the compiler both hold a fixity for an
+-- | Where the boot table and the compiler both hold a fixity for an
 -- operator and it is not the same fixity.
 --
--- The table in "Tilia.Fixity.Builtin" was written by asking a GHC of one
+-- The table in "Tilia.BootFixities" was written by asking a GHC of one
 -- version what its boot packages export. The tests run against whichever
 -- GHC built the project, which this package supports three of. This is what
 -- says the answer has not moved underneath the table.
@@ -179,7 +179,7 @@ contradicts (modName, interfaceFile) =
           ours /= declared
         ]
   where
-    table = Map.findWithDefault Map.empty modName builtinFixities
+    table = Map.findWithDefault Map.empty modName bootFixities
 
 -- | Every fixity the compiler recorded for a module that reading the
 -- package's source did not produce.
