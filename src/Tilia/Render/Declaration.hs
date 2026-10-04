@@ -65,13 +65,14 @@ declRun grouping ctx style ds =
       | separate previous current = breakOrSpace : render current
       | otherwise = render current
 
-    separate previous current = case grouping of
-      Disregard -> True
-      Respect ->
-        separatedByBlank ctx ended began
-          || commentBetween ctx ended began
-          || isDocumented previous
-          || isDocumented current
+    separate previous current =
+      not (remarkUnder ctx ended began) && case grouping of
+        Disregard -> True
+        Respect ->
+          separatedByBlank ctx ended began
+            || commentBetween ctx ended began
+            || isDocumented previous
+            || isDocumented current
       where
         ended = spanOf (NE.last previous)
         began = spanOf (NE.head current)

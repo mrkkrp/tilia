@@ -20,6 +20,7 @@ module Tilia.Render.Context
 
     -- * What lies between two spans
     commentBetween,
+    remarkUnder,
     separatedByBlank,
 
     -- * Entering the tree
@@ -63,7 +64,13 @@ import Tilia.Fixity
     lookupFixity,
   )
 import Tilia.Render.Layout (Bracing (..))
-import Tilia.Source (Source, SourceType, blankAt, sourceLines)
+import Tilia.Source
+  ( Source,
+    SourceType,
+    blankAt,
+    directivePresentOnLine,
+    sourceLines,
+  )
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -194,9 +201,14 @@ nextPrinted ::
   Maybe Span ->
   Maybe Span
 nextPrinted ctx (Just a) mb@(Just b) =
-  case filter (not . printedAfter) (Map.elems inTheGap) of
+  case printedBetween ctx a b of
     (c : _) -> Just (commentSpan c)
     [] -> mb
+nextPrinted _ _ mb = mb
+
+-- | The comments printed between two spans rather than after the first.
+printedBetween :: Ctx -> Span -> Span -> [Comment]
+printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
   where
     inTheGap =
       Map.takeWhileAntitone (< startPoint b) $
@@ -208,11 +220,24 @@ nextPrinted ctx (Just a) mb@(Just b) =
            )
       where
         s = commentSpan c
-nextPrinted _ _ mb = mb
 
 -- | Is a comment going to be printed between the two spans?
 commentBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
 commentBetween ctx a b = nextPrinted ctx a b /= b
+
+-- | Do the comments printed between the two spans begin right under the
+-- first, with an empty line the author left under one of them and no
+-- preprocessor directive anywhere between?
+remarkUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
+remarkUnder ctx ma@(Just a) mb@(Just b) =
+  not (separatedByBlank ctx ma mb)
+    && not (any directiveAt [spanEndLine a + 1 .. spanStartLine b - 1])
+    && any
+      (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
+      (printedBetween ctx a b)
+  where
+    directiveAt n = directivePresentOnLine n (sourceLines (ctxSource ctx))
+remarkUnder _ _ _ = False
 
 -- | Did the author leave an empty line directly after the first of these?
 separatedByBlank :: Ctx -> Maybe Span -> Maybe Span -> Bool
