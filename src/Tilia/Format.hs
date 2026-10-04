@@ -175,6 +175,7 @@ formatErrorExitCode = \case
     TooManyConfigurations -> 10
     ConfigurationNotParsed{} -> 11
     DirectiveInQuotedText{} -> 12
+    MacroInQuotedText{} -> 12
     RuledOutBranch{} -> 13
     AbortingAlternative{} -> 14
 

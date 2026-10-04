@@ -45,14 +45,16 @@ module Tilia.Cpp.Directives
     blankingFor,
     droppedFor,
     opaqueDirectives,
+    macroLines,
   )
 where
 
-import Data.Char (isSpace)
-import Data.List (sortOn)
+import Data.Char (isAlphaNum, isSpace)
+import Data.List (sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe, maybeToList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
@@ -77,7 +79,10 @@ usesCpp extensions source =
 
 -- | Blank out the directive lines, keeping every branch.
 blankCpp :: Text -> Text
-blankCpp source = blanking [(dLine d, dLastLine d) | d <- directives source] source
+blankCpp source =
+  blanking
+    ([(dLine d, dLastLine d) | d <- directives source] <> [(n, n) | (n, _) <- macroLines source])
+    source
 
 -- | Blank out every branch the macros rule out, and the conditionals that
 -- ask about them.
@@ -104,10 +109,13 @@ branchTaken macros = go 0 . gsGuards
         Just False -> go (i + 1) rest
         Nothing -> Nothing
 
--- | A module with the opaque directives blanked out.
+-- | A module with the opaque directives and the lines using its macros
+-- blanked out.
 withoutOpaque :: Text -> Text
 withoutOpaque source =
-  blanking [(dLine d, dLastLine d) | d <- opaqueDirectives source] source
+  blanking
+    ([(dLine d, dLastLine d) | d <- opaqueDirectives source] <> [(n, n) | (n, _) <- macroLines source])
+    source
 
 -- | Why a module using the preprocessor could not be formatted.
 data CppError
@@ -121,6 +129,9 @@ data CppError
   | -- | A directive written inside a quasi-quote or a multi-line string, its
     -- line, and its keyword.
     DirectiveInQuotedText Int Text
+  | -- | A line using a macro written inside a quasi-quote or a multi-line
+    -- string, its line, and what is written on it.
+    MacroInQuotedText Int Text
   | -- | A branch holding something that a conditional around it, asking the
     -- same question, rules out, and the line of the directive opening it.
     RuledOutBranch Int
@@ -149,6 +160,8 @@ describeCppError = \case
   ConfigurationNotParsed c e -> describeParseError e <> inConfiguration c
   DirectiveInQuotedText n k ->
     "the #" <> k <> " at line " <> T.pack (show n) <> " is inside a quasi-quote or a multi-line string"
+  MacroInQuotedText n t ->
+    t <> " at line " <> T.pack (show n) <> " is inside a quasi-quote or a multi-line string"
   RuledOutBranch n ->
     "the branch at line "
       <> T.pack (show n)
@@ -640,3 +653,56 @@ droppedFor gs i
 -- | The directives that do not introduce configurations.
 opaqueDirectives :: Text -> [Directive]
 opaqueDirectives = filter ((`elem` opaqueKeywords) . dKeyword) . directives
+
+-- | The lines that hold nothing but a use of a function-like macro the
+-- module defines, each with what is written on it.
+--
+-- Only a use written with its parenthesis right after the name counts, since
+-- the printer never writes one so, and what formatting produces must not
+-- become such a line. A use indented other than the code under it, or than
+-- the margin at the end of the module, carries on the code above or is
+-- carried on by the code under it, which a line put back at the level of
+-- that code cannot, unless that code closes a bracket, as the printer
+-- closes a record under its fields.
+macroLines :: Text -> [(Int, Text)]
+macroLines source =
+  [ (n, T.strip l)
+  | (n, l) : below <- tails numbered,
+    not (inDirective n),
+    uses l,
+    case take 1 (filter code below) of
+      (_, l') : _ -> indentation l == indentation l' || closing l'
+      [] -> indentation l == 0
+  ]
+  where
+    numbered = zip [1 ..] (T.lines source)
+    written = directives source
+    inDirective n = any (\d -> dLine d <= n && n <= dLastLine d) written
+    code (n, l) = not (T.null (T.strip l) || inDirective n || uses l)
+    indentation = T.length . T.takeWhile isSpace
+    closing = maybe False ((`elem` ("})]" :: String)) . fst) . T.uncons . T.stripStart
+    uses l = Set.member name defined && enclosed arguments
+      where
+        (name, arguments) = T.span isNameChar (T.strip l)
+    defined =
+      Set.fromList
+        [ name
+        | d <- written,
+          dKeyword d == "define",
+          let (name, rest) = T.span isNameChar (T.stripStart (T.drop (T.length "define") (dText d))),
+          T.isPrefixOf "(" rest
+        ]
+    -- One parenthesized list of arguments, and nothing after it.
+    enclosed arguments =
+      T.isPrefixOf "(" arguments
+        && fmap snd (T.unsnoc arguments) == Just ')'
+        && all (> 0) (init depths)
+        && last depths == 0
+      where
+        depths = drop 1 (scanl deeper 0 (T.unpack arguments))
+        deeper :: Int -> Char -> Int
+        deeper k = \case
+          '(' -> k + 1
+          ')' -> k - 1
+          _ -> k
+    isNameChar c = isAlphaNum c || c == '_'

@@ -1,6 +1,6 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5148 formatted.
+5202 examples, 5149 formatted.
 
 ==========================================================================
 broken (2)
@@ -198,11 +198,8 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (14)
+declined (13)
 ==========================================================================
-
-QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
-    QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs:315:13-14: parse error on input `::', in the configuration taking #ifndef NO_TYPEABLE, then #ifndef NO_SAFE_HASKELL, then #ifndef NO_TIMEOUT, then #if defined(MIN_VERSION_base), then #ifndef NO_DEEPSEQ, then #ifdef NO_TIMEOUT
 
 cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
     cryptonite-0.30/Crypto/Random/Entropy/Windows.hs:64:16-28: parse error on input `WINDOWS_CCONV', in the configuration taking #if defined(ARCH_X86)

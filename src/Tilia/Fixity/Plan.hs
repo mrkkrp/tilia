@@ -129,7 +129,7 @@ import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
-import Tilia.Fixity.ByHand (byHandFixities, hscFixities)
+import Tilia.Fixity.ByHand (hscFixities)
 import Tilia.Fixity.Cabal
   ( cabalFileAtTop,
     containedModules,
@@ -1180,8 +1180,6 @@ resolveModule
       answered established
         | settlesEverything established = established
         | Set.member modName wkGenerated = settledAs Map.empty established
-        | Just declared <- Map.lookup modName byHandFixities =
-            settledAs (inBothNamespaces declared) established
         | otherwise = established
       throughCache key =
         recalled

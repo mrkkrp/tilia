@@ -176,6 +176,12 @@
   going on with a backslash under that empty line too, rather than right
   under the `#define`, where it became part of the definition. [PR
   111](https://github.com/mrkkrp/tilia/pull/111).
+* Put a line that holds nothing but a use of a function-like macro the
+  module defines, such as `WITNESSES(:: [Witness])` among the fields of a
+  record, back as it was written, rather than read it as code. A module
+  such as `Test.QuickCheck.Property` is now formatted, and the fixities it
+  declares are read from its source rather than written into Tilia. [PR
+  111](https://github.com/mrkkrp/tilia/pull/111).
 
 ## Tilia 0.0.2.0
 
