@@ -187,13 +187,24 @@ namesAnEdition t = any spelledTheSame [minBound .. maxBound]
     spelledTheSame edition = t == T.pack (show (edition :: Language))
 
 -- | A whole module.
-hsModule :: Ctx -> [HeaderPragma] -> HsModule GhcPs -> Doc
-hsModule ctx pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
+hsModule ::
+  -- | The context.
+  Ctx ->
+  -- | The pragmas the header hoists.
+  [HeaderPragma] ->
+  -- | The empty line that opens the imports, where the comments written
+  -- above it stay.
+  Maybe Int ->
+  -- | The module.
+  HsModule GhcPs ->
+  Doc
+hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
   headerLayout $
     pragmaBlock pragmas
       <> hardBreak
       <> moduleLine
       <> hardBreak
+      <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
       <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
       <> hardBreak
       <> declarationLayout (decls ctx Free hsmodDecls)

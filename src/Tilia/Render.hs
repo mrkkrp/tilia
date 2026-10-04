@@ -8,13 +8,14 @@ module Tilia.Render
 where
 
 import Data.Choice (fromBool)
+import Data.IntMap.Strict qualified as IntMap
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, maybeToList)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Hs (AnnsModule (..), HsModule (..), XModulePs (..), anns)
+import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc)
@@ -39,9 +40,9 @@ import Tilia.Render.Expression (hsCmd, hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
-import Tilia.Source (Lines, comments, sourceLines)
+import Tilia.Source (Lines, blankAt, comments, sourceLines)
 import Tilia.Span
-import Tilia.Span.Ghc (spanOf, spanOfSrcSpan, tokenSpan)
+import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
 
 -- | What the printer needs to know about the module beyond its text.
 data RenderConfig = RenderConfig
@@ -75,7 +76,7 @@ renderConfiguration :: RenderConfig -> ParsedModule -> (Doc, [Comment])
 renderConfiguration settings parsed =
   ( prologue (pmPrologue parsed)
       <> stackHeader
-      <> hsModule ctx pragmas (sorted hsMod),
+      <> hsModule ctx pragmas opening (sorted hsMod),
     loose
   )
   where
@@ -88,7 +89,9 @@ renderConfiguration settings parsed =
     plain = heldOff haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
-    loose = openingImports hsMod pragmas (heldOffModuleDoc hsMod haddocks pragmas uncovered)
+    held = heldOffModuleDoc hsMod haddocks pragmas uncovered
+    opening = importsOpening (sourceLines (pmSource parsed)) held hsMod
+    loose = fmap (belowOpening opening) held
     implicitPrelude =
       fromBool (Set.member ImplicitPrelude (rcExtensions settings))
     sorted m =
@@ -171,25 +174,32 @@ heldOffModuleDoc hsMod haddocks pragmas cs
       _ -> Nothing
     startOfModuleLine = spanStartLine <$> (spanOf =<< hsmodName hsMod)
 
--- | Leave the empty line above the imports to the module rather than to the
--- comments written right on top of the first import, which sorting carries
--- along with it.
-openingImports :: HsModule GhcPs -> [HeaderPragma] -> [Comment] -> [Comment]
-openingImports hsMod pragmas cs
-  | (firstImport : _) <- hsmodImports hsMod,
-    Just first <- spanStartLine <$> spanOf firstImport,
-    (before', c : after') <- break (onTop first) cs,
-    not (any commentGapBelow (filter (onTop first) (c : after'))) =
-      before' <> (c{commentGapAbove = False} : after')
-  | otherwise = cs
+-- | The empty line right above the first import, or above the comments
+-- written on top of it.
+importsOpening :: Lines -> [Comment] -> HsModule GhcPs -> Maybe Int
+importsOpening ls cs hsMod =
+  climb . pred . spanStartLine =<< spanOf =<< listToMaybe (hsmodImports hsMod)
   where
-    onTop first c =
-      headerEnd < spanStartLine (commentSpan c)
-        && spanEndLine (commentSpan c) < first
-    headerEnd = maximum (0 : whereLine <> pragmaLines)
-    whereLine = case hsmodExt hsMod of
-      XModulePs{hsmodAnn = ann} -> maybeToList (spanEndLine <$> tokenSpan (am_where (anns ann)))
-    pragmaLines = fmap (spanEndLine . hpSpan) pragmas
+    climb n
+      | blankAt n ls = Just n
+      | otherwise = climb . pred =<< IntMap.lookup n onTheirOwnLines
+    onTheirOwnLines =
+      IntMap.fromList
+        [ (spanEndLine s, spanStartLine s)
+        | c <- cs,
+          not (commentTrailing c),
+          let s = commentSpan c
+        ]
+
+-- | Leave the empty line above the comments written on top of the first
+-- import at the top of the imports, rather than carry it along when sorting
+-- moves that import.
+belowOpening :: Maybe Int -> Comment -> Comment
+belowOpening opening c
+  | Just l <- opening,
+    spanStartLine (commentSpan c) == l + 1 =
+      c{commentGapAbove = False}
+  | otherwise = c
 
 -- | The lines above the module, put back exactly as they were written.
 prologue :: [Text] -> Doc

@@ -168,6 +168,10 @@
   sorting moves the first import further down, rather than carry it into
   the imports with a comment written right on top of that import. [Issue
   92](https://github.com/mrkkrp/tilia/issues/92).
+* Keep a comment that an empty line sets apart from the first import, such
+  as a heading over all the imports, at the top of the imports when sorting
+  moves that import further down, rather than move it along. [Issue
+  92](https://github.com/mrkkrp/tilia/issues/92).
 
 ## Tilia 0.0.2.0
 
