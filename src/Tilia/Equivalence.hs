@@ -406,8 +406,8 @@ opaque x y = case dataTypeName (dataTypeOf x) of
         <> name
         <> " does not expose its structure and is not one of the types this\
            \ knows how to compare. Decide whether it carries meaning and add\
-           \ it to `opaque`, or to `alsoOnlyAboutPlacement` if it is a\
-           \ position."
+           \ it to `opaque`, or to `alsoNotation` if it records only\
+           \ punctuation, position or spelling."
   where
     by :: forall t. (Typeable t, Eq t) => Bool
     by = case (cast x, cast y) of
