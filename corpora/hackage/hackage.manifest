@@ -4434,7 +4434,7 @@ formatted       dd00b52edeb7  tasty-1.5.4/Test/Tasty/Ingredients.hs
 formatted       9e13d30f1aac  tasty-1.5.4/Test/Tasty/Ingredients/Basic.hs
 formatted       0e632c2a7445  tasty-1.5.4/Test/Tasty/Ingredients/ConsoleReporter.hs
 formatted       8c6cf8ae3d46  tasty-1.5.4/Test/Tasty/Ingredients/IncludingOptions.hs
-formatted       095b09b1c146  tasty-1.5.4/Test/Tasty/Ingredients/ListTests.hs
+formatted       5435b848bb7e  tasty-1.5.4/Test/Tasty/Ingredients/ListTests.hs
 formatted       1d78b5b7b6d6  tasty-1.5.4/Test/Tasty/Options.hs
 formatted       3423011ddd29  tasty-1.5.4/Test/Tasty/Options/Core.hs
 formatted       d9fbf61e13b4  tasty-1.5.4/Test/Tasty/Options/Env.hs

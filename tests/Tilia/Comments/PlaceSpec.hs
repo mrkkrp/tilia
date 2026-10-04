@@ -88,6 +88,26 @@ spec = do
                      ("-- and again", Just (Before, continuation))
                    ]
 
+  describe "a comment written right after another one" $ do
+    it "goes where that comment goes" $
+      placedIn [fName, fBody] [] "f {- a -} {- b -} = 1\n"
+        `shouldBe` [ ("{- a -}", Just (After, fName)),
+                     ("{- b -}", Just (After, fName))
+                   ]
+
+    it "does so through several of them" $
+      placedIn [fName, fBodyPastThree] [] "f {- a -} {- b -} {- c -} = 1\n"
+        `shouldBe` [ ("{- a -}", Just (After, fName)),
+                     ("{- b -}", Just (After, fName)),
+                     ("{- c -}", Just (After, fName))
+                   ]
+
+    it "goes its own way where that comment goes before what follows" $
+      placedIn [xOnLineTwo] [] "{- a -} -- b\nx = 1\n"
+        `shouldBe` [ ("{- a -}", Just (Before, xOnLineTwo)),
+                     ("-- b", Just (Before, xOnLineTwo))
+                   ]
+
   describe "a comment with nothing written against it" $ do
     it "goes above the region that starts first after it" $
       placedIn [bar, laterStill] [] "-- note\nbar = 2\n"
@@ -169,6 +189,17 @@ bar' = mkSpan (4, 1) (4, 4)
 -- | The @+ c@ that carries the expression on, lined up with the comment.
 continuation :: Span
 continuation = mkSpan (4, 3) (4, 6)
+
+-- | The @f@ of @f {- a -} {- b -} = 1@, its @1@, and the @1@ of the same
+-- with a third comment.
+fName, fBody, fBodyPastThree :: Span
+fName = mkSpan (1, 1) (1, 2)
+fBody = mkSpan (1, 21) (1, 22)
+fBodyPastThree = mkSpan (1, 29) (1, 30)
+
+-- | The @x@ on the second line.
+xOnLineTwo :: Span
+xOnLineTwo = mkSpan (2, 1) (2, 2)
 
 ----------------------------------------------------------------------------
 -- The snippets that take more than one line

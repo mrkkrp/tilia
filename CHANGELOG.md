@@ -160,6 +160,10 @@
 * Keep a module header with a `DEPRECATED` or `WARNING` pragma written on a
   line of its own on several lines when it has no export list, rather than
   join it onto one line. [Issue 96](https://github.com/mrkkrp/tilia/issues/96).
+* Put a comment written right after another one where that one goes, rather
+  than with what follows, so that a second comment between a name and its
+  `=` no longer moves after the `=`. [Issue
+  94](https://github.com/mrkkrp/tilia/issues/94).
 
 ## Tilia 0.0.2.0
 
