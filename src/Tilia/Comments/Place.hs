@@ -110,12 +110,14 @@ placeComments regions fences comments =
         wider a b = if endPoint a >= endPoint b then a else b
 
     against c
+      | Just placed@(_, After) <- asCommentBefore = Just placed
       | commentTrailing c, Just r <- trailed = Just (r, After)
       | Just r <- continues = Just (r, After)
       | Just r <- next = Just (r, Before)
       | otherwise = Nothing
       where
         here = commentSpan c
+        asCommentBefore = against =<< (`Map.lookup` commentsByEndPoint) =<< stopsAt
         trailed
           | writtenAgainst || not (commentFollowed c) = endingOn (spanStartLine here)
           | otherwise = Nothing
@@ -146,6 +148,8 @@ placeComments regions fences comments =
 
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next
+
+    commentsByEndPoint = Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
 
     enclosingRegions = enclosures regions (fmap commentSpan comments)
     enclosingFences = enclosures fences (fmap commentSpan comments)
