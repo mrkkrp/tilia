@@ -12,6 +12,7 @@ module Tilia.Doc.Internal
     spineAt,
     printedFrom,
     onlySpacing,
+    onlyBreaks,
     Wrapper (..),
     unwrap,
     wrap,
@@ -189,9 +190,12 @@ printedFrom = \case
 
 -- | Nothing but the whitespace that separates one thing from the next.
 onlySpacing :: Doc -> Bool
-onlySpacing = \case
+onlySpacing d = d == DSpace || onlyBreaks d
+
+-- | Nothing but what ends a line, in a broken group at least.
+onlyBreaks :: Doc -> Bool
+onlyBreaks = \case
   DEmpty -> True
-  DSpace -> True
   DBreak -> True
   DSoftBreak -> True
   DHardBreak -> True
