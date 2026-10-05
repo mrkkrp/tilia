@@ -26,6 +26,7 @@ module Tilia.Doc.Internal
   )
 where
 
+import Data.Char (isSpace)
 import Data.List (unsnoc)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
@@ -62,9 +63,9 @@ data Doc
     -- it has nothing left to do.
     DCloseLine
   | -- | Close the line, and leave an empty line under it if told to, unless
-    -- all it holds is an opening bracket, a bar or an equals sign, which
-    -- what follows then shares.
-    DCloseLineUnlessOpened !Bool
+    -- it ends with an opening bracket, a bar or an equals sign, which what
+    -- follows then shares.
+    DCloseLineUnlessAfterOpener !Bool
   | -- | A line break between two lines of text that is being reproduced
     -- rather than laid out.
     DVerbatimBreak !LineStart !TrailingWhitespace
@@ -191,7 +192,7 @@ onlySpacing = \case
   DSoftBreak -> True
   DHardBreak -> True
   DCloseLine -> True
-  DCloseLineUnlessOpened _ -> True
+  DCloseLineUnlessAfterOpener _ -> True
   _ -> False
 
 instance Semigroup Doc where
@@ -389,8 +390,8 @@ go env = \case
     Broken -> breakLine (envIndent env)
   DHoldBack t -> putHeldBack (envIndent env) t . noting False
   DCloseLine -> closeLine (envIndent env)
-  DCloseLineUnlessOpened gap -> \out ->
-    if holdsOnlyOpener out
+  DCloseLineUnlessAfterOpener gap -> \out ->
+    if endsWithOpener out
       then putSpace out
       else go env (gapped <> DCloseLine) out
     where
@@ -584,13 +585,14 @@ atStart out = null (outLines out) && not (hasContent out)
 started :: Out -> Bool
 started out = not (null (outCurrent out)) || linePinned (outLine out)
 
--- | Does the current line hold nothing but an opening bracket, a bar or an
--- equals sign, with nothing held back for its end?
-holdsOnlyOpener :: Out -> Bool
-holdsOnlyOpener out =
+-- | Does the current line end with an opening bracket, a bar or an equals
+-- sign, with nothing held back for its end?
+endsWithOpener :: Out -> Bool
+endsWithOpener out =
   null (outHeldBack out)
-    && T.strip (T.concat (reverse (outCurrent out)))
-      `elem` ["(", "(#", "=", "[", "{", "|"]
+    && case dropWhile (T.all isSpace) (outCurrent out) of
+      t : _ -> T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
+      [] -> False
 
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool

@@ -24,7 +24,7 @@ formatted       04fc0d770103  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/HaskellT
 formatted       aa62f795f1b2  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Misc.hs
 formatted       70bbea601ddf  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Pragmas.hs
 formatted       76490fc3bd40  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Pretty.hs
-formatted       b28a330a89c3  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Primitives.hs
+formatted       92ef6a29a48a  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Primitives.hs
 formatted       cd156da2fa25  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Strict.hs
 formatted       c378a2b833ad  Agda-2.8.0/src/full/Agda/Compiler/ToTreeless.hs
 formatted       0abe92b8f16f  Agda-2.8.0/src/full/Agda/Compiler/Treeless/AsPatterns.hs
@@ -497,7 +497,7 @@ formatted       c37d63683cf0  ShellCheck-0.11.0/src/ShellCheck/ASTLib.hs
 formatted       6921e8e68c61  ShellCheck-0.11.0/src/ShellCheck/Analytics.hs
 formatted       a37e7d6ad771  ShellCheck-0.11.0/src/ShellCheck/Analyzer.hs
 formatted       0df96a3d2318  ShellCheck-0.11.0/src/ShellCheck/AnalyzerLib.hs
-formatted       df42ca91442e  ShellCheck-0.11.0/src/ShellCheck/CFG.hs
+formatted       5581b665d94d  ShellCheck-0.11.0/src/ShellCheck/CFG.hs
 formatted       32473906ac31  ShellCheck-0.11.0/src/ShellCheck/CFGAnalysis.hs
 formatted       64df5efa4dca  ShellCheck-0.11.0/src/ShellCheck/Checker.hs
 formatted       866fd2765d8c  ShellCheck-0.11.0/src/ShellCheck/Checks/Commands.hs
@@ -2394,7 +2394,7 @@ formatted       f6dcbd2ed311  hledger-1.52.1/Hledger/Cli.hs
 formatted       367c43f7a331  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       8da9d899b517  hledger-1.52.1/Hledger/Cli/Anon.hs
 formatted       e31e60fd4fee  hledger-1.52.1/Hledger/Cli/CliOptions.hs
-formatted       953707a3b0cb  hledger-1.52.1/Hledger/Cli/Commands.hs
+formatted       18cbd7746e29  hledger-1.52.1/Hledger/Cli/Commands.hs
 formatted       982029c1f001  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       17bf0339577c  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
 formatted       811e3be17b10  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
@@ -3501,7 +3501,7 @@ formatted       9ac8d5c64df2  postgrest-9.0.1/src/PostgREST/Query/SqlFragment.hs
 formatted       5f4cbf20b7f3  postgrest-9.0.1/src/PostgREST/Query/Statements.hs
 formatted       7d83276a4311  postgrest-9.0.1/src/PostgREST/RangeQuery.hs
 formatted       4cecd3055b78  postgrest-9.0.1/src/PostgREST/Request/ApiRequest.hs
-formatted       ada16e51401b  postgrest-9.0.1/src/PostgREST/Request/DbRequestBuilder.hs
+formatted       d7ec7858bc5d  postgrest-9.0.1/src/PostgREST/Request/DbRequestBuilder.hs
 formatted       fc3632173741  postgrest-9.0.1/src/PostgREST/Request/Parsers.hs
 formatted       8e710c5836da  postgrest-9.0.1/src/PostgREST/Request/Preferences.hs
 formatted       1353ba00b6c3  postgrest-9.0.1/src/PostgREST/Request/Types.hs
