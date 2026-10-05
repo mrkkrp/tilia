@@ -7,7 +7,6 @@
 * [Formatting CPP](#formatting-cpp)
 * [Comparison with other formatters](#comparison-with-other-formatters)
 * [Suggested setup per use-case](#suggested-setup-per-use-case)
-* [Development](#development)
 * [Contribution](#contribution)
 * [License](#license)
 
@@ -283,52 +282,12 @@ interfaces it needs again, which has been optimized to perform nearly as
 fast as a cached run outside of Nix (a fraction of a second on a project the
 size of Tilia).
 
-## Development
-
-Enter the development shell by either running `direnv allow` or `nix
-develop`. Once in the shell, the development is ordinary Cabal:
-
-```console
-$ cabal build
-$ cabal test
-```
-
-All tests are in one test suite and there are a fair number of them. On my
-machine the full test suite passes in 140 seconds, but it may be different
-for you, so isolating a subset of the test suite may be helpful:
-
-```console
-$ cabal test --test-options='--match "Tilia.Fixity"'
-```
-
-The test suite will perform downloads the first time you run it and so it
-will be a bit slower on that run. It needs various corpora, such as Hackage
-packages and GHC's own test suite, which are not checked into this
-repository.
-
-The Hackage corpus is exercised in order to ensure that every module
-formats, that its AST is preserved, and that formatting it is idempotent.
-The results are recorded in `corpora/hackage/hackage.manifest`. Next to it,
-`hackage.report` explains the failing cases. The manifest and the report can
-be updated like this:
-
-```console
-$ TILIA_CORPUS_ACCEPT=1 cabal test
-```
-
-Finally, Tilia formats itself, so make sure to run this command before you
-open a PR:
-
-```console
-$ nix run .#format
-```
-
 ## Contribution
 
 Issues, bugs, and questions may be reported in [the GitHub issue tracker for
 this project][issue-tracker].
 
-Pull requests are also welcome.
+Pull requests are also welcome, see [HACKING.md](./HACKING.md).
 
 [issue-tracker]: https://github.com/mrkkrp/tilia/issues
 
