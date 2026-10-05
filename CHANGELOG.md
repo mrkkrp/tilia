@@ -201,6 +201,10 @@
   whole, rather than split it into one conditional choosing the keyword and
   another choosing the rest, which a second run gave an empty conditional.
   [Issue 68](https://github.com/mrkkrp/tilia/issues/68).
+* Keep a comment written right above a member of a class or an instance
+  next to the member before it, rather than set it apart with an empty
+  line the author did not write. [Issue
+  120](https://github.com/mrkkrp/tilia/issues/120).
 
 ## Tilia 0.0.2.0
 
