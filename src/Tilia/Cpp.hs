@@ -40,13 +40,12 @@ import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, get, put)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
-import Data.Function (on)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (groupBy, maximumBy, sort, sortOn, stripPrefix, transpose, unsnoc)
+import Data.List (maximumBy, sort, sortOn, stripPrefix, transpose, unsnoc)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Monoid (Any (..))
 import Data.Ord (comparing)
 import Data.Set qualified as Set
@@ -765,26 +764,12 @@ merge written conditionals guards varied settledOthers = go Broken
         _ -> False
 
     factored layout ss =
-      let annotated = fmap (fmap (\x -> (x, settledLines x))) ss
-          same (x, a) (y, b) = agree varied layout x y || (isJust a && a == b)
-          shared = foldl1 (lcs (anchoring . fst) same) annotated
-          cut =
-            fmap
-              (segments (\a b -> anchoring (fst a) && same a b) shared)
-              annotated
-          stretches = transpose (fmap (fmap (fmap fst) . fst) cut)
-          anchors = transpose (fmap (fmap fst . snd) cut)
+      let same = agree varied layout
+          shared = foldl1 (lcs anchoring same) ss
+          cut = fmap (segments (anchored same) shared) ss
+          stretches = transpose (fmap fst cut)
+          anchors = transpose (fmap snd cut)
        in mconcat (woven layout stretches (fmap (go layout) anchors))
-
-    settledLines x
-      | null settledOthers = Nothing
-      | any (\(a, b) -> any (\(from, to) -> a <= to && from <= b) own) lines' =
-          Nothing
-      | otherwise = foldr widen Nothing lines'
-      where
-        lines' = printedFrom x
-        widen (a, b) = Just . maybe (a, b) (\(c, d) -> (min a c, max b d))
-        own = mapMaybe conditionalRange conditionals
 
     woven layout (s : ss) (c : cs) = foldMap (varying layout) (cutAtConditionals s) : c : woven layout ss cs
     woven layout ss [] = fmap (foldMap (varying layout) . cutAtConditionals) ss
@@ -1155,7 +1140,7 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
                   )
               )
           )
-      pure (mconcat (applied bs (inWrittenOrder bs clustered)))
+      pure (mconcat (applied bs clustered))
 
     cluster _ [c] = Just c
     cluster bs cs
@@ -1181,33 +1166,6 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
         go i [] = drop i bs
         go i (c : cs) =
           take (chFrom c - i) (drop i bs) <> chWith c <> go (chTo c) cs
-
--- | Put what changes made to one run of space in the order it was written
--- in.
---
--- Two conditionals written one after the other with nothing between them
--- but space both change that space, and where in it each change falls is a
--- matter of how each one's own space lined up with it, not of which came
--- first. Nothing but space moves when the changes trade places.
-inWrittenOrder :: [Doc] -> [Change] -> [Change]
-inWrittenOrder bs = concatMap reorder . groupBy ((==) `on` gap)
-  where
-    gap c
-      | all onlySpacing (take (chTo c - chFrom c) (drop (chFrom c) bs)) =
-          Just (length (filter (not . onlySpacing) (take (chFrom c) bs)))
-      | otherwise = Nothing
-    reorder cs = case traverse firstLine cs of
-      Just ls
-        | Just _ <- gap =<< listToMaybe cs,
-          ls /= sortOn id ls ->
-            zipWith
-              (\c w -> c{chWith = chWith w, chVaried = chVaried w})
-              cs
-              (fmap snd (sortOn fst (zip ls cs)))
-      _ -> cs
-    firstLine c = case concatMap printedFrom (chWith c) of
-      [] -> Nothing
-      ls -> Just (minimum (fmap fst ls))
 
 -- | The smallest span covering a node's own and those of everything merged
 -- into it.
