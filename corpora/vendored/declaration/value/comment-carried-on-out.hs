@@ -35,7 +35,7 @@ afterAGap = do
 codeAfterTheComment =
   g
     (a {- said once -} + b)
-  -- and this is about something else
+    -- and this is about something else
   where
     h = 1
 
