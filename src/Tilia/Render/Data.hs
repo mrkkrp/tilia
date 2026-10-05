@@ -56,7 +56,7 @@ dataDecl ::
   HsDataDefn GhcPs ->
   Doc
 dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
-  txt keyword <> txt instanceWord <> header <> constructors <> derivings
+  txt (keyword <> instanceWord) <> header <> constructors <> derivings
   where
     keyword = case dd_cons of
       NewTypeCon _ -> "newtype"

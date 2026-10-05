@@ -554,7 +554,7 @@ formatted       b61b87ef28b1  aeson-2.3.1.0/src/Data/Aeson/Internal/Text.hs
 formatted       e83337edc6e6  aeson-2.3.1.0/src/Data/Aeson/Internal/Unescape.hs
 formatted       20257ed727b2  aeson-2.3.1.0/src/Data/Aeson/Internal/UnescapeFromText.hs
 formatted       1052e9d7d311  aeson-2.3.1.0/src/Data/Aeson/Key.hs
-formatted       5d4bb2c30e30  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
+formatted       399d3cc81f76  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
 formatted       a8f98f92bb33  aeson-2.3.1.0/src/Data/Aeson/Parser/Time.hs
 formatted       34673c7e3119  aeson-2.3.1.0/src/Data/Aeson/QQ/Simple.hs
 formatted       8c47510bfe90  aeson-2.3.1.0/src/Data/Aeson/RFC8785.hs
@@ -566,7 +566,7 @@ formatted       36f39e5a3dd4  aeson-2.3.1.0/src/Data/Aeson/Types/FromJSON.hs
 formatted       af543197c845  aeson-2.3.1.0/src/Data/Aeson/Types/Generic.hs
 formatted       a7b6903cad74  aeson-2.3.1.0/src/Data/Aeson/Types/Internal.hs
 formatted       e457c987cd9c  aeson-2.3.1.0/src/Data/Aeson/Types/ToJSON.hs
-formatted       4a92c519c2c4  aeson-2.3.1.0/tests/CastFloat.hs
+formatted       1916009e9352  aeson-2.3.1.0/tests/CastFloat.hs
 formatted       bad3a5065737  aeson-2.3.1.0/tests/DataFamilies/Encoders.hs
 formatted       0d864147e795  aeson-2.3.1.0/tests/DataFamilies/Instances.hs
 formatted       91fe7aa4d3dc  aeson-2.3.1.0/tests/DataFamilies/Properties.hs
@@ -643,7 +643,7 @@ formatted       63d322215a87  attoparsec-0.14.4/Data/Attoparsec/Types.hs
 formatted       8ab300fd67b0  attoparsec-0.14.4/Data/Attoparsec/Zepto.hs
 formatted       82e3bc34cbe9  attoparsec-0.14.4/benchmarks/Aeson.hs
 formatted       ea48685480e2  attoparsec-0.14.4/benchmarks/Benchmarks.hs
-formatted       bd0309211105  attoparsec-0.14.4/benchmarks/Common.hs
+formatted       c1f15fa8aa6e  attoparsec-0.14.4/benchmarks/Common.hs
 formatted       baa4df75c7d8  attoparsec-0.14.4/benchmarks/Genome.hs
 formatted       3f8483fc03da  attoparsec-0.14.4/benchmarks/HeadersByteString.hs
 formatted       bb42606c4a8a  attoparsec-0.14.4/benchmarks/HeadersByteString/Atto.hs
@@ -1578,7 +1578,7 @@ formatted       2fe8b1b7e798  conduit-1.3.6.1/src/Data/Conduit/Internal/Pipe.hs
 formatted       4a4c14b72249  conduit-1.3.6.1/src/Data/Conduit/Lift.hs
 formatted       a3d647e87eeb  conduit-1.3.6.1/src/Data/Conduit/List.hs
 formatted       98630a5362e8  conduit-1.3.6.1/src/Data/Streaming/FileRead.hs
-formatted       71e1c3bf7039  conduit-1.3.6.1/src/Data/Streaming/Filesystem.hs
+formatted       9860da5f427f  conduit-1.3.6.1/src/Data/Streaming/Filesystem.hs
 formatted       d9e8dbaa2534  conduit-1.3.6.1/test/Data/Conduit/Extra/ZipConduitSpec.hs
 formatted       3df81ded6599  conduit-1.3.6.1/test/Data/Conduit/StreamSpec.hs
 formatted       cf41359a6248  conduit-1.3.6.1/test/Spec.hs
@@ -1683,7 +1683,7 @@ formatted       4ea25e04f5c1  cryptonite-0.30/Crypto/Hash/Whirlpool.hs
 formatted       f70544b8e5f8  cryptonite-0.30/Crypto/Internal/Builder.hs
 formatted       98a5de0267ed  cryptonite-0.30/Crypto/Internal/ByteArray.hs
 formatted       f801f423094d  cryptonite-0.30/Crypto/Internal/Compat.hs
-formatted       54db2fce0fcc  cryptonite-0.30/Crypto/Internal/CompatPrim.hs
+formatted       8d064e9ef0c8  cryptonite-0.30/Crypto/Internal/CompatPrim.hs
 formatted       9ecf7ae42e4a  cryptonite-0.30/Crypto/Internal/DeepSeq.hs
 formatted       4646f54cc944  cryptonite-0.30/Crypto/Internal/Imports.hs
 formatted       4878b8fb8411  cryptonite-0.30/Crypto/Internal/Nat.hs
@@ -1999,7 +1999,7 @@ formatted       63cce78f9492  fay-0.24.2.0/src/tests/Tests.hs
 formatted       8114602da4c3  fay-0.24.2.0/tests/AllBaseModules.hs
 formatted       e78d25c5a73d  fay-0.24.2.0/tests/AutomaticList.hs
 formatted       779c72fbdb74  fay-0.24.2.0/tests/Bool.hs
-formatted       85b587f06e29  fay-0.24.2.0/tests/CPP.hs
+formatted       ad89dd2cf37b  fay-0.24.2.0/tests/CPP.hs
 formatted       61e542a01350  fay-0.24.2.0/tests/Char.hs
 formatted       7badee2f20a7  fay-0.24.2.0/tests/Compile/CPPMultiLineStrings.hs
 formatted       a5ace073f2a3  fay-0.24.2.0/tests/Compile/CPPTypecheck.hs
@@ -2036,7 +2036,7 @@ formatted       ba54245a67ef  fay-0.24.2.0/tests/Floating.hs
 formatted       02165869295d  fay-0.24.2.0/tests/FromString.hs
 formatted       fc43945a5277  fay-0.24.2.0/tests/FromString/Dep.hs
 formatted       09e516e107ad  fay-0.24.2.0/tests/FromString/DepDep.hs
-formatted       a8e31b7f9068  fay-0.24.2.0/tests/FromString/FayText.hs
+formatted       81bdb91ec92b  fay-0.24.2.0/tests/FromString/FayText.hs
 formatted       3da43a919ebc  fay-0.24.2.0/tests/GADTs_without_records.hs
 formatted       102949714efb  fay-0.24.2.0/tests/GuardWhere.hs
 formatted       4c6803c7f169  fay-0.24.2.0/tests/HidePreludeImport.hs
@@ -2314,7 +2314,7 @@ formatted       04029f137d27  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       d831d20c5b60  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
 formatted       05bc0ffa5edc  haxl-2.5.1.1/Haxl/Core/Memo.hs
-formatted       6553761d1869  haxl-2.5.1.1/Haxl/Core/Monad.hs
+formatted       b2e4107adeba  haxl-2.5.1.1/Haxl/Core/Monad.hs
 formatted       59de6a1f9ba8  haxl-2.5.1.1/Haxl/Core/Parallel.hs
 formatted       0c9d4b9d05db  haxl-2.5.1.1/Haxl/Core/Profile.hs
 formatted       015cb76495fb  haxl-2.5.1.1/Haxl/Core/RequestStore.hs
@@ -2446,7 +2446,7 @@ formatted       5ecebf30e886  hlint-3.10/src/Config/Compute.hs
 formatted       76a1b906c927  hlint-3.10/src/Config/Haskell.hs
 formatted       747182f5f5c1  hlint-3.10/src/Config/Read.hs
 formatted       36ef2b52eee9  hlint-3.10/src/Config/Type.hs
-formatted       e06888dfabb0  hlint-3.10/src/Config/Yaml.hs
+formatted       344d31063dc4  hlint-3.10/src/Config/Yaml.hs
 formatted       871e24292ba2  hlint-3.10/src/EmbedData.hs
 formatted       a0cce8b000d7  hlint-3.10/src/Extension.hs
 formatted       232c5ddbbb9b  hlint-3.10/src/Fixity.hs
@@ -2496,7 +2496,7 @@ formatted       97865215d682  hlint-3.10/src/Report.hs
 formatted       5752f0cb1c82  hlint-3.10/src/SARIF.hs
 formatted       3a554bc4caa1  hlint-3.10/src/Summary.hs
 formatted       3b64750323e1  hlint-3.10/src/Test/All.hs
-formatted       6ad1fa09b796  hlint-3.10/src/Test/Annotations.hs
+formatted       63a9906d70b9  hlint-3.10/src/Test/Annotations.hs
 formatted       d9f760fed213  hlint-3.10/src/Test/InputOutput.hs
 formatted       265163b13605  hlint-3.10/src/Test/Util.hs
 formatted       0f5eb69b44dd  hlint-3.10/src/Timing.hs
@@ -2763,7 +2763,7 @@ partly-checked  4b652887a5cf  intero-0.1.40/src/Main.hs
 formatted       13b22f1a2f96  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs
-formatted       9b1bc79c9ca2  leksah-0.16.2.2/main/Main.hs
+formatted       34cb8bb8a612  leksah-0.16.2.2/main/Main.hs
 formatted       0d71ef1dc947  leksah-0.16.2.2/src/IDE/BufferMode.hs
 formatted       0cd8482b4f61  leksah-0.16.2.2/src/IDE/Build.hs
 formatted       d08cdd390358  leksah-0.16.2.2/src/IDE/Command.hs
@@ -2960,7 +2960,7 @@ formatted       e865ae48f11b  microlens-0.5.0.0/Setup.hs
 partly-checked  d7d7931c5a3c  microlens-0.5.0.0/src/Lens/Micro.hs
 formatted       a33fe5ffd3d9  microlens-0.5.0.0/src/Lens/Micro/Extras.hs
 formatted       3608b82ef46d  microlens-0.5.0.0/src/Lens/Micro/FieldN.hs
-declined        -             microlens-0.5.0.0/src/Lens/Micro/Internal.hs
+partly-checked  a6c752419362  microlens-0.5.0.0/src/Lens/Micro/Internal.hs
 formatted       de09492cc927  microlens-0.5.0.0/src/Lens/Micro/Type.hs
 formatted       9fd4d8759261  mtl-2.3.2/Control/Monad/Accum.hs
 formatted       1c966453ae10  mtl-2.3.2/Control/Monad/Cont.hs
@@ -3055,7 +3055,7 @@ formatted       121629e38e36  pandoc-3.10.2/src/Text/Pandoc/Class/CommonState.hs
 formatted       e2b41d9d63a2  pandoc-3.10.2/src/Text/Pandoc/Class/IO.hs
 formatted       554e3fd3f722  pandoc-3.10.2/src/Text/Pandoc/Class/PandocIO.hs
 formatted       c65acaaeb3de  pandoc-3.10.2/src/Text/Pandoc/Class/PandocMonad.hs
-formatted       632f793920eb  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
+formatted       af26c6ef7be1  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
 formatted       0b8f40903d65  pandoc-3.10.2/src/Text/Pandoc/Class/Sandbox.hs
 formatted       407b6ea8dcf3  pandoc-3.10.2/src/Text/Pandoc/Data.hs
 formatted       a40ce7ee511d  pandoc-3.10.2/src/Text/Pandoc/Data/BakedIn.hs
@@ -3852,9 +3852,9 @@ formatted       5b5f82999259  raaz-0.3.11/indef/Utils.hs
 formatted       524895081243  raaz-0.3.11/indef/buffer/Buffer.hs
 formatted       cd4684e81d95  raaz-0.3.11/indef/buffer/Context.hs
 formatted       d34b17eeb2fb  raaz-0.3.11/indef/buffer/Implementation.hsig
-formatted       279d91ec227a  raaz-0.3.11/indef/chacha20/Implementation.hsig
+formatted       5de45ebd7407  raaz-0.3.11/indef/chacha20/Implementation.hsig
 formatted       496eb8d3a6e9  raaz-0.3.11/indef/chacha20/XChaCha20/Implementation.hs
-formatted       3e8a08353bd0  raaz-0.3.11/indef/keyed/hash/Implementation.hsig
+formatted       91e1d49fa2ec  raaz-0.3.11/indef/keyed/hash/Implementation.hsig
 formatted       2d1ed3b79bf6  raaz-0.3.11/indef/keyed/hash/Mac/Implementation.hs
 formatted       fd3b4278ccc5  raaz-0.3.11/libverse/Raaz/Verse/Blake2b/C/Portable.hs
 formatted       44b600e76f74  raaz-0.3.11/libverse/Raaz/Verse/ChaCha20/C/Portable.hs
@@ -4001,7 +4001,7 @@ formatted       091ccbfea22a  semigroupoids-6.0.2/src/Data/Bifunctor/Apply.hs
 formatted       a420abc361b5  semigroupoids-6.0.2/src/Data/Functor/Alt.hs
 formatted       b091ae1639ae  semigroupoids-6.0.2/src/Data/Functor/Apply.hs
 formatted       4322a16f4eaf  semigroupoids-6.0.2/src/Data/Functor/Bind.hs
-declined        -             semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
+partly-checked  df73e43115ed  semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
 formatted       82dabf65525e  semigroupoids-6.0.2/src/Data/Functor/Bind/Trans.hs
 formatted       1a0625f8bf10  semigroupoids-6.0.2/src/Data/Functor/Contravariant/Conclude.hs
 formatted       07df2e2c41cf  semigroupoids-6.0.2/src/Data/Functor/Contravariant/Decide.hs
@@ -4145,7 +4145,7 @@ formatted       d90d4f71cadd  shake-0.19.9/src/Development/Shake/Internal/Histor
 declined        -             shake-0.19.9/src/Development/Shake/Internal/History/Symlink.hs
 formatted       765062af5b1e  shake-0.19.9/src/Development/Shake/Internal/History/Types.hs
 formatted       1667cc1258cb  shake-0.19.9/src/Development/Shake/Internal/Options.hs
-formatted       c8651e83c45c  shake-0.19.9/src/Development/Shake/Internal/Paths.hs
+formatted       15a7f1039c01  shake-0.19.9/src/Development/Shake/Internal/Paths.hs
 formatted       cd695d3ce28f  shake-0.19.9/src/Development/Shake/Internal/Profile.hs
 declined        -             shake-0.19.9/src/Development/Shake/Internal/Progress.hs
 formatted       342442931569  shake-0.19.9/src/Development/Shake/Internal/Resource.hs
@@ -4380,7 +4380,7 @@ formatted       d60faa0d5f6c  statistics-0.16.5.0/tests/Tests/Transform.hs
 formatted       55f699624c9d  statistics-0.16.5.0/tests/doctest.hs
 formatted       f0e3d45c9159  statistics-0.16.5.0/tests/tests.hs
 formatted       2c4811cee336  stm-2.5.3.1/Control/Concurrent/STM.hs
-formatted       fd81deb0a4a0  stm-2.5.3.1/Control/Concurrent/STM/TArray.hs
+formatted       3cda51e9e44e  stm-2.5.3.1/Control/Concurrent/STM/TArray.hs
 formatted       9e9c5d20cb7c  stm-2.5.3.1/Control/Concurrent/STM/TBQueue.hs
 formatted       643c4c4304ca  stm-2.5.3.1/Control/Concurrent/STM/TChan.hs
 formatted       5de1c73d983a  stm-2.5.3.1/Control/Concurrent/STM/TMVar.hs
@@ -4425,7 +4425,7 @@ formatted       b59e746b8895  swagger2-2.9.1/test/Data/SwaggerSpec.hs
 formatted       2fbd14b119a4  swagger2-2.9.1/test/Spec.hs
 formatted       1534dc51af48  swagger2-2.9.1/test/SpecCommon.hs
 formatted       cc17d35cb01d  swagger2-2.9.1/test/doctests.hs
-formatted       2620b9109dd2  tasty-1.5.4/Control/Concurrent/Async.hs
+formatted       d4738b672bb7  tasty-1.5.4/Control/Concurrent/Async.hs
 formatted       e865ae48f11b  tasty-1.5.4/Setup.hs
 formatted       02df8ffe2eb3  tasty-1.5.4/Test/Tasty.hs
 formatted       da0dd4a5f265  tasty-1.5.4/Test/Tasty/CmdLine.hs
@@ -4556,14 +4556,14 @@ formatted       eea1f5be128d  text-2.1.4/tests/Tests/Properties.hs
 formatted       a1795fe9db0d  text-2.1.4/tests/Tests/Properties/Basics.hs
 formatted       4095b24da789  text-2.1.4/tests/Tests/Properties/Builder.hs
 formatted       0da554ece794  text-2.1.4/tests/Tests/Properties/CornerCases.hs
-formatted       966d6896eccc  text-2.1.4/tests/Tests/Properties/Folds.hs
+formatted       f1e8140de487  text-2.1.4/tests/Tests/Properties/Folds.hs
 formatted       05ba3e128127  text-2.1.4/tests/Tests/Properties/Instances.hs
-formatted       85722c4277cd  text-2.1.4/tests/Tests/Properties/LowLevel.hs
+formatted       c57f3b48eab5  text-2.1.4/tests/Tests/Properties/LowLevel.hs
 formatted       73ce8ac597c8  text-2.1.4/tests/Tests/Properties/Read.hs
 formatted       3429b9447ca6  text-2.1.4/tests/Tests/Properties/Substrings.hs
 formatted       bc4a76ea99f3  text-2.1.4/tests/Tests/Properties/Text.hs
 formatted       ff57e0b870d9  text-2.1.4/tests/Tests/Properties/Transcoding.hs
-formatted       cd2ce6693a46  text-2.1.4/tests/Tests/Properties/Validate.hs
+formatted       139bbe092e98  text-2.1.4/tests/Tests/Properties/Validate.hs
 formatted       9ebdcbc8f461  text-2.1.4/tests/Tests/QuickCheckUtils.hs
 formatted       c6e25a3408e0  text-2.1.4/tests/Tests/RebindableSyntaxTest.hs
 formatted       939e997260ba  text-2.1.4/tests/Tests/Regressions.hs
@@ -4823,7 +4823,7 @@ formatted       c9305d3c9be9  unliftio-0.2.25.1/src/UnliftIO/Exception.hs
 formatted       945872778744  unliftio-0.2.25.1/src/UnliftIO/Exception/Lens.hs
 formatted       ff1234d6ddbd  unliftio-0.2.25.1/src/UnliftIO/Foreign.hs
 formatted       a64a8ea6c117  unliftio-0.2.25.1/src/UnliftIO/IO.hs
-formatted       b410581a652d  unliftio-0.2.25.1/src/UnliftIO/IO/File.hs
+formatted       04f7d565fc19  unliftio-0.2.25.1/src/UnliftIO/IO/File.hs
 formatted       dad3d51a66aa  unliftio-0.2.25.1/src/UnliftIO/IO/File/Posix.hs
 formatted       2688f4b976d8  unliftio-0.2.25.1/src/UnliftIO/IORef.hs
 formatted       4e63c8dec710  unliftio-0.2.25.1/src/UnliftIO/Internals/Async.hs
@@ -4884,7 +4884,7 @@ formatted       bb6c9398369f  unpacked-containers-0/src/Set.hs
 formatted       f6274c95796c  unpacked-containers-0/src/Set/Internal.hs
 formatted       867c9afd504a  unpacked-containers-0/utils/Internal/BitQueue.hs
 formatted       bd087fcec914  unpacked-containers-0/utils/Internal/BitUtil.hs
-formatted       a1134be4230d  unpacked-containers-0/utils/Internal/PtrEquality.hs
+formatted       1e6457fb908c  unpacked-containers-0/utils/Internal/PtrEquality.hs
 formatted       534c12741bb9  unpacked-containers-0/utils/Internal/State.hs
 formatted       bc7baa228863  unpacked-containers-0/utils/Internal/StrictFold.hs
 formatted       a772ddb0c63d  unpacked-containers-0/utils/Internal/StrictMaybe.hs

@@ -192,6 +192,15 @@
   so that a branch of a conditional holding only imports no longer ends
   with one where another branch goes on to declarations. [Issue
   113](https://github.com/mrkkrp/tilia/issues/113).
+* Do not repeat the declarations that follow a conditional in every one of
+  its alternatives when it holds a pragma or an import in one branch and
+  declarations in another, or asks the same question as a conditional
+  among the declarations. [Issue
+  68](https://github.com/mrkkrp/tilia/issues/68).
+* Keep a conditional choosing between a `data` and a `newtype` declaration
+  whole, rather than split it into one conditional choosing the keyword and
+  another choosing the rest, which a second run gave an empty conditional.
+  [Issue 68](https://github.com/mrkkrp/tilia/issues/68).
 
 ## Tilia 0.0.2.0
 
