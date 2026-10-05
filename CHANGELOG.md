@@ -188,6 +188,10 @@
   MIN_VERSION_base(4,10,0)`, so that a module turning an extension on under
   one of them and using it under the other is no longer declined over them.
   [Issue 65](https://github.com/mrkkrp/tilia/issues/65).
+* Put an empty line after the imports only where declarations follow them,
+  so that a branch of a conditional holding only imports no longer ends
+  with one where another branch goes on to declarations. [Issue
+  113](https://github.com/mrkkrp/tilia/issues/113).
 
 ## Tilia 0.0.2.0
 

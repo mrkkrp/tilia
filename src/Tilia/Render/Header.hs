@@ -206,8 +206,9 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
       <> hardBreak
       <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
       <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
-      <> hardBreak
-      <> declarationLayout (decls ctx Free hsmodDecls)
+      <> includeUnless
+        (null hsmodDecls)
+        (hardBreak <> declarationLayout (decls ctx Free hsmodDecls))
   where
     declarationLayout = case hsmodDecls of
       _ : _ : _ -> layoutFrom ctx (spansOf hsmodDecls)
