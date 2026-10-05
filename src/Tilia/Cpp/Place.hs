@@ -49,6 +49,8 @@ import Tilia.Doc.Internal
     mapChildren,
     onlySpacing,
     spine,
+    unwrap,
+    wrap,
   )
 import Tilia.Source (Lines, Written (..), blankAt, lineAt, linesOf)
 import Tilia.Span (Span (..), mkSpan)
@@ -190,19 +192,14 @@ keptApart haddocks notes = snd . go Apart
             (ANote, DLocated s (includeWhen (before == AHaddock) blankLine <> x))
         | Set.member s haddocks ->
             (AHaddock, DLocated s (includeWhen (before == ANote) blankLine <> snd (go Apart x)))
-        | otherwise -> DLocated s <$> go before x
-      DFence s x -> DFence s <$> go before x
       DCat a b ->
         let (between, a') = go before a
             (after, b') = go between b
          in (after, DCat a' b')
-      DNest n x -> DNest n <$> go before x
-      DAlign x -> DAlign <$> go before x
-      DGroup l x -> DGroup l <$> go before x
-      DCppMarginNote x -> DCppMarginNote <$> go before x
       DVariant a b -> DVariant (snd (go before a)) <$> go before b
       d@DCppChoice{} -> (Apart, mapChildren (snd . go Apart) d)
       d
+        | Just (w, x) <- unwrap d -> wrap w <$> go before x
         | onlySpacing d -> (before, d)
         | otherwise -> (Apart, d)
 
@@ -223,11 +220,10 @@ widened = fst . go
         let (a', ca) = go a
             (b', cb) = go b
          in (DCat a' b', ca <> cb)
-      DNest n x -> let (x', c) = go x in (DNest n x', c)
-      DAlign x -> let (x', c) = go x in (DAlign x', c)
-      DGroup l x -> let (x', c) = go x in (DGroup l x', c)
       DVariant a b -> let (b', c) = go b in (DVariant (fst (go a)) b', c)
-      d -> (d, Nothing)
+      d
+        | Just (w, x) <- unwrap d -> let (x', c) = go x in (wrap w x', c)
+        | otherwise -> (d, Nothing)
 
 -- | The lines a conditional was written on, from its @#if@ to its @#endif@.
 conditionalSpan :: Conditional -> Maybe Span
@@ -568,11 +564,8 @@ boundsOf = \case
     (Just (from, _), Just (_, to)) -> Just (from, to)
     (found, Nothing) -> found
     (Nothing, found) -> found
-  DNest _ x -> boundsOf x
-  DAlign x -> boundsOf x
-  DGroup _ x -> boundsOf x
   DVariant _ b -> boundsOf b
-  _ -> Nothing
+  d -> boundsOf . snd =<< unwrap d
   where
     hull = \case
       [] -> Nothing
