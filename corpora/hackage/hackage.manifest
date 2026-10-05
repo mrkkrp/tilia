@@ -1577,7 +1577,7 @@ formatted       54120af8edce  conduit-1.3.6.1/src/Data/Conduit/Internal/List/Str
 formatted       2fe8b1b7e798  conduit-1.3.6.1/src/Data/Conduit/Internal/Pipe.hs
 formatted       4a4c14b72249  conduit-1.3.6.1/src/Data/Conduit/Lift.hs
 formatted       a3d647e87eeb  conduit-1.3.6.1/src/Data/Conduit/List.hs
-formatted       55a50272f6a7  conduit-1.3.6.1/src/Data/Streaming/FileRead.hs
+formatted       98630a5362e8  conduit-1.3.6.1/src/Data/Streaming/FileRead.hs
 formatted       71e1c3bf7039  conduit-1.3.6.1/src/Data/Streaming/Filesystem.hs
 formatted       d9e8dbaa2534  conduit-1.3.6.1/test/Data/Conduit/Extra/ZipConduitSpec.hs
 formatted       3df81ded6599  conduit-1.3.6.1/test/Data/Conduit/StreamSpec.hs
@@ -1684,7 +1684,7 @@ formatted       f70544b8e5f8  cryptonite-0.30/Crypto/Internal/Builder.hs
 formatted       98a5de0267ed  cryptonite-0.30/Crypto/Internal/ByteArray.hs
 formatted       f801f423094d  cryptonite-0.30/Crypto/Internal/Compat.hs
 formatted       54db2fce0fcc  cryptonite-0.30/Crypto/Internal/CompatPrim.hs
-formatted       d4435b068486  cryptonite-0.30/Crypto/Internal/DeepSeq.hs
+formatted       9ecf7ae42e4a  cryptonite-0.30/Crypto/Internal/DeepSeq.hs
 formatted       4646f54cc944  cryptonite-0.30/Crypto/Internal/Imports.hs
 formatted       4878b8fb8411  cryptonite-0.30/Crypto/Internal/Nat.hs
 formatted       483861a9b72d  cryptonite-0.30/Crypto/Internal/WordArray.hs
@@ -3963,7 +3963,7 @@ formatted       6a2de24bbe1d  scientific-0.3.8.1/bench/bench.hs
 formatted       b51f688e4f66  scientific-0.3.8.1/src/Data/ByteString/Builder/Scientific.hs
 formatted       6fcd3c78e09a  scientific-0.3.8.1/src/Data/Scientific.hs
 formatted       5837fdbf8485  scientific-0.3.8.1/src/Data/Text/Lazy/Builder/Scientific.hs
-formatted       8e2c4142aa7f  scientific-0.3.8.1/src/GHC/Integer/Compat.hs
+formatted       e18e1762aa10  scientific-0.3.8.1/src/GHC/Integer/Compat.hs
 formatted       70da6923c6d5  scientific-0.3.8.1/src/Utils.hs
 formatted       08267660b11e  scientific-0.3.8.1/test/test.hs
 formatted       e865ae48f11b  scotty-0.30/Setup.hs
@@ -4398,7 +4398,7 @@ formatted       9b30ce222d29  stm-2.5.3.1/testsuite/src/Stm064.hs
 formatted       0f86f9b94d82  stm-2.5.3.1/testsuite/src/Stm065.hs
 formatted       0872066614e0  swagger2-2.9.1/Setup.hs
 formatted       e61f805d8652  swagger2-2.9.1/examples/hackage.hs
-formatted       39e6bac1c4cc  swagger2-2.9.1/src/Data/HashMap/Strict/InsOrd/Compat.hs
+formatted       be6ff1511c1c  swagger2-2.9.1/src/Data/HashMap/Strict/InsOrd/Compat.hs
 formatted       d71d272f220f  swagger2-2.9.1/src/Data/Swagger.hs
 formatted       f496ee0d4d0c  swagger2-2.9.1/src/Data/Swagger/Declare.hs
 formatted       5302fa19a1a8  swagger2-2.9.1/src/Data/Swagger/Internal.hs
