@@ -45,6 +45,7 @@ library
     Tilia.Cpp.Directives
     Tilia.Cpp.Fragment
     Tilia.Cpp.Macros
+    Tilia.Cpp.Merge
     Tilia.Cpp.Place
     Tilia.Diff
     Tilia.Doc
