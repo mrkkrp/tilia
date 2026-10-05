@@ -26,6 +26,7 @@ import Tilia.Comments
     carriedOnFrom,
     closesItself,
     commentTrailing,
+    holdsOff,
     widenTrigger,
   )
 import Tilia.Comments.Attach (attachComments)
@@ -122,7 +123,7 @@ renderConfiguration settings parsed =
 heldOff :: [Comment] -> [Comment] -> [Comment]
 heldOff haddocks = fmap holdOff
   where
-    written = filter (not . bracketed) haddocks
+    written = filter holdsOff haddocks
     ends = Set.fromList (fmap (spanEndLine . commentSpan) written)
     starts =
       Set.fromList

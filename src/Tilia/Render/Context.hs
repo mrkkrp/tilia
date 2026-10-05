@@ -20,6 +20,7 @@ module Tilia.Render.Context
 
     -- * What lies between two spans
     commentBetween,
+    commentRightUnder,
     remarkUnder,
     separatedByBlank,
 
@@ -238,6 +239,14 @@ remarkUnder ctx ma@(Just a) mb@(Just b) =
   where
     directiveAt n = directivePresentOnLine n (sourceLines (ctxSource ctx))
 remarkUnder _ _ _ = False
+
+-- | Does the first comment printed between the two spans begin on the line
+-- right under the first?
+commentRightUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
+commentRightUnder ctx (Just a) (Just b) = case printedBetween ctx a b of
+  c : _ -> spanStartLine (commentSpan c) == spanEndLine a + 1
+  [] -> False
+commentRightUnder _ _ _ = False
 
 -- | Did the author leave an empty line directly after the first of these?
 separatedByBlank :: Ctx -> Maybe Span -> Maybe Span -> Bool

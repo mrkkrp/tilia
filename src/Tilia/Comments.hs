@@ -13,11 +13,13 @@ module Tilia.Comments
     bracketed,
     commentTrailing,
     singleLine,
+    holdsOff,
     carriedOnFrom,
     widenTrigger,
     asOrdinary,
     triggerEscaped,
     opensHaddock,
+    opensSectionHeading,
     commentsWithin,
     Pragma (..),
     commentPragma,
@@ -240,6 +242,14 @@ bracketed c = "{-" `T.isPrefixOf` T.stripStart (NE.head (commentBody c))
 commentTrailing :: Comment -> Bool
 commentTrailing = isJust . commentCodeBeforeStopsAt
 
+-- | Is this a Haddock written as @--@ lines that can go on past its first
+-- line, so that a comment written against it is held off from it?
+holdsOff :: Comment -> Bool
+holdsOff c =
+  commentStyle c == DocComment
+    && not (bracketed c)
+    && not (opensSectionHeading (NE.head (commentBody c)))
+
 -- | Is this comment a single line?
 singleLine :: Comment -> Bool
 singleLine c = case commentBody c of
@@ -378,6 +388,10 @@ triggered t = case T.uncons t of
 -- | Does this line open a Haddock?
 opensHaddock :: Text -> Bool
 opensHaddock = isJust . splitTrigger
+
+-- | Does this line open a Haddock section heading, @-- *@?
+opensSectionHeading :: Text -> Bool
+opensSectionHeading = maybe False (T.isSuffixOf "*" . fst) . splitTrigger
 
 -- | Split a doc comment's opening line into everything up to and including
 -- its trigger, and whatever follows.

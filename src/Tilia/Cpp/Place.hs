@@ -22,9 +22,9 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Tilia.Comments
   ( Comment (..),
-    CommentStyle (..),
     bracketed,
     commentPragma,
+    holdsOff,
     transcendentComment,
   )
 import Tilia.Comments.Attach (Margin (..), attachScopedComments)
@@ -59,7 +59,7 @@ data CommentSummary = CommentSummary
     summaryLoose :: Map Span Comment,
     -- | Where every comment was written, whether a tree carries it or not.
     summaryComments :: Set Span,
-    -- | Where every Haddock written as @--@ lines was written.
+    -- | Where every Haddock that holds off a comment was written.
     summaryHaddocks :: Set Span
   }
 
@@ -97,13 +97,7 @@ summarizeComments loose every =
   CommentSummary
     { summaryLoose = Map.fromList [(commentSpan c, c) | c <- loose],
       summaryComments = Set.fromList (fmap commentSpan every),
-      summaryHaddocks =
-        Set.fromList
-          [ commentSpan c
-          | c <- every,
-            commentStyle c == DocComment,
-            not (bracketed c)
-          ]
+      summaryHaddocks = Set.fromList [commentSpan c | c <- every, holdsOff c]
     }
 
 -- | Place comments into a document is the result of merging different

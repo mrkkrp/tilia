@@ -208,6 +208,10 @@
 * Put no space between a block comment and the closing bracket or the
   comma written right after it, as in `(Bool {- already bound -}, Int)`.
   [Issue 122](https://github.com/mrkkrp/tilia/issues/122).
+* Keep a section heading together with the comments written right against
+  it, such as the lines of a comment listing points that begin with `*`, or
+  rules of dashes above and below a heading, rather than put empty lines
+  around it. [Issue 119](https://github.com/mrkkrp/tilia/issues/119).
 
 ## Tilia 0.0.2.0
 
