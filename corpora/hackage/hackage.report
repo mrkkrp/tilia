@@ -1,9 +1,9 @@
 Hackage modules that currently do not format cleanly.
 
-5202 examples, 5151 formatted.
+5210 examples, 5158 formatted.
 
 ==========================================================================
-broken (1)
+broken (2)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -60,6 +60,18 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
      import Agda.TypeChecking.Constraints
      import Agda.TypeChecking.Conversion.Pure (pureCompareAs, runPureConversion)
     +import Agda.TypeChecking.Da
+
+singletons-3.0.4/src/Data/Singletons.hs
+    formatting is non-idempotent
+    --- first pass
+    +++ second pass
+    @@ -523,6 +523,7 @@
+     #else
+         with_sing_i si = unsafeCoerce (Don'tInstantiate si) s
+     #endif
+    +
+     #if MIN_VERSION_base(4,17,0)
+     #else
 
 ==========================================================================
 does-not-parse (1)
