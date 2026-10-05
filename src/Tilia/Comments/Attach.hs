@@ -214,8 +214,8 @@ writtenAs ::
   Doc
 writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
-    Before -> includeWhen (not (commentTrailing c)) space <> body <> space
-    After -> space <> body <> space
+    Before -> includeWhen (not (commentTrailing c)) space <> body <> includeUnless atTheEnd space
+    After -> space <> body
   EndsTheLine -> space <> body <> closeLine <> gapBelow
   HeldBack -> holdBack (renderComment c)
   OnItsOwnLines ->

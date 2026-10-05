@@ -209,7 +209,7 @@ formatted       be42b289f13f  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
 formatted       4d637dbd29d8  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs-boot
 formatted       aaf8e5a6f74a  Agda-2.8.0/src/full/Agda/TypeChecking/Errors/Names.hs
 formatted       fa9468d1b394  Agda-2.8.0/src/full/Agda/TypeChecking/EtaContract.hs
-formatted       cf915294753e  Agda-2.8.0/src/full/Agda/TypeChecking/Forcing.hs
+formatted       6d6bab698a5f  Agda-2.8.0/src/full/Agda/TypeChecking/Forcing.hs
 formatted       bdbb0b01cf6e  Agda-2.8.0/src/full/Agda/TypeChecking/Free.hs
 formatted       b0bc91f178a9  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Lazy.hs
 formatted       e10225542a24  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Precompute.hs
@@ -288,7 +288,7 @@ formatted       bf4e737ce041  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Warni
 formatted       0f23e151fb6a  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs
 formatted       3c8fe98419dd  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs-boot
 formatted       aa1bd02aba20  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Base.hs
-formatted       42186252e310  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical.hs
+formatted       5d0d2d0c262a  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical.hs
 formatted       2ea530f280a4  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs
 formatted       34da472277ef  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs-boot
 formatted       caff936ed890  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Glue.hs
@@ -328,7 +328,7 @@ formatted       6773a3880c72  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Im
 formatted       da382d16a0bc  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Problem.hs
 formatted       faf2b455193b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/ProblemRest.hs
 formatted       e85e560d8ceb  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify.hs
-formatted       94b0f0ab0d09  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
+formatted       f347b869c97e  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
 formatted       192820a335e2  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/Types.hs
 formatted       4491692a08c5  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record.hs
 formatted       665703a3ab87  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
@@ -678,7 +678,7 @@ formatted       930b366b3b68  attoparsec-0.14.4/tests/QC/Text/FastSet.hs
 formatted       ed6a9f21b67c  attoparsec-0.14.4/tests/QC/Text/Regressions.hs
 formatted       7710b806795e  aws-0.25.3/Aws.hs
 formatted       a0ce75039c94  aws-0.25.3/Aws/Aws.hs
-formatted       368a7eb29996  aws-0.25.3/Aws/Core.hs
+formatted       316b8d029dee  aws-0.25.3/Aws/Core.hs
 formatted       526f7494fea1  aws-0.25.3/Aws/DynamoDb.hs
 formatted       11c5a36e6111  aws-0.25.3/Aws/DynamoDb/Commands.hs
 formatted       4164a13f06e8  aws-0.25.3/Aws/DynamoDb/Commands/BatchGetItem.hs
@@ -724,21 +724,21 @@ formatted       48b677d290e9  aws-0.25.3/Aws/Network.hs
 formatted       ce77812a32a4  aws-0.25.3/Aws/S3.hs
 formatted       468614525265  aws-0.25.3/Aws/S3/Commands.hs
 formatted       2646f70fe9fa  aws-0.25.3/Aws/S3/Commands/CopyObject.hs
-formatted       679fbc8ba590  aws-0.25.3/Aws/S3/Commands/DeleteBucket.hs
-formatted       dc00b880ff44  aws-0.25.3/Aws/S3/Commands/DeleteObject.hs
-formatted       15d5415d448a  aws-0.25.3/Aws/S3/Commands/DeleteObjectVersion.hs
-formatted       a7835a797996  aws-0.25.3/Aws/S3/Commands/DeleteObjects.hs
-formatted       9a5f4d5ab8cb  aws-0.25.3/Aws/S3/Commands/GetBucket.hs
+formatted       5a1be9e435de  aws-0.25.3/Aws/S3/Commands/DeleteBucket.hs
+formatted       b0b859edf946  aws-0.25.3/Aws/S3/Commands/DeleteObject.hs
+formatted       f56508db7ae5  aws-0.25.3/Aws/S3/Commands/DeleteObjectVersion.hs
+formatted       cac44242e0ef  aws-0.25.3/Aws/S3/Commands/DeleteObjects.hs
+formatted       10f682f1d630  aws-0.25.3/Aws/S3/Commands/GetBucket.hs
 formatted       fd9ef9806007  aws-0.25.3/Aws/S3/Commands/GetBucketLocation.hs
-formatted       8892058ce5a8  aws-0.25.3/Aws/S3/Commands/GetBucketObjectVersions.hs
+formatted       de0c93616abe  aws-0.25.3/Aws/S3/Commands/GetBucketObjectVersions.hs
 formatted       77560acf62f4  aws-0.25.3/Aws/S3/Commands/GetBucketVersioning.hs
-formatted       89fc0e4e1542  aws-0.25.3/Aws/S3/Commands/GetObject.hs
+formatted       09bf54b50d8a  aws-0.25.3/Aws/S3/Commands/GetObject.hs
 formatted       b2f36afa32e0  aws-0.25.3/Aws/S3/Commands/GetService.hs
-formatted       a771521a31ae  aws-0.25.3/Aws/S3/Commands/HeadObject.hs
-formatted       be81d8b96bcb  aws-0.25.3/Aws/S3/Commands/Multipart.hs
+formatted       d6ff6d8b8056  aws-0.25.3/Aws/S3/Commands/HeadObject.hs
+formatted       bc19177d1d47  aws-0.25.3/Aws/S3/Commands/Multipart.hs
 formatted       311a84a6ddb3  aws-0.25.3/Aws/S3/Commands/PutBucket.hs
 formatted       2428bf962e66  aws-0.25.3/Aws/S3/Commands/PutBucketVersioning.hs
-formatted       ed3a2453d1ee  aws-0.25.3/Aws/S3/Commands/PutObject.hs
+formatted       046379db06b2  aws-0.25.3/Aws/S3/Commands/PutObject.hs
 formatted       bc50203fa9d6  aws-0.25.3/Aws/S3/Commands/RestoreObject.hs
 formatted       691e7d45ad83  aws-0.25.3/Aws/S3/Core.hs
 formatted       e59133632c71  aws-0.25.3/Aws/Ses.hs
@@ -755,7 +755,7 @@ formatted       b262146aced4  aws-0.25.3/Aws/Ses/Commands/SetIdentityNotificatio
 formatted       2ef608635aeb  aws-0.25.3/Aws/Ses/Commands/VerifyDomainDkim.hs
 formatted       ffb19c08b235  aws-0.25.3/Aws/Ses/Commands/VerifyDomainIdentity.hs
 formatted       de43062d4755  aws-0.25.3/Aws/Ses/Commands/VerifyEmailIdentity.hs
-formatted       93d2568d042f  aws-0.25.3/Aws/Ses/Core.hs
+formatted       a8b78f720f02  aws-0.25.3/Aws/Ses/Core.hs
 formatted       4115c76b6f3d  aws-0.25.3/Aws/SimpleDb.hs
 formatted       0b6040677d6d  aws-0.25.3/Aws/SimpleDb/Commands.hs
 formatted       30e4762ca046  aws-0.25.3/Aws/SimpleDb/Commands/Attributes.hs
@@ -1645,7 +1645,7 @@ formatted       17ceaf6e3360  cryptonite-0.30/Crypto/Cipher/Types/Stream.hs
 formatted       6cdb1c7bd28d  cryptonite-0.30/Crypto/Cipher/Types/Utils.hs
 formatted       f1893d3edfa7  cryptonite-0.30/Crypto/Cipher/Utils.hs
 formatted       20107f92349f  cryptonite-0.30/Crypto/Cipher/XSalsa.hs
-formatted       117e7ce7c967  cryptonite-0.30/Crypto/ConstructHash/MiyaguchiPreneel.hs
+formatted       ae8cf8663bda  cryptonite-0.30/Crypto/ConstructHash/MiyaguchiPreneel.hs
 formatted       4f15b3874982  cryptonite-0.30/Crypto/Data/AFIS.hs
 formatted       37c60fc95ef2  cryptonite-0.30/Crypto/Data/Padding.hs
 formatted       2ba3cd2f51b9  cryptonite-0.30/Crypto/ECC.hs
@@ -2306,7 +2306,7 @@ formatted       f74f5b618f9a  hashable-1.5.1.0/tests/Main.hs
 formatted       a48986effed7  hashable-1.5.1.0/tests/Properties.hs
 formatted       aa65b20321d6  hashable-1.5.1.0/tests/Regress.hs
 formatted       468c72120829  hashable-1.5.1.0/tests/xxhash-tests.hs
-formatted       867a035875ee  haxl-2.5.1.1/Haxl/Core.hs
+formatted       fd56f35a1469  haxl-2.5.1.1/Haxl/Core.hs
 formatted       d1219c0fe211  haxl-2.5.1.1/Haxl/Core/CallGraph.hs
 formatted       955c8a680ebd  haxl-2.5.1.1/Haxl/Core/DataCache.hs
 formatted       0eada76397bc  haxl-2.5.1.1/Haxl/Core/DataSource.hs
@@ -2480,7 +2480,7 @@ formatted       4d078aac9ede  hlint-3.10/src/Hint/Naming.hs
 formatted       a1a5d9519cee  hlint-3.10/src/Hint/Negation.hs
 formatted       9bd70a7dc4ae  hlint-3.10/src/Hint/NewType.hs
 formatted       f6fa0661942d  hlint-3.10/src/Hint/NumLiteral.hs
-formatted       b961726611b0  hlint-3.10/src/Hint/Pattern.hs
+formatted       3f1fa9e0d203  hlint-3.10/src/Hint/Pattern.hs
 formatted       0076ccb5bd1c  hlint-3.10/src/Hint/Pragma.hs
 formatted       5dd8e1ba7821  hlint-3.10/src/Hint/Restrict.hs
 formatted       a55fbaad4a77  hlint-3.10/src/Hint/Smell.hs
@@ -2754,7 +2754,7 @@ formatted       e865ae48f11b  intero-0.1.40/Setup.hs
 formatted       41797b039ec2  intero-0.1.40/src/Completion.hs
 formatted       808924ac99ff  intero-0.1.40/src/GhciFind.hs
 partly-checked  c0aea4c4237d  intero-0.1.40/src/GhciInfo.hs
-formatted       d323519f9445  intero-0.1.40/src/GhciMonad.hs
+formatted       e0fd727cd7cd  intero-0.1.40/src/GhciMonad.hs
 formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
 formatted       72999d5c814e  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
@@ -3423,7 +3423,7 @@ formatted       e5985feb4a17  persistent-2.18.1.0/Database/Persist/SqlBackend/In
 formatted       8c6a9aceba09  persistent-2.18.1.0/Database/Persist/SqlBackend/SqlPoolHooks.hs
 formatted       22acd1321720  persistent-2.18.1.0/Database/Persist/SqlBackend/StatementCache.hs
 formatted       c43972a3241b  persistent-2.18.1.0/Database/Persist/TH.hs
-formatted       a8dc55a9a318  persistent-2.18.1.0/Database/Persist/TH/Internal.hs
+formatted       7a8187006d4b  persistent-2.18.1.0/Database/Persist/TH/Internal.hs
 formatted       3eb1ab75fbdf  persistent-2.18.1.0/Database/Persist/Types.hs
 formatted       602702e0f86e  persistent-2.18.1.0/Database/Persist/Types/Base.hs
 formatted       b8189bc0e07d  persistent-2.18.1.0/Database/Persist/Types/SourceSpan.hs
@@ -4326,7 +4326,7 @@ formatted       1e363f04365e  statistics-0.16.5.0/Statistics/Distribution/Lognor
 formatted       f5cce916fd78  statistics-0.16.5.0/Statistics/Distribution/NegativeBinomial.hs
 formatted       fb17da6ed19d  statistics-0.16.5.0/Statistics/Distribution/Normal.hs
 formatted       1bbb63345a51  statistics-0.16.5.0/Statistics/Distribution/Poisson.hs
-formatted       fb54f6de83df  statistics-0.16.5.0/Statistics/Distribution/Poisson/Internal.hs
+formatted       e7fb38252559  statistics-0.16.5.0/Statistics/Distribution/Poisson/Internal.hs
 formatted       7c5e046a9045  statistics-0.16.5.0/Statistics/Distribution/StudentT.hs
 formatted       b7ab79ca83fb  statistics-0.16.5.0/Statistics/Distribution/Transform.hs
 formatted       1df538a9db1d  statistics-0.16.5.0/Statistics/Distribution/Uniform.hs
@@ -4516,7 +4516,7 @@ formatted       48ea4745d7e8  text-2.1.4/src/Data/Text/Internal/Encoding/Utf32.h
 formatted       999f28ae046f  text-2.1.4/src/Data/Text/Internal/Encoding/Utf8.hs
 formatted       9b74d0d7d95a  text-2.1.4/src/Data/Text/Internal/Fusion.hs
 formatted       9ae139203b50  text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs
-formatted       0858f0992142  text-2.1.4/src/Data/Text/Internal/Fusion/Common.hs
+formatted       0a5f8aa54d54  text-2.1.4/src/Data/Text/Internal/Fusion/Common.hs
 formatted       a3b0b51a0759  text-2.1.4/src/Data/Text/Internal/Fusion/Size.hs
 formatted       a8149e253de6  text-2.1.4/src/Data/Text/Internal/Fusion/Types.hs
 formatted       32b50634031b  text-2.1.4/src/Data/Text/Internal/IO.hs
@@ -4532,7 +4532,7 @@ formatted       a41bd3d7edab  text-2.1.4/src/Data/Text/Internal/Read.hs
 formatted       ec56c867ca01  text-2.1.4/src/Data/Text/Internal/Reverse.hs
 formatted       eff6a5ffb928  text-2.1.4/src/Data/Text/Internal/Search.hs
 formatted       67bf06cca611  text-2.1.4/src/Data/Text/Internal/StrictBuilder.hs
-formatted       a739bca575a2  text-2.1.4/src/Data/Text/Internal/Transformation.hs
+formatted       c40f1435fb43  text-2.1.4/src/Data/Text/Internal/Transformation.hs
 formatted       18ae86a38924  text-2.1.4/src/Data/Text/Internal/Unsafe.hs
 formatted       d3b144e675ef  text-2.1.4/src/Data/Text/Internal/Unsafe/Char.hs
 formatted       66e47e950ff0  text-2.1.4/src/Data/Text/Internal/Validate.hs
@@ -4944,7 +4944,7 @@ formatted       8061fe09f977  vector-0.13.2.0/tests/Tests/Bundle.hs
 formatted       1525be7e0a46  vector-0.13.2.0/tests/Tests/Move.hs
 formatted       43dd4c8d5a9c  vector-0.13.2.0/tests/Tests/Vector/Boxed.hs
 formatted       54a741f726e9  vector-0.13.2.0/tests/Tests/Vector/Primitive.hs
-formatted       3ef89840b582  vector-0.13.2.0/tests/Tests/Vector/Property.hs
+formatted       9491118bca38  vector-0.13.2.0/tests/Tests/Vector/Property.hs
 formatted       89d6f5f286c7  vector-0.13.2.0/tests/Tests/Vector/Storable.hs
 formatted       cc9e0bc6f8e0  vector-0.13.2.0/tests/Tests/Vector/Strict.hs
 formatted       891ffe33c45c  vector-0.13.2.0/tests/Tests/Vector/Unboxed.hs
