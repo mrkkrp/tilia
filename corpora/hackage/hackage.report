@@ -7,16 +7,16 @@ broken (1)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
-    a configuration of the output does not parse: 2239:17: parse error (possibly incorrect indentation or mismatched brackets)
-      2235                blocker = getBlocker s1b
-      2236            -- Jesper, 2019-12-27: SizeUniv is disabled at the moment.
-      2237            if
-      2238              {- sizedTypesEnabled || -} | propEnabled || cubicalEnabled ->
-    > 2239                  case funSort' s1 (Type l2) of
-      2240                    -- If the work we did makes the @funSort@ compute,
-      2241                    -- continue working.
-      2242                    Right s -> equalSort (Type l) s
-      2243                    -- Otherwise: postpone
+    a configuration of the output does not parse: 2235:17: parse error (possibly incorrect indentation or mismatched brackets)
+      2231                blocker = getBlocker s1b
+      2232            -- Jesper, 2019-12-27: SizeUniv is disabled at the moment.
+      2233            if
+      2234              {- sizedTypesEnabled || -} | propEnabled || cubicalEnabled ->
+    > 2235                  case funSort' s1 (Type l2) of
+      2236                    -- If the work we did makes the @funSort@ compute,
+      2237                    -- continue working.
+      2238                    Right s -> equalSort (Type l) s
+      2239                    -- Otherwise: postpone
     
     --- input
     +++ output

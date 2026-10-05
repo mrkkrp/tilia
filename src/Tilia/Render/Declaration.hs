@@ -66,7 +66,7 @@ declRun grouping ctx style ds =
       | otherwise = render current
 
     separate previous current =
-      not (remarkUnder ctx ended began) && case grouping of
+      not (remarkUnder ctx ended began || underHeading) && case grouping of
         Disregard -> True
         Respect ->
           separatedByBlank ctx ended began
@@ -75,11 +75,17 @@ declRun grouping ctx style ds =
       where
         ended = spanOf (NE.last previous)
         began = spanOf (NE.head current)
+        underHeading =
+          isHeading (unLoc (NE.last previous))
+            && commentRightUnder ctx ended began
 
     isDocumented = any (isDocNext . unLoc)
     isDocNext = \case
       DocD _ (DocCommentNext _) -> True
       DocD _ (DocCommentPrev _) -> True
+      _ -> False
+    isHeading = \case
+      DocD _ DocGroup{} -> True
       _ -> False
 
 -- | Gather declarations that belong together.

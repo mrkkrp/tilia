@@ -174,9 +174,12 @@ heldOffFrom d cs = case unsnoc cs of
         earlier <> [c{commentGapBelow = True}]
   _ -> cs
 
--- | Does this region begin its first line with a Haddock?
+-- | Does this region begin its first line with a Haddock other than a
+-- section heading?
 opensWithHaddock :: Doc -> Bool
-opensWithHaddock = maybe False opensHaddock . listToMaybe . fst . firstLine Broken
+opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
+  Just l -> opensHaddock l && not (opensSectionHeading l)
+  Nothing -> False
   where
     firstLine layout = \case
       DText t -> ([t], False)
