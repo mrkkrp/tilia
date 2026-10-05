@@ -2,11 +2,10 @@
 
 module B1 (throw) where
 
+import Control.Exception
 #ifdef X
-import Control.Exception hiding (throw)
+  hiding (throw)
 
 throw :: (Exception e) => e -> a
 throw = undefined
-#else
-import Control.Exception
 #endif

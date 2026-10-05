@@ -220,6 +220,11 @@
   declarations after it whole, rather than split it in two with the empty
   line between the declarations inside the second, which a second run moved
   above it. [Issue 118](https://github.com/mrkkrp/tilia/issues/118).
+* Keep a conditional that begins in the middle of a declaration where it
+  was written, rather than copy the part of the declaration before it into
+  each branch, where the branches go on into the declarations after it or
+  finish it each their own way. [Issue
+  117](https://github.com/mrkkrp/tilia/issues/117).
 
 ## Tilia 0.0.2.0
 

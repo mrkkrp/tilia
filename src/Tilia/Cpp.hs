@@ -899,13 +899,23 @@ merge written conditionals guards varied settledOthers = go Broken
       case heads of
         (h : hs)
           | all (sameKind h) hs,
-            all breaksFirst tails ->
-              Just (joined (glued (go layout heads)) (middle layout tails))
+            all (breaksFirst (lineEnding h hs)) tails ->
+              Just
+                ( joined
+                    (glued (go layout heads))
+                    (middle layout tails)
+                    (varying layout tails)
+                )
         _ -> Nothing
       where
-        breaksFirst t = case dropWhile ((== 0) . weigh layout) t of
+        breaksFirst l t = case dropWhile (quiet l) t of
           [] -> True
           (d : _) -> opensWithBreak layout d
+        quiet l d = weigh layout d == 0 && not (opensWithBreak l d)
+        lineEnding h hs
+          | all ((== printed h) . printed) hs = layout
+          | otherwise = Flat
+        printed = printDoc defaultRenderOptions
 
     endingWith t d = fromMaybe (d <> t) (inAlternatives d)
       where
@@ -923,20 +933,28 @@ merge written conditionals guards varied settledOthers = go Broken
             | otherwise -> (a <>) <$> inAlternatives b
           _ -> Nothing
 
-    joined before after =
+    joined before after apart =
       case (choiceAt written Last before, choiceAt written First after) of
         (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
           | fmap fst bs == fmap fst cs,
-            ws == ws' ->
+            ws == ws' || null ws || null ws',
+            (g, x) : rest <- bs,
+            (_, y) : rest' <- cs,
+            (lead, first') <- span spacing (spine (x <> between <> y)) ->
               opening
+                <> mconcat lead
                 <> Doc.cppChoice
-                  ws
-                  [(g, x <> between <> y) | ((g, x), (_, y)) <- zip bs cs]
+                  (if null ws then ws' else ws)
+                  ( (g, mconcat first')
+                      : [ (h, z <> between <> z')
+                        | ((h, z), (_, z')) <- zip rest rest'
+                        ]
+                  )
                   (e <> between <> e')
                 <> closing
           where
             between = gap <> gap'
-        _ -> before <> after
+        _ -> before <> apart
 
     sameKind x y = case (x, y) of
       (DLocated s t, DLocated u v) -> meets s u && bothWritten t v
@@ -1272,10 +1290,6 @@ data Edge = First | Last
 -- | The choice a document has at one end, if that is where it has one: what
 -- the document prints before the choice, the choice itself, and what the
 -- document prints after it.
---
--- Every alternative begins a line of its own, so the choice is taken out of
--- an alignment only at the end of the document, and only where the
--- alignment begins a line and what it holds was written first on its line.
 choiceAt ::
   -- | The module as written.
   Lines ->
@@ -1291,22 +1305,28 @@ choiceAt written edge = go Flat False
         let (before, after) = case edge of
               First -> (mconcat outer, mconcat inner)
               Last -> (mconcat (reverse inner), mconcat (reverse outer))
-            around w (b, ws, bs, e, a) =
-              (before <> w b, ws, fmap (fmap w) bs, w e, w a <> after)
+            around w v (b, ws, bs, e, a) =
+              ( before <> printed w b,
+                ws,
+                fmap (fmap (printed v)) bs,
+                printed v e,
+                printed w a <> after
+              )
+            printed w y = if printsNothing y then y else w y
             begins = case (edge, inner) of
               (First, _) -> False
               (Last, []) -> fresh
               (Last, y : _) | Space ended _ <- spaceOf layout [y] -> ended > 0
          in case x of
               DCppChoice ws bs e -> Just (before, ws, bs, e, after)
-              DGroup l y -> around (DGroup l) <$> go l begins y
-              DNest n y -> around (DNest n) <$> go layout begins y
-              DLocated s y -> around (DLocated s) <$> go layout begins y
-              DFence s y -> around (DFence s) <$> go layout begins y
+              DGroup l y -> around (DGroup l) (DGroup l) <$> go l begins y
+              DNest n y -> around (DNest n) (DNest n) <$> go layout begins y
+              DLocated s y -> around (DLocated s) id <$> go layout begins y
+              DFence s y -> around (DFence s) id <$> go layout begins y
               DAlign y
                 | begins,
                   firstOnItsLine y ->
-                    around DAlign <$> go layout begins y
+                    around DAlign DAlign <$> go layout begins y
               _ -> Nothing
       _ -> Nothing
     inward = case edge of
