@@ -12,7 +12,9 @@ module Tilia.Comments.Place
 where
 
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (sortOn)
+import Data.List (find, sortOn)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..))
@@ -32,6 +34,8 @@ data Position
     Before
   | -- | After the region.
     After
+  | -- | On lines of its own under the region, lined up with it.
+    Under
   deriving (Eq, Show)
 
 -- | How a comment is printed in relation to the region carrying it.
@@ -60,6 +64,7 @@ shapeOf position c = case position of
     | closesItself c -> InPlace
     | singleLine c -> HeldBack
     | otherwise -> EndsTheLine
+  Under -> OnItsOwnLines
 
 -- | Comment placements not yet written: all of them when placement is
 -- decided, fewer as a walk writes them.
@@ -113,6 +118,7 @@ placeComments regions fences comments =
       | Just placed@(_, After) <- asCommentBefore = Just placed
       | commentTrailing c, Just r <- trailed = Just (r, After)
       | Just r <- continues = Just (r, After)
+      | Just r <- under = Just (r, Under)
       | Just r <- next = Just (r, Before)
       | otherwise = Nothing
       where
@@ -149,7 +155,46 @@ placeComments regions fences comments =
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next
 
+        under
+          | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,
+            Just (line, column) <- commentNextLine bottom,
+            column < spanStartColumn here,
+            fmap startPoint next == Just (line, column) =
+              lineOfCode (spanStartLine (commentSpan top) - 1)
+          | otherwise = Nothing
+
+        lineOfCode line
+          | any larger onThatLine = find linedUp onThatLine
+          | otherwise = Nothing
+          where
+            onThatLine = IntMap.findWithDefault [] line regionsByEndLine
+            lineEnd = maximum (fmap endPoint onThatLine)
+            start = (line, spanStartColumn here)
+            linedUp r =
+              startPoint r == start
+                && endPoint r == lineEnd
+                && not (fencedOff r)
+            larger r = startPoint r < start && endPoint r == lineEnd
+
     commentsByEndPoint = Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
+
+    runs =
+      IntMap.fromList
+        [ (spanStartLine (commentSpan c), (NE.head run, NE.last run))
+        | run <- foldr joined [] (sortOn (startPoint . commentSpan) comments),
+          c <- NE.toList run
+        ]
+      where
+        joined c rest
+          | commentTrailing c || commentFollowed c = rest
+          | (d :| ds) : rest' <- rest, continuedBy c d = (c :| d : ds) : rest'
+          | otherwise = (c :| []) : rest
+        continuedBy c d =
+          spanStartLine below == spanEndLine above + 1
+            && spanStartColumn below == spanStartColumn above
+          where
+            above = commentSpan c
+            below = commentSpan d
 
     enclosingRegions = enclosures regions (fmap commentSpan comments)
     enclosingFences = enclosures fences (fmap commentSpan comments)

@@ -78,15 +78,41 @@ spec = do
                      ("-- and again", Just (Before, bar'))
                    ]
 
-    it "does not when that line ended in code" $
-      placedIn [operand, bar'] [] nothingAbove
-        `shouldBe` [("-- and again", Just (Before, bar'))]
-
     it "does not when what follows lines up with it as well" $
       placedIn [operand, continuation] [] carriedOnThenMore
         `shouldBe` [ ("-- said once", Just (After, operand)),
                      ("-- and again", Just (Before, continuation))
                    ]
+
+  describe "a comment lined up under a line of code" $ do
+    it "goes under that line when what follows begins further left" $
+      placedIn [fooDecl, operand, bar'] [] nothingAbove
+        `shouldBe` [("-- and again", Just (Under, operand))]
+
+    it "takes the comments lined up under it along" $
+      placedIn [fooDecl, operand, barAfterARun] [] aRunUnder
+        `shouldBe` [ ("-- and again", Just (Under, operand)),
+                     ("-- and once more", Just (Under, operand))
+                   ]
+
+    it "does not when what follows lines up with it as well" $
+      placedIn [operand, continuation] [] linedUpWithWhatFollows
+        `shouldBe` [("-- and again", Just (Before, continuation))]
+
+    it "does not when it is not lined up with that line" $
+      placedIn [fooDecl, operand, bar'] [] indentedPastTheLine
+        `shouldBe` [("-- and again", Just (Before, bar'))]
+
+    it "does not when it is lined up with what follows instead" $
+      placedIn
+        [letStatement, valueBody, printValue]
+        []
+        linedUpWithTheNextStatement
+        `shouldBe` [("-- something", Just (Before, printValue))]
+
+    it "does not when that line does not end what it belongs to" $
+      placedIn [operand, bar'] [] nothingAbove
+        `shouldBe` [("-- and again", Just (Before, bar'))]
 
   describe "a comment written right after another one" $ do
     it "goes where that comment goes" $
@@ -181,10 +207,20 @@ wholeOfLineTwo = mkSpan (2, 1) (2, 8)
 laterStill :: Span
 laterStill = mkSpan (9, 1) (9, 4)
 
--- | The @a + b@ of the snippets below, and the @bar@ under them.
-operand, bar' :: Span
+-- | The declaration of @foo@ in the snippets below, its @a + b@, and the
+-- @bar@ under them, with one comment or two between.
+fooDecl, operand, bar', barAfterARun :: Span
+fooDecl = mkSpan (1, 1) (2, 8)
 operand = mkSpan (2, 3) (2, 8)
 bar' = mkSpan (4, 1) (4, 4)
+barAfterARun = mkSpan (5, 1) (5, 4)
+
+-- | The @let@ statement of 'linedUpWithTheNextStatement', the right-hand
+-- side of its binding, and the statement after it.
+letStatement, valueBody, printValue :: Span
+letStatement = mkSpan (2, 3) (3, 20)
+valueBody = mkSpan (3, 9) (3, 20)
+printValue = mkSpan (5, 3) (5, 14)
 
 -- | The @+ c@ that carries the expression on, lined up with the comment.
 continuation :: Span
@@ -205,6 +241,8 @@ xOnLineTwo = mkSpan (2, 1) (2, 2)
 -- The snippets that take more than one line
 
 carriedOn, indentedFurther, nothingAbove, carriedOnThenMore :: Text
+aRunUnder, linedUpWithWhatFollows, indentedPastTheLine :: Text
+linedUpWithTheNextStatement :: Text
 carriedOn =
   "foo =\n\
   \  a + b -- said once\n\
@@ -225,6 +263,32 @@ carriedOnThenMore =
   \  a + b -- said once\n\
   \  -- and again\n\
   \  + c\n"
+
+aRunUnder =
+  "foo =\n\
+  \  a + b\n\
+  \  -- and again\n\
+  \  -- and once more\n\
+  \bar = 2\n"
+
+linedUpWithWhatFollows =
+  "foo =\n\
+  \  a + b\n\
+  \  -- and again\n\
+  \  + c\n"
+
+indentedPastTheLine =
+  "foo =\n\
+  \  a + b\n\
+  \    -- and again\n\
+  \bar = 2\n"
+
+linedUpWithTheNextStatement =
+  "main = do\n\
+  \  let value =\n\
+  \        one <|> two\n\
+  \  -- something\n\
+  \  print value\n"
 
 ----------------------------------------------------------------------------
 -- Running the rules

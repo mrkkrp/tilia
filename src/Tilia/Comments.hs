@@ -32,7 +32,7 @@ import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (isJust, listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Parser.Annotation qualified as GHC
@@ -62,7 +62,10 @@ data Comment = Comment
     -- | Whether to leave an empty line above it when it is printed.
     commentGapAbove :: Bool,
     -- | Whether to leave an empty line below it when it is printed.
-    commentGapBelow :: Bool
+    commentGapBelow :: Bool,
+    -- | Where the first line under it that is not empty begins, if there
+    -- is one.
+    commentNextLine :: Maybe (Int, Int)
   }
   deriving (Eq, Show)
 
@@ -135,7 +138,8 @@ commentAt ls spn style raw =
       commentCodeBeforeStopsAt = codeBeforeStopsAt,
       commentFollowed = followed,
       commentGapAbove = above == BlankLine,
-      commentGapBelow = blankAt (spanEndLine spn + 1) ls
+      commentGapBelow = blankAt (spanEndLine spn + 1) ls,
+      commentNextLine = nextLine
     }
   where
     startColumn = maybe 0 (`offsetOf` spanStartColumn spn) openingLine
@@ -147,11 +151,21 @@ commentAt ls spn style raw =
       Nothing -> TopOfFile
       Just l
         | T.all isSpace l -> BlankLine
-        | otherwise -> ContentAt (columnOf l (T.length (T.takeWhile isSpace l)))
+        | otherwise -> ContentAt (contentStart l)
     codeBeforeStopsAt = do
       l <- openingLine
       let before' = T.stripEnd (T.take startColumn l)
       if T.null before' then Nothing else Just (columnOf l (T.length before'))
+    nextLine =
+      listToMaybe
+        [ (n, contentStart l)
+        | (n, Just l) <-
+            takeWhile
+              (isJust . snd)
+              [(n, lineAt n ls) | n <- [spanEndLine spn + 1 ..]],
+          not (T.all isSpace l)
+        ]
+    contentStart l = columnOf l (T.length (T.takeWhile isSpace l))
     followed = case lineAt (spanEndLine spn) ls of
       Just l -> not (T.all isSpace (T.drop (offsetOf l (spanEndColumn spn)) l))
       Nothing -> False

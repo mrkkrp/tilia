@@ -144,7 +144,14 @@ walk margin = go
               foldMap (writtenAs margin (isEmptyAnchor s) position) cs
             before' = heldOffFrom d [c | (q, c) <- mine, q == Before]
             after' = [c | (q, c) <- mine, q == After]
-         in (write Before before' <> DLocated s d' <> write After after', p'')
+            under' = [c | (q, c) <- mine, q == Under]
+            withUnder
+              | null under' = id
+              | otherwise = \x -> DAlign (x <> write Under under')
+         in ( write Before before'
+                <> withUnder (DLocated s d' <> write After after'),
+              p''
+            )
       DFence s d -> first (DFence s) (go p d)
       DCppChoice cs bs e ->
         let bs' = [(c, go p d) | (c, d) <- bs]
@@ -218,7 +225,7 @@ writtenAs ::
 writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
     Before -> includeWhen (not (commentTrailing c)) space <> body <> includeUnless atTheEnd space
-    After -> space <> body
+    _ -> space <> body
   EndsTheLine -> space <> body <> closeLine <> gapBelow
   HeldBack -> holdBack (renderComment c)
   OnItsOwnLines ->

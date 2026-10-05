@@ -346,7 +346,8 @@ ormoluSkip =
     "declaration" </> "instance" </> "newlines-between-methods.hs",
     "other" </> "comment-in-empty-list.hs",
     "declaration" </> "class" </> "associated-type-defaults.hs",
-    "declaration" </> "class" </> "default-implementations-comments.hs"
+    "declaration" </> "class" </> "default-implementations-comments.hs",
+    "other" </> "invalid-haddock-1.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

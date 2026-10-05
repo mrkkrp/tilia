@@ -212,6 +212,10 @@
   it, such as the lines of a comment listing points that begin with `*`, or
   rules of dashes above and below a heading, rather than put empty lines
   around it. [Issue 119](https://github.com/mrkkrp/tilia/issues/119).
+* Keep a comment written under the last line of a binding, a statement or
+  a declaration, lined up with the code on that line, under that code
+  where what follows begins further left, rather than move it out to what
+  follows. [Issue 121](https://github.com/mrkkrp/tilia/issues/121).
 
 ## Tilia 0.0.2.0
 
