@@ -216,6 +216,10 @@
   a declaration, lined up with the code on that line, under that code
   where what follows begins further left, rather than move it out to what
   follows. [Issue 121](https://github.com/mrkkrp/tilia/issues/121).
+* Keep a conditional that begins in a `where` clause and goes on into the
+  declarations after it whole, rather than split it in two with the empty
+  line between the declarations inside the second, which a second run moved
+  above it. [Issue 118](https://github.com/mrkkrp/tilia/issues/118).
 
 ## Tilia 0.0.2.0
 
