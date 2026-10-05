@@ -1588,7 +1588,7 @@ formatted       915aac4ba0bb  conduit-1.3.6.1/test/main.hs
 formatted       a4a0156cbfff  contravariant-1.5.6/old-src/Data/Functor/Contravariant.hs
 formatted       4ddb460640d4  contravariant-1.5.6/src/Data/Functor/Contravariant/Compose.hs
 formatted       aceb756fa0e3  contravariant-1.5.6/src/Data/Functor/Contravariant/Divisible.hs
-formatted       df9d86e0a6ab  contravariant-1.5.6/src/Data/Functor/Contravariant/Generic.hs
+formatted       98e227191284  contravariant-1.5.6/src/Data/Functor/Contravariant/Generic.hs
 formatted       2841bd16822b  criterion-1.6.5.0/Criterion.hs
 formatted       417b9eafad2d  criterion-1.6.5.0/Criterion/Analysis.hs
 formatted       c039ba5918a9  criterion-1.6.5.0/Criterion/EmbeddedData.hs
@@ -1828,7 +1828,7 @@ formatted       f005c45a7335  diagrams-core-1.5.1.2/src/Diagrams/Core/Query.hs
 formatted       5c32f24f7311  diagrams-core-1.5.1.2/src/Diagrams/Core/Style.hs
 formatted       0d93bb9387d4  diagrams-core-1.5.1.2/src/Diagrams/Core/Trace.hs
 formatted       ceb1829b99d5  diagrams-core-1.5.1.2/src/Diagrams/Core/Transform.hs
-formatted       1418d7a2b559  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
+formatted       9fefb0a9651c  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
 formatted       a9f71c9c75d0  diagrams-core-1.5.1.2/src/Diagrams/Core/V.hs
 formatted       5cabe7655bac  distributed-process-0.7.8/benchmarks/Channels.hs
 formatted       504953bb1387  distributed-process-0.7.8/benchmarks/Latency.hs
@@ -2314,7 +2314,7 @@ formatted       6c6fc43e3c8c  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       1ac4e77634fb  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
 formatted       6116af7c8eab  haxl-2.5.1.1/Haxl/Core/Memo.hs
-formatted       c6cfcbc5dc85  haxl-2.5.1.1/Haxl/Core/Monad.hs
+formatted       331b6d94ce03  haxl-2.5.1.1/Haxl/Core/Monad.hs
 formatted       19ee0e1d26fe  haxl-2.5.1.1/Haxl/Core/Parallel.hs
 formatted       d03eb9460c3a  haxl-2.5.1.1/Haxl/Core/Profile.hs
 formatted       015cb76495fb  haxl-2.5.1.1/Haxl/Core/RequestStore.hs
@@ -2508,12 +2508,12 @@ formatted       aed8c8d69571  hspec-core-2.11.17/src/GetOpt/Declarative/Types.hs
 formatted       7963314c7b2d  hspec-core-2.11.17/src/GetOpt/Declarative/Util.hs
 formatted       c59700aebda7  hspec-core-2.11.17/src/Test/Hspec/Core/Annotations.hs
 formatted       aaed3a708e2b  hspec-core-2.11.17/src/Test/Hspec/Core/Clock.hs
-formatted       7692a196849f  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
+formatted       daebbe191e9f  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
 formatted       f5ded9eab569  hspec-core-2.11.17/src/Test/Hspec/Core/Config.hs
 formatted       b9ed2689f1a4  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Definition.hs
 formatted       2c2affbefb39  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Options.hs
 formatted       38a2774bf309  hspec-core-2.11.17/src/Test/Hspec/Core/Example.hs
-formatted       bd73a6daf0f3  hspec-core-2.11.17/src/Test/Hspec/Core/Example/Location.hs
+formatted       78f6f2a2f383  hspec-core-2.11.17/src/Test/Hspec/Core/Example/Location.hs
 formatted       19c90134f072  hspec-core-2.11.17/src/Test/Hspec/Core/Extension.hs
 formatted       b5766e2580e3  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Config.hs
 formatted       b0c9672ff2ee  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Config/Type.hs
@@ -2526,7 +2526,7 @@ formatted       a49d2bd24295  hspec-core-2.11.17/src/Test/Hspec/Core/Format.hs
 formatted       b8b03afd38ee  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters.hs
 formatted       0f6c87760ec2  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Diff.hs
 formatted       337da9e04e1d  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Internal.hs
-formatted       82742648d869  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
+formatted       463fbae99397  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
 formatted       71e26cb11ffa  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Parser.hs
 formatted       07264fb33ca8  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Unicode.hs
 formatted       32564aeda195  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/V1.hs
@@ -2541,7 +2541,7 @@ formatted       1be2d9c4a008  hspec-core-2.11.17/src/Test/Hspec/Core/Runner.hs
 formatted       559e8587e33c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Eval.hs
 formatted       45d877a0b59c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/JobQueue.hs
 formatted       486c3e882e3e  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/PrintSlowSpecItems.hs
-formatted       5fd2819d05e8  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
+formatted       800cbdaf0858  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
 formatted       d699e2b567f5  hspec-core-2.11.17/src/Test/Hspec/Core/Shuffle.hs
 formatted       929d1248e847  hspec-core-2.11.17/src/Test/Hspec/Core/Spec.hs
 formatted       0aaa70c4113f  hspec-core-2.11.17/src/Test/Hspec/Core/Spec/Monad.hs
@@ -2577,7 +2577,7 @@ formatted       775321ce08bf  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/Eva
 formatted       1a7b81d688ce  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/JobQueueSpec.hs
 formatted       a0e5092545a6  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/PrintSlowSpecItemsSpec.hs
 formatted       2781ae88628b  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/ResultSpec.hs
-formatted       f416fc0ebea5  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
+formatted       957cee2b9786  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
 formatted       be08f1178641  hspec-core-2.11.17/test/Test/Hspec/Core/ShuffleSpec.hs
 formatted       109f785c9f28  hspec-core-2.11.17/test/Test/Hspec/Core/SpecSpec.hs
 formatted       ccd964421c9d  hspec-core-2.11.17/test/Test/Hspec/Core/TimerSpec.hs
@@ -2957,7 +2957,7 @@ formatted       5e21ab523a4c  megaparsec-9.8.1/Text/Megaparsec/Unicode.hs
 formatted       882124e5ceb6  megaparsec-9.8.1/bench/memory/Main.hs
 formatted       d8a32e7340de  megaparsec-9.8.1/bench/speed/Main.hs
 formatted       e865ae48f11b  microlens-0.5.0.0/Setup.hs
-partly-checked  d7d7931c5a3c  microlens-0.5.0.0/src/Lens/Micro.hs
+partly-checked  37206fb8e023  microlens-0.5.0.0/src/Lens/Micro.hs
 formatted       a33fe5ffd3d9  microlens-0.5.0.0/src/Lens/Micro/Extras.hs
 formatted       3608b82ef46d  microlens-0.5.0.0/src/Lens/Micro/FieldN.hs
 partly-checked  a6c752419362  microlens-0.5.0.0/src/Lens/Micro/Internal.hs
@@ -3057,7 +3057,7 @@ formatted       554e3fd3f722  pandoc-3.10.2/src/Text/Pandoc/Class/PandocIO.hs
 formatted       c65acaaeb3de  pandoc-3.10.2/src/Text/Pandoc/Class/PandocMonad.hs
 formatted       af26c6ef7be1  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
 formatted       0b8f40903d65  pandoc-3.10.2/src/Text/Pandoc/Class/Sandbox.hs
-formatted       407b6ea8dcf3  pandoc-3.10.2/src/Text/Pandoc/Data.hs
+formatted       e1a80598ff8f  pandoc-3.10.2/src/Text/Pandoc/Data.hs
 formatted       a40ce7ee511d  pandoc-3.10.2/src/Text/Pandoc/Data/BakedIn.hs
 formatted       58434b0c4602  pandoc-3.10.2/src/Text/Pandoc/Emoji.hs
 formatted       232d7de23b73  pandoc-3.10.2/src/Text/Pandoc/Error.hs
@@ -3920,7 +3920,7 @@ formatted       f81df0c89774  random-1.3.1/bench-legacy/BinSearch.hs
 formatted       ec53458f4d57  random-1.3.1/bench-legacy/SimpleRNGBench.hs
 formatted       0584292cc54f  random-1.3.1/bench/Main.hs
 formatted       fc5450bd346c  random-1.3.1/src/System/Random.hs
-formatted       0719577a75c1  random-1.3.1/src/System/Random/Array.hs
+formatted       5851806268ea  random-1.3.1/src/System/Random/Array.hs
 formatted       0648347f5df7  random-1.3.1/src/System/Random/GFinite.hs
 formatted       b01bc1443faf  random-1.3.1/src/System/Random/Internal.hs
 formatted       43cf9948fc9c  random-1.3.1/src/System/Random/Seed.hs
@@ -3943,7 +3943,7 @@ formatted       37b2a0b086b3  recursion-schemes-5.2.3/src/Data/Functor/Base.hs
 formatted       3ca7a5ae5fb0  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
 formatted       60333913c12d  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
 formatted       1581398eb1b5  resourcet-1.3.0/Control/Monad/Trans/Resource.hs
-formatted       e95ee3fdd7fb  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
+formatted       ae2967cdb48f  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
 formatted       80dc65ef0c4a  resourcet-1.3.0/Data/Acquire.hs
 formatted       4a9defd159ee  resourcet-1.3.0/Data/Acquire/Internal.hs
 formatted       27565132aa25  resourcet-1.3.0/UnliftIO/Resource.hs
@@ -3996,7 +3996,7 @@ formatted       d40e0a8e64ea  scotty-0.30/examples/upload.hs
 formatted       94f10fda97e5  scotty-0.30/examples/urlshortener.hs
 formatted       2fbd14b119a4  scotty-0.30/test/Spec.hs
 formatted       dd9baecda733  scotty-0.30/test/Test/Hspec/Wai/Extra.hs
-formatted       07d5e278736c  scotty-0.30/test/Web/ScottySpec.hs
+formatted       88776873ba4e  scotty-0.30/test/Web/ScottySpec.hs
 formatted       091ccbfea22a  semigroupoids-6.0.2/src/Data/Bifunctor/Apply.hs
 formatted       a420abc361b5  semigroupoids-6.0.2/src/Data/Functor/Alt.hs
 formatted       b091ae1639ae  semigroupoids-6.0.2/src/Data/Functor/Apply.hs
@@ -4503,7 +4503,7 @@ formatted       a0bdad468ca4  text-2.1.4/scripts/CaseMapping.hs
 formatted       57e97be5ba61  text-2.1.4/scripts/SpecialCasing.hs
 formatted       d775bb623580  text-2.1.4/scripts/UnicodeData.hs
 partly-checked  37ad66a25017  text-2.1.4/src/Data/Text.hs
-formatted       5b72823ffe98  text-2.1.4/src/Data/Text/Array.hs
+formatted       d3ff1f08422c  text-2.1.4/src/Data/Text/Array.hs
 formatted       4970b89f4e7e  text-2.1.4/src/Data/Text/Encoding.hs
 formatted       d6231f7ebe99  text-2.1.4/src/Data/Text/Encoding/Error.hs
 formatted       7580816061c0  text-2.1.4/src/Data/Text/Foreign.hs

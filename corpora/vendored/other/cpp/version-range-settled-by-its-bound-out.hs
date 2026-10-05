@@ -5,11 +5,10 @@
 
 module Raise (raiseIt, sorted) where
 
-#if MIN_VERSION_base(4,10,0) && !MIN_VERSION_base(4,12,0)
-import Control.Exception hiding (throw)
-import GHC.Exts (raise#)
-#else
 import Control.Exception
+#if MIN_VERSION_base(4,10,0) && !MIN_VERSION_base(4,12,0)
+  hiding (throw)
+import GHC.Exts (raise#)
 #endif
 import Data.List (sort)
 
