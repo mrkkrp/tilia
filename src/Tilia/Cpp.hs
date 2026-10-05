@@ -966,6 +966,7 @@ merge conditionals guards varied settledOthers = go Broken
       DHardBreak -> True
       DCloseLine -> True
       DCloseLineUnlessAfterOpener _ -> True
+      DGroup _ DEmpty -> True
       _ -> False
 
     choice ds

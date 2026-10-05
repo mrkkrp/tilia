@@ -199,27 +199,30 @@ hsModule ::
   HsModule GhcPs ->
   Doc
 hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
-  headerLayout $
-    pragmaBlock pragmas
-      <> hardBreak
-      <> moduleLine
-      <> hardBreak
-      <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
-      <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
-      <> includeUnless
-        (null hsmodDecls)
-        (hardBreak <> declarationLayout (decls ctx Free hsmodDecls))
+  pragmaBlock pragmas
+    <> hardBreak
+    <> headerLayout moduleLine
+    <> hardBreak
+    <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
+    <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
+    <> includeUnless
+      (null hsmodDecls)
+      ( hardBreak
+          <> declarationsStart
+          <> declarationLayout (decls ctx Free hsmodDecls)
+      )
   where
-    declarationLayout = case hsmodDecls of
-      _ : _ : _ -> layoutFrom ctx (spansOf hsmodDecls)
-      _ -> broken
+    declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of
+      (_ : _ : _, Just s) | isSingleLine s -> flat
+      _ -> id
     exports = maybe [] unLoc hsmodExports
     headerSpan =
       foldMap (\w -> foldMap spanOf hsmodName <> spanOf w) hsmodDeprecMessage
         <> foldMap spanOf hsmodExports
     headerLayout
-      | any (isDocEntry . unLoc) exports = broken
-      | otherwise = layoutFrom ctx headerSpan
+      | any (isDocEntry . unLoc) exports = id
+      | maybe True isSingleLine headerSpan = flat
+      | otherwise = id
     moduleLine = case hsmodName of
       Nothing -> mempty
       Just modName ->

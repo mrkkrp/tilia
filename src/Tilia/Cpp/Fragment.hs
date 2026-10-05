@@ -26,12 +26,12 @@ import Tilia.Cpp.Directives
     blankingFor,
     droppedFor,
   )
+import Tilia.Doc.Combinators (declarationsStart)
 import Tilia.Doc.Internal
   ( Doc (..),
     Layout (..),
     foldChildren,
     printedFrom,
-    spine,
     spineAt,
   )
 
@@ -41,9 +41,7 @@ data Body = Body
     bodyHeadEnd :: !Int,
     -- | Whether anything above the declarations is a choice.
     bodyHeadVaries :: !Bool,
-    -- | How the declarations are laid out.
-    bodyLayout :: !Layout,
-    -- | The declarations, as the elements of that layout.
+    -- | The declarations and the breaks between them.
     bodyItems :: [Doc],
     -- | The runs of declarations the printer keeps together, in order.
     bodyRuns :: [Run],
@@ -67,10 +65,9 @@ data Run = Run
 -- | Find the declarations in a module's document.
 bodyOf :: Doc -> Maybe Body
 bodyOf doc = do
-  (DGroup headerLayout inside, around) <- lastOf doc
-  (DGroup layout content, within) <- lastOf inside
-  let with decls = around (DGroup headerLayout (within decls))
-      items = spineAt layout content
+  (head', _ : items) <- Just (break (== declarationsStart) (spineAt Broken doc))
+  guard (case items of [DGroup Flat _] -> False; _ -> True)
+  let with = (mconcat (head' <> [declarationsStart]) <>)
   runs <- runsOf items
   pure
     Body
@@ -78,21 +75,10 @@ bodyOf doc = do
           r : _ -> runFrom r - 1
           [] -> maximum (0 : fmap snd (printedFrom doc)),
         bodyHeadVaries = choosing (with mempty),
-        bodyLayout = layout,
         bodyItems = items,
         bodyRuns = runs,
         bodyWith = with
       }
-
--- | The last element of a document's spine, and the document with another
--- in its place.
-lastOf :: Doc -> Maybe (Doc, Doc -> Doc)
-lastOf = \case
-  DCat a b
-    | null (spine b) -> (\(x, plug) -> (x, (`DCat` b) . plug)) <$> lastOf a
-    | otherwise -> (\(x, plug) -> (x, DCat a . plug)) <$> lastOf b
-  DEmpty -> Nothing
-  d -> Just (d, id)
 
 -- | Cut the elements of a body into runs at the empty lines between them.
 runsOf :: [Doc] -> Maybe [Run]
@@ -132,7 +118,6 @@ data Fragment = Fragment
 -- formatted apart, or 'Nothing' where they cannot be.
 fragmentsOf :: Body -> [GroupSpec] -> Maybe [Fragment]
 fragmentsOf body forest = do
-  guard (bodyLayout body == Broken)
   let (above, below) = partition ((<= bodyHeadEnd body) . fst . gsWhole) forest
   guard (all ((<= bodyHeadEnd body) . snd . gsWhole) above)
   let fragment gs isAbove (lo, hi) = Fragment gs isAbove (runAt (lo - 1)) (runAt hi)
@@ -219,7 +204,7 @@ reassembled body formatted = do
     [b] -> Just (bodyWith b)
     _ -> Nothing
   let items = foldr put (bodyItems body) (sortOn (\(i, _, _) -> i) [p | (_, _, p) <- placed])
-  pure (with (DGroup (bodyLayout body) (mconcat items)))
+  pure (with (mconcat items))
   where
     put (from, to, new) items = take from items <> new <> drop to items
 

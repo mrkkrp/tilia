@@ -70,7 +70,7 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (37)
+partly-checked (39)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/Main.hs
@@ -118,8 +118,14 @@ lens-5.3.6/src/Language/Haskell/TH/Lens.hs
 microlens-0.5.0.0/src/Lens/Micro.hs
     128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
+microlens-0.5.0.0/src/Lens/Micro/Internal.hs
+    96 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
 optics-0.4.2.1/tests/Optics/Tests/Utils.hs
     2048 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 stm-2.5.3.1/Control/Monad/STM.hs
     72 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
@@ -185,7 +191,7 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (12)
+declined (10)
 ==========================================================================
 
 cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
@@ -207,12 +213,6 @@ intero-0.1.40/src/InteractiveUI.hs
 
 lens-5.3.6/tests/properties.hs
     lens-5.3.6/tests/properties.hs:118:26-28: parse error on input `KVS'
-
-microlens-0.5.0.0/src/Lens/Micro/Internal.hs
-    too many configurations to format
-
-semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
-    too many configurations to format
 
 shake-0.19.9/src/Development/Shake/Internal/FileInfo.hs
     shake-0.19.9/src/Development/Shake/Internal/FileInfo.hs:149:16-23: parse error on input `CALLCONV', in the configuration taking #ifndef MIN_VERSION_unix, then #ifndef MIN_VERSION_time, then #elif defined(mingw32_HOST_OS), then #ifdef x86_64_HOST_ARCH

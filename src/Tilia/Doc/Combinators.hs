@@ -18,6 +18,7 @@ module Tilia.Doc.Combinators
     verbatimBreak,
     verbatim,
     emptyAnchor,
+    declarationsStart,
 
     -- * Layout
     Layout (..),
@@ -139,6 +140,10 @@ verbatim =
 -- permits comments.
 emptyAnchor :: Span -> Doc
 emptyAnchor s = located s mempty
+
+-- | Where a module's declarations begin, marked without printing anything.
+declarationsStart :: Doc
+declarationsStart = DGroup Broken DEmpty
 
 ----------------------------------------------------------------------------
 -- Layout
