@@ -27,6 +27,7 @@ import Tilia.Doc.Internal
     Wrapper (..),
     conditionalRange,
     layoutInside,
+    onlyBreaks,
     onlySpacing,
     printedFrom,
     printsNothing,
@@ -286,7 +287,7 @@ merge written conditionals guards varied settledOthers = go Broken
             ws == ws' || null ws || null ws',
             (g, x) : rest <- bs,
             (_, y) : rest' <- cs,
-            (lead, first') <- span spacing (spine (x <> between <> y)) ->
+            (lead, first') <- span breaking (spine (x <> between <> y)) ->
               opening
                 <> mconcat lead
                 <> Doc.cppChoice
@@ -328,19 +329,11 @@ merge written conditionals guards varied settledOthers = go Broken
           runs -> maximumBy (comparing (spaceOf layout)) runs
 
     peel ds =
-      let (l, rest) = span spacing ds
-          (r, m) = span spacing (reverse rest)
+      let (l, rest) = span breaking ds
+          (r, m) = span breaking (reverse rest)
        in (l, reverse m, reverse r)
 
-    spacing = \case
-      DEmpty -> True
-      DBreak -> True
-      DSoftBreak -> True
-      DHardBreak -> True
-      DCloseLine -> True
-      DCloseLineUnlessAfterOpener _ -> True
-      DGroup _ DEmpty -> True
-      _ -> False
+    breaking d = onlyBreaks d || d == Doc.declarationsStart
 
     choice ds
       | (d : _) <- mapMaybe (settledChoice ds) settledOthers = d
@@ -646,7 +639,7 @@ choiceAt written edge = go Flat False
 
 -- | Does the first thing this document puts on the page end a line?
 opensWithBreak :: Layout -> Doc -> Bool
-opensWithBreak layout d = case dropWhile quiet (spineAt layout d) of
+opensWithBreak layout d = case dropWhile (== DSpace) (spineAt layout d) of
   x : _
     | Just (w, y) <- unwrap x -> opensWithBreak (layoutInside layout w) y
     | otherwise -> case x of
@@ -659,11 +652,6 @@ opensWithBreak layout d = case dropWhile quiet (spineAt layout d) of
         DCppChoice{} -> True
         _ -> False
   [] -> False
-  where
-    quiet = \case
-      DEmpty -> True
-      DSpace -> True
-      _ -> False
 
 -- | How much text this document holds, counting what a choice repeats once
 -- for each alternative that repeats it.
@@ -720,19 +708,12 @@ anchored same a b = anchoring a && same a b
 -- | Could this element hold two spines together, if it turned up in both?
 anchoring :: Doc -> Bool
 anchoring = \case
-  DEmpty -> False
-  DSpace -> False
-  DBreak -> False
-  DSoftBreak -> False
-  DHardBreak -> False
-  DCloseLine -> False
-  DCloseLineUnlessAfterOpener _ -> False
   DVerbatimBreak _ _ -> False
   DText "," -> False
   DNest _ d -> located d || not (printsNothing d)
   DAlign d -> located d || not (printsNothing d)
   DGroup _ d -> located d || not (printsNothing d)
-  _ -> True
+  d -> not (onlySpacing d)
   where
     located = \case
       DLocated{} -> True
