@@ -344,7 +344,9 @@ ormoluSkip =
     "other" </> "comment-opening-a-list.hs",
     "declaration" </> "class" </> "newlines-between-methods.hs",
     "declaration" </> "instance" </> "newlines-between-methods.hs",
-    "other" </> "comment-in-empty-list.hs"
+    "other" </> "comment-in-empty-list.hs",
+    "declaration" </> "class" </> "associated-type-defaults.hs",
+    "declaration" </> "class" </> "default-implementations-comments.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

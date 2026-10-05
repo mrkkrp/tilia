@@ -70,7 +70,6 @@ declRun grouping ctx style ds =
         Disregard -> True
         Respect ->
           separatedByBlank ctx ended began
-            || commentBetween ctx ended began
             || isDocumented previous
             || isDocumented current
       where
