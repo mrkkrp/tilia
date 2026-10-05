@@ -918,13 +918,12 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
     <> multAnnGap
     <> strictness strict
     <> head'
-    <> nest
-      (if indentBody then 1 else 0)
-      ( separator
-          <> layoutFrom ctx bodySpan (attach placement body)
-          <> indent whereClause
-      )
+    <> nest bodyNest rightHandSide
+    <> whereClause
   where
+    bodyNest = if indentBody then 1 else 0
+    rightHandSide = separator <> layoutFrom ctx bodySpan (attach placement body)
+
     multAnnGap = case multAnn of
       HsUnannotated{} -> mempty
       _ -> space
@@ -1012,11 +1011,12 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
     whereClause = case grhssLocalBinds of
       EmptyLocalBinds _ -> mempty
       binds ->
-        breakOrSpace
-          <> keywordAt ctx (whereKeywordSpan binds) "where"
-          <> includeUnless
-            (isEmptyLocalBinds binds)
-            (breakOrSpace <> indent (localBinds ctx bracing binds))
+        nest bodyNest . indent $
+          breakOrSpace
+            <> keywordAt ctx (whereKeywordSpan binds) "where"
+            <> includeUnless
+              (isEmptyLocalBinds binds)
+              (breakOrSpace <> indent (localBinds ctx bracing binds))
 
 -- | Is this an alternative of a @case@ or a @\\case@?
 isCaseStyle :: MatchStyle -> Bool

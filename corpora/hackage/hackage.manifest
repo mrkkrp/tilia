@@ -473,7 +473,7 @@ formatted       27b454ea364e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.
 formatted       09230f4d022f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
 formatted       a94b9d13da2f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monoids.hs
 formatted       0c4f8c706edf  QuickCheck-2.18.0.0/src/Test/QuickCheck/Poly.hs
-formatted       1f921598b283  QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
+formatted       b675403eb557  QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
 formatted       d248979763fb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Random.hs
 formatted       67a6c49f2d76  QuickCheck-2.18.0.0/src/Test/QuickCheck/State.hs
 formatted       4d4983c7c06e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs
@@ -653,7 +653,7 @@ formatted       f582abe3e244  attoparsec-0.14.4/benchmarks/Numbers.hs
 formatted       696be472825c  attoparsec-0.14.4/benchmarks/Sets.hs
 formatted       0d64d700acb4  attoparsec-0.14.4/benchmarks/TextFastSet.hs
 formatted       2b16e18cd8c0  attoparsec-0.14.4/benchmarks/Warp.hs
-formatted       5aab92534568  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
+formatted       0328e73e6175  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
 formatted       1f7d3a417fb5  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/RequestHeader.hs
 formatted       0d3565bef090  attoparsec-0.14.4/examples/Atto_RFC2616.hs
 formatted       b6861e7aadf8  attoparsec-0.14.4/examples/Parsec_RFC2616.hs
@@ -786,7 +786,7 @@ formatted       5886bbdd46c9  aws-0.25.3/tests/S3/Main.hs
 formatted       44336eea1e26  aws-0.25.3/tests/Sqs/Main.hs
 formatted       001f1d1eb163  aws-0.25.3/tests/Utils.hs
 formatted       b1dc0288cc34  base64-bytestring-1.2.1.0/Data/ByteString/Base64.hs
-formatted       2897fc80ce31  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Internal.hs
+formatted       8d1de483b9c4  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Internal.hs
 formatted       dae9abac8bd0  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Lazy.hs
 formatted       3a5cbd3642e2  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL.hs
 formatted       0d8bf6b77f56  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL/Lazy.hs
@@ -2727,7 +2727,7 @@ formatted       d367b2f46d9f  idris-1.3.4/src/Idris/Parser/Data.hs
 formatted       9475514d3152  idris-1.3.4/src/Idris/Parser/Expr.hs
 formatted       1c16d75635f7  idris-1.3.4/src/Idris/Parser/Helpers.hs
 formatted       00297a830b2d  idris-1.3.4/src/Idris/Parser/Ops.hs
-formatted       3cf1ce8dabb7  idris-1.3.4/src/Idris/Parser/Stack.hs
+formatted       62a549ccc547  idris-1.3.4/src/Idris/Parser/Stack.hs
 formatted       f0e3821f6651  idris-1.3.4/src/Idris/PartialEval.hs
 formatted       58ad84ded5d8  idris-1.3.4/src/Idris/Primitives.hs
 formatted       55a7e58fbd43  idris-1.3.4/src/Idris/ProofSearch.hs
@@ -2759,7 +2759,7 @@ formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
 formatted       72999d5c814e  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
 formatted       d3b894941b5e  intero-0.1.40/src/Intero/Compat.hs
-partly-checked  8c1e29cdcc5d  intero-0.1.40/src/Main.hs
+partly-checked  4b652887a5cf  intero-0.1.40/src/Main.hs
 formatted       13b22f1a2f96  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs
@@ -3345,7 +3345,7 @@ formatted       79460d761fcd  pandoc-3.10.2/xml-light/Text/Pandoc/XML/Light/Type
 formatted       e865ae48f11b  pandoc-types-1.23.1.2/Setup.hs
 formatted       8376040e03f4  pandoc-types-1.23.1.2/benchmark/bench.hs
 formatted       779df2fa2e63  pandoc-types-1.23.1.2/src/Text/Pandoc/Arbitrary.hs
-formatted       2b99499bebfa  pandoc-types-1.23.1.2/src/Text/Pandoc/Builder.hs
+formatted       87ebe529440f  pandoc-types-1.23.1.2/src/Text/Pandoc/Builder.hs
 formatted       7400bafe0ab3  pandoc-types-1.23.1.2/src/Text/Pandoc/Definition.hs
 formatted       42a13347f367  pandoc-types-1.23.1.2/src/Text/Pandoc/Generic.hs
 formatted       8fad29f2adc4  pandoc-types-1.23.1.2/src/Text/Pandoc/JSON.hs
