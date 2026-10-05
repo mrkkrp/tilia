@@ -205,6 +205,9 @@
   next to the member before it, rather than set it apart with an empty
   line the author did not write. [Issue
   120](https://github.com/mrkkrp/tilia/issues/120).
+* Put no space between a block comment and the closing bracket or the
+  comma written right after it, as in `(Bool {- already bound -}, Int)`.
+  [Issue 122](https://github.com/mrkkrp/tilia/issues/122).
 
 ## Tilia 0.0.2.0
 
