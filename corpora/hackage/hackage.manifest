@@ -4232,6 +4232,14 @@ formatted       068337f03a57  shake-0.19.9/src/Test/Unicode.hs
 formatted       312e45ba1b16  shake-0.19.9/src/Test/Util.hs
 formatted       6649fd7b7e4a  shake-0.19.9/src/Test/Verbosity.hs
 formatted       f32aa5af75ac  shake-0.19.9/src/Test/Version.hs
+formatted       e865ae48f11b  singletons-3.0.4/Setup.hs
+broken          2d5bbc9a5a6a  singletons-3.0.4/src/Data/Singletons.hs
+formatted       c6ea02200969  singletons-3.0.4/src/Data/Singletons/Decide.hs
+formatted       5385ff6312e7  singletons-3.0.4/src/Data/Singletons/ShowSing.hs
+formatted       27ecc95d3298  singletons-3.0.4/src/Data/Singletons/Sigma.hs
+formatted       cf55fdda34ab  singletons-3.0.4/tests/ByHand.hs
+formatted       dff1d2757819  singletons-3.0.4/tests/ByHand2.hs
+formatted       92855df34052  singletons-3.0.4/tests/SingletonsTestSuite.hs
 formatted       a7151db2ed5c  split-0.2.5/src/Data/List/Split.hs
 formatted       81873df3b2c6  split-0.2.5/src/Data/List/Split/Internals.hs
 formatted       0476e48b031e  split-0.2.5/test/Properties.hs

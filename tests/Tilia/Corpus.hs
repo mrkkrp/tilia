@@ -275,6 +275,7 @@ hackageReleases =
     "servant-0.20.3.0",
     "servant-server-0.20.3.0",
     "shake-0.19.9",
+    "singletons-3.0.4",
     "split-0.2.5",
     "stack-9.9.9",
     "statistics-0.16.5.0",
