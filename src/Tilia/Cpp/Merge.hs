@@ -9,6 +9,7 @@ module Tilia.Cpp.Merge
   )
 where
 
+import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.List (maximumBy, sortOn, stripPrefix, transpose, unsnoc)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
@@ -23,17 +24,20 @@ import Tilia.Doc.Internal
   ( Conditional (..),
     Doc (..),
     Layout (..),
+    Wrapper (..),
     conditionalRange,
+    layoutInside,
     onlySpacing,
     printedFrom,
     printsNothing,
     spine,
     spineAt,
+    unwrap,
+    wrap,
   )
 import Tilia.Source (Lines, lineAt)
 import Tilia.Span
-  ( Span,
-    covers,
+  ( covers,
     meets,
     spanStartColumn,
     spanStartLine,
@@ -78,32 +82,21 @@ merge written conditionals guards varied settledOthers = go Broken
         spines = fmap (spineAt layout) ds
 
     alongside _ [] = mempty
+    alongside layout xs
+      | Just wds <- traverse unwrap xs,
+        Just w <- joint wds =
+          case (w, go (layoutInside layout w) (fmap snd wds)) of
+            (WLocated _, DCppChoice{})
+              | spans <- [s | (WLocated s, _) <- wds],
+                Just opened <- unwrapping layout spans xs ->
+                  opened
+            (WGroup l, DCppChoice{})
+              | not (all (== l) (layoutsOf wds)),
+                d : rest <- fmap snd wds,
+                not (all (agree varied l d) rest) ->
+                  choice xs
+            (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
-      DLocated s _
-        | Just tds <- every (\case DLocated t d -> Just (t, d); _ -> Nothing),
-          all (meets s . fst) tds ->
-            case go layout (fmap snd tds) of
-              DCppChoice{}
-                | Just opened <- unwrapping layout (fmap fst tds) xs -> opened
-              descended -> DLocated (hull s tds) descended
-      DFence s _
-        | Just tds <- every (\case DFence t d -> Just (t, d); _ -> Nothing),
-          all (meets s . fst) tds ->
-            DFence (hull s tds) (go layout (fmap snd tds))
-      DNest n _ | Just ds <- every (\case DNest m d | m == n -> Just d; _ -> Nothing) -> DNest n (go layout ds)
-      DGroup _ _
-        | Just lds <- every (\case DGroup l d -> Just (l, d); _ -> Nothing),
-          ds@(d : rest) <- fmap snd lds ->
-            let ls = [l | (l, inner) <- lds, not (printsNothing inner)]
-                inside = if Broken `elem` ls then Broken else Flat
-                merged = go inside ds
-             in case merged of
-                  DCppChoice{}
-                    | not (all (== inside) ls),
-                      not (all (agree varied inside d) rest) ->
-                        choice xs
-                  _ -> DGroup inside merged
-      DAlign _ | Just ds <- every (\case DAlign d -> Just d; _ -> Nothing) -> DAlign (go layout ds)
       DCppChoice ws bs _
         | Just alternatives <-
             every $ \case
@@ -121,32 +114,18 @@ merge written conditionals guards varied settledOthers = go Broken
 
     unwrapping layout spans xs = do
       inside <- sole [i | (i, s) <- zip [0 :: Int ..] spans, all (covers s) spans]
-      wrapper <- listToMaybe (drop inside xs)
-      if opens layout wrapper then Just (openedAgainst layout inside wrapper) else Nothing
+      openedAgainst inside layout =<< listToMaybe (drop inside xs)
       where
         sole [i] = Just i
         sole _ = Nothing
 
-        openedAgainst l inside' d = case d of
-          DLocated s x -> DLocated s (openedAgainst l inside' x)
-          DFence s x -> DFence s (openedAgainst l inside' x)
-          DNest n x -> DNest n (openedAgainst l inside' x)
-          DAlign x -> DAlign (openedAgainst l inside' x)
-          DGroup m x -> DGroup m (openedAgainst m inside' x)
-          _ -> case spineAt l d of
+        openedAgainst inside l d = case unwrap d of
+          Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
+          Nothing -> case spineAt l d of
             parts@(_ : _ : _) ->
-              factored l [if k == inside' then parts else [e] | (k, e) <- zip [0 :: Int ..] xs]
-            _ -> choice xs
-
-    opens layout = \case
-      DLocated _ x -> opens layout x
-      DFence _ x -> opens layout x
-      DNest _ x -> opens layout x
-      DAlign x -> opens layout x
-      DGroup l x -> opens l x
-      d -> case spineAt layout d of
-        _ : _ : _ -> True
-        _ -> False
+              Just . factored l $
+                [if k == inside then parts else [e] | (k, e) <- zip [0 ..] xs]
+            _ -> Nothing
 
     factored layout ss =
       let same = agree varied layout
@@ -293,15 +272,12 @@ merge written conditionals guards varied settledOthers = go Broken
           DCppChoice ws bs e
             | not (any printsNothing (e : fmap snd bs)) ->
                 Just (DCppChoice ws [(g, endingWith t b) | (g, b) <- bs] (endingWith t e))
-          DLocated s x -> DLocated s <$> inAlternatives x
-          DFence s x -> DFence s <$> inAlternatives x
-          DNest n x -> DNest n <$> inAlternatives x
-          DAlign x -> DAlign <$> inAlternatives x
-          DGroup l x -> DGroup l <$> inAlternatives x
           DCat a b
             | printsNothing b -> (<> b) <$> inAlternatives a
             | otherwise -> (a <>) <$> inAlternatives b
-          _ -> Nothing
+          y -> do
+            (w, x) <- unwrap y
+            wrap w <$> inAlternatives x
 
     joined before after apart =
       case (choiceAt written Last before, choiceAt written First after) of
@@ -326,17 +302,9 @@ merge written conditionals guards varied settledOthers = go Broken
             between = gap <> gap'
         _ -> before <> apart
 
-    sameKind x y = case (x, y) of
-      (DLocated s t, DLocated u v) -> meets s u && bothWritten t v
-      (DFence s t, DFence u v) -> meets s u && bothWritten t v
-      (DNest n t, DNest m v) -> n == m && bothWritten t v
-      (DGroup _ t, DGroup _ v) -> bothWritten t v
-      (DAlign t, DAlign v) -> bothWritten t v
+    sameKind x y = case (unwrap x, unwrap y) of
+      (Just (w, t), Just (v, u)) -> kin w v && t /= DEmpty && u /= DEmpty
       _ -> False
-      where
-        bothWritten t v = not (empty' t) && not (empty' v)
-        empty' DEmpty = True
-        empty' _ = False
 
     alike layout xs ys =
       length xs == length ys && and (zipWith (agree varied layout) xs ys)
@@ -418,28 +386,17 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
             x : more -> Right x : chunked more
     inside x y = agree varied layout x y
     here x y = case (x, y) of
-      (DGroup l x', DGroup m y') -> l == m && agree varied l x' y'
-      (DNest n x', DNest m y') -> n == m && inside x' y'
-      (DAlign x', DAlign y') -> inside x' y'
       (DLocated s x', DLocated t y') ->
         s == t && (untouched varied s || inside x' y')
-      (DFence s x', DFence t y') -> s == t && inside x' y'
       (DCppChoice ws bs x', DCppChoice ws' cs y') ->
         ws == ws'
           && length bs == length cs
           && and [g == h && inside p q | ((g, p), (h, q)) <- zip bs cs]
           && inside x' y'
-      (DText s, DText t) -> s == t
-      (DCppDirective s u, DCppDirective t v) -> s == t && u == v
-      (DHoldBack s, DHoldBack t) -> s == t
-      (DVerbatimBreak r e, DVerbatimBreak q f) -> r == q && e == f
-      (DSpace, DSpace) -> True
-      (DBreak, DBreak) -> True
-      (DSoftBreak, DSoftBreak) -> True
-      (DHardBreak, DHardBreak) -> True
-      (DCloseLine, DCloseLine) -> True
-      (DCloseLineUnlessAfterOpener g, DCloseLineUnlessAfterOpener h) -> g == h
-      _ -> False
+      _ -> case (unwrap x, unwrap y) of
+        (Just (w, x'), Just (v, y')) ->
+          w == v && agree varied (layoutInside layout w) x' y'
+        _ -> x == y
 
 -- | What a run of space comes to on the page.
 data Space = Space !Int !Bool
@@ -490,26 +447,11 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
     single [d] = Just d
     single _ = Nothing
 
-    descend b xs = case b of
-      DLocated s i
-        | Just tds <- every (\case DLocated t d -> Just (t, d); _ -> Nothing),
-          all (meets s . fst . snd) tds ->
-            DLocated (hull s (fmap snd tds)) <$> combine layout i (inner tds)
-      DFence s i
-        | Just tds <- every (\case DFence t d -> Just (t, d); _ -> Nothing),
-          all (meets s . fst . snd) tds ->
-            DFence (hull s (fmap snd tds)) <$> combine layout i (inner tds)
-      DNest n i | Just is <- every (\case DNest m d | m == n -> Just d; _ -> Nothing) -> DNest n <$> combine layout i is
-      DAlign i | Just is <- every (\case DAlign d -> Just d; _ -> Nothing) -> DAlign <$> combine layout i is
-      DGroup l i
-        | Just ls <- every (\case DGroup m _ -> Just m; _ -> Nothing),
-          Just is <- every (\case DGroup _ d -> Just d; _ -> Nothing) ->
-            let inside = if Broken `elem` (l : fmap snd ls) then Broken else Flat
-             in DGroup inside <$> combine inside i is
-      _ -> Nothing
-      where
-        every f = traverse (\(v, d) -> (,) v <$> f d) xs
-        inner tds = [(v, d) | (v, (_, d)) <- tds]
+    descend b xs = do
+      own@(_, i) <- unwrap b
+      others <- traverse (traverse unwrap) xs
+      w <- joint (own : fmap snd others)
+      wrap w <$> combine (layoutInside layout w) i (fmap (fmap snd) others)
 
     spliced bs ss = do
       clustered <-
@@ -552,10 +494,29 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
         go i (c : cs) =
           take (chFrom c - i) (drop i bs) <> chWith c <> go (chTo c) cs
 
--- | The smallest span covering a node's own and those of everything merged
--- into it.
-hull :: Span -> [(Span, Doc)] -> Span
-hull = foldr ((<>) . fst)
+-- | The wrapper standing for those of several documents, if each is of a
+-- kind with the first: the smallest span covering theirs for a region, and
+-- for a group broken if any that holds something is.
+joint :: [(Wrapper, Doc)] -> Maybe Wrapper
+joint wds = case fmap fst wds of
+  w : ws | all (kin w) ws -> Just $ case w of
+    WLocated s -> WLocated (foldr (<>) s [t | WLocated t <- ws])
+    WFence s -> WFence (foldr (<>) s [t | WFence t <- ws])
+    WGroup _ -> WGroup (if Broken `elem` layoutsOf wds then Broken else Flat)
+    _ -> w
+  _ -> Nothing
+
+-- | Could what these two wrappers hold be merged under one of them?
+kin :: Wrapper -> Wrapper -> Bool
+kin a b = case (a, b) of
+  (WLocated s, WLocated t) -> meets s t
+  (WFence s, WFence t) -> meets s t
+  (WGroup _, WGroup _) -> True
+  _ -> a == b
+
+-- | The layouts of the groups that hold something.
+layoutsOf :: [(Wrapper, Doc)] -> [Layout]
+layoutsOf wds = [l | (WGroup l, d) <- wds, not (printsNothing d)]
 
 -- | A stretch of the baseline, and what one document put there instead.
 data Change = Change
@@ -662,19 +623,19 @@ choiceAt written edge = go Flat False
               (Last, y : _) | Space ended _ <- spaceOf layout [y] -> ended > 0
          in case x of
               DCppChoice ws bs e -> Just (before, ws, bs, e, after)
-              DGroup l y -> around (DGroup l) (DGroup l) <$> go l begins y
-              DNest n y -> around (DNest n) (DNest n) <$> go layout begins y
-              DLocated s y -> around (DLocated s) id <$> go layout begins y
-              DFence s y -> around (DFence s) id <$> go layout begins y
-              DAlign y
-                | begins,
-                  firstOnItsLine y ->
-                    around DAlign DAlign <$> go layout begins y
-              _ -> Nothing
+              _ -> do
+                (w, y) <- unwrap x
+                guard (w /= WAlign || begins && firstOnItsLine y)
+                around (wrap w) (alternatives w)
+                  <$> go (layoutInside layout w) begins y
       _ -> Nothing
     inward = case edge of
       First -> id
       Last -> reverse
+    alternatives = \case
+      WLocated _ -> id
+      WFence _ -> id
+      w -> wrap w
     firstOnItsLine y = case regionOf y of
       Just s ->
         maybe
@@ -686,20 +647,17 @@ choiceAt written edge = go Flat False
 -- | Does the first thing this document puts on the page end a line?
 opensWithBreak :: Layout -> Doc -> Bool
 opensWithBreak layout d = case dropWhile quiet (spineAt layout d) of
-  (x : _) -> case x of
-    DNest _ y -> opensWithBreak layout y
-    DAlign y -> opensWithBreak layout y
-    DGroup l y -> opensWithBreak l y
-    DLocated _ y -> opensWithBreak layout y
-    DFence _ y -> opensWithBreak layout y
-    DHardBreak -> True
-    DCloseLine -> True
-    DCloseLineUnlessAfterOpener _ -> True
-    DBreak -> layout == Broken
-    DSoftBreak -> layout == Broken
-    DCppDirective _ _ -> True
-    DCppChoice{} -> True
-    _ -> False
+  x : _
+    | Just (w, y) <- unwrap x -> opensWithBreak (layoutInside layout w) y
+    | otherwise -> case x of
+        DHardBreak -> True
+        DCloseLine -> True
+        DCloseLineUnlessAfterOpener _ -> True
+        DBreak -> layout == Broken
+        DSoftBreak -> layout == Broken
+        DCppDirective _ _ -> True
+        DCppChoice{} -> True
+        _ -> False
   [] -> False
   where
     quiet = \case
@@ -714,18 +672,15 @@ weigh layout = go
   where
     go = \case
       DCat a b -> go a + go b
-      DNest _ d -> go d
-      DAlign d -> go d
-      DGroup l d -> weigh l d
       DVariant flatD brokenD ->
         go (case layout of Flat -> flatD; Broken -> brokenD)
-      DLocated _ d -> go d
-      DFence _ d -> go d
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t
       DHoldBack t -> T.length t
-      _ -> 0
+      d
+        | Just (w, x) <- unwrap d -> weigh (layoutInside layout w) x
+        | otherwise -> 0
 
 -- | The longest run of elements two spines have in common, in order,
 -- allowing for anything either of them has that the other does not, of

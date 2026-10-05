@@ -12,6 +12,10 @@ module Tilia.Doc.Internal
     spineAt,
     printedFrom,
     onlySpacing,
+    Wrapper (..),
+    unwrap,
+    wrap,
+    layoutInside,
     Conditional (..),
     conditionalRange,
     Layout (..),
@@ -202,6 +206,44 @@ instance Semigroup Doc where
 
 instance Monoid Doc where
   mempty = DEmpty
+
+-- | A node holding exactly one document, less the document.
+data Wrapper
+  = WLocated !Span
+  | WFence !Span
+  | WNest !Int
+  | WAlign
+  | WCppMarginNote
+  | WGroup !Layout
+  deriving (Eq, Show)
+
+-- | A document as the wrapper it is and the document it holds.
+unwrap :: Doc -> Maybe (Wrapper, Doc)
+unwrap = \case
+  DLocated s d -> Just (WLocated s, d)
+  DFence s d -> Just (WFence s, d)
+  DNest n d -> Just (WNest n, d)
+  DAlign d -> Just (WAlign, d)
+  DCppMarginNote d -> Just (WCppMarginNote, d)
+  DGroup l d -> Just (WGroup l, d)
+  _ -> Nothing
+{-# INLINE unwrap #-}
+
+-- | Put a document in a wrapper.
+wrap :: Wrapper -> Doc -> Doc
+wrap = \case
+  WLocated s -> DLocated s
+  WFence s -> DFence s
+  WNest n -> DNest n
+  WAlign -> DAlign
+  WCppMarginNote -> DCppMarginNote
+  WGroup l -> DGroup l
+
+-- | The layout inside a wrapper laid out like this.
+layoutInside :: Layout -> Wrapper -> Layout
+layoutInside layout = \case
+  WGroup l -> l
+  _ -> layout
 
 -- | A conditional as its author wrote it.
 data Conditional = Conditional
