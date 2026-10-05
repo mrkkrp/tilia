@@ -56,6 +56,10 @@ spec = do
       "module M where\n\n-- |\nf :: Int\nf = 1\n"
         `saysTheSameAs` "module M where\n\nf :: Int\nf = 1\n"
 
+    it "sees past a documented argument whose documentation says nothing" $
+      "module M where\n\nf ::\n  Int ->\n  -- ^ \n  Int\nf = id\n"
+        `saysTheSameAs` "module M where\n\nf ::\n  Int ->\n  -- ^\n  Int\nf = id\n"
+
     it "sees past comments, which are not the tree's business" $
       "module M where\n\n-- a remark\nf :: Int\nf = 1\n"
         `saysTheSameAs` "module M where\n\nf :: Int\nf = 1\n"

@@ -67,6 +67,7 @@ import Tilia.Comments
   )
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
+import Tilia.Render.Haddock (saysNothing)
 import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOf, spansOf)
@@ -88,6 +89,7 @@ differ path x y = case classify (typeOf x) of
   Incidental -> Nothing
   Special
     | Just outcome <- asStandaloneDoc path x y -> outcome
+    | Just outcome <- asDocumentedType path x y -> outcome
     | Just outcome <- asExportItems path x y -> outcome
     | Just outcome <- asDeclarations path x y -> outcome
     | Just outcome <- asDerivingClause path x y -> outcome
@@ -154,6 +156,7 @@ comparedByHand :: Set TypeRep
 comparedByHand =
   Set.fromList
     [ typeRep (Proxy @(Maybe (LHsDoc GhcPs))),
+      typeRep (Proxy @(HsType GhcPs)),
       typeRep (Proxy @[LIE GhcPs]),
       typeRep (Proxy @[LHsDecl GhcPs]),
       typeRep (Proxy @(DerivClauseTys GhcPs)),
@@ -201,10 +204,6 @@ elementwise path what before after
   | length before /= length after = Just (describe path what)
   | otherwise = firstOf (zipWith (differ path) before after)
 
--- | Does this documentation comment say anything?
-saysNothing :: HsDocString -> Bool
-saysNothing = null . docWords
-
 -- | A documentation comment, taken as absent where it says nothing.
 --
 -- 'Nothing' where the two are not a @Maybe (LHsDoc GhcPs)@, which sends
@@ -226,6 +225,27 @@ asStandaloneDoc path x y = case (cast x, cast y) of
               path
               (named (toConstr before) <> " became " <> named (toConstr after))
           )
+
+-- | A type, taken as undocumented where its documentation says nothing.
+--
+-- 'Nothing' where the two are not types or neither carries such
+-- documentation, which sends 'differ' on.
+asDocumentedType :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asDocumentedType path x y = do
+  before <- cast x
+  after <- cast y
+  let (before', strippedBefore) = undocumented before
+      (after', strippedAfter) = undocumented after
+  if strippedBefore || strippedAfter
+    then Just (differ path before' after')
+    else Nothing
+  where
+    undocumented :: HsType GhcPs -> (HsType GhcPs, Bool)
+    undocumented = \case
+      HsDocTy _ t doc
+        | saysNothing (hsDocString (unLoc doc)) ->
+            (fst (undocumented (unLoc t)), True)
+      t -> (t, False)
 
 -- | An export list, minus the documentation that says nothing.
 asExportItems :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)

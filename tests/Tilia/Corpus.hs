@@ -325,6 +325,7 @@ ormoluSkip =
     "declaration" </> "data" </> "with-comment.hs",
     "declaration" </> "data" </> "record-empty-haddock.hs",
     "other" </> "empty-haddock.hs",
+    "module-header" </> "empty-haddock.hs",
     "declaration" </> "value" </> "function" </> "arrow" </> "proc-do-complex.hs",
     "declaration" </> "value" </> "function" </> "comprehension" </> "transform-multi-line2.hs",
     "declaration" </> "value" </> "function" </> "if-with-comment-next-to-keyword.hs",

@@ -30,7 +30,7 @@ import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Parser.Annotation qualified as GHC
@@ -328,16 +328,21 @@ escapeTrigger c = case commentStyle c of
 -- comments the next pass reads once its trigger is escaped.
 --
 -- Nothing joins the lines of a @--@ one any more, so each line is a comment
--- of its own, placed on its own account.
+-- of its own, placed on its own account. One that says nothing is read as a
+-- comment however it is written, so its trigger is not escaped.
 asOrdinary :: Lines -> Comment -> [Comment]
 asOrdinary ls c
   | commentStyle c == DocComment,
     not (bracketed c),
     not (singleLine c) =
-      fmap escapeTrigger (mapMaybe lineOf [spanStartLine s .. spanEndLine s])
-  | otherwise = [escapeTrigger c]
+      fmap ordinary (mapMaybe lineOf [spanStartLine s .. spanEndLine s])
+  | otherwise = [ordinary c]
   where
     s = commentSpan c
+    ordinary
+      | saysNothing c = \piece -> piece{commentStyle = plainStyle}
+      | otherwise = escapeTrigger
+    plainStyle = if bracketed c then BlockComment else LineComment
     lineOf n = do
       l <- lineAt n ls
       let piece =
@@ -368,6 +373,24 @@ triggerEscaped c = case openerWidth headLine of
     _ -> False
   where
     headLine = NE.head (commentBody c)
+
+-- | Is this a @|@ or @^@ doc comment that says nothing?
+saysNothing :: Comment -> Bool
+saysNothing c =
+  commentStyle c == DocComment
+    && case splitTrigger headLine of
+      Just (upToTrigger, body) ->
+        T.last upToTrigger `elem` ("|^" :: String)
+          && T.all isSpace (said body)
+      Nothing -> False
+  where
+    headLine :| rest = commentBody c
+    said body
+      | bracketed c =
+          let whole = T.stripEnd (T.unlines (body : rest))
+           in fromMaybe whole (T.stripSuffix "-}" whole)
+      | otherwise = T.concat (body : fmap unprefixed rest)
+    unprefixed l = fromMaybe l (T.stripPrefix "--" (T.stripStart l))
 
 -- | Does this text begin with one of the characters that opens a Haddock?
 triggered :: Text -> Bool

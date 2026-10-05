@@ -11,12 +11,16 @@ module Tilia.Render.Haddock
     brokenIfDocumented,
     printsWholeLineDocs,
     haddockSpans,
+    saysNothing,
+    withoutDocsThatSayNothing,
   )
 where
 
 import Control.Applicative ((<|>))
+import Data.Char (isSpace)
 import Data.Data (Data)
-import Data.Generics.Schemes (listify)
+import Data.Generics.Aliases (extT, mkT)
+import Data.Generics.Schemes (everywhere, listify)
 import Data.List (dropWhileEnd)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -210,11 +214,66 @@ printsWholeLineDocs ctx x = case docsIn x of
       Just written -> not (selfClosing written)
       Nothing -> not (null (docLines (writtenAsBlock ctx doc) (unLoc doc)))
 
--- | The spans of every Haddock in a module.
+-- | The spans of every Haddock in a module that is printed as one.
 haddockSpans :: Gathered -> [Span]
 haddockSpans found =
-  mapMaybe (spanOfSrcSpan . getLoc) (gatheredDocs found)
+  mapMaybe
+    (spanOfSrcSpan . getLoc)
+    (filter (not . saysNothing . hsDocString . unLoc) (gatheredDocs found))
     <> namedSections (gatheredEntries found)
+
+-- | Is this a @-- |@ or @-- ^@ Haddock that says nothing?
+--
+-- One that is is printed as the comment it was written as, the way the
+-- compiler reads one with nothing at all after its trigger.
+saysNothing :: HsDocString -> Bool
+saysNothing doc = case doc of
+  MultiLineDocString decorator _ -> pipeOrCaret decorator && silent
+  NestedDocString decorator _ -> pipeOrCaret decorator && silent
+  GeneratedDocString _ -> False
+  where
+    pipeOrCaret = \case
+      HsDocStringNext -> True
+      HsDocStringPrevious -> True
+      _ -> False
+    silent = all isSpace (renderHsDocString doc)
+
+-- | A module without the @-- |@ and @-- ^@ Haddocks that say nothing.
+withoutDocsThatSayNothing :: Gathered -> HsModule GhcPs -> HsModule GhcPs
+withoutDocsThatSayNothing found
+  | not (any silent (gatheredDocs found)) = id
+  | otherwise =
+      everywhere
+        ( mkT optional
+            `extT` undocumented
+            `extT` decls
+            `extT` docDecls
+            `extT` exports
+        )
+  where
+    optional :: Maybe (LHsDoc GhcPs) -> Maybe (LHsDoc GhcPs)
+    optional d = if any silent d then Nothing else d
+    undocumented :: LHsType GhcPs -> LHsType GhcPs
+    undocumented = \case
+      L _ (HsDocTy _ t doc) | silent doc -> t
+      t -> t
+    decls :: [LHsDecl GhcPs] -> [LHsDecl GhcPs]
+    decls = \case
+      L _ (DocD _ d) : rest | silentDecl d -> rest
+      ds -> ds
+    docDecls :: [LDocDecl GhcPs] -> [LDocDecl GhcPs]
+    docDecls = \case
+      L _ d : rest | silentDecl d -> rest
+      ds -> ds
+    exports :: [LIE GhcPs] -> [LIE GhcPs]
+    exports = \case
+      L _ (IEDoc _ doc) : rest | silent doc -> rest
+      es -> es
+    silentDecl = \case
+      DocCommentNext doc -> silent doc
+      DocCommentPrev doc -> silent doc
+      _ -> False
+    silent = saysNothing . hsDocString . unLoc
 
 -- | Every Haddock in a fragment.
 docsIn :: (Data a) => a -> [LHsDoc GhcPs]

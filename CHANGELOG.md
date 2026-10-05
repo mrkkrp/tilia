@@ -182,6 +182,10 @@
   such as `Test.QuickCheck.Property` is now formatted, and the fixities it
   declares are read from its source rather than written into Tilia. [PR
   111](https://github.com/mrkkrp/tilia/pull/111).
+* Print a `-- |` or `-- ^` Haddock that says nothing as the comment it was
+  written as, whether or not a space follows its trigger, rather than as `{-
+  | -}` or with its trigger escaped. [Issue
+  93](https://github.com/mrkkrp/tilia/issues/93).
 
 ## Tilia 0.0.2.0
 

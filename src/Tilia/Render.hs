@@ -37,7 +37,7 @@ import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls, declsKeepingGroups)
 import Tilia.Render.Expression (hsCmd, hsExprIn, untypedSplice)
-import Tilia.Render.Haddock (haddockSpans)
+import Tilia.Render.Haddock (haddockSpans, withoutDocsThatSayNothing)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
 import Tilia.Source (Lines, blankAt, comments, sourceLines)
@@ -80,7 +80,7 @@ renderConfiguration settings parsed =
     loose
   )
   where
-    hsMod = pmModule parsed
+    hsMod = withoutDocsThatSayNothing (pmGathered parsed) (pmModule parsed)
     (haddocks, loose') =
       splitHaddocks
         (sourceLines (pmSource parsed))
