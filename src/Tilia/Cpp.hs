@@ -38,6 +38,7 @@ import Control.Monad (join, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, get, put)
+import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Function (on)
 import Data.IntMap.Strict qualified as IntMap
@@ -86,6 +87,7 @@ import Tilia.Source
     blankAt,
     comments,
     dropping,
+    lineAt,
     linesOf,
   )
 import Tilia.Span
@@ -93,6 +95,7 @@ import Tilia.Span
     covers,
     meets,
     spanEndLine,
+    spanStartColumn,
     spanStartLine,
   )
 
@@ -355,7 +358,10 @@ separately parser render path reached v (baseDoc, baseFound) = do
         then pure (baseDoc, mempty)
         else formatAllConfigs parser render path (answering c i reached) t
   pure
-    ( zipWith mergeOf (vaGroups v) (fmap (fmap fst) groups),
+    ( zipWith
+        (mergeOf (reachedLines reached))
+        (vaGroups v)
+        (fmap (fmap fst) groups),
       baseFound <> foldMap (foldMap snd) groups
     )
 
@@ -469,7 +475,14 @@ together parser render path reached c = do
           settled = settledAcross (fmap settledIn [0 .. length answers - 1])
           ranges = mapMaybe (conditionalRange . settledConditional) settled
           varied = Varied (variedLines (cfgWholes c) <> ranges)
-          merged = merge (cfgConditionals c) (cfgGuards c) varied settled docs
+          merged =
+            merge
+              (reachedLines reached)
+              (cfgConditionals c)
+              (cfgGuards c)
+              varied
+              settled
+              docs
       pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
     blindOver ranges d = case d of
       DCppChoice [] bs _
@@ -643,9 +656,10 @@ configurationBudget :: Int
 configurationBudget = 64
 
 -- | Merge the documents one group's configurations printed to.
-mergeOf :: Configurations -> [Doc] -> Doc
-mergeOf c =
+mergeOf :: Lines -> Configurations -> [Doc] -> Doc
+mergeOf written c =
   merge
+    written
     (cfgConditionals c)
     (cfgGuards c)
     (cfgWholes c)
@@ -656,6 +670,8 @@ mergeOf c =
 -- A structural walk that keeps what they all agree on and puts a choice
 -- where they part.
 merge ::
+  -- | The module as written.
+  Lines ->
   -- | The conditionals asking the question, as written.
   [Conditional] ->
   -- | The question.
@@ -667,7 +683,7 @@ merge ::
   -- | One document per answer.
   [Doc] ->
   Doc
-merge conditionals guards varied settledOthers = go Broken
+merge written conditionals guards varied settledOthers = go Broken
   where
     go _ [] = mempty
     go layout ds@(d : rest)
@@ -907,19 +923,20 @@ merge conditionals guards varied settledOthers = go Broken
             | otherwise -> (a <>) <$> inAlternatives b
           _ -> Nothing
 
-    joined before after = case (choiceAt Last before, choiceAt First after) of
-      (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
-        | fmap fst bs == fmap fst cs,
-          ws == ws' ->
-            opening
-              <> Doc.cppChoice
-                ws
-                [(g, x <> between <> y) | ((g, x), (_, y)) <- zip bs cs]
-                (e <> between <> e')
-              <> closing
-        where
-          between = gap <> gap'
-      _ -> before <> after
+    joined before after =
+      case (choiceAt written Last before, choiceAt written First after) of
+        (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
+          | fmap fst bs == fmap fst cs,
+            ws == ws' ->
+              opening
+                <> Doc.cppChoice
+                  ws
+                  [(g, x <> between <> y) | ((g, x), (_, y)) <- zip bs cs]
+                  (e <> between <> e')
+                <> closing
+          where
+            between = gap <> gap'
+        _ -> before <> after
 
     sameKind x y = case (x, y) of
       (DLocated s t, DLocated u v) -> meets s u && bothWritten t v
@@ -1255,26 +1272,53 @@ data Edge = First | Last
 -- | The choice a document has at one end, if that is where it has one: what
 -- the document prints before the choice, the choice itself, and what the
 -- document prints after it.
-choiceAt :: Edge -> Doc -> Maybe (Doc, [Conditional], [(Text, Doc)], Doc, Doc)
-choiceAt edge d = case span onlySpacing (inward (spine d)) of
-  (outer, x : inner) ->
-    let (before, after) = case edge of
-          First -> (mconcat outer, mconcat inner)
-          Last -> (mconcat (reverse inner), mconcat (reverse outer))
-        around w (b, ws, bs, e, a) =
-          (before <> w b, ws, fmap (fmap w) bs, w e, w a <> after)
-     in case x of
-          DCppChoice ws bs e -> Just (before, ws, bs, e, after)
-          DGroup l y -> around (DGroup l) <$> choiceAt edge y
-          DNest n y -> around (DNest n) <$> choiceAt edge y
-          DLocated s y -> around (DLocated s) <$> choiceAt edge y
-          DFence s y -> around (DFence s) <$> choiceAt edge y
-          _ -> Nothing
-  _ -> Nothing
+--
+-- Every alternative begins a line of its own, so the choice is taken out of
+-- an alignment only at the end of the document, and only where the
+-- alignment begins a line and what it holds was written first on its line.
+choiceAt ::
+  -- | The module as written.
+  Lines ->
+  -- | The end to look at.
+  Edge ->
+  -- | The document.
+  Doc ->
+  Maybe (Doc, [Conditional], [(Text, Doc)], Doc, Doc)
+choiceAt written edge = go Flat False
   where
+    go layout fresh d = case span onlySpacing (inward (spine d)) of
+      (outer, x : inner) ->
+        let (before, after) = case edge of
+              First -> (mconcat outer, mconcat inner)
+              Last -> (mconcat (reverse inner), mconcat (reverse outer))
+            around w (b, ws, bs, e, a) =
+              (before <> w b, ws, fmap (fmap w) bs, w e, w a <> after)
+            begins = case (edge, inner) of
+              (First, _) -> False
+              (Last, []) -> fresh
+              (Last, y : _) | Space ended _ <- spaceOf layout [y] -> ended > 0
+         in case x of
+              DCppChoice ws bs e -> Just (before, ws, bs, e, after)
+              DGroup l y -> around (DGroup l) <$> go l begins y
+              DNest n y -> around (DNest n) <$> go layout begins y
+              DLocated s y -> around (DLocated s) <$> go layout begins y
+              DFence s y -> around (DFence s) <$> go layout begins y
+              DAlign y
+                | begins,
+                  firstOnItsLine y ->
+                    around DAlign <$> go layout begins y
+              _ -> Nothing
+      _ -> Nothing
     inward = case edge of
       First -> id
       Last -> reverse
+    firstOnItsLine y = case regionOf y of
+      Just s ->
+        maybe
+          False
+          (T.all isSpace . T.take (spanStartColumn s - 1))
+          (lineAt (spanStartLine s) written)
+      Nothing -> False
 
 -- | Does the first thing this document puts on the page end a line?
 opensWithBreak :: Layout -> Doc -> Bool

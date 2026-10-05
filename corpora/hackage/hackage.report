@@ -3,7 +3,7 @@ Hackage modules that currently do not format cleanly.
 5210 examples, 5158 formatted.
 
 ==========================================================================
-broken (2)
+broken (1)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
@@ -61,18 +61,6 @@ Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
      import Agda.TypeChecking.Conversion.Pure (pureCompareAs, runPureConversion)
     +import Agda.TypeChecking.Da
 
-singletons-3.0.4/src/Data/Singletons.hs
-    formatting is non-idempotent
-    --- first pass
-    +++ second pass
-    @@ -523,6 +523,7 @@
-     #else
-         with_sing_i si = unsafeCoerce (Don'tInstantiate si) s
-     #endif
-    +
-     #if MIN_VERSION_base(4,17,0)
-     #else
-
 ==========================================================================
 does-not-parse (1)
 ==========================================================================
@@ -82,7 +70,7 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (39)
+partly-checked (40)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/Main.hs
@@ -137,6 +125,9 @@ optics-0.4.2.1/tests/Optics/Tests/Utils.hs
     2048 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 semigroupoids-6.0.2/src/Data/Functor/Bind/Class.hs
+    128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+singletons-3.0.4/src/Data/Singletons.hs
     128 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 stm-2.5.3.1/Control/Monad/STM.hs
