@@ -264,6 +264,11 @@
 * Keep a module's name and its Haddock out of a conditional between the
   name and the export list, rather than copy them into each branch. [Issue
   134](https://github.com/mrkkrp/tilia/issues/134).
+* Format a module with a Haddock written with no space after its trigger and
+  carried on over more lines, such as `-- ^Recover from errors.`, rather
+  than refuse it because the lines after the first move along with the
+  first when the space is put in. [Issue
+  147](https://github.com/mrkkrp/tilia/issues/147).
 
 ## Tilia 0.0.2.0
 

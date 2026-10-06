@@ -515,7 +515,11 @@ commentDifference parsedBefore parsedAfter
 -- | A comment's lines, as they are compared.
 bodyKey :: Comment -> NonEmpty Text
 bodyKey c = case commentBody c of
-  (l :| []) -> T.stripStart l :| []
+  (l :| []) -> case T.stripPrefix "--" stripped of
+    Just rest -> "--" <> T.stripStart rest :| []
+    Nothing -> stripped :| []
+    where
+      stripped = T.stripStart l
   ls -> ls
 
 -- | The last line the formatter may reorder: the end of the last import, or
