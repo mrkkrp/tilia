@@ -164,6 +164,12 @@ spec = do
       extensions "library\n  default-language: Haskell2010\n"
         `shouldSatisfy` notElem TypeOperators
 
+    it "starts from Haskell98 where it names no edition, as cabal builds it" $ do
+      extensions "library\n  build-depends: base\n"
+        `shouldSatisfy` elem NondecreasingIndentation
+      extensions "library\n  build-depends: base\n"
+        `shouldSatisfy` notElem ImportQualifiedPost
+
     it "takes what every edition in the file puts in force" $
       extensions
         "library\n\

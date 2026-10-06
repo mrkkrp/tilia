@@ -98,7 +98,7 @@ declaredExtensions contents =
   where
     ls = T.lines contents
     baseline = case mapMaybe languageNamed (fieldsNamed "default-language" ls) of
-      [] -> GHC.languageExtensions Nothing
+      [] -> GHC.languageExtensions (Just GHC.Haskell98)
       editions ->
         Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
     named =

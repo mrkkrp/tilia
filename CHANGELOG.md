@@ -255,6 +255,12 @@
 * Do not put an empty copy of a conditional nested in an import list above
   the imports when sorting moves that import further down. [Issue
   135](https://github.com/mrkkrp/tilia/issues/135).
+* Read a component that names no `default-language` as Haskell98, as
+  `cabal` builds it, rather than as GHC2021. An `import qualified` in such a
+  component is no longer rewritten with `qualified` after the module name,
+  which it does not compile with, and code that relies on
+  `NondecreasingIndentation` is formatted. [Issue
+  131](https://github.com/mrkkrp/tilia/issues/131).
 
 ## Tilia 0.0.2.0
 

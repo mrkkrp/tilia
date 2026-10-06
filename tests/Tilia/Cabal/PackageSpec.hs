@@ -84,6 +84,12 @@ spec = do
         library <- asked (root </> "src" </> "M.hs")
         (length <$> library) `shouldSatisfy` either (const False) (> 40)
 
+    it "are Haskell98's where it names no edition, as cabal builds it" $
+      inPackage namesNoEdition ["src"] $ \root -> do
+        library <- asked (root </> "src" </> "M.hs")
+        (has NondecreasingIndentation library, has ImportQualifiedPost library)
+          `shouldBe` (True, False)
+
     it "can be turned off again by default-extensions" $
       inPackage refusesAnEdition ["src"] $ \root ->
         (has ImportQualifiedPost <$> asked (root </> "src" </> "M.hs"))
@@ -206,6 +212,19 @@ overTheWholeTree =
       "  main-is: S.hs",
       "  hs-source-dirs: tests",
       "  default-language: GHC2021"
+    ]
+
+-- | A library that names no language edition.
+namesNoEdition :: Text
+namesNoEdition =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src"
     ]
 
 -- | An edition, and then one of the things it brings taken back out.

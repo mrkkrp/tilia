@@ -3354,8 +3354,8 @@ formatted       dcf10d45e788  pandoc-types-1.23.1.2/test/Data/String/QQ.hs
 formatted       aa803b05c956  pandoc-types-1.23.1.2/test/test-pandoc-types.hs
 formatted       7474b7e1d4f5  parsec3-1.0.1.8/Setup.hs
 formatted       48d72ad7fc59  parsec3-1.0.1.8/Text/Parsec.hs
-formatted       afc3d5a902fe  parsec3-1.0.1.8/Text/Parsec/ByteString.hs
-formatted       a9c7a6dd5b30  parsec3-1.0.1.8/Text/Parsec/ByteString/Lazy.hs
+formatted       5c36e0dc2f16  parsec3-1.0.1.8/Text/Parsec/ByteString.hs
+formatted       067f443a7131  parsec3-1.0.1.8/Text/Parsec/ByteString/Lazy.hs
 formatted       5e6bdea20cf6  parsec3-1.0.1.8/Text/Parsec/Char.hs
 formatted       522600ab706d  parsec3-1.0.1.8/Text/Parsec/Combinator.hs
 formatted       94a0c2798c5a  parsec3-1.0.1.8/Text/Parsec/Error.hs
@@ -3363,10 +3363,10 @@ formatted       7791b03e9f31  parsec3-1.0.1.8/Text/Parsec/Expr.hs
 formatted       156014d6ed26  parsec3-1.0.1.8/Text/Parsec/Language.hs
 formatted       40bf4d018d51  parsec3-1.0.1.8/Text/Parsec/Perm.hs
 formatted       c50efff79fe5  parsec3-1.0.1.8/Text/Parsec/Pos.hs
-formatted       7c2c5a4c585c  parsec3-1.0.1.8/Text/Parsec/Prim.hs
+formatted       29be56fe440f  parsec3-1.0.1.8/Text/Parsec/Prim.hs
 formatted       c911dc63e8d5  parsec3-1.0.1.8/Text/Parsec/String.hs
-formatted       72422924874a  parsec3-1.0.1.8/Text/Parsec/Text.hs
-formatted       6fd69590f1d3  parsec3-1.0.1.8/Text/Parsec/Text/Lazy.hs
+formatted       0442595aeaa8  parsec3-1.0.1.8/Text/Parsec/Text.hs
+formatted       f2bff0c9cc7d  parsec3-1.0.1.8/Text/Parsec/Text/Lazy.hs
 formatted       bb0eeef3f954  parsec3-1.0.1.8/Text/Parsec/Token.hs
 formatted       22b02f116512  parser-combinators-1.3.1/Control/Applicative/Combinators.hs
 formatted       2b483a550d21  parser-combinators-1.3.1/Control/Applicative/Combinators/NonEmpty.hs
