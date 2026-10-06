@@ -349,7 +349,7 @@ formatted       322db41fd343  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/S
 formatted       904a4e241e74  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Utils.hs
 formatted       0be08dcf3e01  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/WarshallSolver.hs
 formatted       a917174d5f1a  Agda-2.8.0/src/full/Agda/TypeChecking/Sort.hs
-formatted       69979e9f3930  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
+formatted       e28241cb994f  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
 formatted       5c1090094604  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/Class.hs
 formatted       2656f0d28fba  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/DeBruijn.hs
 formatted       bdddf47208eb  Agda-2.8.0/src/full/Agda/TypeChecking/SyntacticEquality.hs
@@ -681,7 +681,7 @@ formatted       a3a163b31c63  aws-0.25.3/Aws/Aws.hs
 formatted       316b8d029dee  aws-0.25.3/Aws/Core.hs
 formatted       526f7494fea1  aws-0.25.3/Aws/DynamoDb.hs
 formatted       11c5a36e6111  aws-0.25.3/Aws/DynamoDb/Commands.hs
-formatted       4164a13f06e8  aws-0.25.3/Aws/DynamoDb/Commands/BatchGetItem.hs
+formatted       fdedda6a01bc  aws-0.25.3/Aws/DynamoDb/Commands/BatchGetItem.hs
 formatted       284a9d6d25fa  aws-0.25.3/Aws/DynamoDb/Commands/BatchWriteItem.hs
 formatted       37d0f09919b9  aws-0.25.3/Aws/DynamoDb/Commands/DeleteItem.hs
 formatted       6e48f7806e5d  aws-0.25.3/Aws/DynamoDb/Commands/GetItem.hs
@@ -883,7 +883,7 @@ formatted       2c64cf0649ba  brick-2.13/programs/ViewportScrollDemo.hs
 formatted       c72281d04a63  brick-2.13/programs/ViewportScrollbarsDemo.hs
 formatted       e2bd645f4c8a  brick-2.13/programs/VisibilityDemo.hs
 formatted       0abc07286e47  brick-2.13/src/Brick.hs
-formatted       0b61e5fb53be  brick-2.13/src/Brick/Animation.hs
+formatted       4fa9b0a82833  brick-2.13/src/Brick/Animation.hs
 formatted       deb1866c9333  brick-2.13/src/Brick/Animation/Clock.hs
 formatted       91b158ee4b8a  brick-2.13/src/Brick/AttrMap.hs
 formatted       13c109f25eb8  brick-2.13/src/Brick/BChan.hs
@@ -948,10 +948,10 @@ formatted       5bbfe94a03d4  brittany-0.14.0.2/data/Test120.hs
 formatted       01ac88bcab1a  brittany-0.14.0.2/data/Test121.hs
 formatted       057f0ce3ffb0  brittany-0.14.0.2/data/Test122.hs
 formatted       661f6da49632  brittany-0.14.0.2/data/Test123.hs
-formatted       86c1caf3eee5  brittany-0.14.0.2/data/Test124.hs
-formatted       c6ffbf389d8d  brittany-0.14.0.2/data/Test125.hs
+formatted       fb20151cec71  brittany-0.14.0.2/data/Test124.hs
+formatted       dd6fcdfeb27c  brittany-0.14.0.2/data/Test125.hs
 formatted       1b2ef1cfadaa  brittany-0.14.0.2/data/Test126.hs
-formatted       058f31d7f6cc  brittany-0.14.0.2/data/Test127.hs
+formatted       ba626fdd4fa3  brittany-0.14.0.2/data/Test127.hs
 formatted       bec0f8aa554d  brittany-0.14.0.2/data/Test128.hs
 formatted       f712d9c961eb  brittany-0.14.0.2/data/Test129.hs
 formatted       79735ec00a3d  brittany-0.14.0.2/data/Test13.hs
@@ -1581,7 +1581,7 @@ formatted       98630a5362e8  conduit-1.3.6.1/src/Data/Streaming/FileRead.hs
 formatted       9860da5f427f  conduit-1.3.6.1/src/Data/Streaming/Filesystem.hs
 formatted       d9e8dbaa2534  conduit-1.3.6.1/test/Data/Conduit/Extra/ZipConduitSpec.hs
 formatted       3df81ded6599  conduit-1.3.6.1/test/Data/Conduit/StreamSpec.hs
-formatted       cf41359a6248  conduit-1.3.6.1/test/Spec.hs
+formatted       ba362e46e616  conduit-1.3.6.1/test/Spec.hs
 formatted       382af08e83eb  conduit-1.3.6.1/test/StreamSpec.hs
 formatted       db2295b8113a  conduit-1.3.6.1/test/doctests.hs
 formatted       915aac4ba0bb  conduit-1.3.6.1/test/main.hs
@@ -2789,7 +2789,7 @@ formatted       e95cc4a80230  leksah-0.16.2.2/src/IDE/Keymap.hs
 formatted       3f0638c605cd  leksah-0.16.2.2/src/IDE/LPaste.hs
 formatted       ad760d284046  leksah-0.16.2.2/src/IDE/Leksah.hs
 formatted       cd678b5b6e72  leksah-0.16.2.2/src/IDE/LogRef.hs
-formatted       fd6764bf4d1f  leksah-0.16.2.2/src/IDE/Metainfo/Provider.hs
+formatted       d41f35d520d8  leksah-0.16.2.2/src/IDE/Metainfo/Provider.hs
 formatted       add30e907a64  leksah-0.16.2.2/src/IDE/NotebookFlipper.hs
 formatted       d441d0417158  leksah-0.16.2.2/src/IDE/OSX.hs
 formatted       a9230ddb0677  leksah-0.16.2.2/src/IDE/Package.hs
@@ -2800,7 +2800,7 @@ formatted       5174fb1d8807  leksah-0.16.2.2/src/IDE/Pane/Grep.hs
 formatted       6bea42aabf13  leksah-0.16.2.2/src/IDE/Pane/HLint.hs
 formatted       3ca32b10d0e9  leksah-0.16.2.2/src/IDE/Pane/Info.hs
 formatted       ea0f6cc3cdd0  leksah-0.16.2.2/src/IDE/Pane/Log.hs
-formatted       ee91d5baa5c0  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
+formatted       43b4f4ef4e68  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
 formatted       575af73a6da8  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
 formatted       f0501c777408  leksah-0.16.2.2/src/IDE/Pane/PackageFlags.hs
 formatted       e64bb971efe8  leksah-0.16.2.2/src/IDE/Pane/Search.hs
@@ -3095,7 +3095,7 @@ formatted       9a91a657b202  pandoc-3.10.2/src/Text/Pandoc/Readers/CslJson.hs
 formatted       8f06acca3961  pandoc-3.10.2/src/Text/Pandoc/Readers/Djot.hs
 formatted       5c67409b0a54  pandoc-3.10.2/src/Text/Pandoc/Readers/DocBook.hs
 formatted       fbd149ee0503  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx.hs
-formatted       fc9009e1ca7b  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Combine.hs
+formatted       4fb8f147768f  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Combine.hs
 formatted       1b010d639304  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Fields.hs
 formatted       1182acf4b772  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Lists.hs
 formatted       1113793eb414  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Parse.hs
@@ -3165,7 +3165,7 @@ formatted       06b32e0a02bb  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Shapes.
 formatted       68136f2cd896  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Slides.hs
 formatted       2a1143e52057  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/SmartArt.hs
 formatted       57c12a897562  pandoc-3.10.2/src/Text/Pandoc/Readers/RIS.hs
-formatted       b358505df13e  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
+formatted       709a7c4b2343  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
 formatted       e222e84bebc7  pandoc-3.10.2/src/Text/Pandoc/Readers/RTF.hs
 formatted       b93abbeec349  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff.hs
 formatted       07cc917bf86a  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff/Escape.hs
@@ -3223,7 +3223,7 @@ formatted       22a453faead8  pandoc-3.10.2/src/Text/Pandoc/Writers/HTML.hs
 formatted       6dff5ff11e27  pandoc-3.10.2/src/Text/Pandoc/Writers/Haddock.hs
 formatted       c124279e4c0c  pandoc-3.10.2/src/Text/Pandoc/Writers/ICML.hs
 formatted       dd0566d62914  pandoc-3.10.2/src/Text/Pandoc/Writers/Ipynb.hs
-formatted       316916f894bd  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS.hs
+formatted       c36a94774899  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS.hs
 formatted       4a683f5d9700  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/References.hs
 formatted       854a6ee637a9  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Table.hs
 formatted       3aae3967440a  pandoc-3.10.2/src/Text/Pandoc/Writers/JATS/Types.hs
@@ -3359,7 +3359,7 @@ formatted       a9c7a6dd5b30  parsec3-1.0.1.8/Text/Parsec/ByteString/Lazy.hs
 formatted       5e6bdea20cf6  parsec3-1.0.1.8/Text/Parsec/Char.hs
 formatted       a605f0d1da55  parsec3-1.0.1.8/Text/Parsec/Combinator.hs
 formatted       94a0c2798c5a  parsec3-1.0.1.8/Text/Parsec/Error.hs
-formatted       048c32e5a768  parsec3-1.0.1.8/Text/Parsec/Expr.hs
+formatted       e8de885a8bf4  parsec3-1.0.1.8/Text/Parsec/Expr.hs
 formatted       156014d6ed26  parsec3-1.0.1.8/Text/Parsec/Language.hs
 formatted       40bf4d018d51  parsec3-1.0.1.8/Text/Parsec/Perm.hs
 formatted       c50efff79fe5  parsec3-1.0.1.8/Text/Parsec/Pos.hs
@@ -3622,7 +3622,7 @@ formatted       08f7f269d88a  purescript-0.15.15/src/Language/PureScript/CoreFn/
 formatted       3a083ba8ee7c  purescript-0.15.15/src/Language/PureScript/CoreFn/Desugar.hs
 formatted       2f90c3840d55  purescript-0.15.15/src/Language/PureScript/CoreFn/Expr.hs
 formatted       17eec7fac664  purescript-0.15.15/src/Language/PureScript/CoreFn/FromJSON.hs
-formatted       3a475fc18f00  purescript-0.15.15/src/Language/PureScript/CoreFn/Laziness.hs
+formatted       83a35a14ab46  purescript-0.15.15/src/Language/PureScript/CoreFn/Laziness.hs
 formatted       083a81cbf5bf  purescript-0.15.15/src/Language/PureScript/CoreFn/Meta.hs
 formatted       2b2d42f479f2  purescript-0.15.15/src/Language/PureScript/CoreFn/Module.hs
 formatted       26edb255fed7  purescript-0.15.15/src/Language/PureScript/CoreFn/Optimizer.hs
@@ -3720,7 +3720,7 @@ formatted       9e88be14067d  purescript-0.15.15/src/Language/PureScript/Roles.h
 formatted       2530d5774295  purescript-0.15.15/src/Language/PureScript/Sugar.hs
 formatted       834b0e83e969  purescript-0.15.15/src/Language/PureScript/Sugar/AdoNotation.hs
 formatted       69ace5e25259  purescript-0.15.15/src/Language/PureScript/Sugar/BindingGroups.hs
-formatted       502cd635c402  purescript-0.15.15/src/Language/PureScript/Sugar/CaseDeclarations.hs
+formatted       6aef86a4887f  purescript-0.15.15/src/Language/PureScript/Sugar/CaseDeclarations.hs
 formatted       7efb24168510  purescript-0.15.15/src/Language/PureScript/Sugar/DoNotation.hs
 formatted       b232946c3700  purescript-0.15.15/src/Language/PureScript/Sugar/LetPattern.hs
 formatted       ae52bb36f9ee  purescript-0.15.15/src/Language/PureScript/Sugar/Names.hs
@@ -4516,7 +4516,7 @@ formatted       3a05c951a914  text-2.1.4/src/Data/Text/Internal/Builder/Function
 formatted       f5f871c975a4  text-2.1.4/src/Data/Text/Internal/Builder/Int/Digits.hs
 formatted       ab51e88834e1  text-2.1.4/src/Data/Text/Internal/Builder/RealFloat/Functions.hs
 formatted       7fa192160c9b  text-2.1.4/src/Data/Text/Internal/ByteStringCompat.hs
-formatted       4d88d6f18176  text-2.1.4/src/Data/Text/Internal/Encoding.hs
+formatted       c6e694c774d8  text-2.1.4/src/Data/Text/Internal/Encoding.hs
 formatted       43a1a670b3db  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion.hs
 formatted       88e5c54a218b  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion/Common.hs
 formatted       875961737225  text-2.1.4/src/Data/Text/Internal/Encoding/Utf16.hs
@@ -4546,7 +4546,7 @@ formatted       d3b144e675ef  text-2.1.4/src/Data/Text/Internal/Unsafe/Char.hs
 formatted       8bc67bc79968  text-2.1.4/src/Data/Text/Internal/Validate.hs
 formatted       3597c6a4f1b6  text-2.1.4/src/Data/Text/Internal/Validate/Native.hs
 formatted       530d639cfd22  text-2.1.4/src/Data/Text/Internal/Validate/Simd.hs
-formatted       32011d591490  text-2.1.4/src/Data/Text/Lazy.hs
+formatted       060b4a7eb0fb  text-2.1.4/src/Data/Text/Lazy.hs
 formatted       38ff2d7cb674  text-2.1.4/src/Data/Text/Lazy/Builder.hs
 formatted       38666af96d86  text-2.1.4/src/Data/Text/Lazy/Builder/Int.hs
 formatted       29e65f5a5a13  text-2.1.4/src/Data/Text/Lazy/Builder/RealFloat.hs
@@ -4579,7 +4579,7 @@ formatted       b7037d3f07cc  text-2.1.4/tests/Tests/ShareEmpty.hs
 formatted       f4e9f36f6be9  text-2.1.4/tests/Tests/SlowFunctions.hs
 formatted       375091fbe743  text-2.1.4/tests/Tests/Utils.hs
 formatted       e865ae48f11b  th-abstraction-0.7.2.0/Setup.hs
-formatted       cd88a8bbcbf4  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs
+formatted       654d8a6b2700  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs
 formatted       b67b7b9c968e  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/Internal.hs
 formatted       505471744185  th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/TyVarBndr.hs
 formatted       d3b91b4e0b96  th-abstraction-0.7.2.0/test/Harness.hs
@@ -4919,7 +4919,7 @@ formatted       368deb66d310  vector-0.13.2.0/benchlib/Bench/Vector/TestData/Gra
 formatted       476c4f42945a  vector-0.13.2.0/benchlib/Bench/Vector/TestData/ParenTree.hs
 formatted       6b1b4aea2361  vector-0.13.2.0/benchmarks/Main.hs
 formatted       77ce7d3b1eda  vector-0.13.2.0/internal/GenUnboxTuple.hs
-formatted       2d5540e98f44  vector-0.13.2.0/src/Data/Vector.hs
+formatted       50a769358a75  vector-0.13.2.0/src/Data/Vector.hs
 formatted       5524402837b5  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle.hs
 formatted       2da6c234d40e  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Monadic.hs
 formatted       281a320dd1fd  vector-0.13.2.0/src/Data/Vector/Fusion/Bundle/Size.hs
@@ -4937,7 +4937,7 @@ formatted       7790a579fd85  vector-0.13.2.0/src/Data/Vector/Primitive/Mutable.
 formatted       d63a299a6982  vector-0.13.2.0/src/Data/Vector/Storable.hs
 formatted       f3208fa21c31  vector-0.13.2.0/src/Data/Vector/Storable/Internal.hs
 formatted       a312fe3ca55a  vector-0.13.2.0/src/Data/Vector/Storable/Mutable.hs
-formatted       5d2141562890  vector-0.13.2.0/src/Data/Vector/Strict.hs
+formatted       d056b777cb12  vector-0.13.2.0/src/Data/Vector/Strict.hs
 formatted       3bc69095cb4d  vector-0.13.2.0/src/Data/Vector/Strict/Mutable.hs
 formatted       5a349caedbaf  vector-0.13.2.0/src/Data/Vector/Unboxed.hs
 formatted       1e14851054d6  vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs
@@ -4966,7 +4966,7 @@ formatted       553211019f78  vector-algorithms-0.9.1.0/src/Data/Vector/Algorith
 formatted       5bc324a60b4f  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Common.hs
 formatted       a7c93d247f1d  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Heap.hs
 formatted       385f1aecc6ac  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Insertion.hs
-formatted       eaaf49335045  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Intro.hs
+formatted       c2cb20f40fd9  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Intro.hs
 formatted       4a50f751547a  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Merge.hs
 formatted       0d30a08d3940  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Optimal.hs
 formatted       b7b0f718deb2  vector-algorithms-0.9.1.0/src/Data/Vector/Algorithms/Radix.hs

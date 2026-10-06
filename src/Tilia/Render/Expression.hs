@@ -113,7 +113,8 @@ exprBody ctx site here = \case
           ctx
           (grhsSpan (unLoc g))
           (guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow (unLoc g))
-  HsLet _ binds e -> letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) binds e
+  HsLet (_, inToken) binds e ->
+    letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) inToken binds e
   HsDo anns flavour es -> case flavour of
     DoExpr moduleName -> doBlock moduleName "do"
     MDoExpr moduleName -> doBlock moduleName "mdo"
@@ -649,14 +650,18 @@ letIn ::
   (Body b) =>
   Ctx ->
   (LocatedA body -> b) ->
+  EpToken "in" ->
   HsLocalBinds GhcPs ->
   LocatedA body ->
   Doc
-letIn ctx bodyOf binds body =
+letIn ctx bodyOf inToken binds body =
   align $
     txt "let"
       <> space
-      <> align (localBinds ctx NoBrace binds)
+      <> align
+        ( localBinds ctx NoBrace binds
+            <> foldMap (emptyAnchor . startOf) (tokenSpan inToken)
+        )
       <> variant space (hardBreak <> txt " ")
       <> txt "in"
       <> space
@@ -756,7 +761,8 @@ cmdBody ctx site = \case
   HsCmdCase _ e mg -> caseOf ctx site (CmdBody ctx) e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
-  HsCmdLet _ binds c -> letIn ctx (bodyIn (CmdBody ctx) (siteBracing site)) binds c
+  HsCmdLet (_, inToken) binds c ->
+    letIn ctx (bodyIn (CmdBody ctx) (siteBracing site)) inToken binds c
   HsCmdDo anns es ->
     keywordAt ctx (doKeywordSpan anns) "do"
       <> statements ctx site (CmdBody ctx) es
