@@ -273,6 +273,11 @@
   in a package with a component named `all`, so that such a package gets a
   plan and its modules are formatted. [Issue
   156](https://github.com/mrkkrp/tilia/issues/156).
+* Take a comment lined up under the comment that ends the line above as
+  carrying that comment on, as one lined up under the line already was,
+  and keep it under that comment, rather than move it before what follows,
+  such as after the bar of the next constructor. [Issue
+  158](https://github.com/mrkkrp/tilia/issues/158).
 
 ## Tilia 0.0.2.0
 

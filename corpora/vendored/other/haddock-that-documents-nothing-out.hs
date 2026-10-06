@@ -6,7 +6,7 @@ twoLines = g 1 2
     g ::
       Int -> -- \^ a
       Int -> -- \^ b, which goes
-      --   on to a second line
+             --   on to a second line
       Int
     g = (+)
 
@@ -16,7 +16,7 @@ threeLines = g 1 2
   where
     g ::
       Int -> -- \^ a, which goes
-      --   on to a second line
+             --   on to a second line
       --   and a third
       Int ->
       Int

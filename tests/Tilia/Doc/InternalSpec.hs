@@ -7,7 +7,11 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (DCppDirective, DHoldBack), groupLayout)
+import Tilia.Doc.Internal
+  ( Doc (DCppDirective, DHoldBack),
+    Spill (..),
+    groupLayout,
+  )
 import Tilia.Span
 
 spec :: Spec
@@ -86,8 +90,11 @@ spec = do
       out (broken (indent (txt "a" <> hardBreak)))
         `shouldBe` "  a\n"
     it "puts held-back text that spills onto lines of its own at the line's indentation" $
-      out (indent (txt "  a" <> DHoldBack "-- x" <> DHoldBack "-- y" <> hardBreak))
+      out (indent (txt "  a" <> held "-- x" <> held "-- y" <> hardBreak))
         `shouldBe` "    a -- x\n  -- y\n"
+    it "lines spilled held-back text up with what was held back first" $
+      out (indent (txt "  a" <> held "-- x" <> underFirst "-- y" <> hardBreak))
+        `shouldBe` "    a -- x\n      -- y\n"
 
   describe "margin notes" $ do
     it "go to the margin right above a directive" $
@@ -108,6 +115,10 @@ spec = do
     it "stay indented when something else follows them on their line" $
       out (indent (cppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
         `shouldBe` "  {- x -} a\n#if X\n"
+
+held, underFirst :: Text -> Doc
+held = DHoldBack SpillAtIndentation
+underFirst = DHoldBack SpillUnderFirst
 
 out :: Doc -> Text
 out = printDoc defaultRenderOptions

@@ -5,6 +5,7 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
+    Spill (..),
     printsNothing,
     foldChildren,
     mapChildren,
@@ -63,7 +64,7 @@ data Doc
     DHardBreak
   | -- | Text to be put at the end of the line this position falls on,
     -- however much of the line is still to be written.
-    DHoldBack !Text
+    DHoldBack !Spill !Text
   | -- | Close the line, and let a break that immediately follows know that
     -- it has nothing left to do.
     DCloseLine
@@ -346,12 +347,22 @@ data Out = Out
     -- | Fragments held back until the line ends, in the order they were
     -- given. The first goes at the end of the line; any after it get lines
     -- of their own under it.
-    outHeldBack :: ![Text],
+    outHeldBack :: ![(Spill, Text)],
     -- | Whether the line was closed by something that already knew it was
     -- ending it, so that a break arriving now would add an empty line
     -- rather than end anything.
     outClosed :: !Bool
   }
+
+-- | Where text held back for the end of a line goes when something was held
+-- back for it first.
+data Spill
+  = -- | On a line of its own, at the indentation of the line it was held
+    -- back for.
+    SpillAtIndentation
+  | -- | On a line of its own, lined up with what was held back first.
+    SpillUnderFirst
+  deriving (Eq, Show)
 
 -- | A line, and what the engine knew about it as it wrote it.
 data Line = Line
@@ -437,7 +448,7 @@ go env = \case
   DSoftBreak -> case envLayout env of
     Flat -> id
     Broken -> breakLine (envIndent env)
-  DHoldBack t -> putHeldBack (envIndent env) t . noting False
+  DHoldBack spill t -> putHeldBack (envIndent env) spill t . noting False
   DCloseLine -> closeLine (envIndent env)
   DCloseLineUnlessAfterOpener gap -> \out ->
     if endsWithOpener out
@@ -511,10 +522,10 @@ putText indent t out0
     out = out0{outClosed = False}
 
 -- | Hold a fragment back until the line ends.
-putHeldBack :: Int -> Text -> Out -> Out
-putHeldBack indent t out
+putHeldBack :: Int -> Spill -> Text -> Out -> Out
+putHeldBack indent spill t out
   | started out || not (null (outHeldBack out)) =
-      out{outHeldBack = outHeldBack out <> [t], outClosed = False}
+      out{outHeldBack = outHeldBack out <> [(spill, t)], outClosed = False}
   | otherwise = closeLine indent (putText indent t out)
 
 -- | Append a space, unless the line has not started or already ends in one.
@@ -595,10 +606,19 @@ completing trailing indent out =
   where
     finished = (outLine out){lineBody = currentLine trailing out}
     spilled = drop 1 (outHeldBack out)
-    below t = newLine{lineIndent = column, lineBody = adjustTrailingWhitespace trailing t}
-    column
-      | T.null (lineBody finished) = indent
-      | otherwise = lineIndent finished
+    below (spill, t) =
+      newLine
+        { lineIndent = columnFor spill,
+          lineBody = adjustTrailingWhitespace trailing t
+        }
+    columnFor = \case
+      SpillAtIndentation
+        | T.null (lineBody finished) -> indent
+        | otherwise -> lineIndent finished
+      SpillUnderFirst ->
+        lineIndent finished
+          + T.length (lineBody finished)
+          - T.length (heldBackFirst trailing out)
 
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool
@@ -660,11 +680,15 @@ currentLine trailingWhitespace out
       adjustTrailingWhitespace
         trailingWhitespace
         (T.concat (reverse (outCurrent out)))
-    heldBack =
-      maybe
-        ""
-        (adjustTrailingWhitespace trailingWhitespace)
-        (listToMaybe (outHeldBack out))
+    heldBack = heldBackFirst trailingWhitespace out
+
+-- | What was held back first for the end of the current line.
+heldBackFirst :: TrailingWhitespace -> Out -> Text
+heldBackFirst trailingWhitespace out =
+  maybe
+    ""
+    (adjustTrailingWhitespace trailingWhitespace . snd)
+    (listToMaybe (outHeldBack out))
 
 -- | Handle the given line according to the 'TrailingWhitespace' style.
 adjustTrailingWhitespace :: TrailingWhitespace -> Text -> Text
