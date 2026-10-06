@@ -332,7 +332,7 @@ asImports path x y = case (cast x, cast y) of
   _ -> Nothing
   where
     normalised :: [LImportDecl GhcPs] -> [LImportDecl GhcPs]
-    normalised = normalizeImports (Is #implicitPrelude) [] []
+    normalised = normalizeImports (Is #implicitPrelude) [] [] []
     alongside before after
       | length before /= length after =
           Just (describe path "the module imports a different set of modules")
