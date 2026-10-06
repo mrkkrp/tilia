@@ -14,7 +14,7 @@ module Tilia.Cpp.Fragment
 where
 
 import Control.Monad (guard)
-import Data.List (partition, sortOn)
+import Data.List (sortOn)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Text (Text)
@@ -115,24 +115,19 @@ data Fragment = Fragment
   }
 
 -- | Split a module's outermost conditionals into fragments that can be
--- formatted apart, or 'Nothing' where they cannot be.
-fragmentsOf :: Body -> [GroupSpec] -> Maybe [Fragment]
-fragmentsOf body forest = do
-  let (above, below) = partition ((<= bodyHeadEnd body) . fst . gsWhole) forest
-  guard (all ((<= bodyHeadEnd body) . snd . gsWhole) above)
-  let fragment gs isAbove (lo, hi) = Fragment gs isAbove (runAt (lo - 1)) (runAt hi)
-      runAt i
-        | i < 0 = Nothing
-        | otherwise = listToMaybe (drop i (bodyRuns body))
-  pure $
-    case ( above,
-           clustered
-             (sortOn (fst . snd) [(g, reach (bodyRuns body) (gsWhole g)) | g <- below])
-         ) of
-      ([], apart) -> [fragment gs False r | (gs, r) <- apart]
-      (_, (gs, r@(0, _)) : rest) ->
-        fragment (above <> gs) True r : [fragment gs' False r' | (gs', r') <- rest]
-      (_, apart) -> fragment above True (0, 0) : [fragment gs False r | (gs, r) <- apart]
+-- formatted apart.
+fragmentsOf :: Body -> [GroupSpec] -> [Fragment]
+fragmentsOf body forest =
+  [ Fragment gs (any above gs) (runAt (lo - 1)) (runAt hi)
+  | (gs, (lo, hi)) <-
+      clustered . sortOn (fst . snd) $
+        [(g, reach (bodyRuns body) (gsWhole g)) | g <- forest]
+  ]
+  where
+    above = (<= bodyHeadEnd body) . fst . gsWhole
+    runAt i
+      | i < 0 = Nothing
+      | otherwise = listToMaybe (drop i (bodyRuns body))
 
 -- | The runs a conditional's lines touch, or where it falls between two of
 -- them.

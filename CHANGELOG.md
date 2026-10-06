@@ -225,6 +225,11 @@
   each branch, where the branches go on into the declarations after it or
   finish it each their own way. [Issue
   117](https://github.com/mrkkrp/tilia/issues/117).
+* Format a module in which a conditional begins above the declarations and
+  goes on into them a part at a time, as one without such a conditional is,
+  rather than vary the whole module one conditional at a time. Such modules
+  are formatted in less than half the time, some in a seventh of it.
+  [PR 130](https://github.com/mrkkrp/tilia/pull/130).
 
 ## Tilia 0.0.2.0
 
