@@ -287,6 +287,13 @@
   nothing, so that such a Haddock before a module header, a constructor, a
   field or an argument is formatted in one pass. [Issue
   152](https://github.com/mrkkrp/tilia/issues/152).
+* Keep a comment written under the last line of a construct that spans
+  several lines, lined up with where the construct begins, under it, as one
+  under a construct on one line is kept, rather than move it to the column
+  of what follows. A comment under the last member of a class or an
+  instance stays in the body, and a member that formatting breaks across
+  lines no longer makes a module take two passes to format. [Issue
+  151](https://github.com/mrkkrp/tilia/issues/151).
 
 ## Tilia 0.0.2.0
 

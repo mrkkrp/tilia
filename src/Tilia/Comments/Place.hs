@@ -11,8 +11,9 @@ module Tilia.Comments.Place
   )
 where
 
+import Control.Monad (guard)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (find, sortOn)
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -173,18 +174,21 @@ placeComments regions fences comments =
               lineOfCode (spanStartLine (commentSpan top) - 1)
           | otherwise = Nothing
 
-        lineOfCode line
-          | any larger onThatLine = find linedUp onThatLine
-          | otherwise = Nothing
+        lineOfCode line = do
+          r <- nearest (Down . startPoint) (filter linedUp onThatLine)
+          r <$ guard (any (larger r) onThatLine)
           where
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
             lineEnd = maximum (fmap endPoint onThatLine)
-            start = (line, spanStartColumn here)
             linedUp r =
-              startPoint r == start
+              spanStartColumn r == spanStartColumn here
                 && endPoint r == lineEnd
+                && (spanStartLine r == line || startsItsLine r)
                 && not (fencedOff r)
-            larger r = startPoint r < start && endPoint r == lineEnd
+            startsItsLine r =
+              maybe True ((< spanStartLine r) . fst . fst) $
+                Map.lookupLT (startPoint r) regionsByStartPoint
+            larger r o = startPoint o < startPoint r && endPoint o == lineEnd
 
     commentsByEndPoint = Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
 
