@@ -303,6 +303,10 @@
   nothing there, so that a conditional holding a pragma and an import at
   the top of a module with no header is formatted in one pass. [Issue
   154](https://github.com/mrkkrp/tilia/issues/154).
+* Keep a comment written between the Haddock of a constructor, a record
+  field or an argument and what the Haddock documents under the Haddock,
+  rather than move it above the Haddock. [Issue
+  148](https://github.com/mrkkrp/tilia/issues/148).
 
 ## Tilia 0.0.2.0
 

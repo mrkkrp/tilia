@@ -13,17 +13,20 @@ module Tilia.Comments.Attach
   )
 where
 
+import Control.Applicative ((<|>))
 import Data.Bifunctor (first, second)
 import Data.List (unsnoc)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
+import Data.Monoid (First (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (..), Spill (..))
+import Tilia.Doc.Internal (Doc (..), Spill (..), foldChildren)
 import Tilia.Span
 
 -- | Attach comments to a 'Doc'.
@@ -69,9 +72,12 @@ attachScopedComments margin scopeOf cs doc =
   where
     (written, left) = walk margin placements doc
     (regions, fences) = markedSpans doc
+    leads = leadingRegions doc
     placements =
       foldMap
-        (\k -> placeComments (inScope k rs) (inScope k fs) (inScope k xs))
+        ( \k ->
+            placeComments (inScope k rs) leads (inScope k fs) (inScope k xs)
+        )
         (Set.toList (Map.keysSet rs <> Map.keysSet fs <> Map.keysSet xs))
     rs = byScope id regions
     fs = byScope id fences
@@ -110,6 +116,25 @@ markedSpans = \case
   DVariant a _ -> markedSpans a
   DCppChoice _ bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
   _ -> ([], [])
+
+-- | The innermost region each region prints first, where that one was
+-- written above it, as the Haddock of a constructor, a field or an argument
+-- is.
+leadingRegions :: Doc -> Map Span Span
+leadingRegions = \case
+  DLocated s d
+    | Just h <- firstRegion d,
+      startPoint h < startPoint s ->
+        Map.insert s h (leadingRegions d)
+  d -> foldChildren leadingRegions d
+
+-- | The innermost region a document prints first.
+firstRegion :: Doc -> Maybe Span
+firstRegion = getFirst . go
+  where
+    go = \case
+      DLocated s d -> First (firstRegion d <|> Just s)
+      d -> foldChildren go d
 
 -- | Write the placed comments into the document, each one around the region
 -- it was given to. Taking is destructive: the 'Placements' is threaded
