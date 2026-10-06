@@ -69,9 +69,9 @@ found under its `hs-source-dirs` as `.hs`, `.hs-boot`, or `.hsig` files.
 
 If there is no build plan yet, or it is older than the `.cabal` and
 `cabal.project` files, or it says nothing about a component you asked for,
-Tilia has Cabal solve it with `cabal build all --dry-run`. If the plan is
+Tilia has Cabal solve it with `cabal build :all --dry-run`. If the plan is
 fine but some dependencies have been neither downloaded nor built, it
-fetches them with `cabal build all --only-download`. These commands do not
+fetches them with `cabal build :all --only-download`. These commands do not
 build anything, and both are one-time costs, since Cabal's package cache is
 shared between projects. So do not worry if the first run in a project
 prints a few lines from Cabal before Tilia starts formatting. Later runs

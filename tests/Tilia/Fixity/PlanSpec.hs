@@ -1801,8 +1801,8 @@ fetching = narrowFetch <> wholeProject
 -- | The same two, asked only about what @cabal@ builds by default. What is
 -- fallen back on where the whole project will not solve.
 narrowSolve, narrowFetch :: [String]
-narrowSolve = ["build", "all", "--dry-run"]
-narrowFetch = ["build", "all", "--only-download"]
+narrowSolve = ["build", ":all", "--dry-run"]
+narrowFetch = ["build", ":all", "--only-download"]
 
 wholeProject :: [String]
 wholeProject = ["--enable-tests", "--enable-benchmarks"]

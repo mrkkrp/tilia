@@ -269,6 +269,10 @@
   than refuse it because the lines after the first move along with the
   first when the space is put in. [Issue
   147](https://github.com/mrkkrp/tilia/issues/147).
+* Ask Cabal for a build plan of `:all` rather than `all`, which is ambiguous
+  in a package with a component named `all`, so that such a package gets a
+  plan and its modules are formatted. [Issue
+  156](https://github.com/mrkkrp/tilia/issues/156).
 
 ## Tilia 0.0.2.0
 
