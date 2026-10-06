@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Placing elements that the configurations of a module do not print (CPP
 -- conditionals, directives, and comments).
@@ -20,11 +21,14 @@ import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 import Tilia.Comments
   ( Comment (..),
     bracketed,
     commentPragma,
     holdsOff,
+    opensHaddock,
+    opensSectionHeading,
     transcendentComment,
   )
 import Tilia.Comments.Attach (Margin (..), attachScopedComments)
@@ -193,6 +197,12 @@ keptApart haddocks notes = snd . go Apart
             (ANote, DLocated s (includeWhen (before == AHaddock) blankLine <> x))
         | Set.member s haddocks ->
             (AHaddock, DLocated s (includeWhen (before == ANote) blankLine <> snd (go Apart x)))
+      DText t
+        | "--" `T.isPrefixOf` t,
+          opensHaddock t,
+          not (opensSectionHeading t),
+          before == ANote ->
+            (Apart, blankLine <> DText t)
       DCat a b ->
         let (between, a') = go before a
             (after, b') = go between b
@@ -496,6 +506,9 @@ placeAt present written n body continuing = among [] body
                 if any (`blankAt` ls) [from .. n - 1] || not (all onlySpacing spacing)
                   then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, b] <> after)
                   else mconcat (printed <> [anchor, b] <> spacing <> after)
+            | next : rest <- after,
+              any (not . onlySpacing) (takeWhile unbounded (reverse before)) ->
+                mconcat (before <> [within ctx b next] <> rest)
             | otherwise -> mconcat (before <> [b] <> after)
 
     holds = \case
@@ -512,6 +525,7 @@ placeAt present written n body continuing = among [] body
 
     replaced k x bs = [if i == k then (g, x) else (g, y) | (i, (g, y)) <- zip [0 :: Int ..] bs]
 
+    unbounded = isNothing . boundsOf
     startOf = fmap fst . boundsOf
     endOf = fmap snd . boundsOf
 

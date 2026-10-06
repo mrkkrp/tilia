@@ -311,6 +311,11 @@
   branch of a conditional it differs between, rather than keep the first
   branch's and lose the others. [Issue
   172](https://github.com/mrkkrp/tilia/issues/172).
+* Format a comment written between a constructor and a conditional that
+  adds another constructor after it in one pass: indent the added
+  constructor past the `|` the comment comes out after, and hold the
+  comment off the added constructor's Haddock with an empty line. [Issue
+  155](https://github.com/mrkkrp/tilia/issues/155).
 
 ## Tilia 0.0.2.0
 
