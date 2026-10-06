@@ -329,7 +329,8 @@ layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
 -- | 'attach' an operator and its operand, leaving the operator's region at
 -- the end of the line when it was written there, so that the comments
--- written around it stay on that line.
+-- written around it stay on that line, and giving the indentation of the
+-- operand's line a region, so that those above the operand come before it.
 attachOperator ::
   Placement ->
   -- | What the operator follows.
@@ -348,8 +349,14 @@ attachOperator placement before here after op operand = case here of
     | placement == Normal,
       sameLine before here,
       not (sameLine here after) ->
-        indent (located s mempty) <> attach Normal (unclaimed op <> space <> operand)
+        indent (located s mempty)
+          <> attach
+            Normal
+            (foldMap indentation after <> unclaimed op <> space <> operand)
   _ -> attach placement (op <> space <> operand)
+  where
+    indentation o =
+      located (mkSpan (spanStartLine o, 1) (startPoint o)) mempty
 
 -- | Give the inside of a bracketed construct an anchor at its far end.
 insideBrackets :: Maybe Span -> Doc -> Doc

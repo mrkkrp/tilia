@@ -40,3 +40,9 @@ headOf (x :| -- the one we want
 -- The same, for a pattern synonym.
 pattern x :< -- the head
   xs = (x, xs)
+
+-- A comment written on a line of its own between such an operator and its
+-- operand comes before the operator.
+remarkUnderAnOperatorAtLineEnd = base ++
+  -- what is added
+  extra
