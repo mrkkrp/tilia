@@ -311,19 +311,16 @@ merge written conditionals guards varied settledOthers = go Broken
     alike layout xs ys =
       length xs == length ys && and (zipWith (agree varied layout) xs ys)
 
-    hoisted layout ss = case filter (not . null . middleOf) peeled of
-      [] ->
-        ( widest [l | (l, _, _) <- peeled],
-          fmap (const []) ss,
-          widest [r | (_, _, r) <- peeled]
-        )
-      speaking ->
-        ( widest [l | (l, _, _) <- speaking],
-          fmap middleOf peeled,
-          widest [r | (_, _, r) <- speaking]
-        )
+    hoisted layout ss =
+      ( widest [l | (l, _, _) <- speaking],
+        fmap middleOf peeled,
+        widest [r | (_, _, r) <- speaking]
+      )
       where
         peeled = fmap peel ss
+        speaking = case filter (not . all printsNothing . middleOf) peeled of
+          [] -> peeled
+          printing -> printing
         middleOf (_, m, _) = m
         widest = \case
           [] -> []
