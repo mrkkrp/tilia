@@ -9,11 +9,12 @@ module Tilia.Cpp.Merge
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List (groupBy, maximumBy, sortOn, stripPrefix, transpose, unsnoc)
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe, maybeToList)
 import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -27,6 +28,7 @@ import Tilia.Doc.Internal
     Layout (..),
     Wrapper (..),
     conditionalRange,
+    foldChildren,
     layoutInside,
     onlyBreaks,
     onlySpacing,
@@ -39,7 +41,8 @@ import Tilia.Doc.Internal
   )
 import Tilia.Source (Lines, lineAt)
 import Tilia.Span
-  ( covers,
+  ( Span,
+    covers,
     meets,
     spanStartColumn,
     spanStartLine,
@@ -380,7 +383,10 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
     inside x y = agree varied layout x y
     here x y = case (x, y) of
       (DLocated s x', DLocated t y') ->
-        s == t && (untouched varied s || inside x' y')
+        s == t
+          && ( untouched varied (reach s x') && untouched varied (reach t y')
+                 || inside x' y'
+             )
       (DCppChoice ws bs x', DCppChoice ws' cs y') ->
         ws == ws'
           && length bs == length cs
@@ -390,6 +396,17 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
         (Just (w, x'), Just (v, y')) ->
           w == v && agree varied (layoutInside layout w) x' y'
         _ -> x == y
+
+-- | A region's span, stretched over the span it prints first, which the
+-- Haddock of a constructor, a field or an argument is, written above or
+-- below it.
+reach :: Span -> Doc -> Span
+reach s d = maybe s (<> s) (firstMarked d)
+  where
+    firstMarked = \case
+      DLocated h x -> firstMarked x <|> Just h
+      DFence h x -> firstMarked x <|> Just h
+      x -> listToMaybe (foldChildren (maybeToList . firstMarked) x)
 
 -- | What a run of space comes to on the page.
 data Space = Space !Int !Bool
