@@ -307,6 +307,10 @@
   field or an argument and what the Haddock documents under the Haddock,
   rather than move it above the Haddock. [Issue
   148](https://github.com/mrkkrp/tilia/issues/148).
+* Keep the Haddock of a constructor, a record field or an argument in each
+  branch of a conditional it differs between, rather than keep the first
+  branch's and lose the others. [Issue
+  172](https://github.com/mrkkrp/tilia/issues/172).
 
 ## Tilia 0.0.2.0
 
