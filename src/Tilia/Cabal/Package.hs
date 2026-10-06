@@ -29,6 +29,7 @@ import Data.List (isSuffixOf, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -115,7 +116,7 @@ newPackageReader = do
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
-                pure (Right (extensionsInForce mempty))
+                pure (Right (GHC.languageExtensions Nothing))
             | otherwise -> pure $ case claiming file components of
                 Just c -> Right (componentExtensions c)
                 Nothing -> Left (FileUnclaimed cabalFile)
@@ -401,7 +402,7 @@ extensionsInForce :: BuildInfo -> [Extension]
 extensionsInForce bi =
   foldl apply (GHC.languageExtensions edition) (defaultExtensions bi)
   where
-    edition = ghcLanguage =<< defaultLanguage bi
+    edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
     apply acc = \case
       Cabal.EnableExtension e
         | Just on <- named e, on `notElem` acc -> acc <> [on]
