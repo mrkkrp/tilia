@@ -627,7 +627,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
         Right () -> pure (Right ())
         Left _ -> cabal args
     fetch
-      | isTrue downloading = tryWholeProject ["build", "all", "--only-download"]
+      | isTrue downloading = tryWholeProject ["build", ":all", "--only-download"]
       | otherwise = pure (Right ())
     fetchWhatIsShort =
       readBuildPlan (planPathFor projectDir) >>= \case
@@ -645,7 +645,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
                   rememberFutileFetch futility (fmap ppName left)
                   pure (Right ())
     solveThenFetch =
-      tryWholeProject ["build", "all", "--dry-run"] >>= \case
+      tryWholeProject ["build", ":all", "--dry-run"] >>= \case
         Left err -> pure (Left err)
         Right () ->
           checkReadiness caching wanted projectDir >>= \case
