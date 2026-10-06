@@ -298,6 +298,11 @@
   `#undef` line in one pass, since only the lines of a conditional keep the
   names written on either side of them apart. [Issue
   150](https://github.com/mrkkrp/tilia/issues/150).
+* Space a conditional as the configurations that print something in it
+  space it, rather than take the empty line around it from one that prints
+  nothing there, so that a conditional holding a pragma and an import at
+  the top of a module with no header is formatted in one pass. [Issue
+  154](https://github.com/mrkkrp/tilia/issues/154).
 
 ## Tilia 0.0.2.0
 
