@@ -249,6 +249,7 @@ hackageReleases =
     "intero-0.1.40",
     "leksah-0.16.2.2",
     "lens-5.3.6",
+    "lifted-base-0.2.3.12",
     "megaparsec-9.8.1",
     "microlens-0.5.0.0",
     "mtl-2.3.2",
