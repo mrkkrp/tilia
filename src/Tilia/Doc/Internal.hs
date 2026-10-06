@@ -117,12 +117,15 @@ data Doc
     -- region of the input it was written in. The span is included so that
     -- two directives can be told apart.
     DCppDirective !Span !Text
+  | -- | Print nothing, marking where a module's declarations begin.
+    DDeclarationsStart
   deriving (Eq, Show)
 
 -- | Does this document put nothing at all on the page?
 printsNothing :: Doc -> Bool
 printsNothing = \case
   DEmpty -> True
+  DDeclarationsStart -> True
   DCat a b -> printsNothing a && printsNothing b
   DNest _ d -> printsNothing d
   DAlign d -> printsNothing d
@@ -468,6 +471,7 @@ go env = \case
                ]
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
+  DDeclarationsStart -> id
 
 -- | Record whether the line holds nothing but a note, given whether what is
 -- about to be written to it is one.

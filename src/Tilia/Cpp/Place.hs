@@ -48,6 +48,7 @@ import Tilia.Doc.Internal
     foldChildren,
     mapChildren,
     onlySpacing,
+    printsNothing,
     spine,
     unwrap,
     wrap,
@@ -200,7 +201,7 @@ keptApart haddocks notes = snd . go Apart
       d@DCppChoice{} -> (Apart, mapChildren (snd . go Apart) d)
       d
         | Just (w, x) <- unwrap d -> wrap w <$> go before x
-        | onlySpacing d -> (before, d)
+        | onlySpacing d || printsNothing d -> (before, d)
         | otherwise -> (Apart, d)
 
 -- | Widen every region to take in the conditionals printed inside it.

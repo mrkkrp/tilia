@@ -333,7 +333,9 @@ merge written conditionals guards varied settledOthers = go Broken
           (r, m) = span breaking (reverse rest)
        in (l, reverse m, reverse r)
 
-    breaking d = onlyBreaks d || d == Doc.declarationsStart
+    breaking = \case
+      DDeclarationsStart -> True
+      d -> onlyBreaks d
 
     choice ds
       | (d : _) <- mapMaybe (settledChoice ds) settledOthers = d
@@ -710,6 +712,7 @@ anchoring :: Doc -> Bool
 anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
+  DDeclarationsStart -> False
   DNest _ d -> located d || not (printsNothing d)
   DAlign d -> located d || not (printsNothing d)
   DGroup _ d -> located d || not (printsNothing d)

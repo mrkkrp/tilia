@@ -160,6 +160,7 @@ shrinkDoc = \case
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
+  DDeclarationsStart -> [DEmpty]
 
 -- | Every fragment of literal text the document contains, in order.
 --
@@ -188,3 +189,4 @@ docTexts = \case
   DFence _ d -> docTexts d
   DCppChoice _ bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
   DCppDirective _ t -> [t]
+  DDeclarationsStart -> []
