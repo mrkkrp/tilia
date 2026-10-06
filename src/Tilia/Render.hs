@@ -41,14 +41,7 @@ import Tilia.Render.Expression (hsCmd, hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
-import Tilia.Source
-  ( Lines,
-    blankAt,
-    comments,
-    directivePresentOnLine,
-    lineTexts,
-    sourceLines,
-  )
+import Tilia.Source (Lines, blankAt, comments, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
 
@@ -60,7 +53,9 @@ data RenderConfig = RenderConfig
     -- | What the module can see, if it could be worked out.
     rcScope :: Maybe Scope,
     -- | Source lines the import block must not be sorted across.
-    rcImportBarriers :: [Int]
+    rcImportBarriers :: [Int],
+    -- | Source lines the names of an import list must not be sorted across.
+    rcNameBarriers :: [Int]
   }
 
 -- | A configuration that asserts nothing.
@@ -69,7 +64,8 @@ defaultRenderConfig =
   RenderConfig
     { rcExtensions = Set.empty,
       rcScope = Nothing,
-      rcImportBarriers = []
+      rcImportBarriers = [],
+      rcNameBarriers = []
     }
 
 -- | Render a parsed module, comments and all.
@@ -102,17 +98,13 @@ renderConfiguration settings parsed =
     loose = fmap (belowOpening opening) held
     implicitPrelude =
       fromBool (Set.member ImplicitPrelude (rcExtensions settings))
-    directives =
-      filter
-        (`directivePresentOnLine` sourceLines (pmSource parsed))
-        [1 .. length (lineTexts (sourceLines (pmSource parsed)))]
     sorted m =
       m
         { hsmodImports =
             normalizeImports
               implicitPrelude
               (rcImportBarriers settings)
-              directives
+              (rcNameBarriers settings)
               (comments (pmSource parsed))
               (hsmodImports m)
         }

@@ -127,12 +127,10 @@ formatWithCpp parser render path source = do
   where
     knowing c =
       c
-        { rcImportBarriers =
-            maybe
-              []
-              (importBarriers parser source . allGroups)
-              (scanConditionals source)
+        { rcImportBarriers = maybe [] (importBarriers parser source) groups,
+          rcNameBarriers = maybe [] (sort . concatMap gsOwnLines) groups
         }
+    groups = allGroups <$> scanConditionals source
 
 -- | A module's branches, parsed: as one module where they parse together,
 -- and otherwise as the branch leaves that parse.
