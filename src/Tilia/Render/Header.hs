@@ -201,7 +201,7 @@ hsModule ::
 hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
   pragmaBlock pragmas
     <> hardBreak
-    <> headerLayout moduleLine
+    <> moduleLine
     <> hardBreak
     <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
     <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
@@ -228,12 +228,15 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
       Just modName ->
         documentation
           <> at ctx modName (moduleHeadName ctx)
-          <> breakOrSpace
-          <> foldMap (\w -> at ctx w warningTxt <> breakOrSpace) hsmodDeprecMessage
-          <> foldMap exports' hsmodExports
-          <> txt "where"
+          <> headerLayout
+            ( breakOrSpace
+                <> foldMap warning hsmodDeprecMessage
+                <> foldMap exports' hsmodExports
+                <> txt "where"
+            )
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
+    warning w = at ctx w warningTxt <> breakOrSpace
     exports' l =
       at ctx l (\xs -> indent (exportList ctx (spanOf l) xs)) <> breakOrSpace
 

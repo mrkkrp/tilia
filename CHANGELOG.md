@@ -261,6 +261,9 @@
   which it does not compile with, and code that relies on
   `NondecreasingIndentation` is formatted. [Issue
   131](https://github.com/mrkkrp/tilia/issues/131).
+* Keep a module's name and its Haddock out of a conditional between the
+  name and the export list, rather than copy them into each branch. [Issue
+  134](https://github.com/mrkkrp/tilia/issues/134).
 
 ## Tilia 0.0.2.0
 
