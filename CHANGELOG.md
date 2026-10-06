@@ -243,6 +243,11 @@
   after its trailing comma, which formatting drops, as in `(Array, bounds,
   (!) {- assocs -})`, rather than put the comment against the item, which a
   second run set apart. [Issue 132](https://github.com/mrkkrp/tilia/issues/132).
+* Keep a `do` block on the line of the `$` or `=` before it when an
+  operator follows the block at the column of its statements, as in `it
+  "adds" $ do` with a `` `shouldBe` `` under the block, rather than put the
+  block on a line of its own one step further in. [Issue
+  136](https://github.com/mrkkrp/tilia/issues/136).
 
 ## Tilia 0.0.2.0
 

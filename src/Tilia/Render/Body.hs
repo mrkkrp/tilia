@@ -60,10 +60,11 @@ exprHangs = \case
     | maybe False isSingleLine (spanOf p) -> Hanging
     | otherwise -> Normal
   HsApp _ _ y -> exprHangs (unLoc y)
-  OpApp _ _ op y
+  OpApp _ x op y
     | Just n <- operatorName op,
       occNameString (rdrNameOcc n) == "$" ->
         exprHangs (unLoc y)
+    | otherwise -> exprHangs (unLoc x)
   _ -> Normal
 
 -- | Does this command absorb the line break that introduces it?

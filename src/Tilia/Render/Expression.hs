@@ -417,6 +417,7 @@ chainPlacement ::
   Placement
 chainPlacement placer firstOne lastOne = case lastOne of
   Operand (L _ n) | startsTogether -> placer n
+  Chain (first :| _) _ -> chainPlacement placer firstOne first
   _ -> Normal
   where
     startsTogether =
