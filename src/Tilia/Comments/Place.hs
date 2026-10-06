@@ -131,7 +131,10 @@ placeComments regions fences comments =
           nearest (\r -> (Down (endPoint r), startPoint r)) (filter candidate onThatLine)
           where
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
-            candidate r = endPoint r <= startPoint here && not (fencedOff r)
+            candidate r =
+              endPoint r <= startPoint here
+                && startPoint r /= endPoint r
+                && not (fencedOff r)
 
         writtenAgainst = maybe False (`Set.member` regionEndPoints) stopsAt
         stopsAt = (,) (spanStartLine here) <$> commentCodeBeforeStopsAt c

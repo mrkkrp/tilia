@@ -230,6 +230,9 @@
   rather than vary the whole module one conditional at a time. Such modules
   are formatted in less than half the time, some in a seventh of it.
   [PR 130](https://github.com/mrkkrp/tilia/pull/130).
+* Keep a comment written above the `in` of a `let` among the bindings,
+  rather than move it to the other side of `in`, above the body. [Issue
+  137](https://github.com/mrkkrp/tilia/issues/137).
 
 ## Tilia 0.0.2.0
 
