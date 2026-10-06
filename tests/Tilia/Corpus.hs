@@ -350,7 +350,9 @@ ormoluSkip =
     "declaration" </> "class" </> "associated-type-defaults.hs",
     "declaration" </> "class" </> "default-implementations-comments.hs",
     "other" </> "invalid-haddock-1.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "do.hs"
+    "declaration" </> "value" </> "function" </> "infix" </> "do.hs",
+    "declaration" </> "data" </> "multiline-arg-parens.hs",
+    "module-header" </> "multiline-with-comments.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

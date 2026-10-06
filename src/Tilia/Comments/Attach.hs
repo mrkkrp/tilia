@@ -23,7 +23,7 @@ import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (..))
+import Tilia.Doc.Internal (Doc (..), Spill (..))
 import Tilia.Span
 
 -- | Attach comments to a 'Doc'.
@@ -140,16 +140,16 @@ walk margin = go
       DLocated s d ->
         let (mine, p') = claimPlaced s p
             (d', p'') = go p' d
-            write position cs =
-              foldMap (writtenAs margin (isEmptyAnchor s) position) cs
-            before' = heldOffFrom d [c | (q, c) <- mine, q == Before]
-            after' = [c | (q, c) <- mine, q == After]
-            under' = [c | (q, c) <- mine, q == Under]
+            write = foldMap (uncurry (writtenAs margin (isEmptyAnchor s)))
+            before' =
+              (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
+            after' =
+              [(q, c) | (q, c) <- mine, q == After || q == UnderTheRemark]
+            under' = [(q, c) | (q, c) <- mine, q == Under]
             withUnder
               | null under' = id
-              | otherwise = \x -> DAlign (x <> write Under under')
-         in ( write Before before'
-                <> withUnder (DLocated s d' <> write After after'),
+              | otherwise = \x -> DAlign (x <> write under')
+         in ( write before' <> withUnder (DLocated s d' <> write after'),
               p''
             )
       DFence s d -> first (DFence s) (go p d)
@@ -227,7 +227,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> closeLine <> gapBelow
-  HeldBack -> holdBack (renderComment c)
+  HeldBack -> holdBack spill (renderComment c)
   OnItsOwnLines ->
     closeLineUnlessAfterOpener (commentGapAbove c)
       <> body
@@ -237,6 +237,9 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
+    spill
+      | position == UnderTheRemark = SpillUnderFirst
+      | otherwise = SpillAtIndentation
 
 -- | A comment, and the spacing that goes with it, as one region.
 commentDoc :: Comment -> Doc -> Doc
@@ -261,7 +264,7 @@ commentText margin c = note . align $ case NE.toList (commentBody c) of
       | otherwise = id
 
 -- | Put this text at the end of the line this position falls on.
-holdBack :: Text -> Doc
+holdBack :: Spill -> Text -> Doc
 holdBack = DHoldBack
 
 -- | End the current line and leave a mark so that a line break that follows

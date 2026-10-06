@@ -36,6 +36,9 @@ data Position
     After
   | -- | On lines of its own under the region, lined up with it.
     Under
+  | -- | After the region, on a line of its own under the comment that ends
+    -- the region's line, lined up with that comment.
+    UnderTheRemark
   deriving (Eq, Show)
 
 -- | How a comment is printed in relation to the region carrying it.
@@ -60,11 +63,11 @@ shapeOf position c = case position of
     | closesItself c && commentFollowed c -> InPlace
     | commentTrailing c -> EndsTheLine
     | otherwise -> OnItsOwnLines
-  After
+  Under -> OnItsOwnLines
+  _
     | closesItself c -> InPlace
     | singleLine c -> HeldBack
     | otherwise -> EndsTheLine
-  Under -> OnItsOwnLines
 
 -- | Comment placements not yet written: all of them when placement is
 -- decided, fewer as a walk writes them.
@@ -117,7 +120,7 @@ placeComments regions fences comments =
     against c
       | Just placed@(_, After) <- asCommentBefore = Just placed
       | commentTrailing c, Just r <- trailed = Just (r, After)
-      | Just r <- continues = Just (r, After)
+      | Just placed <- continues = Just placed
       | Just r <- under = Just (r, Under)
       | Just r <- next = Just (r, Before)
       | otherwise = Nothing
@@ -151,9 +154,13 @@ placeComments regions fences comments =
 
         continues
           | nothingBelowItLinesUp,
-            Just anchor <- carriedOn c =
-              endingOn anchor
+            Just (anchor, remark) <- carriedOn c =
+              (,linedUpWith remark) <$> endingOn anchor
           | otherwise = Nothing
+
+        linedUpWith remark
+          | remark == spanStartColumn here = UnderTheRemark
+          | otherwise = After
 
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next

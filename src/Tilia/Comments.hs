@@ -28,7 +28,6 @@ where
 
 import Data.Char (isSpace)
 import Data.IntMap.Strict qualified as IntMap
-import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -274,22 +273,25 @@ singleLine c = case commentBody c of
   _ -> False
 
 -- | The line whose trailing comment a comment with the line to itself
--- carries on, by being lined up under that line or under comments that
--- carry it on in turn.
-carriedOnFrom :: [Comment] -> Comment -> Maybe Int
-carriedOnFrom cs = \c -> case commentAbove c of
-  ContentAt column
-    | not (commentTrailing c),
-      column == spanStartColumn (commentSpan c) ->
-        go column (spanStartLine (commentSpan c) - 1)
-  _ -> Nothing
+-- carries on, by being lined up under that line or that comment, or under
+-- comments that carry it on in turn, and the column that comment begins at.
+carriedOnFrom :: [Comment] -> Comment -> Maybe (Int, Int)
+carriedOnFrom cs = \c ->
+  if commentTrailing c
+    then Nothing
+    else
+      go
+        (spanStartColumn (commentSpan c))
+        (spanStartLine (commentSpan c) - 1)
+        (commentAbove c)
   where
-    linesEndingInAComment =
-      IntSet.fromList
-        [ spanEndLine (commentSpan c)
+    remarks =
+      IntMap.fromList
+        [ (spanEndLine s, spanStartColumn s)
         | c <- cs,
           commentTrailing c,
-          not (commentFollowed c)
+          not (commentFollowed c),
+          let s = commentSpan c
         ]
     ownLineComments =
       IntMap.fromList
@@ -299,12 +301,14 @@ carriedOnFrom cs = \c -> case commentAbove c of
           not (commentFollowed c),
           let s = commentSpan c
         ]
-    go column line
-      | IntSet.member line linesEndingInAComment = Just line
-      | Just (col, above) <- IntMap.lookup line ownLineComments,
+    go column line above
+      | Just remark <- IntMap.lookup line remarks,
+        above == ContentAt column || remark == column =
+          Just (line, remark)
+      | Just (col, above') <- IntMap.lookup line ownLineComments,
         col == column,
         above == ContentAt column =
-          go column (line - 1)
+          go column (line - 1) above'
       | otherwise = Nothing
 
 -- | Put a space between a doc comment's trigger and the text after it, so

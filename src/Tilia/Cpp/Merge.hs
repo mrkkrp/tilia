@@ -695,7 +695,7 @@ weigh layout = go
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t
-      DHoldBack t -> T.length t
+      DHoldBack _ t -> T.length t
       d
         | Just (w, x) <- unwrap d -> weigh (layoutInside layout w) x
         | otherwise -> 0
