@@ -278,6 +278,10 @@
   and keep it under that comment, rather than move it before what follows,
   such as after the bar of the next constructor. [Issue
   158](https://github.com/mrkkrp/tilia/issues/158).
+* Put a comment written on a line of its own between an operator at the end
+  of a line and its operand above the line the operator moves to, rather
+  than leave the operator alone on a line above the comment. [Issue
+  159](https://github.com/mrkkrp/tilia/issues/159).
 
 ## Tilia 0.0.2.0
 
