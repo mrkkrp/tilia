@@ -294,6 +294,10 @@
   instance stays in the body, and a member that formatting breaks across
   lines no longer makes a module take two passes to format. [Issue
   151](https://github.com/mrkkrp/tilia/issues/151).
+* Sort the names of imports of one module merged across a `#define` or an
+  `#undef` line in one pass, since only the lines of a conditional keep the
+  names written on either side of them apart. [Issue
+  150](https://github.com/mrkkrp/tilia/issues/150).
 
 ## Tilia 0.0.2.0
 
