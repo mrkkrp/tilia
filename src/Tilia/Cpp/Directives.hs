@@ -145,6 +145,10 @@ data CppError
   | -- | An alternative that aborts with @#error@ that cannot be formatted
     -- without parsing it, and the line of the @#error@.
     AbortingAlternative Int
+  | -- | A branch that does not parse in a configuration no definition of the
+    -- macros gives, with nothing else to say what it holds, and the line of
+    -- the directive opening it.
+    UntakenBranch Int
 
 -- | What is wrong with a conditional directive.
 data Malformation
@@ -177,6 +181,11 @@ describeCppError = \case
     "the alternative that the #error at line "
       <> T.pack (show n)
       <> " aborts cannot be formatted without parsing it"
+  UntakenBranch n ->
+    "the branch at line "
+      <> T.pack (show n)
+      <> " does not parse in the configuration taking it, which no definition"
+      <> " of the macros gives"
 
 -- | Which configuration, in words. Empty where there is only one.
 inConfiguration :: [([Guard], Int)] -> Text

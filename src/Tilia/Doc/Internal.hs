@@ -119,6 +119,10 @@ data Doc
     DCppDirective !Span !Text
   | -- | Print nothing, marking where a module's declarations begin.
     DDeclarationsStart
+  | -- | Stand for what an answer no definition of the macros gives prints,
+    -- until the answers settling the same conditionals fill it in, and the
+    -- lines of the branches it was formatted from.
+    DCppUntaken ![(Int, Int)]
   deriving (Eq, Show)
 
 -- | Does this document put nothing at all on the page?
@@ -189,6 +193,7 @@ printedFrom = \case
   DLocated s x -> (spanStartLine s, spanEndLine s) : printedFrom x
   DFence s x -> (spanStartLine s, spanEndLine s) : printedFrom x
   d@(DCppChoice cs _ _) -> mapMaybe conditionalRange cs <> foldChildren printedFrom d
+  DCppUntaken ls -> ls
   d -> foldChildren printedFrom d
 
 -- | Nothing but the whitespace that separates one thing from the next.
@@ -472,6 +477,7 @@ go env = \case
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
+  DCppUntaken _ -> id
 
 -- | Record whether the line holds nothing but a note, given whether what is
 -- about to be written to it is one.

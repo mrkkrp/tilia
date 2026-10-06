@@ -9,7 +9,7 @@ module Tilia.Cpp.Merge
   )
 where
 
-import Control.Monad (guard)
+import Control.Monad (foldM, guard)
 import Data.Char (isSpace)
 import Data.List (maximumBy, sortOn, stripPrefix, transpose, unsnoc)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
@@ -349,15 +349,64 @@ merge written conditionals guards varied settledOthers = go Broken
 
     settledChoice ds s = do
       open' <- listToMaybe [d | (d, Nothing) <- zip ds (settledBranches s)]
-      (bs, e) <- case filter (not . onlySpacing) (spine open') of
-        [DCppChoice cs bs e] | settledConditional s `elem` cs -> Just (bs, e)
+      case filter (not . onlySpacing) (spine open') of
+        [DCppChoice cs _ _] | settledConditional s `elem` cs -> Just ()
         _ -> Nothing
-      let printed = maybe open' (\k -> maybe e snd (listToMaybe (drop k bs)))
-          printsAlike a b =
-            agree varied Broken a b || (printsNothing a && printsNothing b)
-      if and (zipWith (printsAlike . printed) (settledBranches s) ds)
-        then Just open'
-        else Nothing
+      guard (and [printsAlike open' d | (d, Nothing) <- answered])
+      foldM
+        (\o (j, d) -> filledIn j o d)
+        open'
+        [(j, d) | (j, (d, Just _)) <- zip [0 ..] answered]
+      where
+        answered = zip ds (settledBranches s)
+
+    -- What answer j printed, put into what an open answer printed for it:
+    -- into the branch of every conditional it settles, down to what no
+    -- definition of the macros gives, which takes what it printed.
+    filledIn j template d
+      | printsAlike template d = Just template
+      | otherwise = do
+          let (ts, xs) = (spine template, spine d)
+              ahead = shared ts xs
+              behind =
+                shared (reverse (drop ahead ts)) (reverse (drop ahead xs))
+              (opening, rest) = splitAt ahead ts
+              (differing, closing) = splitAt (length rest - behind) rest
+              printed = mconcat (trimmed (drop ahead (dropEnd behind xs)))
+              (lead, rest') = span onlySpacing differing
+              (trail, inner) = span onlySpacing (reverse rest')
+          filled <- case reverse inner of
+            [DCppUntaken _] -> Just printed
+            [DCppChoice cs bs e]
+              | k : _ <- settledIn j cs ->
+                  putInto cs bs e k <$> filledIn j (alternative k bs e) printed
+            _ -> Nothing
+          Just . mconcat $
+            opening <> lead <> [filled] <> reverse trail <> closing
+      where
+        shared as bs =
+          length (takeWhile id (zipWith (agree varied Broken) as bs))
+        dropEnd n = reverse . drop n . reverse
+        alternative k bs e = maybe e snd (listToMaybe (drop k bs))
+        putInto cs bs e k x
+          | k < length bs =
+              DCppChoice
+                cs
+                [(g, if i == k then x else y) | (i, (g, y)) <- zip [0 ..] bs]
+                e
+          | otherwise = DCppChoice cs bs x
+
+    trimmed = reverse . dropWhile onlySpacing . reverse . dropWhile onlySpacing
+
+    printsAlike a b =
+      agree varied Broken a b || (printsNothing a && printsNothing b)
+
+    settledIn j cs =
+      [ k
+      | s <- settledOthers,
+        settledConditional s `elem` cs,
+        Just (Just k) <- [listToMaybe (drop j (settledBranches s))]
+      ]
 
     evidenced ds c = case conditionalRange c of
       Just (from, to) -> any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)

@@ -6,6 +6,7 @@ module Tilia.Cpp.Place
   ( CommentSummary,
     summarizeComments,
     restoreUnprinted,
+    placeUntaken,
     regionOf,
   )
 where
@@ -391,6 +392,11 @@ restoreConditional written doc gs =
     shell =
       DCppChoice [c] [(g, mempty) | g <- guards] mempty
         <> includeWhen (blankAt (closing + 1) written) blankLine
+
+-- | Put what an answer no definition of the macros gives took from a branch
+-- where the branch was written.
+placeUntaken :: (Int, Int) -> Doc -> Doc
+placeUntaken r = placeAt (const False) Nothing (fst r) (DCppUntaken [r]) id
 
 -- | Put a directive back where it was written.
 putDirective :: Lines -> Doc -> Directive -> Either CppError Doc

@@ -124,7 +124,8 @@ vendoredExamples =
                   "other" </> "cpp" </> "unbalanced.hs",
                   "other" </> "cpp" </> "define-in-a-quasiquote.hs",
                   "other" </> "cpp" </> "macro-standing-for-a-bracket.hs",
-                  "other" </> "cpp" </> "branch-opening-a-bracket-it-does-not-close.hs"
+                  "other" </> "cpp" </> "branch-opening-a-bracket-it-does-not-close.hs",
+                  "other" </> "cpp" </> "branch-only-a-contradiction-takes.hs"
                 ]
             },
       corpusInPackages = False

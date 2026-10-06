@@ -44,8 +44,16 @@ import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
-import Data.Monoid (Any (..))
+import Data.Maybe
+  ( catMaybes,
+    fromMaybe,
+    isJust,
+    isNothing,
+    listToMaybe,
+    mapMaybe,
+    maybeToList,
+  )
+import Data.Monoid (Any (..), First (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -53,10 +61,16 @@ import Data.Traversable (for)
 import Tilia.Cpp.Directives
 import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
-import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
+import Tilia.Cpp.Place
+  ( CommentSummary,
+    placeUntaken,
+    restoreUnprinted,
+    summarizeComments,
+  )
 import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Doc.Internal
-  ( Doc (..),
+  ( Conditional (..),
+    Doc (..),
     Layout (..),
     conditionalRange,
     foldChildren,
@@ -120,6 +134,7 @@ formatWithCpp parser render path source = do
           )
       )
       (configurationBudget * linesHeld source)
+  traverse_ (Left . UntakenBranch) (untakenBranch document)
   formatted <-
     printDoc defaultRenderOptions
       <$> restoreUnprinted source found document
@@ -233,7 +248,7 @@ formatAllConfigs parser render path reached source = do
                 parser
                 render
                 path
-                (without (vaBaselineDropped apart) reached)
+                (atBaseline forest apart reached)
                 (vaBaseline apart)
           else pure Nothing
       fragmented <- case (pragma, base) of
@@ -443,13 +458,11 @@ together ::
   Configurations ->
   Spending (Doc, CommentSummary)
 together parser render path reached c = do
-  (found, blind) <-
-    formatted differentlyRead `catchE` \case
-      ConfigurationNotParsed answers _
-        | not differentlyRead,
-          isNothing (implied answers) ->
-            formatted True
-      e -> refuse e
+  (found, blind) <- do
+    unsettled <- formatted differentlyRead
+    if not differentlyRead && isJust (untakenBranch (fst (fst unsettled)))
+      then formatted True
+      else pure unsettled
   if blind then fst <$> formatted False else pure found
   where
     differentlyRead =
@@ -461,7 +474,7 @@ together parser render path reached c = do
               [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
       found <- fmap catMaybes . for (zip [0 ..] answers) $ \(i, (r, t)) ->
         if null (unconditionalErrors t)
-          then Just . (,) i <$> formatAllConfigs parser render path r t
+          then fmap ((,) i) <$> answered r t
           else pure Nothing
       docs <-
         except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
@@ -480,6 +493,18 @@ together parser render path reached c = do
               settled
               docs
       pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
+    answered r t
+      | isNothing (implied (reachedAnswers r)) =
+          (Just <$> formatAllConfigs parser render path r t) `catchE` \case
+            ConfigurationNotParsed{} -> pure Nothing
+            UntakenBranch{} -> pure Nothing
+            e -> refuse e
+      | otherwise = Just <$> formatAllConfigs parser render path r t
+    branches i =
+      [ (from, to)
+      | ls <- fmap conditionalLines (cfgConditionals c),
+        (from, to) <- take 1 (drop i (zip ls (drop 1 ls)))
+      ]
     blindOver ranges d = case d of
       DCppChoice [] bs _
         | fmap fst bs == fmap guardText (cfgGuards c),
@@ -489,6 +514,12 @@ together parser render path reached c = do
       _ -> getAny (foldChildren (Any . blindOver ranges) d)
     complete found (i, t) = case lookup i found of
       Just d -> Right d
+      Nothing
+        | null (unconditionalErrors t) ->
+            case listToMaybe found of
+              Just (_, d) -> Right (untakenFrom (cfgWholes c) (branches i) d)
+              Nothing ->
+                Left (UntakenBranch (maybe 0 fst (listToMaybe (branches i))))
       Nothing -> case listToMaybe found >>= errorBranch (cfgWholes c) t . snd of
         Just d -> Right d
         Nothing ->
@@ -498,6 +529,32 @@ together parser render path reached c = do
             . listToMaybe
             . unconditionalErrors
             $ t
+
+-- | Stand in for an answer no definition of the macros gives, which did not
+-- parse, with what another answer printed: what that one printed inside the
+-- question's conditionals taken out, and in its place the branches this
+-- answer takes, which the merge fills in from the answers settling them.
+untakenFrom ::
+  Varied ->
+  -- | The directives opening and closing each branch this answer takes.
+  [(Int, Int)] ->
+  Doc ->
+  Doc
+untakenFrom (Varied ranges) taken reference =
+  foldr
+    placeUntaken
+    (outside reference)
+    [(from + 1, to - 1) | (from, to) <- taken, from + 1 < to]
+  where
+    inside n = any (\(from, to) -> from <= n && n <= to) ranges
+    contained s = inside (spanStartLine s) && inside (spanEndLine s)
+    outside d = case d of
+      DLocated s _ | contained s -> mempty
+      DCppChoice{}
+        | lines'@(_ : _) <- printedFrom d,
+          all (\(a, b) -> inside a && inside b) lines' ->
+            mempty
+      _ -> mapChildren outside d
 
 -- | Preserve an error-only alternative without asking the Haskell parser to
 -- parse its missing expression or declaration. A successful sibling supplies
@@ -578,12 +635,15 @@ answering c i reached =
           (reachedLines reached)
     }
 
--- | Leave out the branches a baseline does not take, without answering
--- anything: the baseline is every question taken at its first branch, and
--- which question is being varied is not settled until 'answering'.
-without :: [(Int, Int)] -> Reached -> Reached
-without gone reached =
-  reached{reachedLines = dropping gone (reachedLines reached)}
+-- | Answer every question at the top of a module with its first branch, as
+-- its baseline does.
+atBaseline :: [GroupSpec] -> Variation -> Reached -> Reached
+atBaseline forest apart reached =
+  reached
+    { reachedAnswers =
+        reachedAnswers reached <> [(gsGuards gs, 0) | gs <- forest],
+      reachedLines = dropping (vaBaselineDropped apart) (reachedLines reached)
+    }
 
 -- | Take, in every conditional the answers to one question settle, the
 -- branch they settle it on, as the preprocessor would, where an answer
@@ -636,6 +696,13 @@ settledAcross perAnswer =
       }
   | gs <- Map.elems (Map.fromList [(gsWhole g, g) | (g, _) <- concat perAnswer])
   ]
+
+-- | The line opening the first branch that only a configuration no
+-- definition of the macros gives took and that nothing filled in.
+untakenBranch :: Doc -> Maybe Int
+untakenBranch = \case
+  DCppUntaken ls -> Just (maybe 0 (subtract 1 . fst) (listToMaybe ls))
+  d -> getFirst (foldChildren (First . untakenBranch) d)
 
 -- | How many times over one call may format the lines of a module.
 configurationBudget :: Int

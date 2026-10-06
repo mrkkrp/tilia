@@ -264,6 +264,13 @@
 * Keep a module's name and its Haddock out of a conditional between the
   name and the export list, rather than copy them into each branch. [Issue
   134](https://github.com/mrkkrp/tilia/issues/134).
+* Format a module in which a configuration no definition of the macros
+  gives does not parse, such as one taking no branch of `#if defined(A) &&
+  defined(B)` but the branches of `#if defined(A)` and `#if defined(B)`
+  nested in each other, taking what those branches hold from the
+  configurations that do take them, rather than decline it. Where no other
+  configuration takes such a branch, the module is declined naming the
+  branch. [Issue 139](https://github.com/mrkkrp/tilia/issues/139).
 
 ## Tilia 0.0.2.0
 

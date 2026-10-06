@@ -178,6 +178,7 @@ formatErrorExitCode = \case
     MacroInQuotedText{} -> 12
     RuledOutBranch{} -> 13
     AbortingAlternative{} -> 14
+    UntakenBranch{} -> 11
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
