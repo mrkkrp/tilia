@@ -282,6 +282,11 @@
   of a line and its operand above the line the operator moves to, rather
   than leave the operator alone on a line above the comment. [Issue
   159](https://github.com/mrkkrp/tilia/issues/159).
+* Print a Haddock that holds nothing but a space as `{- | -}` rather than as
+  `-- |`, which loses the space at the end of its line and then holds
+  nothing, so that such a Haddock before a module header, a constructor, a
+  field or an argument is formatted in one pass. [Issue
+  152](https://github.com/mrkkrp/tilia/issues/152).
 
 ## Tilia 0.0.2.0
 
