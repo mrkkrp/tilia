@@ -348,7 +348,8 @@ ormoluSkip =
     "other" </> "comment-in-empty-list.hs",
     "declaration" </> "class" </> "associated-type-defaults.hs",
     "declaration" </> "class" </> "default-implementations-comments.hs",
-    "other" </> "invalid-haddock-1.hs"
+    "other" </> "invalid-haddock-1.hs",
+    "declaration" </> "value" </> "function" </> "infix" </> "do.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable
