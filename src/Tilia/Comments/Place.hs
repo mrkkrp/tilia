@@ -93,12 +93,15 @@ instance Monoid Placements where
 placeComments ::
   -- | The regions a comment may be given to.
   [Span] ->
+  -- | The innermost region each region prints first, where that one was
+  -- written above it.
+  Map Span Span ->
   -- | The boundaries a comment printed in place may not be carried across.
   [Span] ->
   -- | The comments to place.
   [Comment] ->
   Placements
-placeComments regions fences comments =
+placeComments regions leads fences comments =
   Placements
     { placedAt = Map.fromListWith (flip (<>)) [(r, [(p, c)]) | (Just (r, p), c) <- decided],
       placedNowhere = [c | (Nothing, c) <- decided]
@@ -123,7 +126,7 @@ placeComments regions fences comments =
       | commentTrailing c, Just r <- trailed = Just (r, After)
       | Just placed <- continues = Just placed
       | Just r <- under = Just (r, Under)
-      | Just r <- next = Just (r, Before)
+      | Just r <- next = Just (maybe (r, Before) (,Under) (Map.lookup r leads))
       | otherwise = Nothing
       where
         here = commentSpan c
