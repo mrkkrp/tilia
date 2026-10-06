@@ -11,7 +11,8 @@ where
 
 import Control.Monad (guard)
 import Data.Char (isSpace)
-import Data.List (maximumBy, sortOn, stripPrefix, transpose, unsnoc)
+import Data.Function (on)
+import Data.List (groupBy, maximumBy, sortOn, stripPrefix, transpose, unsnoc)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Ord (comparing)
 import Data.Text (Text)
@@ -462,7 +463,7 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
                   )
               )
           )
-      pure (mconcat (applied bs clustered))
+      pure (mconcat (applied bs (inWrittenOrder bs clustered)))
 
     cluster _ [c] = Just c
     cluster bs cs
@@ -488,6 +489,33 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
         go i [] = drop i bs
         go i (c : cs) =
           take (chFrom c - i) (drop i bs) <> chWith c <> go (chTo c) cs
+
+-- | Put what changes made to one run of space in the order it was written
+-- in.
+--
+-- Two conditionals written one after the other with nothing between them
+-- but space both change that space, and where in it each change falls is a
+-- matter of how each one's own space lined up with it, not of which came
+-- first. Nothing but space moves when the changes trade places.
+inWrittenOrder :: [Doc] -> [Change] -> [Change]
+inWrittenOrder bs = concatMap reorder . groupBy ((==) `on` gap)
+  where
+    gap c
+      | all onlySpacing (take (chTo c - chFrom c) (drop (chFrom c) bs)) =
+          Just (length (filter (not . onlySpacing) (take (chFrom c) bs)))
+      | otherwise = Nothing
+    reorder cs = case traverse firstLine cs of
+      Just ls
+        | Just _ <- gap =<< listToMaybe cs,
+          ls /= sortOn id ls ->
+            zipWith
+              (\c w -> c{chWith = chWith w, chVaried = chVaried w})
+              cs
+              (fmap snd (sortOn fst (zip ls cs)))
+      _ -> cs
+    firstLine c = case concatMap printedFrom (chWith c) of
+      [] -> Nothing
+      ls -> Just (minimum (fmap fst ls))
 
 -- | The wrapper standing for those of several documents, if each is of a
 -- kind with the first: the smallest span covering theirs for a region, and
