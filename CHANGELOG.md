@@ -233,6 +233,12 @@
 * Keep a comment written above the `in` of a `let` among the bindings,
   rather than move it to the other side of `in`, above the body. [Issue
   137](https://github.com/mrkkrp/tilia/issues/137).
+* Leave out configurations that no definition of the macros gives where the
+  answers turn on no extension too, when one of them would not parse, such
+  as one taking no branch of `#if !(MIN_VERSION_base(4,16,0))` and the
+  branch of `#if !(MIN_VERSION_base(4,14,0))` around items of an export list
+  written with leading commas. [Issue
+  133](https://github.com/mrkkrp/tilia/issues/133).
 
 ## Tilia 0.0.2.0
 

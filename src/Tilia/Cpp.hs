@@ -443,7 +443,13 @@ together ::
   Configurations ->
   Spending (Doc, CommentSummary)
 together parser render path reached c = do
-  (found, blind) <- formatted differentlyRead
+  (found, blind) <-
+    formatted differentlyRead `catchE` \case
+      ConfigurationNotParsed answers _
+        | not differentlyRead,
+          isNothing (implied answers) ->
+            formatted True
+      e -> refuse e
   if blind then fst <$> formatted False else pure found
   where
     differentlyRead =
