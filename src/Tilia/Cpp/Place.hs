@@ -488,6 +488,8 @@ placeAt present written n body continuing = among [] body
             | Just (earlier, holder, spacing) <- lastBounded before,
               maybe False (>= n) (endOf holder) ->
                 mconcat (earlier <> [within ctx b holder] <> spacing <> after)
+            | (later, holder : rest) <- break holds after ->
+                mconcat (before <> later <> [within ctx b holder] <> rest)
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
@@ -495,6 +497,10 @@ placeAt present written n body continuing = among [] body
                   then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, b] <> after)
                   else mconcat (printed <> [anchor, b] <> spacing <> after)
             | otherwise -> mconcat (before <> [b] <> after)
+
+    holds = \case
+      DLocated s _ -> spanStartLine s < n && n <= spanEndLine s
+      _ -> False
 
     startsAfter = \case
       DLocated s _ | spanStartColumn s == farRight -> spanStartLine s >= n

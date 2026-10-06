@@ -32,19 +32,21 @@ normalizeImports ::
   Choice "implicitPrelude" ->
   -- | Source lines the block must not be sorted across.
   [Int] ->
+  -- | Source lines the names of a list must not be sorted across.
+  [Int] ->
   -- | The module's comments.
   [Comment] ->
   -- | Original imports.
   [LImportDecl GhcPs] ->
   -- | Normalized imports.
   [LImportDecl GhcPs]
-normalizeImports implicitPrelude barriers written imports =
+normalizeImports implicitPrelude barriers directives written imports =
   concatMap stretch (cutAtBarriers barriers tidied)
   where
-    tidied = fmap (fmap (tidyImportList written)) imports
+    tidied = fmap (fmap (tidyImportList directives written)) imports
     stretch is =
       foldRuns
-        (combineImports written)
+        (combineImports directives written)
         [((importIdentity implicitPrelude i, hiddenNames i, alone i), i) | i <- is]
     alone i
       | any strands (spanOf i) = startLineOf i
@@ -95,17 +97,18 @@ itemStarts (L _ decl) = case ideclImportList decl of
         concatMap (foldMap ((: []) . startPoint) . spanOf) members
       _ -> []
 
--- | Cut the imports into the stretches the barriers leave between them.
+-- | Cut imports, or the names of a list, into the stretches the barriers
+-- leave between them.
 cutAtBarriers ::
-  -- | Lines the block must not be sorted across, in ascending order.
+  -- | Lines not to be sorted across, in ascending order.
   [Int] ->
-  -- | The imports, as they were written.
-  [LImportDecl GhcPs] ->
-  -- | One stretch per run of imports between barriers, in the same order.
-  [[LImportDecl GhcPs]]
-cutAtBarriers [] imports = [imports]
-cutAtBarriers barriers imports =
-  groupBy ((==) `on` fst) [(between i, i) | i <- imports] & fmap (fmap snd)
+  -- | What to cut, as it was written.
+  [GenLocated SrcSpanAnnA a] ->
+  -- | One stretch per run between barriers, in the same order.
+  [[GenLocated SrcSpanAnnA a]]
+cutAtBarriers [] xs = [xs]
+cutAtBarriers barriers xs =
+  groupBy ((==) `on` fst) [(between i, i) | i <- xs] & fmap (fmap snd)
   where
     between i = length (takeWhile (< lineOf i) barriers)
     lineOf i = case srcSpanStart (getLocA i) of
@@ -200,6 +203,8 @@ importIdentity implicitPrelude (L _ decl) =
 
 -- | Keep the first import and give it everything the second named.
 combineImports ::
+  -- | Source lines the names of a list must not be sorted across.
+  [Int] ->
   -- | The module's comments, which decide how far the span may grow.
   [Comment] ->
   -- | The import kept, whose spelling the result takes.
@@ -208,7 +213,7 @@ combineImports ::
   LImportDecl GhcPs ->
   -- | The first, listing what both named, across both their spans.
   LImportDecl GhcPs
-combineImports written (L ann kept) (L other folded) =
+combineImports directives written (L ann kept) (L other folded) =
   L
     ann{entry = EpaSpan (combineSrcSpans (locA ann) (locA other))}
     kept{ideclImportList = both (ideclImportList kept) (ideclImportList folded)}
@@ -218,7 +223,7 @@ combineImports written (L ann kept) (L other folded) =
         ( interpretation,
           L
             (bracketsAcross (widened written l l') l')
-            (tidyImportItems written interpretation (xs <> ys))
+            (tidyImportItems directives written interpretation (xs <> ys))
         )
     both _ _ = Nothing
 
@@ -234,31 +239,38 @@ bracketsAcross kept folded
 
 -- | An import with its list sorted and the entries naming one thing folded
 -- together. An import with no list is left as it is.
-tidyImportList :: [Comment] -> ImportDecl GhcPs -> ImportDecl GhcPs
-tidyImportList written decl =
+tidyImportList :: [Int] -> [Comment] -> ImportDecl GhcPs -> ImportDecl GhcPs
+tidyImportList directives written decl =
   decl
     { ideclImportList = tidied <$> ideclImportList decl
     }
   where
     tidied (interpretation, items) =
-      (interpretation, tidyImportItems written interpretation <$> items)
+      ( interpretation,
+        tidyImportItems directives written interpretation <$> items
+      )
 
--- | Sort an import list and fold together the entries naming one thing.
+-- | Sort an import list and fold together the entries naming one thing,
+-- each stretch between directives on its own.
 --
 -- @import M (T (A), T (B))@ names one type twice and comes out as @import M
 -- (T (A, B))@.
 tidyImportItems ::
+  [Int] ->
   [Comment] ->
   ImportListInterpretation ->
   [LIE GhcPs] ->
   [LIE GhcPs]
-tidyImportItems written interpretation items
+tidyImportItems directives written interpretation items
   | any (unnameable . unLoc) items = items
-  | otherwise =
+  | otherwise = concatMap tidied (cutAtBarriers directives items)
+  where
+    tidied stretch =
       foldRuns
         (wider written)
-        [((nameIdentity (unLoc i), apart (unLoc i)), fmap sortSubnames i) | i <- items]
-  where
+        [ ((nameIdentity (unLoc i), apart (unLoc i)), fmap sortSubnames i)
+        | i <- stretch
+        ]
     -- A bare name in a hiding list also hides any data constructor of that
     -- name, which the name with its own parentheses does not.
     apart item = case (interpretation, item) of

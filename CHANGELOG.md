@@ -248,6 +248,13 @@
   "adds" $ do` with a `` `shouldBe` `` under the block, rather than put the
   block on a line of its own one step further in. [Issue
   136](https://github.com/mrkkrp/tilia/issues/136).
+* Sort the names of an import list on each side of a conditional among them
+  apart, rather than sort the names inside the conditional in with the
+  others, which took it apart. [Issue
+  135](https://github.com/mrkkrp/tilia/issues/135).
+* Do not put an empty copy of a conditional nested in an import list above
+  the imports when sorting moves that import further down. [Issue
+  135](https://github.com/mrkkrp/tilia/issues/135).
 
 ## Tilia 0.0.2.0
 
