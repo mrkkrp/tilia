@@ -391,8 +391,10 @@ inFragments parser render path reached forest source (baseDoc, baseFound) =
   where
     parts = do
       body <- bodyOf baseDoc
-      fs <- fragmentsOf body forest
-      ps <- traverse (\f -> (,) f <$> fragmentText body forest source f) fs
+      ps <-
+        traverse
+          (\f -> (,) f <$> fragmentText body forest source f)
+          (fragmentsOf body forest)
       pure (body, ps)
 
 -- | The outermost conditional around a @LANGUAGE@ or @OPTIONS@ pragma that
