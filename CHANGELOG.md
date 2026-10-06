@@ -239,6 +239,10 @@
   branch of `#if !(MIN_VERSION_base(4,14,0))` around items of an export list
   written with leading commas. [Issue
   133](https://github.com/mrkkrp/tilia/issues/133).
+* Put a space between the last item of a list and a block comment written
+  after its trailing comma, which formatting drops, as in `(Array, bounds,
+  (!) {- assocs -})`, rather than put the comment against the item, which a
+  second run set apart. [Issue 132](https://github.com/mrkkrp/tilia/issues/132).
 
 ## Tilia 0.0.2.0
 

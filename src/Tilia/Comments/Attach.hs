@@ -224,7 +224,7 @@ writtenAs ::
   Doc
 writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
-    Before -> includeWhen (not (commentTrailing c)) space <> body <> includeUnless atTheEnd space
+    Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> closeLine <> gapBelow
   HeldBack -> holdBack (renderComment c)
@@ -234,6 +234,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
       <> closeLine
       <> gapBelow
   where
+    glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
 

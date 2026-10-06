@@ -56,6 +56,8 @@ data Comment = Comment
     -- past the last character of that code, or 'Nothing' when the comment
     -- had the line to itself.
     commentCodeBeforeStopsAt :: Maybe Int,
+    -- | Whether that code ends with an opening bracket.
+    commentFirstInBrackets :: Bool,
     -- | Whether anything other than whitespace follows it on its closing
     -- line.
     commentFollowed :: Bool,
@@ -136,6 +138,7 @@ commentAt ls spn style raw =
       commentStyle = style,
       commentAbove = above,
       commentCodeBeforeStopsAt = codeBeforeStopsAt,
+      commentFirstInBrackets = any ((`T.elem` "([{") . snd) (T.unsnoc before'),
       commentFollowed = followed,
       commentGapAbove = above == BlankLine,
       commentGapBelow = blankAt (spanEndLine spn + 1) ls,
@@ -152,9 +155,9 @@ commentAt ls spn style raw =
       Just l
         | T.all isSpace l -> BlankLine
         | otherwise -> ContentAt (contentStart l)
+    before' = maybe T.empty (T.stripEnd . T.take startColumn) openingLine
     codeBeforeStopsAt = do
       l <- openingLine
-      let before' = T.stripEnd (T.take startColumn l)
       if T.null before' then Nothing else Just (columnOf l (T.length before'))
     nextLine =
       listToMaybe
