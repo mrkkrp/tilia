@@ -15,6 +15,7 @@ module Tilia.Render.Haddock
 where
 
 import Control.Applicative ((<|>))
+import Data.Char (isSpace)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
@@ -142,11 +143,17 @@ docSectionName n = "-- $" <> T.pack n
 --
 -- It may not when the Haddock is about to be printed in a style other than
 -- the one it was written in, since the text carries the style in its first
--- characters.
+-- characters, nor when it holds nothing but the spaces the end of a line
+-- loses.
 reusableText :: Ctx -> DocStyle -> LHsDoc GhcPs -> Maybe (NonEmpty Text)
 reusableText ctx style doc = do
   written <- writtenHaddock ctx (spanOfSrcSpan (getLoc doc))
-  if openedInStyle style (NE.head written) then Just written else Nothing
+  if openedInStyle style (NE.head written) && not onlySpaces
+    then Just written
+    else Nothing
+  where
+    onlySpaces = not (null text) && all isSpace text && '\n' `notElem` text
+    text = renderHsDocString (hsDocString (unLoc doc))
 
 -- | Was the Haddock written in the style it is about to come back out in?
 openedInStyle :: DocStyle -> Text -> Bool
