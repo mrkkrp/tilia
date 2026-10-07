@@ -376,6 +376,12 @@
   so, rather than on a line of its own a step further in. Where a comment
   ends the line before, what follows the `$` still goes on a line of its
   own. [Issue 198](https://github.com/mrkkrp/tilia/issues/198).
+* Take the extensions a component turns on behind a condition in its
+  `.cabal` file, such as `if impl(ghc >= 8.6)`, as in force where the build
+  meets the condition, judged by the `ghc` on the path, the platform and the
+  defaults of the package's flags. A module declared only behind a condition
+  the build does not meet takes that branch's extensions as well. [PR
+  200](https://github.com/mrkkrp/tilia/pull/200).
 
 ## Tilia 0.0.2.0
 
