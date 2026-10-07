@@ -50,9 +50,8 @@ from one run to the next to a hundredth of a percent, however busy the
 machine is, so they are kept in `bench/bench.record` and checked like the
 corpus is. The run fails where a benchmark allocates or retires 0.5% more
 or less than the record says, or where all the benchmarks of a stage
-together do 0.05% more or less, or have the garbage collector copy 1% more
-or less. Update the record like this, and review the change to it like any
-other:
+together do 0.05% more or less. Update the record like this, and review the
+change to it like any other:
 
 ```console
 $ TILIA_BENCH_ACCEPT=1 cabal bench
@@ -66,11 +65,13 @@ checks the rest. What decoding the interfaces costs depends on what they
 hold, which can differ between builds of one compiler, so the record keeps a
 digest of their names and sizes, and decoding is checked only where it
 matches; the bytes alone differ between two builds in fingerprints that cost
-nothing to decode. The benchmarks run with `-O1g -C1000`, so that no major
-collection and no context switch falls inside one: those make the counts
-depend on the rest of the heap and on the clock. The benchmarks of one
-module or package run on their own with `--match`, and updating the record
-then changes only their lines:
+nothing to decode. The benchmarks run with `-A1g -O1g -C1000`, in about 1.2
+GiB, so that few collections fall inside one, and no major one or context
+switch: the collector's own instructions depend on where in the work it
+runs, which any change to what is allocated moves, and a major collection or
+a context switch makes the counts depend on the rest of the heap and on the
+clock. The benchmarks of one module or package run on their own with
+`--match`, and updating the record then changes only their lines:
 
 ```console
 $ cabal bench --benchmark-options='--match QuickCheck'

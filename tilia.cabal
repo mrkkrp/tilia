@@ -315,7 +315,7 @@ benchmark bench
   ghc-options:
     -threaded
     -rtsopts
-    "-with-rtsopts=-N1 -A32m -O1g -C1000 -T"
+    "-with-rtsopts=-N1 -A1g -O1g -C1000 -T"
 
   if flag(dev)
     ghc-options:

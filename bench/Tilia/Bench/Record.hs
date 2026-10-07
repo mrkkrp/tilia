@@ -22,8 +22,8 @@ import Data.Text.IO qualified as T
 import Data.Word (Word64)
 import Text.Read (readMaybe)
 
--- | The bytes each benchmark allocated and had copied and the instructions
--- it retired, by stage and module.
+-- | The bytes each benchmark allocated and the instructions it retired, by
+-- stage and module.
 data Record = Record
   { -- | The compiler the record was made with, which what is allocated
     -- depends on.
@@ -42,8 +42,6 @@ data Record = Record
 data Entry = Entry
   { -- | The bytes it allocated.
     entryAllocated :: !Word64,
-    -- | The bytes the garbage collector copied while it ran.
-    entryCopied :: !Word64,
     -- | The instructions it retired, where they were counted.
     entryInstructions :: !(Maybe Word64)
   }
@@ -65,10 +63,9 @@ readRecord path =
   where
     field key = mconcat . mapMaybe (T.stripPrefix key) . T.lines
     entry line = case T.words line of
-      [stage, allocated, copied, instructions, name]
-        | Just a <- readMaybe (T.unpack allocated),
-          Just c <- readMaybe (T.unpack copied) ->
-            [((stage, name), Entry a c (readMaybe (T.unpack instructions)))]
+      [stage, allocated, instructions, name]
+        | Just a <- readMaybe (T.unpack allocated) ->
+            [((stage, name), Entry a (readMaybe (T.unpack instructions)))]
       _ -> []
 
 -- | Write a record, sorted by stage and module so that a regeneration diff
@@ -98,7 +95,6 @@ writeRecord path record =
       "#               filled (recall), or decoding every interface of a",
       "#               package the compiler ships with (decode).",
       "# allocated     The bytes it allocates.",
-      "# copied        The bytes the garbage collector copies while it runs.",
       "# instructions  The instructions it retires in user space, or - where",
       "#               they were not counted.",
       "# benchmark     The module or the package it measures that on.",
@@ -107,14 +103,14 @@ writeRecord path record =
       "processor " <> recordProcessor record,
       "interfaces " <> recordInterfaces record,
       "",
-      row "# stage" ["allocated", "copied", "instructions"] "benchmark"
+      row "# stage" ["allocated", "instructions"] "benchmark"
     ]
       <> fmap line (Map.toAscList (recordEntries record))
   where
-    line ((stage, name), Entry allocated copied instructions) =
+    line ((stage, name), Entry allocated instructions) =
       row
         stage
-        [shown allocated, shown copied, maybe "-" shown instructions]
+        [shown allocated, maybe "-" shown instructions]
         name
     row stage costs name =
       T.justifyLeft 8 ' ' stage

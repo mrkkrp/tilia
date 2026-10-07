@@ -7,6 +7,7 @@
 -- in the repository.
 module Main (main) where
 
+import Control.Applicative ((<|>))
 import Control.Exception (SomeException, try)
 import Control.Monad (join, mfilter, unless)
 import Data.Containers.ListUtils (nubOrd)
@@ -120,11 +121,11 @@ main = do
     for_ baseline (summarize measured)
     if accepting
       then do
-        let entryOf m =
-              Entry
-                (measuredAllocated m)
-                (measuredCopied m)
-                (measuredInstructions m <* processor)
+        let entryOf k m =
+              steadied (Map.lookup k (recordEntries record)) $
+                Entry
+                  (measuredAllocated m)
+                  (measuredInstructions m <* processor)
         writeRecord
           recordPath
           Record
@@ -133,7 +134,7 @@ main = do
               recordInterfaces = interfaces,
               recordEntries =
                 Map.union
-                  (Map.fromList [(k, entryOf m) | (k, m) <- measured])
+                  (Map.fromList [(k, entryOf k m) | (k, m) <- measured])
                   (if partial then recordEntries record else Map.empty)
             }
         putStrLn ("Wrote " <> recordPath <> ".")
@@ -296,10 +297,6 @@ allocations :: Cost
 allocations =
   Cost "allocates" "" (Just . entryAllocated) (Just . measuredAllocated)
 
--- | The bytes the garbage collector copied.
-copying :: Cost
-copying = Cost "has copied" "" (Just . entryCopied) (Just . measuredCopied)
-
 -- | The instructions retired, where they were counted.
 instructions :: Cost
 instructions =
@@ -338,13 +335,9 @@ verdict options record partial measured
            ]
         <> [ moving cost ("all of " <> stage) old new
            | stage <- stages measured,
-             (cost, tolerance) <-
-               [ (allocations, optTotalTolerance options),
-                 (copying, copiedTolerance),
-                 (instructions, optTotalTolerance options)
-               ],
+             cost <- [allocations, instructions],
              Just (old, new) <- [summed cost (known record stage measured)],
-             moved tolerance old new
+             moved (optTotalTolerance options) old new
            ]
   where
     made = recordCompiler record
@@ -356,9 +349,6 @@ verdict options record partial measured
           Just (old, new) <- [summed cost [(e, m)]],
           moved (optTolerance options) old new
         ]
-    moved tolerance old new =
-      abs (fromIntegral new - fromIntegral old)
-        > tolerance * (fromIntegral old :: Double)
     moving :: Cost -> Text -> Word64 -> Word64 -> Text
     moving cost subject old new =
       T.pack $
@@ -370,12 +360,31 @@ verdict options record partial measured
           (if new > old then "more" else "less" :: String)
           (costNoun cost)
 
--- | How far the bytes copied by all the benchmarks of a stage may move from
--- the record before it is out of date, as a fraction: the copying one
--- benchmark causes moves with where the collections fall, which a change
--- to what it allocates shifts, and only the sum of them is steady.
-copiedTolerance :: Double
-copiedTolerance = 0.01
+-- | Has a cost moved further than a fraction of what it was?
+moved :: Double -> Word64 -> Word64 -> Bool
+moved tolerance old new =
+  abs (fromIntegral new - fromIntegral old)
+    > tolerance * (fromIntegral old :: Double)
+
+-- | What to record for a benchmark: each cost as the record has it where it
+-- moved no further than two runs of one build differ, so that writing the
+-- record again changes only what moved.
+steadied :: Maybe Entry -> Entry -> Entry
+steadied recorded new = case recorded of
+  Nothing -> new
+  Just old ->
+    Entry
+      { entryAllocated = held (entryAllocated old) (entryAllocated new),
+        entryInstructions =
+          (held <$> entryInstructions old <*> entryInstructions new)
+            <|> entryInstructions new
+      }
+  where
+    held o n = if moved jitter o n then n else o
+
+-- | How far a cost moves between two runs of one build, as a fraction.
+jitter :: Double
+jitter = 0.0001
 
 -- | Say what the benchmarks of each stage took, allocated and retired
 -- together, and how that compares with the record.
@@ -388,9 +397,7 @@ totalled record measured = do
         changeOf cost =
           maybe "" (uncurry against) (summed cost (known record stage measured))
     printf
-      ( "%-7s %8.3f s %9s %10.1f MB %-11s %s %-9s "
-          <> "copied %.1f MB %s, %d benchmarks\n"
-      )
+      "%-7s %8.3f s %9s %10.1f MB %-11s %s %-9s %d benchmarks\n"
       stage
       (seconds (sumOf measuredTime))
       ("" :: String)
@@ -398,8 +405,6 @@ totalled record measured = do
       (changeOf allocations)
       (instructionsColumn (sum <$> traverse measuredInstructions ms))
       (changeOf instructions)
-      (megabytes (sumOf measuredCopied))
-      (changeOf copying)
       (length ms)
 
 -- | The stages measured, in the order they were.
