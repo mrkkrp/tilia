@@ -24,6 +24,7 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.List (isSuffixOf, nub, sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
@@ -208,7 +209,7 @@ stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
 stateFor config path source =
   GHC.initParserState
     (parserOpts config')
-    (GHC.stringToStringBuffer (T.unpack source))
+    (GHC.stringBufferFromByteString (T.encodeUtf8 source))
     (GHC.mkRealSrcLoc (mkFastString path) 1 1)
   where
     config' =
