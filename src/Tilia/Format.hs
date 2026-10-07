@@ -14,6 +14,7 @@ module Tilia.Format
     newSession,
     fixityNotesOf,
     formatSource,
+    rewritten,
   )
 where
 

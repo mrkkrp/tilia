@@ -61,12 +61,17 @@ spec = do
         it "is rooted at the cabal.project, not the .cabal file" $
           prMarker here `shouldBe` ProjectFile
 
-        it "finds the three components this package declares" $
+        it "finds the four components this package declares" $
           componentsOfTarget here Everything >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs ->
               sort (fmap (\c -> (componentKind c, componentName c)) cs)
-                `shouldBe` sort [(Lib, "tilia"), (Exe, "tilia"), (Test, "tests")]
+                `shouldBe` sort
+                  [ (Lib, "tilia"),
+                    (Exe, "tilia"),
+                    (Test, "tests"),
+                    (Bench, "bench")
+                  ]
 
         it "narrows to one component when asked for one" $
           componentsOfTarget here (Qualified Nothing Lib "tilia") >>= \case
@@ -78,7 +83,7 @@ spec = do
         it "takes the package name as all of its components" $
           componentsOfTarget here (Called "tilia") >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-            Right cs -> length cs `shouldBe` 3
+            Right cs -> length cs `shouldBe` 4
 
         it "refuses a target the project does not hold, and says what it does" $
           componentsOfTarget here (Called "nothing-like-this") >>= \case
