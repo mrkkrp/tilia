@@ -329,7 +329,8 @@ derivingClause ctx HsDerivingClause{..} =
         brokenIfDocumented ctx tys $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
-            parens (commaSep (fmap (align . hsSigType ctx) sigTys))
+            parens . insideBrackets (spanOf deriv_clause_tys) $
+              commaSep (fmap (align . hsSigType ctx) sigTys)
 
     strategy = case deriv_clause_strategy of
       Nothing -> breakOrSpace <> indent what
