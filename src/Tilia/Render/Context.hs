@@ -34,7 +34,6 @@ module Tilia.Render.Context
     layoutWithin,
     layoutAcross,
     attachOperator,
-    insideBrackets,
 
     -- * Haddocks
     writtenHaddock,
@@ -357,10 +356,6 @@ attachOperator placement before here after op operand = case here of
   where
     indentation o =
       located (mkSpan (spanStartLine o, 1) (startPoint o)) mempty
-
--- | Give the inside of a bracketed construct an anchor at its far end.
-insideBrackets :: Maybe Span -> Doc -> Doc
-insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
 
 -- | Does a comment that takes whole lines begin inside this span?
 holdsLineComment :: Ctx -> Span -> Bool

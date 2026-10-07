@@ -18,6 +18,7 @@ module Tilia.Doc.Combinators
     verbatimBreak,
     verbatim,
     emptyAnchor,
+    insideBrackets,
     declarationsStart,
 
     -- * Layout
@@ -84,7 +85,7 @@ import Tilia.Doc.Internal
     mapChildren,
     printsNothing,
   )
-import Tilia.Span (Span)
+import Tilia.Span (Span, endOf)
 
 ----------------------------------------------------------------------------
 -- Atoms
@@ -140,6 +141,10 @@ verbatim =
 -- permits comments.
 emptyAnchor :: Span -> Doc
 emptyAnchor s = located s mempty
+
+-- | Give the inside of a bracketed construct an anchor at its far end.
+insideBrackets :: Maybe Span -> Doc -> Doc
+insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
 
 -- | Where a module's declarations begin, marked without printing anything.
 declarationsStart :: Doc
