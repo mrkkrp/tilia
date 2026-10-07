@@ -19,7 +19,8 @@ module Tilia.Render.Context
     operatorFixity,
 
     -- * What lies between two spans
-    commentBetween,
+    commentPrintedBetween,
+    lineCommentWrittenBetween,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -222,8 +223,15 @@ printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
         s = commentSpan c
 
 -- | Is a comment going to be printed between the two spans?
-commentBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
-commentBetween ctx a b = nextPrinted ctx a b /= b
+commentPrintedBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
+commentPrintedBetween ctx a b = nextPrinted ctx a b /= b
+
+-- | Was a comment that ends its line written between the two spans, wherever
+-- it is printed?
+lineCommentWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
+lineCommentWrittenBetween ctx (Just a) (Just b) =
+  holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
+lineCommentWrittenBetween _ _ _ = False
 
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no

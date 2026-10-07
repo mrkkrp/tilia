@@ -351,7 +351,8 @@ renderExprChain ctx site = \case
             (if placement == Hanging then MayBrace else NoBrace)
             laidOut
     where
-      placement = chainPlacement exprHangs firstOne (NE.last operands)
+      placement =
+        chainPlacement exprHangs (chainSpan spanOf firstOne) (NE.last operands)
       laidOut bracing =
         renderExprChain ctx (withBracing bracing site) firstOne
           <> pieces bracing firstOne operators rest
@@ -366,7 +367,7 @@ renderExprChain ctx site = \case
                 space
                   <> hsExpr ctx o
                   <> attach
-                    (tailPlacement isLast previous operand)
+                    (tailPlacement isLast (chainSpan spanOf previous) o operand)
                     (rendered <> rest')
               else
                 attachOperator
@@ -378,15 +379,16 @@ renderExprChain ctx site = \case
                   rendered
                   <> rest'
       pieces _ _ _ _ = mempty
-      tailPlacement isLast previous operand
+      tailPlacement isLast before o operand
         | isLast,
-          not (maybe True isSingleLine (chainSpan spanOf operand)) =
-            chainPlacement exprHangs previous operand
+          not (maybe True isSingleLine (chainSpan spanOf operand)),
+          not (lineCommentWrittenBetween ctx before (spanOf o)) =
+            chainPlacement exprHangs (spanOf o) operand
         | otherwise = Normal
       commentedOperators =
         or (zipWith commentedBefore (NE.toList operands) operators)
       commentedBefore operand o =
-        commentBetween ctx (chainSpan spanOf operand) (spanOf o)
+        commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
       trailing =
         (length operators == 1 || endsHanging)
           && not commentedOperators
@@ -405,20 +407,21 @@ isDoBlock e = case unLoc e of
   HsDo _ (MDoExpr _) _ -> True
   _ -> False
 
--- | Whether the operands of a chain hang.
+-- | Whether an operand hangs, which it can only where it starts on the line
+-- the given span starts on.
 chainPlacement ::
   (HasLoc l) =>
   (a -> Placement) ->
-  OpChain (GenLocated l a) op ->
+  Maybe Span ->
   OpChain (GenLocated l a) op ->
   Placement
-chainPlacement placer firstOne lastOne = case lastOne of
+chainPlacement placer leader operand = case operand of
   Operand (L _ n) | startsTogether -> placer n
-  Chain (first :| _) _ -> chainPlacement placer firstOne first
+  Chain (first :| _) _ -> chainPlacement placer leader first
   _ -> Normal
   where
     startsTogether =
-      case (chainSpan spanOf firstOne, chainSpan spanOf lastOne) of
+      case (leader, chainSpan spanOf operand) of
         (Just a, Just b) -> spanStartLine a == spanStartLine b
         _ -> False
 
@@ -640,7 +643,7 @@ ifThenElse ctx bodyOf AnnsIf{aiThen, aiElse} condition thenBody elseBody =
       where
         keywordSpan = spanOfSrcSpan written
         placement
-          | commentBetween ctx keywordSpan (spanOf body) = Normal
+          | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
           | otherwise = bodyPlacement (bodyOf body)
 
 -- | A @let@ expression or command.
@@ -797,7 +800,11 @@ cmdChain ctx site l op r =
         layoutFrom ctx (chainSpan spanOf chain) $
           mayBraceWhenFlat (if placement == Hanging then MayBrace else NoBrace) laidOut
         where
-          placement = chainPlacement cmdTopHangs firstOne (NE.last operands)
+          placement =
+            chainPlacement
+              cmdTopHangs
+              (chainSpan spanOf firstOne)
+              (NE.last operands)
           laidOut bracing =
             renderIn bracing firstOne <> pieces bracing firstOne operators rest
           pieces bracing previous (o : os) (operand : more) =

@@ -370,6 +370,12 @@
   of a `do` block, at the end of each branch, rather than after the
   `#endif` at the column of the statements, where it ended the block.
   [Issue 178](https://github.com/mrkkrp/tilia/issues/178).
+* Print a `do` block, a `case` or a lambda written right after a `$` that
+  begins its line on the line of that `$`, as in `f $ do`, once the `$`
+  moves to the end of the line before, the way it is printed when written
+  so, rather than on a line of its own a step further in. Where a comment
+  ends the line before, what follows the `$` still goes on a line of its
+  own. [Issue 198](https://github.com/mrkkrp/tilia/issues/198).
 
 ## Tilia 0.0.2.0
 

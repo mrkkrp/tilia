@@ -68,7 +68,7 @@ formatted       b81dd0529773  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/
 formatted       d36037cbeadf  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/JSON.hs
 formatted       b5bb035e43f1  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/LaTeX.hs
 formatted       66192a19e174  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/LaTeX/Backend.hs
-formatted       4ea7e026a877  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/LaTeX/Base.hs
+formatted       3a2b726078ee  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/LaTeX/Base.hs
 formatted       a58ba6711ffc  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Precise.hs
 formatted       c9f5864c0103  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Range.hs
 formatted       0054edf8b9e6  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Vim.hs
@@ -162,7 +162,7 @@ formatted       6916a745cef4  Agda-2.8.0/src/full/Agda/Syntax/Scope/Flat.hs
 formatted       73b6757a8957  Agda-2.8.0/src/full/Agda/Syntax/Scope/Monad.hs
 formatted       d3a3db0834c5  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName.hs
 formatted       f40939e29708  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName/Boot.hs
-formatted       7071ce6638e1  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
+formatted       0c02a910e946  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
 formatted       6d2218e4d2e4  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
 formatted       43297193ba42  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       8c2de5355091  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
@@ -1462,7 +1462,7 @@ formatted       25178db879d4  brittany-0.14.0.2/data/Test98.hs
 formatted       52caf5793d73  brittany-0.14.0.2/data/Test99.hs
 formatted       7a5d0ee67b99  brittany-0.14.0.2/source/executable/Main.hs
 formatted       f006bb65ddb6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany.hs
-formatted       5c6ea62649df  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal.hs
+formatted       effc7ab14a00  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal.hs
 formatted       62f91f308c2e  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Backend.hs
 formatted       b114e1735e96  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/BackendUtils.hs
 formatted       4db6008c162f  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config.hs
@@ -1470,12 +1470,12 @@ formatted       b3a115fdcb04  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       e13b5e1cf845  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types/Instances.hs
 formatted       3a7e4e0507b6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/ExactPrintUtils.hs
 formatted       5d4339023e83  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/LayouterBasics.hs
-formatted       5d4ba42810fc  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/DataDecl.hs
+formatted       e6236562836a  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/DataDecl.hs
 formatted       ee47e6ccde82  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Decl.hs
 formatted       1521ed216a69  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Expr.hs
 formatted       63ac93aa854f  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Expr.hs-boot
 formatted       f730e71a6728  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/IE.hs
-formatted       ba5e2c3aa9ff  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Import.hs
+formatted       4647ea64ed39  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Import.hs
 formatted       455e49f342e4  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Module.hs
 formatted       1f83e29fdd09  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Pattern.hs
 formatted       d46ed5a9675b  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Stmt.hs
@@ -1492,7 +1492,7 @@ formatted       7d95cc82a77f  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       c84030401f3e  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Par.hs
 formatted       9bb018400ea8  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Types.hs
 formatted       203fcf60dae6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Utils.hs
-formatted       359d70ea598f  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Main.hs
+formatted       20badc0ca0c8  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Main.hs
 formatted       e425ebfb8e97  brittany-0.14.0.2/source/test-suite/Main.hs
 formatted       e865ae48f11b  capability-0.5.0.1/Setup.hs
 formatted       6772160dec0c  capability-0.5.0.1/examples/CountLog.hs
@@ -1563,7 +1563,7 @@ formatted       c405a550608b  comonad-5.0.10/src/Control/Comonad/Trans/Identity.
 formatted       6b990e80a8eb  comonad-5.0.10/src/Control/Comonad/Trans/Store.hs
 formatted       b5fa41e7a2f8  comonad-5.0.10/src/Control/Comonad/Trans/Traced.hs
 formatted       34f425eff98b  comonad-5.0.10/src/Data/Functor/Composition.hs
-formatted       7117866fb541  conduit-1.3.6.1/benchmarks/optimize-201408.hs
+formatted       bb9810473d80  conduit-1.3.6.1/benchmarks/optimize-201408.hs
 formatted       f70f6155e62a  conduit-1.3.6.1/benchmarks/unfused.hs
 formatted       20fad0c5aecd  conduit-1.3.6.1/src/Conduit.hs
 formatted       bf88ceabad43  conduit-1.3.6.1/src/Data/Conduit.hs
@@ -1808,7 +1808,7 @@ formatted       6c174475decc  cryptonite-0.30/tests/KAT_Scrypt.hs
 formatted       36380d994c1c  cryptonite-0.30/tests/KAT_TripleDES.hs
 formatted       88dd0eef74a1  cryptonite-0.30/tests/KAT_Twofish.hs
 formatted       d3ffb4dd724c  cryptonite-0.30/tests/Number.hs
-formatted       7da4a28c8580  cryptonite-0.30/tests/Number/F2m.hs
+formatted       9347fc3e6890  cryptonite-0.30/tests/Number/F2m.hs
 formatted       153769199399  cryptonite-0.30/tests/Padding.hs
 formatted       e4b87212dc1f  cryptonite-0.30/tests/Poly1305.hs
 formatted       38c09837971d  cryptonite-0.30/tests/Salsa.hs
@@ -2328,7 +2328,7 @@ formatted       d1219c0fe211  haxl-2.5.1.1/Haxl/Core/CallGraph.hs
 formatted       955c8a680ebd  haxl-2.5.1.1/Haxl/Core/DataCache.hs
 formatted       0873cd2369b4  haxl-2.5.1.1/Haxl/Core/DataSource.hs
 formatted       30d8adb0a3bc  haxl-2.5.1.1/Haxl/Core/Exception.hs
-formatted       1ac4e77634fb  haxl-2.5.1.1/Haxl/Core/Fetch.hs
+formatted       270cd401eb34  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
 formatted       6116af7c8eab  haxl-2.5.1.1/Haxl/Core/Memo.hs
 formatted       331b6d94ce03  haxl-2.5.1.1/Haxl/Core/Monad.hs
@@ -2693,7 +2693,7 @@ formatted       55de7010ab39  idris-1.3.4/src/Idris/Core/Execute.hs
 formatted       c2f24aad4bef  idris-1.3.4/src/Idris/Core/ProofState.hs
 formatted       54380e55c12e  idris-1.3.4/src/Idris/Core/ProofTerm.hs
 formatted       cd52f6495e8c  idris-1.3.4/src/Idris/Core/TT.hs
-formatted       418dc775272d  idris-1.3.4/src/Idris/Core/Typecheck.hs
+formatted       7a116a3266fb  idris-1.3.4/src/Idris/Core/Typecheck.hs
 formatted       1125cc1a59f1  idris-1.3.4/src/Idris/Core/Unify.hs
 formatted       01a710f67630  idris-1.3.4/src/Idris/Core/WHNF.hs
 formatted       e884d58256bb  idris-1.3.4/src/Idris/Coverage.hs
@@ -2764,7 +2764,7 @@ formatted       7f4a44aa7694  idris-1.3.4/src/Util/DynamicLinker.hs
 formatted       298e72ccbb61  idris-1.3.4/src/Util/Net.hs
 formatted       f47f361e150a  idris-1.3.4/src/Util/Pretty.hs
 formatted       13363649406c  idris-1.3.4/src/Util/ScreenSize.hs
-formatted       1db8c9da259c  idris-1.3.4/src/Util/System.hs
+formatted       963968c021ee  idris-1.3.4/src/Util/System.hs
 formatted       9df5a10ea1fd  idris-1.3.4/test/TestData.hs
 formatted       720af8681b46  idris-1.3.4/test/TestRun.hs
 formatted       e865ae48f11b  intero-0.1.40/Setup.hs
@@ -2817,10 +2817,10 @@ formatted       5174fb1d8807  leksah-0.16.2.2/src/IDE/Pane/Grep.hs
 formatted       6bea42aabf13  leksah-0.16.2.2/src/IDE/Pane/HLint.hs
 formatted       3ca32b10d0e9  leksah-0.16.2.2/src/IDE/Pane/Info.hs
 formatted       ea0f6cc3cdd0  leksah-0.16.2.2/src/IDE/Pane/Log.hs
-formatted       43b4f4ef4e68  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
+formatted       c7b48862410e  leksah-0.16.2.2/src/IDE/Pane/Modules.hs
 formatted       575af73a6da8  leksah-0.16.2.2/src/IDE/Pane/PackageEditor.hs
 formatted       f0501c777408  leksah-0.16.2.2/src/IDE/Pane/PackageFlags.hs
-formatted       e64bb971efe8  leksah-0.16.2.2/src/IDE/Pane/Search.hs
+formatted       b852a84764b6  leksah-0.16.2.2/src/IDE/Pane/Search.hs
 formatted       fb6b3817d585  leksah-0.16.2.2/src/IDE/Pane/SourceBuffer.hs
 formatted       17fd33faa199  leksah-0.16.2.2/src/IDE/Pane/Trace.hs
 formatted       42dcc1c61a8c  leksah-0.16.2.2/src/IDE/Pane/Variables.hs
@@ -3116,7 +3116,7 @@ formatted       fad3834b08e5  pandoc-3.10.2/src/Text/Pandoc/Parsing/Smart.hs
 formatted       fbd406c6c8a4  pandoc-3.10.2/src/Text/Pandoc/Parsing/State.hs
 formatted       a83effd57b53  pandoc-3.10.2/src/Text/Pandoc/Process.hs
 formatted       5798ce9f1d3b  pandoc-3.10.2/src/Text/Pandoc/Readers.hs
-formatted       cf02c585d42e  pandoc-3.10.2/src/Text/Pandoc/Readers/AsciiDoc.hs
+formatted       91355327396d  pandoc-3.10.2/src/Text/Pandoc/Readers/AsciiDoc.hs
 formatted       fb9989e02f4c  pandoc-3.10.2/src/Text/Pandoc/Readers/BibTeX.hs
 formatted       6df32968e0c9  pandoc-3.10.2/src/Text/Pandoc/Readers/CSV.hs
 formatted       6168a3f9a3ab  pandoc-3.10.2/src/Text/Pandoc/Readers/CommonMark.hs
@@ -3150,7 +3150,7 @@ formatted       9555c9856dcb  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Citati
 formatted       74ee6d8d6efe  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Inline.hs
 formatted       c4741ac43b79  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Lang.hs
 formatted       43b3ffa002c0  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Macro.hs
-formatted       70d5e382dd09  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Math.hs
+formatted       a15facafa92f  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Math.hs
 formatted       35684bb01d7e  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Parsing.hs
 formatted       9d40938ba9d0  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/SIunitx.hs
 formatted       bab24b274f92  pandoc-3.10.2/src/Text/Pandoc/Readers/LaTeX/Table.hs
@@ -3168,7 +3168,7 @@ formatted       07f9f5b9b349  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT.hs
 formatted       4b763e5899cb  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Arrows/State.hs
 formatted       978b213b2283  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Arrows/Utils.hs
 formatted       bf610e3c1650  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Base.hs
-formatted       02e6d1109c72  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/ContentReader.hs
+formatted       cee91ffec7f1  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/ContentReader.hs
 formatted       6f2a41bef1f6  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/Fallible.hs
 formatted       3cb13f8a11b2  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/Namespaces.hs
 formatted       6d9540eaec43  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/SetMap.hs
@@ -3195,7 +3195,7 @@ formatted       06b32e0a02bb  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Shapes.
 formatted       68136f2cd896  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/Slides.hs
 formatted       2a1143e52057  pandoc-3.10.2/src/Text/Pandoc/Readers/Pptx/SmartArt.hs
 formatted       57c12a897562  pandoc-3.10.2/src/Text/Pandoc/Readers/RIS.hs
-formatted       709a7c4b2343  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
+formatted       9bf24ffe54d5  pandoc-3.10.2/src/Text/Pandoc/Readers/RST.hs
 formatted       cdf05a180374  pandoc-3.10.2/src/Text/Pandoc/Readers/RTF.hs
 formatted       d9ba7b2c7b59  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff.hs
 formatted       07cc917bf86a  pandoc-3.10.2/src/Text/Pandoc/Readers/Roff/Escape.hs
@@ -3241,15 +3241,15 @@ formatted       d9b0707d098c  pandoc-3.10.2/src/Text/Pandoc/Writers/CslJson.hs
 formatted       225f5fe7008c  pandoc-3.10.2/src/Text/Pandoc/Writers/Djot.hs
 formatted       a5d327fae7c4  pandoc-3.10.2/src/Text/Pandoc/Writers/DocBook.hs
 formatted       7bf8f7c3beff  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx.hs
-formatted       6862dc420106  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
+formatted       dea3f0394af8  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
 formatted       47c7fc1f3217  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/StyleMap.hs
 formatted       9366da9eb866  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Table.hs
 formatted       a7b1f18b1b94  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Types.hs
 formatted       393f60564bb0  pandoc-3.10.2/src/Text/Pandoc/Writers/DokuWiki.hs
-formatted       21f4f0b49a5f  pandoc-3.10.2/src/Text/Pandoc/Writers/EPUB.hs
+formatted       63bfa4a35c66  pandoc-3.10.2/src/Text/Pandoc/Writers/EPUB.hs
 formatted       18a7003d6454  pandoc-3.10.2/src/Text/Pandoc/Writers/FB2.hs
 formatted       c4b4f9d5a6e4  pandoc-3.10.2/src/Text/Pandoc/Writers/GridTable.hs
-formatted       2ff83ac6db3e  pandoc-3.10.2/src/Text/Pandoc/Writers/HTML.hs
+formatted       5c4009d8a8a6  pandoc-3.10.2/src/Text/Pandoc/Writers/HTML.hs
 formatted       6dff5ff11e27  pandoc-3.10.2/src/Text/Pandoc/Writers/Haddock.hs
 formatted       c124279e4c0c  pandoc-3.10.2/src/Text/Pandoc/Writers/ICML.hs
 formatted       dd0566d62914  pandoc-3.10.2/src/Text/Pandoc/Writers/Ipynb.hs
@@ -3338,7 +3338,7 @@ formatted       63d3f17d29f9  pandoc-3.10.2/test/Tests/Readers/RTF.hs
 formatted       aca713b17e29  pandoc-3.10.2/test/Tests/Readers/Txt2Tags.hs
 formatted       d805d2ea3361  pandoc-3.10.2/test/Tests/Readers/Xlsx.hs
 formatted       2692dc26ee41  pandoc-3.10.2/test/Tests/Shared.hs
-formatted       ad523df96992  pandoc-3.10.2/test/Tests/Writers/AnnotatedTable.hs
+formatted       9159eea2487f  pandoc-3.10.2/test/Tests/Writers/AnnotatedTable.hs
 formatted       b21e7e06def4  pandoc-3.10.2/test/Tests/Writers/AsciiDoc.hs
 formatted       70088c61a9f3  pandoc-3.10.2/test/Tests/Writers/BBCode.hs
 formatted       6dcb350b3086  pandoc-3.10.2/test/Tests/Writers/ConTeXt.hs
@@ -3893,7 +3893,7 @@ formatted       7ccb752d8b1d  raaz-0.3.11/libverse/Raaz/Verse/Sha256/C/Portable.
 formatted       695112ac1280  raaz-0.3.11/libverse/Raaz/Verse/Sha512/C/Portable.hs
 formatted       2fbd14b119a4  raaz-0.3.11/monocypher/tests/Monocypher.hs
 formatted       1d0ec4de7195  raaz-0.3.11/monocypher/tests/Monocypher/Blake2bSpec.hs
-formatted       0c1244f02a18  raaz-0.3.11/monocypher/tests/Monocypher/ChaCha20Spec.hs
+formatted       106d8eed6480  raaz-0.3.11/monocypher/tests/Monocypher/ChaCha20Spec.hs
 formatted       e81070c8d0f4  raaz-0.3.11/monocypher/tests/Monocypher/Sha512Spec.hs
 formatted       309f4011c1b9  raaz-0.3.11/raaz/Raaz.hs
 formatted       e9a09ee4fdff  raaz-0.3.11/raaz/Raaz/Auth.hs
@@ -3916,7 +3916,7 @@ formatted       f70ba0951ea5  raaz-0.3.11/tests/Raaz/Core/ByteSourceSpec.hs
 formatted       f50f5814ce13  raaz-0.3.11/tests/Raaz/Core/EncodeSpec.hs
 formatted       a5cc6d99aed2  raaz-0.3.11/tests/Raaz/Core/MemorySpec.hs
 formatted       11c7d4db7839  raaz-0.3.11/tests/Raaz/Core/Types/WordSpec.hs
-formatted       e27cf91514a1  raaz-0.3.11/tests/Raaz/Core/Util/ByteStringSpec.hs
+formatted       b186aa2ce683  raaz-0.3.11/tests/Raaz/Core/Util/ByteStringSpec.hs
 formatted       9d02caada1d9  raaz-0.3.11/tests/Raaz/Digest/Blake2Spec.hs
 formatted       4f62e035aa97  raaz-0.3.11/tests/Raaz/Digest/Sha256Spec.hs
 formatted       ab3342a1c1c3  raaz-0.3.11/tests/Raaz/Digest/Sha512Spec.hs
@@ -4127,7 +4127,7 @@ formatted       d6971ea1d324  servant-server-0.20.3.0/test/Servant/HoistSpec.hs
 formatted       91b965c983ef  servant-server-0.20.3.0/test/Servant/Server/ErrorSpec.hs
 formatted       6e725d0bb23c  servant-server-0.20.3.0/test/Servant/Server/Internal/ContextSpec.hs
 formatted       06840e723cbc  servant-server-0.20.3.0/test/Servant/Server/Internal/RoutingApplicationSpec.hs
-formatted       c1ba47cdafff  servant-server-0.20.3.0/test/Servant/Server/RouterSpec.hs
+formatted       ed1fb686c7f4  servant-server-0.20.3.0/test/Servant/Server/RouterSpec.hs
 formatted       217323758702  servant-server-0.20.3.0/test/Servant/Server/StaticFilesSpec.hs
 formatted       a48e6f9f028f  servant-server-0.20.3.0/test/Servant/Server/StreamingSpec.hs
 formatted       ffec1b355a67  servant-server-0.20.3.0/test/Servant/Server/UsingContextSpec.hs
@@ -4299,7 +4299,7 @@ formatted       696682f442ac  stack-9.9.9/src/Stack/Build/Haddock.hs
 formatted       e0977d49109c  stack-9.9.9/src/Stack/Build/Installed.hs
 formatted       8f851999c795  stack-9.9.9/src/Stack/Build/Source.hs
 formatted       f170a6d78347  stack-9.9.9/src/Stack/Build/Types.hs
-formatted       eafdaba2b6f6  stack-9.9.9/src/Stack/BuildPlan.hs
+formatted       1f1e5f5c9ec2  stack-9.9.9/src/Stack/BuildPlan.hs
 formatted       8a25795f0c0a  stack-9.9.9/src/Stack/Config.hs
 formatted       db186c830bf3  stack-9.9.9/src/Stack/Constants.hs
 formatted       607b56eb6fc7  stack-9.9.9/src/Stack/Docker.hs
@@ -4957,11 +4957,11 @@ formatted       8b09b3b8c680  vector-0.13.2.0/src/Data/Vector/Fusion/Stream/Mona
 formatted       b52b6135f86c  vector-0.13.2.0/src/Data/Vector/Fusion/Util.hs
 formatted       314634869762  vector-0.13.2.0/src/Data/Vector/Generic.hs
 formatted       24e087932bf9  vector-0.13.2.0/src/Data/Vector/Generic/Base.hs
-formatted       6c34f319e085  vector-0.13.2.0/src/Data/Vector/Generic/Mutable.hs
+formatted       6b60cf7d78e7  vector-0.13.2.0/src/Data/Vector/Generic/Mutable.hs
 formatted       14ab0fea35a5  vector-0.13.2.0/src/Data/Vector/Generic/Mutable/Base.hs
 formatted       31ef8684e6a5  vector-0.13.2.0/src/Data/Vector/Generic/New.hs
 formatted       1842a6e1d83f  vector-0.13.2.0/src/Data/Vector/Internal/Check.hs
-formatted       3a331752a108  vector-0.13.2.0/src/Data/Vector/Mutable.hs
+formatted       a7b4cb98128c  vector-0.13.2.0/src/Data/Vector/Mutable.hs
 formatted       c77c6d8b48f1  vector-0.13.2.0/src/Data/Vector/Primitive.hs
 formatted       7790a579fd85  vector-0.13.2.0/src/Data/Vector/Primitive/Mutable.hs
 formatted       d63a299a6982  vector-0.13.2.0/src/Data/Vector/Storable.hs
@@ -5069,7 +5069,7 @@ formatted       c3a0978b358e  xmonad-0.18.1/Main.hs
 formatted       ecba01b7187b  xmonad-0.18.1/man/xmonad.hs
 formatted       3b6f53962e81  xmonad-0.18.1/src/XMonad.hs
 formatted       a8a2516e84e9  xmonad-0.18.1/src/XMonad/Config.hs
-formatted       51d04a4033c8  xmonad-0.18.1/src/XMonad/Core.hs
+formatted       9aa143cf0593  xmonad-0.18.1/src/XMonad/Core.hs
 formatted       678fc26f9299  xmonad-0.18.1/src/XMonad/Layout.hs
 formatted       a8d1e71aa531  xmonad-0.18.1/src/XMonad/Main.hs
 formatted       fececd53a9f5  xmonad-0.18.1/src/XMonad/ManageHook.hs
@@ -5106,7 +5106,7 @@ formatted       dad160e4138f  yesod-core-1.7.0.0/src/Yesod/Core/Handler.hs
 formatted       88d4d8c2323a  yesod-core-1.7.0.0/src/Yesod/Core/Internal.hs
 formatted       212235b50682  yesod-core-1.7.0.0/src/Yesod/Core/Internal/LiteApp.hs
 formatted       b02eb40e75c3  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Request.hs
-formatted       bbb065ca69ff  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Response.hs
+formatted       f6b39e51d0e8  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Response.hs
 formatted       356a82e11c3e  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Run.hs
 formatted       da5ec533b3d0  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Session.hs
 formatted       a3a034ad73c8  yesod-core-1.7.0.0/src/Yesod/Core/Internal/TH.hs
