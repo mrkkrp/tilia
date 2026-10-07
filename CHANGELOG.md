@@ -344,6 +344,10 @@
   185](https://github.com/mrkkrp/tilia/issues/185).
 * Keep a `DEPRECATED` or `WARNING` pragma that names nothing, rather than
   drop it. [Issue 181](https://github.com/mrkkrp/tilia/issues/181).
+* Keep a comment written inside the empty brackets of a `deriving` clause
+  inside them, rather than move it to the start of the next line that holds
+  anything, where it made a section heading an ordinary comment or the
+  output not parse. [Issue 180](https://github.com/mrkkrp/tilia/issues/180).
 
 ## Tilia 0.0.2.0
 
