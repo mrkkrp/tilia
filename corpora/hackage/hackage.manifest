@@ -163,7 +163,7 @@ formatted       73b6757a8957  Agda-2.8.0/src/full/Agda/Syntax/Scope/Monad.hs
 formatted       d3a3db0834c5  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName.hs
 formatted       f40939e29708  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName/Boot.hs
 formatted       7071ce6638e1  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
-formatted       c03e4c218c03  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
+formatted       6d2218e4d2e4  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
 formatted       43297193ba42  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       8c2de5355091  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
 formatted       9b8f52d7ab07  Agda-2.8.0/src/full/Agda/Syntax/Treeless.hs
@@ -188,7 +188,7 @@ formatted       a141f28ffb17  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClau
 formatted       3142e5d8c639  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs-boot
 formatted       8daa667ddddd  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs
 formatted       47ac61419563  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs-boot
-broken          c7d51ff5b7e8  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
+formatted       e61f6e981348  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
 formatted       cc3a6f5cf005  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       8bb452c258d1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
 formatted       867428e9a9a1  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
@@ -1721,7 +1721,7 @@ formatted       97c5eb3f0754  cryptonite-0.30/Crypto/PubKey/ECC/Generate.hs
 formatted       d4527eb98a84  cryptonite-0.30/Crypto/PubKey/ECC/P256.hs
 formatted       421cbae47c83  cryptonite-0.30/Crypto/PubKey/ECC/Prim.hs
 formatted       65081a388743  cryptonite-0.30/Crypto/PubKey/ECC/Types.hs
-formatted       c0cc92c84915  cryptonite-0.30/Crypto/PubKey/ECDSA.hs
+formatted       93205445ab9a  cryptonite-0.30/Crypto/PubKey/ECDSA.hs
 formatted       04ef544fcbc1  cryptonite-0.30/Crypto/PubKey/ECIES.hs
 formatted       ca8ec46db323  cryptonite-0.30/Crypto/PubKey/Ed25519.hs
 formatted       dba822ca565e  cryptonite-0.30/Crypto/PubKey/Ed448.hs
@@ -2475,7 +2475,7 @@ formatted       8cff3984ef92  hlint-3.10/src/GHC/Util/DynFlags.hs
 formatted       7c1f93703a5a  hlint-3.10/src/GHC/Util/FreeVars.hs
 formatted       3d386a403912  hlint-3.10/src/GHC/Util/HsDecl.hs
 formatted       86e7bc3b5850  hlint-3.10/src/GHC/Util/HsExpr.hs
-formatted       e4c7dc5d6be8  hlint-3.10/src/GHC/Util/Scope.hs
+formatted       d1d6f4c3efc7  hlint-3.10/src/GHC/Util/Scope.hs
 formatted       d8a06089d209  hlint-3.10/src/GHC/Util/SrcLoc.hs
 formatted       57a53e29344b  hlint-3.10/src/GHC/Util/Unify.hs
 formatted       b405492ce03f  hlint-3.10/src/GHC/Util/View.hs
@@ -3077,7 +3077,7 @@ formatted       9764427f15ce  pandoc-3.10.2/src/Text/Pandoc/Citeproc/BibTeX.hs
 formatted       f4a7c604316e  pandoc-3.10.2/src/Text/Pandoc/Citeproc/CslJson.hs
 formatted       a47804651b9d  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Data.hs
 formatted       b2e977e82e53  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Locator.hs
-formatted       f41105d87bc7  pandoc-3.10.2/src/Text/Pandoc/Citeproc/MetaValue.hs
+formatted       67c0badf53a8  pandoc-3.10.2/src/Text/Pandoc/Citeproc/MetaValue.hs
 formatted       ba128290e789  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Name.hs
 formatted       76559347a97c  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Util.hs
 formatted       1b13d0dc5e1b  pandoc-3.10.2/src/Text/Pandoc/Class.hs
@@ -3241,7 +3241,7 @@ formatted       d9b0707d098c  pandoc-3.10.2/src/Text/Pandoc/Writers/CslJson.hs
 formatted       225f5fe7008c  pandoc-3.10.2/src/Text/Pandoc/Writers/Djot.hs
 formatted       a5d327fae7c4  pandoc-3.10.2/src/Text/Pandoc/Writers/DocBook.hs
 formatted       7bf8f7c3beff  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx.hs
-formatted       c79e55b3d979  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
+formatted       6862dc420106  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
 formatted       47c7fc1f3217  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/StyleMap.hs
 formatted       9366da9eb866  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Table.hs
 formatted       a7b1f18b1b94  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/Types.hs

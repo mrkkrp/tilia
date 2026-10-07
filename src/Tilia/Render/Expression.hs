@@ -108,11 +108,8 @@ exprBody ctx site here = \case
       <> breakOrSpace
       <> underSite site (sepBy breakOrSpace (fmap alternative (NE.toList guards)))
     where
-      alternative g =
-        atSpan
-          ctx
-          (grhsSpan (unLoc g))
-          (guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow (unLoc g))
+      alternative =
+        guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow
   HsLet (_, inToken) binds e ->
     letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) inToken binds e
   HsDo anns flavour es -> case flavour of
@@ -1006,10 +1003,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
 
     alternative g =
       fenceWithin ctx (spanOf g) $
-        atSpan
-          ctx
-          (grhsSpan (unLoc g))
-          (guardedRhs ctx placement bracing mkBody groupStyle (unLoc g))
+        guardedRhs ctx placement bracing mkBody groupStyle g
 
     groupStyle
       | isCaseStyle style && hasGuards = RightArrow
@@ -1060,7 +1054,7 @@ blockPlacement bodyOf = \case
 
 -- | One alternative of an equation: its guards, and what they guard.
 guardedRhs ::
-  (Body b) =>
+  (Body b, Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO) =>
   Ctx ->
   -- | How the equation as a whole is placed.
   Placement ->
@@ -1068,20 +1062,22 @@ guardedRhs ::
   Bracing ->
   BodyOf body b ->
   GuardStyle ->
-  GRHS GhcPs (LocatedA body) ->
+  LGRHS GhcPs (LocatedA body) ->
   Doc
-guardedRhs ctx parentPlacement bracing mkBody style (GRHS _ guards body) = case guards of
-  [] -> printBody bound
+guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guards of
+  [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
   _ ->
-    txt "|"
-      <> space
-      <> align (commaSep (fmap (align . hsStmt ctx) guards))
-      <> space
-      <> indent (txt separator)
-      <> nest
-        (if parentPlacement == Normal then 1 else 0)
-        (attach placement (printBody bound))
+    maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
+      txt "|"
+        <> space
+        <> align (commaSep (fmap (align . hsStmt ctx) guards))
+        <> space
+        <> indent (txt separator)
+        <> nest
+          (if parentPlacement == Normal then 1 else 0)
+          (attach placement (printBody bound))
   where
+    GRHS _ guards body = grhs
     bound = bodyIn mkBody bracing body
     separator = case style of
       EqualsSign -> "="
