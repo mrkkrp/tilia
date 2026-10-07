@@ -50,6 +50,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Traversable (for)
+import GHC.Conc (par)
 import Tilia.Cpp.Directives
 import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
@@ -116,6 +117,7 @@ formatWithCpp parser render path source = do
               (knowing render)
               path
               (noAnswers source)
+              Nothing
               source
           )
       )
@@ -198,6 +200,47 @@ attempt formatting =
     TooManyConfigurations -> refuse TooManyConfigurations
     _ -> pure Nothing
 
+-- | Start working out on the side, as far as its outermost constructor,
+-- each configuration the budget left could still pay for, in order.
+aheadOf :: [(Text, Maybe a)] -> Spending b -> Spending b
+aheadOf texts formatting = do
+  budget <- lift get
+  let costs = scanl1 (+) (fmap (linesHeld . fst) texts)
+      affordable =
+        [a | (cost, (_, Just a)) <- zip costs texts, cost <= budget]
+  foldr par formatting affordable
+
+-- | What the first configuration 'formatAllConfigs' formats for a module
+-- comes to, the one every question is answered in with its first branch,
+-- where it is sure to format that one first.
+firstConfiguration ::
+  -- | What to parse a configuration with.
+  ParserConfig ->
+  -- | What to print it with.
+  RenderConfig ->
+  -- | The file this is, for the positions in a parse error.
+  FilePath ->
+  -- | How this configuration was reached.
+  Reached ->
+  -- | Input text.
+  Text ->
+  Maybe (Either CppError (Doc, CommentSummary))
+firstConfiguration parser render path reached source = do
+  forest <- either (const Nothing) Just (readConditionals source)
+  case variations forest source of
+    Nothing ->
+      Just $
+        formatSingleConfig parser render path reached (withoutOpaque source)
+    Just apart
+      | isNothing (splitOnPragma parser forest source) ->
+          firstConfiguration
+            parser
+            render
+            path
+            (without (vaBaselineDropped apart) reached)
+            (vaBaseline apart)
+      | otherwise -> Nothing
+
 -- | Format every configuration of a module, and merge them into one
 -- document, with what they found besides their code.
 formatAllConfigs ::
@@ -209,15 +252,19 @@ formatAllConfigs ::
   FilePath ->
   -- | How this configuration was reached.
   Reached ->
+  -- | What the first configuration it formats comes to, where that was
+  -- worked out ahead.
+  Maybe (Either CppError (Doc, CommentSummary)) ->
   -- | Input text.
   Text ->
   Spending (Doc, CommentSummary)
-formatAllConfigs parser render path reached source = do
+formatAllConfigs parser render path reached ahead source = do
   forest <- except (readConditionals source)
   case variations forest source of
     Nothing -> do
       spend (linesHeld source)
-      except (formatSingleConfig parser render path reached (withoutOpaque source))
+      except . flip fromMaybe ahead $
+        formatSingleConfig parser render path reached (withoutOpaque source)
     Just apart -> do
       budget <- lift get
       let pragma = splitOnPragma parser forest source
@@ -232,6 +279,7 @@ formatAllConfigs parser render path reached source = do
                 render
                 path
                 (without (vaBaselineDropped apart) reached)
+                ahead
                 (vaBaseline apart)
           else pure Nothing
       fragmented <- case (pragma, base) of
@@ -338,18 +386,28 @@ separately ::
   (Doc, CommentSummary) ->
   Spending ([Doc], CommentSummary)
 separately parser render path reached v (baseDoc, baseFound) = do
-  groups <- for (vaGroups v) $ \c ->
-    for (zip [0 ..] (cfgTexts c)) $ \(i, t) ->
-      if t == vaBaseline v
-        then pure (baseDoc, mempty)
-        else formatAllConfigs parser render path (answering c i reached) t
-  pure
-    ( zipWith
-        (mergeOf (reachedLines reached))
-        (vaGroups v)
-        (fmap (fmap fst) groups),
-      baseFound <> foldMap (foldMap snd) groups
-    )
+  groups <-
+    aheadOf (concat (zipWith zip (fmap cfgTexts (vaGroups v)) worked)) $
+      for (zip (vaGroups v) worked) $ \(c, as) ->
+        for (zip3 [0 ..] (cfgTexts c) as) $ \(i, t, a) ->
+          if t == vaBaseline v
+            then pure (baseDoc, mempty)
+            else formatAllConfigs parser render path (answering c i reached) a t
+  let merged =
+        zipWith
+          (mergeOf (reachedLines reached))
+          (vaGroups v)
+          (fmap (fmap fst) groups)
+  pure (foldr par merged merged, baseFound <> foldMap (foldMap snd) groups)
+  where
+    worked =
+      [ [ if t == vaBaseline v
+            then Nothing
+            else firstConfiguration parser render path (answering c i reached) t
+        | (i, t) <- zip [0 ..] (cfgTexts c)
+        ]
+      | c <- vaGroups v
+      ]
 
 -- | Format each fragment of declarations the outermost conditionals reach
 -- on its own, and put the results into what the baseline was formatted to.
@@ -375,14 +433,14 @@ inFragments parser render path reached forest source (baseDoc, baseFound) =
   case parts of
     Nothing -> pure Nothing
     Just (body, ps) -> do
-      formatted <- for ps $ \(f, (text, dropped)) ->
-        (,) f
-          <$> formatAllConfigs
-            parser
-            render
-            path
-            reached{reachedLines = dropping dropped (reachedLines reached)}
-            text
+      let reachedBy = [(f, without gone reached, t) | (f, (t, gone)) <- ps]
+          worked =
+            [ (t, firstConfiguration parser render path r t)
+            | (_, r, t) <- reachedBy
+            ]
+      formatted <-
+        aheadOf worked . for (zip reachedBy worked) $ \((f, r, t), (_, a)) ->
+          (,) f <$> formatAllConfigs parser render path r a t
       pure $ do
         doc <- reassembled body [(f, d) | (f, (d, _)) <- formatted]
         pure (doc, baseFound <> foldMap (snd . snd) formatted)
@@ -459,7 +517,7 @@ together parser render path reached c = do
               [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
       found <- fmap catMaybes . for (zip [0 ..] answers) $ \(i, (r, t)) ->
         if null (unconditionalErrors t)
-          then Just . (,) i <$> formatAllConfigs parser render path r t
+          then Just . (,) i <$> formatAllConfigs parser render path r Nothing t
           else pure Nothing
       docs <-
         except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
