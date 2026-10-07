@@ -336,6 +336,12 @@
   than move it above the next declaration and, on a second run, the
   comments under the right-hand side to the margin. [Issue
   183](https://github.com/mrkkrp/tilia/issues/183).
+* Hold a comment written under a header pragma off the module's Haddock,
+  which it comes out right under once the pragma moves to the top, also
+  where a comment above the pragma moves up with it. An ordinary comment
+  used to run into the Haddock and change it, and an unrecognised pragma
+  was formatted in two passes. [Issue
+  185](https://github.com/mrkkrp/tilia/issues/185).
 
 ## Tilia 0.0.2.0
 

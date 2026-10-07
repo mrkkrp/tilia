@@ -147,7 +147,10 @@ heldOff haddocks = fmap holdOff
       where
         s = commentSpan c
 
--- | Hold the first comment of the header off the module's own Haddock.
+-- | Hold the comment that comes out right under the module's own Haddock
+-- off it: the first one between the Haddock and the module line with no
+-- pragma after it, since one with a pragma after it is placed with that
+-- pragma, above the Haddock.
 heldOffModuleDoc ::
   HsModule GhcPs ->
   -- | The Haddocks of the module, the module's own among them.
@@ -166,10 +169,10 @@ heldOffModuleDoc hsMod haddocks pragmas cs
     uncoveredBetween ended began c =
       ended < spanStartLine here
         && spanStartLine here < began
-        && not (Set.member (spanEndLine here + 1) travellers)
+        && not (any (\p -> spanEndLine here < p && p < began) pragmaStarts)
       where
         here = commentSpan c
-    travellers = Set.fromList (fmap (spanStartLine . hpSpan) pragmas)
+    pragmaStarts = fmap (spanStartLine . hpSpan) pragmas
     endOfModuleDoc = do
       s <- moduleDoc
       c <- lookup (startPoint s) [(startPoint (commentSpan h), h) | h <- haddocks]
