@@ -392,6 +392,9 @@
   faster, and working out operators from the sources of dependencies a
   fifth faster. A module with thousands of comments formats twice as fast.
   [PR 201](https://github.com/mrkkrp/tilia/pull/201).
+* Speed up walking a module's syntax tree, writing comments into the
+  printed document, and handing a module to the lexer. Formatting is about
+  10% faster. [PR 202](https://github.com/mrkkrp/tilia/pull/202).
 
 ## Tilia 0.0.2.0
 
