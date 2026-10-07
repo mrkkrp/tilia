@@ -331,6 +331,11 @@
   older packages use in place of `default-extensions`, as in force, both
   for the package being formatted and for the packages operators are looked
   up in. [Issue 186](https://github.com/mrkkrp/tilia/issues/186).
+* Keep a comment that ends the line of a right-hand side at the end of that
+  line where comments lined up with the right-hand side follow it, rather
+  than move it above the next declaration and, on a second run, the
+  comments under the right-hand side to the margin. [Issue
+  183](https://github.com/mrkkrp/tilia/issues/183).
 
 ## Tilia 0.0.2.0
 

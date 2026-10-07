@@ -11,6 +11,7 @@ module Tilia.Comments.Place
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sortOn)
@@ -132,16 +133,21 @@ placeComments regions leads fences comments =
         here = commentSpan c
         asCommentBefore = against =<< (`Map.lookup` commentsByEndPoint) =<< stopsAt
         trailed
-          | writtenAgainst || not (commentFollowed c) = endingOn (spanStartLine here)
+          | writtenAgainst || not (commentFollowed c) =
+              linedUpUnder <|> endingOn (spanStartLine here)
           | otherwise = Nothing
+        linedUpUnder = do
+          (top, _) <- IntMap.lookup (spanStartLine here + 1) runs
+          (r, Under) <- against top
+          r <$ guard (candidate r)
         endingOn line =
           nearest (\r -> (Down (endPoint r), startPoint r)) (filter candidate onThatLine)
           where
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
-            candidate r =
-              endPoint r <= startPoint here
-                && startPoint r /= endPoint r
-                && not (fencedOff r)
+        candidate r =
+          endPoint r <= startPoint here
+            && startPoint r /= endPoint r
+            && not (fencedOff r)
 
         writtenAgainst = maybe False (`Set.member` regionEndPoints) stopsAt
         stopsAt = (,) (spanStartLine here) <$> commentCodeBeforeStopsAt c
