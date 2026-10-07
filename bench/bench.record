@@ -1,0 +1,122 @@
+# What each benchmark costs, as far as that does not depend on how
+# busy the machine is. `cabal bench` checks it, and
+# `TILIA_BENCH_ACCEPT=1 cabal bench` writes it again.
+#
+# compiler    The compiler the benchmarks were built with, which what
+#             they allocate depends on.
+# processor   The processor the instructions were counted on, which
+#             how many there are depends on, or none.
+# interfaces  A digest of the names and sizes of the interfaces the
+#             decode stage reads, which what decoding them costs
+#             depends on.
+#
+# Every other line is a benchmark:
+#
+# stage         What it measures: formatting a module (format),
+#               checking what that printed as --check-ast does
+#               (check), reading what every module of a package
+#               establishes out of its tarball with no cache
+#               (resolve), the same out of a cache an earlier reading
+#               filled (recall), or decoding every interface of a
+#               package the compiler ships with (decode).
+# allocated     The bytes it allocates.
+# copied        The bytes the garbage collector copies while it runs.
+# instructions  The instructions it retires in user space, or - where
+#               they were not counted.
+# benchmark     The module or the package it measures that on.
+
+compiler ghc 9.10.3
+processor AMD Ryzen AI 9 HX 370 w/ Radeon 890M
+interfaces 1c28e35fa2432d89
+
+# stage      allocated        copied  instructions  benchmark
+check        450758976      27546584    1381625512  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
+check        546944616      38437472    1872129968  ShellCheck-0.11.0/src/ShellCheck/Analytics.hs
+check        346117944      16785216     989697221  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
+check        200853568      10153504     634317973  blaze-html-0.9.2.0/src/Text/Blaze/Html5/Attributes.hs
+check        102112544       4916376     299909332  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
+check        118098016       6183176     365759289  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
+check        173518432      11641928     595218924  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
+check        682190384      44276424    2040484702  haxl-2.5.1.1/Haxl/Core/Monad.hs
+check        361032016      20902000    1126527848  idris-1.3.4/src/Idris/Elab/Term.hs
+check        368385352       9746120     881756428  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
+check         79041728       4045496     254975244  megaparsec-9.8.1/Text/Megaparsec/Internal.hs
+check        112438216       7003408     387436759  optparse-applicative-0.19.0.0/tests/test.hs
+check         66837056       1766144     190042294  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
+check        226197496      14688168     760714815  pandoc-3.10.2/src/Text/Pandoc/Readers/Markdown.hs
+check        289130584      18953888     950249833  pandoc-3.10.2/src/Text/Pandoc/Writers/Powerpoint/Output.hs
+check        231976440      15050352     756133493  purescript-0.15.15/src/Language/PureScript/Errors.hs
+check        122982904       7141984     399538772  purescript-0.15.15/src/Language/PureScript/TypeChecker/Types.hs
+check        105451056       6019536     321467477  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
+check        126783248       6355608     388337488  servant-server-0.20.3.0/src/Servant/Server/Internal.hs
+check        126771152       6338368     376720509  swagger2-2.9.1/src/Data/Swagger/Internal.hs
+check        149965944       9090496     495856414  text-2.1.4/tests/Tests/Properties/Folds.hs
+check         84704664       4832080     279424923  time-1.16.0.1/test/main/Test/Format/ParseTime.hs
+check         90192104       4484656     277482016  tls-2.4.3/Network/TLS/Extension.hs
+check        419805584      28469912    1359378232  unpacked-containers-0/src/Map/Internal.hs
+check        533192080      35904168    1615852405  vector-0.13.2.0/src/Data/Vector/Generic.hs
+check         97804040       4811928     304849122  xmonad-0.18.1/src/XMonad/Operations.hs
+decode        27001936             0      44723556  base-4.20.2.0
+decode         6037648             0       7373975  bytestring-0.12.2.0
+decode         9504912             0      12150530  containers-0.7
+decode        43427976       1239904      62883800  ghc-internal-9.1003.0
+decode        11465032             0      15574336  template-haskell-2.22.0.0
+decode         6206680             0       6722799  text-2.1.3
+format       804831432     153066440    2635048018  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
+format      4297936920     273150056   10379714937  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+format      1097808776     231521688    3805336936  ShellCheck-0.11.0/src/ShellCheck/Analytics.hs
+format       396935600      22456912     844083244  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
+format       165954856       8939744     402358703  blaze-html-0.9.2.0/src/Text/Blaze/Html5/Attributes.hs
+format       201886088      24575688     559924336  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
+format       229604552      28471064     662851031  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
+format       426024440      84191616    1395626673  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
+format      3729263504     243330664   10152736898  haxl-2.5.1.1/Haxl/Core/Monad.hs
+format       764780928     171404208    2633968481  idris-1.3.4/src/Idris/Elab/Term.hs
+format      1430625744      86383880    3473810763  lens-5.3.6/src/Control/Lens/Wrapped.hs
+format       471056816      21784920    1062436163  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
+format       131407976      10991360     355113912  megaparsec-9.8.1/Text/Megaparsec/Internal.hs
+format       184024328      29482536     583457733  optparse-applicative-0.19.0.0/tests/test.hs
+format        72758560       4570368     161837872  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
+format       470962792      94534984    1586843461  pandoc-3.10.2/src/Text/Pandoc/Readers/Markdown.hs
+format       573648128     114568736    1923259625  pandoc-3.10.2/src/Text/Pandoc/Writers/Powerpoint/Output.hs
+format       512541040     102181792    1682680820  purescript-0.15.15/src/Language/PureScript/Errors.hs
+format       213233784      38208272     682981440  purescript-0.15.15/src/Language/PureScript/TypeChecker/Types.hs
+format       138625656      14255768     378655161  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
+format       199417760      17608584     534422220  servant-server-0.20.3.0/src/Servant/Server/Internal.hs
+format       189730872      16099408     507106274  swagger2-2.9.1/src/Data/Swagger/Internal.hs
+format       807897552     133636408    2727707652  synthetic/comments
+format       136362144       6742928     359222585  synthetic/conditionals
+format       106590464      11852288     349398768  synthetic/imports
+format       119798400      11906576     367373465  synthetic/nesting
+format      4440873208     236995360   10632691565  text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs
+format       307290688      20842776     659511448  text-2.1.4/tests/Tests/Properties/Folds.hs
+format       150534112      15790968     426527612  time-1.16.0.1/test/main/Test/Format/ParseTime.hs
+format       159919200      15243776     431923692  tls-2.4.3/Network/TLS/Extension.hs
+format      1487940168     231873584    4372755451  unordered-containers-0.2.21/Data/HashMap/Internal.hs
+format       574887448      95129120    1812476619  unpacked-containers-0/src/Map/Internal.hs
+format       797835256     126515840    2388142730  vector-0.13.2.0/src/Data/Vector/Generic.hs
+format       172625496      28294008     536598201  xmonad-0.18.1/src/XMonad/Operations.hs
+recall         8851176             0      20620378  aeson-2.3.1.0
+recall         5953760             0      14216766  conduit-1.3.6.1
+recall         5407168             0      12260576  free-5.2
+recall        14501152             0      42765753  lens-5.3.6
+recall         5564520             0      13033881  megaparsec-9.8.1
+recall         5891216             0      13516136  mtl-2.3.2
+recall         5062032             0      12025375  optics-0.4.2.1
+recall         5291120             0      12823229  pandoc-types-1.23.1.2
+recall         6078088             0      13995652  semigroupoids-6.0.2
+recall         6898696             0      15379927  servant-0.20.3.0
+recall         8956408             0      18331938  text-2.1.4
+recall         7805920             0      17845315  vector-0.13.2.0
+resolve     2391318792      87158848    4688144603  aeson-2.3.1.0
+resolve      673556568      22898368    1319166878  conduit-1.3.6.1
+resolve      685058496      13686176    1286892971  free-5.2
+resolve     3733294192     142536872    7254423530  lens-5.3.6
+resolve      283709176       5088592     570949325  megaparsec-9.8.1
+resolve      303373128       4784248     597236338  mtl-2.3.2
+resolve      101249928       1260096     248890541  optics-0.4.2.1
+resolve      116967832       3643440     281395117  pandoc-types-1.23.1.2
+resolve      288217088       3400216     568005530  semigroupoids-6.0.2
+resolve      299427200       5588408     619711421  servant-0.20.3.0
+resolve     4909570272      75761296    9929517595  text-2.1.4
+resolve     3091241208     126518800    5919726780  vector-0.13.2.0

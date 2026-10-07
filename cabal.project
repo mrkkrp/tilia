@@ -4,6 +4,8 @@ index-state: 2026-08-20T09:03:08Z
 
 tests: True
 
+benchmarks: True
+
 constraints:
   tilia +dev,
   zlib +bundled-c-zlib

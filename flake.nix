@@ -20,7 +20,7 @@
 
       # Files that participate in the build. Anything outside this set can
       # change without forcing a rebuild.
-      sourceDirs = [ "src" "app" "tests" "corpora" ];
+      sourceDirs = [ "src" "app" "tests" "bench" "corpora" ];
       sourceFiles = [ "cabal.project" "tilia.cabal" ];
 
       # Cabal insists these exist, but their contents never affect the
@@ -64,15 +64,24 @@
         weeder =
           let
             project = projects.${baseCompiler};
-            inherit (project.tilia.components) library exes tests;
-            scanned = [ library exes.tilia tests.tests ];
+            inherit (project.tilia.components) library exes tests benchmarks;
+            # The benchmarks compile some modules of the test suite as well,
+            # and weeder would report what their copies define and only the
+            # tests use. So only the benchmarks' own modules are scanned; the
+            # shared ones are scanned as part of the test suite.
+            bench = pkgs.runCommand "tilia-bench-hie" { } ''
+              mkdir -p $out/Tilia
+              cp ${benchmarks.bench.hie}/Main.hie $out
+              cp -r ${benchmarks.bench.hie}/Tilia/Bench $out/Tilia
+            '';
+            scanned = [ library.hie exes.tilia.hie tests.tests.hie bench ];
           in
           pkgs.runCommand "tilia-weeder"
             { nativeBuildInputs = [ (project.tool "weeder" "2.10.0") ]; }
             ''
               weeder --config ${./weeder.toml} \
                 ${lib.concatMapStringsSep " \\\n    "
-                    (c: "--hie-directory ${c.hie}") scanned}
+                    (d: "--hie-directory ${d}") scanned}
               touch $out
             '';
 
@@ -82,6 +91,7 @@
             built = {
               tilia = tilia.components.exes.tilia;
               tests-exe = tilia.components.tests.tests;
+              bench-exe = tilia.components.benchmarks.bench;
             }
             // lib.optionalAttrs (compiler == baseCompiler) { inherit weeder; };
           in
@@ -106,7 +116,7 @@
         selfFormat =
           let
             project = projects.${baseCompiler};
-            inherit (project.tilia.components) library exes tests;
+            inherit (project.tilia.components) library exes tests benchmarks;
             checked = target: component: component.overrideAttrs (_: {
               buildPhase = ''
                 ${base.tilia}/bin/tilia check ${target} \
@@ -129,6 +139,7 @@
             library = checked "lib:tilia" library;
             exe = checked "exe:tilia" exes.tilia;
             tests = checked "test:tests" tests.tests;
+            bench = checked "bench:bench" benchmarks.bench;
           };
 
         checking = name: tools: run:

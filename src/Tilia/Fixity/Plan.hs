@@ -41,6 +41,7 @@ module Tilia.Fixity.Plan
     Resolver (..),
     newResolver,
     newResolverVia,
+    newResolverWith,
     withReexports,
     scopeFor,
   )
@@ -875,6 +876,23 @@ newResolverVia caching routes plan = do
       else pure []
   cache <- openCache caching =<< tokenForBuildPlan plan
   installed <- getInstalledPackages cache
+  newResolverWith routes cache installed tarballs plan
+
+-- | 'newResolverVia', given what it would find out from the machine.
+newResolverWith ::
+  -- | Which readings to try, in order.
+  [Route] ->
+  -- | Where to remember answers between runs.
+  Cache ->
+  -- | Every package the compiler can see.
+  [InstalledPackage] ->
+  -- | Every planned package that might have a tarball, and where it would
+  -- be.
+  [(PlanPackage, FilePath)] ->
+  -- | The build plan to use.
+  BuildPlan ->
+  IO Resolver
+newResolverWith routes cache installed tarballs plan = do
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
   local <- localModules plan

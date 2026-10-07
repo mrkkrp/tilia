@@ -31,6 +31,65 @@ be updated like this:
 $ TILIA_CORPUS_ACCEPT=1 cabal test
 ```
 
+## Benchmarks
+
+The benchmarks format a fixed sample of the Hackage corpus, check what most
+of its modules are printed as the way `--check-ast` does, and format a few
+modules made to stress one part of the formatter each. They also work out
+fixities the ways a run does: they read every module of a dozen packages of
+the corpus out of their tarballs, as a run with a cold cache does, read the
+same out of a cache, as a warm run does, and decode the interfaces of a few
+packages the compiler ships with. They take about 45 seconds:
+
+```console
+$ cabal bench
+```
+
+What each benchmark allocates and the instructions it retires are the same
+from one run to the next to a hundredth of a percent, however busy the
+machine is, so they are kept in `bench/bench.record` and checked like the
+corpus is. The run fails where a benchmark allocates or retires 0.5% more
+or less than the record says, or where all the benchmarks of a stage
+together do 0.05% more or less, or have the garbage collector copy 1% more
+or less. Update the record like this, and review the change to it like any
+other:
+
+```console
+$ TILIA_BENCH_ACCEPT=1 cabal bench
+```
+
+What is allocated depends on the compiler, so the record is made with the
+base compiler, and CI checks it there. The instructions depend on the
+processor as well, so they are checked only on the processor the record
+names, where Linux lets a process count them; elsewhere the run says so and
+checks the rest. What decoding the interfaces costs depends on what they
+hold, which can differ between builds of one compiler, so the record keeps a
+digest of their names and sizes, and decoding is checked only where it
+matches; the bytes alone differ between two builds in fingerprints that cost
+nothing to decode. The benchmarks run with `-O1g -C1000`, so that no major
+collection and no context switch falls inside one: those make the counts
+depend on the rest of the heap and on the clock. The benchmarks of one
+module or package run on their own with `--match`, and updating the record
+then changes only their lines:
+
+```console
+$ cabal bench --benchmark-options='--match QuickCheck'
+```
+
+To compare two versions on another processor, save what one measures and
+compare the other with it, which shows the instructions and the time of
+all the benchmarks together and the benchmarks that moved most:
+
+```console
+$ cabal bench --benchmark-options='--save /tmp/before'
+$ cabal bench --benchmark-options='--baseline /tmp/before'
+```
+
+Time is not recorded: on a quiet machine the time of all the benchmarks
+together moves by about 1% from one run to the next, and the time of one
+of them by up to 13%, even with `--runs 3`, which measures each three times
+and takes the fastest. On a busy machine it moves by far more.
+
 Finally, Tilia formats itself, so make sure to run this command before you
 open a PR:
 
@@ -81,19 +140,19 @@ Tilia is built and tested with every compiler in the `compilers` list in
 6. Update `CHANGELOG.md`.
 
 The first entry of `compilers` in `flake.nix` is the base compiler: it
-builds the release binaries, runs weeder and the self-format checks, and
-provides the default development shell. When it changes, which happens when
-the oldest version is dropped, update `GHC_VERSION` in
+builds the release binaries, runs weeder, the self-format checks and the
+benchmarks, and provides the default development shell. When it changes,
+which happens when the oldest version is dropped, update `GHC_VERSION` in
 `.github/workflows/release.yaml` to match, as well as the `restore-keys` of
-the `format` job in `ci.yaml`, which fall back on the base compiler's
-caches.
+the `format` job and the compiler and `restore-keys` of the `bench` job in
+`ci.yaml`, and record the benchmarks again with the new base compiler.
 
 ## Switching `ghc-lib-parser`
 
 To switch to another version of `ghc-lib-parser`:
 
-1. Change the bounds on `ghc-lib-parser` in `tilia.cabal`, both in the
-   library and in the test suite, and bump `index-state` in `cabal.project`
+1. Change the bounds on `ghc-lib-parser` in `tilia.cabal`, in the library,
+   the test suite and the benchmarks, and bump `index-state` in `cabal.project`
    past its release. If `haskell.nix`'s index of Hackage does not reach that
    far, update the `haskellNix` input as well.
 2. Fix what the new API breaks. Warnings are errors in this project, so a
@@ -120,4 +179,6 @@ To switch to another version of `ghc-lib-parser`:
    `ghc-lib-parser` that read them, but what it learned about dependencies
    is kept regardless of it. If the new parser reads the sources of
    dependencies differently, bump `formatVersion` in `Tilia.Fixity.Cache`.
-7. Update `CHANGELOG.md`.
+7. Record the benchmarks again with `TILIA_BENCH_ACCEPT=1 cabal bench`,
+   since parsing takes a share of what they cost.
+8. Update `CHANGELOG.md`.

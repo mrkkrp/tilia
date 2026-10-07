@@ -11,6 +11,7 @@ module Tilia.Fixity.Interface
   )
 where
 
+import Control.DeepSeq (NFData)
 import Control.Monad ((<=<))
 import Data.ByteString qualified as BS
 import Data.Char (isUpper)
@@ -22,6 +23,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Read qualified as T
+import GHC.Generics (Generic)
 import Tilia.Fixity
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
 import Tilia.Process (readProgramOutput)
@@ -41,7 +43,9 @@ data Interface = Interface
     -- rather than read off what @ghc --show-iface@ prints.
     interfaceExports :: Maybe Certain
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Interface
 
 -- | Read a module's interface file.
 --

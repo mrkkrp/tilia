@@ -71,6 +71,31 @@ jobs:
         run: |
           tests="$(nix build --no-link --print-out-paths .#${{ matrix.ghc }}.tests-exe)"
           nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
+  bench:
+    needs: lint
+    name: Benchmark on ghc9103
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+      - uses: cachix/cachix-action@v17
+        with:
+          name: tilia
+          authToken: '${{ secrets.CACHIX_TIILA_AUTH_TOKEN }}'
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/tilia
+          key: tilia-bench-${{ hashFiles('tests/Tilia/Corpus.hs') }}
+          restore-keys: |
+            tilia-bench-
+            tilia-ghc9103-
+      - name: Benchmark
+        run: |
+          bench="$(nix build -L --no-link --print-out-paths .#ghc9103.bench-exe)"
+          nix develop -L .#ghc9103 -c "$bench/bin/bench"
   format:
     needs: build
     name: Self-format with Cabal

@@ -551,7 +551,9 @@ data Certain = Certain
     -- | The members it certainly exports with each type or class.
     certainMembers :: Map OpName (Set (Namespace, OpName))
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Certain
 
 instance Semigroup Certain where
   a <> b =
@@ -1063,7 +1065,9 @@ data Established = Established
     -- gives members of is among them.
     establishedMembers :: Map OpName (Set OpName)
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Established
 
 instance Semigroup Established where
   a <> b =

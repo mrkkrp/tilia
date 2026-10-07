@@ -19,6 +19,7 @@ module Tilia.Corpus
     -- * Obtaining one
     Example (..),
     obtain,
+    corpusCache,
   )
 where
 
