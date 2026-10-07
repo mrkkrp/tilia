@@ -387,10 +387,11 @@
   201](https://github.com/mrkkrp/tilia/pull/201).
 * Read a module's comments off its tokens rather than have the parser
   attach them to the syntax tree, which is slow for a module with many
-  comments. Formatting is about 10% faster, `--check-ast` a third faster,
-  and working out operators from the sources of dependencies a fifth
-  faster. A module with thousands of comments formats twice as fast. [PR
-  201](https://github.com/mrkkrp/tilia/pull/201).
+  comments, and in a module with conditionals stop building layouts that
+  are not printed. Formatting is about 10% faster, `--check-ast` a third
+  faster, and working out operators from the sources of dependencies a
+  fifth faster. A module with thousands of comments formats twice as fast.
+  [PR 201](https://github.com/mrkkrp/tilia/pull/201).
 
 ## Tilia 0.0.2.0
 

@@ -231,7 +231,7 @@ widened = fst . go
         let (a', ca) = go a
             (b', cb) = go b
          in (DCat a' b', ca <> cb)
-      DVariant a b -> let (b', c) = go b in (DVariant (fst (go a)) b', c)
+      d@DVariant{} -> (d, Nothing)
       d
         | Just (w, x) <- unwrap d -> let (x', c) = go x in (wrap w x', c)
         | otherwise -> (d, Nothing)
