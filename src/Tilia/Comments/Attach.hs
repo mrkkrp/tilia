@@ -191,8 +191,8 @@ walk margin = go
       DAlign d -> first DAlign (go p d)
       DGroup l d -> first (DGroup l) (go p d)
       DVariant a b ->
-        let (a', p') = go p a
-            (b', _) = go p b
+        let (a', _) = go p a
+            (b', p') = go p b
          in (DVariant a' b', p')
       d -> (d, p)
 
