@@ -1,0 +1,10 @@
+signature Ledger where
+
+data Entry
+
+instance Show Entry
+
+post :: Entry -> IO ()   -- posted before the period closes,
+                         -- and never after
+
+-- the journal is append-only

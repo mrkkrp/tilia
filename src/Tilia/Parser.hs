@@ -32,7 +32,7 @@ import GHC.Hs (HsModule (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
-import GHC.Parser.Annotation (getLocA)
+import GHC.Parser.Annotation (LEpaComment, getLocA)
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
@@ -94,24 +94,23 @@ parseConfiguration ::
   Text ->
   Either ParseError ParsedModule
 parseConfiguration config path written source =
-  case GHC.unP entryPoint (stateFor config path source) of
+  case GHC.unP entryPoint start of
     GHC.PFailed pstate -> Left (whyNot pstate)
     GHC.POk pstate (GHC.L _ hsModule)
       | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
           Left (whyNot pstate)
       | otherwise ->
-          let found = gathered hsModule
-           in Right
-                ParsedModule
-                  { pmModule = hsModule,
-                    pmSource = sourceOf written (headerComments pstate) (gatheredComments found),
-                    pmGathered = found,
-                    pmSourceType = sourceType,
-                    pmPrologue = prologueOf (lineTexts written),
-                    pmHeaderEnd = headerEndOf hsModule
-                  }
+          Right
+            ParsedModule
+              { pmModule = hsModule,
+                pmSource = sourceOf written (lexedComments start),
+                pmGathered = gathered hsModule,
+                pmSourceType = sourceType,
+                pmPrologue = prologueOf (lineTexts written),
+                pmHeaderEnd = headerEndOf hsModule
+              }
   where
-    headerComments = concat . GHC.header_comments
+    start = stateFor config path source
 
     sourceType = sourceTypeOf path
 
@@ -177,14 +176,32 @@ importLayout config source =
       GHC.ITimport -> True
       _ -> False
     code = \case
-      GHC.ITlineComment _ _ -> False
-      GHC.ITblockComment _ _ -> False
-      GHC.ITdocComment _ _ -> False
-      GHC.ITdocOptions _ _ -> False
       GHC.ITvocurly -> False
       GHC.ITvccurly -> False
       GHC.ITsemi -> False
-      _ -> True
+      t -> not (isComment t)
+
+-- | Lex every comment, in source order, from the state a parse starts in.
+lexedComments :: GHC.PState -> [LEpaComment]
+lexedComments s =
+  case GHC.lexTokenStream (GHC.options s) (GHC.buffer s) loc of
+    GHC.PFailed _ -> error "Tilia: a module that parses cannot fail to lex"
+    GHC.POk _ tokens ->
+      [ GHC.commentToAnnotation (GHC.L l t)
+      | GHC.L (GHC.RealSrcSpan l _) t <- tokens,
+        isComment t
+      ]
+  where
+    loc = GHC.psRealLoc (GHC.loc s)
+
+-- | Is this token a comment?
+isComment :: GHC.Token -> Bool
+isComment = \case
+  GHC.ITlineComment _ _ -> True
+  GHC.ITblockComment _ _ -> True
+  GHC.ITdocComment _ _ -> True
+  GHC.ITdocOptions _ _ -> True
+  _ -> False
 
 -- | The state to start reading a module in.
 stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
@@ -228,7 +245,7 @@ parserOpts ParserConfig{pcExtensions} =
     quietDiagnostics
     False -- safe imports
     True -- keep Haddock tokens
-    True -- keep ordinary comment tokens
+    False -- keep ordinary comment tokens
     True -- let @LINE@ and @COLUMN@ pragmas move the source position
 
 -- | Diagnostics are not reported, so the settings only have to be

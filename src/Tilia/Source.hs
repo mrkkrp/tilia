@@ -22,7 +22,7 @@ module Tilia.Source
   )
 where
 
-import GHC.Parser.Annotation (EpAnnComments, LEpaComment)
+import GHC.Parser.Annotation (LEpaComment)
 import Tilia.Comments (Comment, commentsOf)
 import Tilia.Source.Lines
 
@@ -48,15 +48,13 @@ sourceLines = srcLines
 sourceOf ::
   -- | The lines of the module, as this configuration has them.
   Lines ->
-  -- | Comments the syntax tree does not carry. See 'commentsOf'.
+  -- | Every comment of the module, in source order.
   [LEpaComment] ->
-  -- | The comments the syntax tree's annotations hold.
-  [EpAnnComments] ->
   Source
-sourceOf ls loose annotated =
+sourceOf ls cs =
   Source
     { srcLines = ls,
-      srcComments = commentsOf ls loose annotated
+      srcComments = commentsOf ls cs
     }
 
 -- | Every comment in a module, in source order.

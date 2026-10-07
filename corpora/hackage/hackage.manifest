@@ -3816,13 +3816,13 @@ formatted       52ef143912e6  purescript-0.15.15/tests/TestPsci/TestEnv.hs
 formatted       3aaf84c12b48  purescript-0.15.15/tests/TestSourceMaps.hs
 formatted       32a8b25e8a6d  purescript-0.15.15/tests/TestUtils.hs
 formatted       81d9fcab1309  raaz-0.3.11/api/aead/Auth/Implementation.hsig
-formatted       4a86cd34c9e7  raaz-0.3.11/api/aead/Cipher/Implementation.hsig
+formatted       3c30facf2cf7  raaz-0.3.11/api/aead/Cipher/Implementation.hsig
 formatted       faee44cdbcec  raaz-0.3.11/api/aead/Interface.hs
 formatted       a346882029b3  raaz-0.3.11/api/auth/Implementation.hsig
 formatted       64f75c0371bc  raaz-0.3.11/api/auth/Interface.hs
 formatted       29b7f7e93ae5  raaz-0.3.11/api/digest/Implementation.hsig
 formatted       558beb703aff  raaz-0.3.11/api/digest/Interface.hs
-formatted       8eaf5b76bf73  raaz-0.3.11/api/encrypt/Implementation.hsig
+formatted       33dbca109528  raaz-0.3.11/api/encrypt/Implementation.hsig
 formatted       abdae110e56a  raaz-0.3.11/api/encrypt/Interface.hs
 formatted       10d5d9d622cd  raaz-0.3.11/api/random/Entropy.hsig
 formatted       83b376fec166  raaz-0.3.11/api/random/Implementation.hsig
