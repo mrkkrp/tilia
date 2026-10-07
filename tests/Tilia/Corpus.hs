@@ -236,6 +236,7 @@ hackageReleases =
     "exceptions-0.10.12",
     "fay-0.24.2.0",
     "free-5.2",
+    "fsnotify-0.4.4.0",
     "hakyll-4.17.0.0",
     "hashable-1.5.1.0",
     "haxl-2.5.1.1",

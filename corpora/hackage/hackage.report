@@ -1,6 +1,6 @@
 Hackage modules that currently do not format cleanly.
 
-5223 examples, 5171 formatted.
+5240 examples, 5187 formatted.
 
 ==========================================================================
 broken (1)
@@ -70,7 +70,7 @@ leksah-0.16.2.2/src/IDE/Find.hs
     Did you mean to add a space after the '!'?
 
 ==========================================================================
-partly-checked (40)
+partly-checked (41)
 ==========================================================================
 
 Agda-2.8.0/src/full/Agda/Main.hs
@@ -96,6 +96,9 @@ cryptonite-0.30/Crypto/Number/Compat.hs
 
 dlist-1.0/Data/DList/Internal.hs
     512 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+
+fsnotify-0.4.4.0/test/FSNotify/Test/Util.hs
+    384 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 hashable-1.5.1.0/src/Data/Hashable/Class.hs
     4608 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
