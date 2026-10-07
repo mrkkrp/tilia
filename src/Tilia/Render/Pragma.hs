@@ -15,11 +15,14 @@ module Tilia.Render.Pragma
   )
 where
 
+import Data.Char (toUpper)
+import Data.List (isInfixOf)
 import Data.Text (Text)
+import GHC.Data.FastString (unpackFS)
 import GHC.Hs
 import GHC.Types.Basic hiding (overlapMode)
 import GHC.Types.SourceText
-import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Module.Warnings
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
@@ -67,15 +70,16 @@ overlapMode mode = txt . braced <$> (spelled . unLoc =<< mode)
 
 -- | A @WARNING@ or @DEPRECATED@ declaration.
 warnDecls :: Ctx -> WarnDecls GhcPs -> Doc
-warnDecls ctx (Warnings _ warnings) = case warnings of
-  [] -> mempty
-  (L _ (Warning _ _ wtxt) : _) ->
-    layoutAcross ctx warnings
-      . pragma (keywordOf wtxt)
-      . indent
-      $ sepBy (txt ";" <> breakOrSpace) (fmap (at_ ctx (warned ctx)) warnings)
+warnDecls ctx (Warnings (_, opening) warnings) =
+  layoutAcross ctx warnings
+    . pragma keyword
+    . indent
+    $ sepBy (txt ";" <> breakOrSpace) (fmap (at_ ctx (warned ctx)) warnings)
   where
-    keywordOf wtxt = let (keyword, _, _) = warningParts wtxt in keyword
+    keyword = case opening of
+      SourceText s
+        | "DEPRECATED" `isInfixOf` fmap toUpper (unpackFS s) -> "DEPRECATED"
+      _ -> "WARNING"
 
 -- | One of the things a warning declaration names.
 warned :: Ctx -> WarnDecl GhcPs -> Doc

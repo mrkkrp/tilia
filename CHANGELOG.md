@@ -342,6 +342,8 @@
   used to run into the Haddock and change it, and an unrecognised pragma
   was formatted in two passes. [Issue
   185](https://github.com/mrkkrp/tilia/issues/185).
+* Keep a `DEPRECATED` or `WARNING` pragma that names nothing, rather than
+  drop it. [Issue 181](https://github.com/mrkkrp/tilia/issues/181).
 
 ## Tilia 0.0.2.0
 
