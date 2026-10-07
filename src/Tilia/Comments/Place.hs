@@ -8,6 +8,7 @@ module Tilia.Comments.Place
     claimPlaced,
     unclaimedByEither,
     unplaced,
+    nothingPlaced,
   )
 where
 
@@ -270,3 +271,7 @@ unplaced :: Placements -> [Comment]
 unplaced p =
   sortOn (startPoint . commentSpan) $
     placedNowhere p <> foldMap (fmap snd) (placedAt p)
+
+-- | Is there nothing left for a region to collect?
+nothingPlaced :: Placements -> Bool
+nothingPlaced = Map.null . placedAt

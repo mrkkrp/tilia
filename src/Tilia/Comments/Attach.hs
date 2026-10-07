@@ -157,7 +157,10 @@ walk ::
   (Doc, Placements)
 walk margin = go
   where
-    go p = \case
+    go p d
+      | nothingPlaced p = (d, p)
+      | otherwise = step p d
+    step p = \case
       DCat a b ->
         let (a', p') = go p a
             (b', p'') = go p' b
