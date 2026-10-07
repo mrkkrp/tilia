@@ -18,7 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
 import Foreign.C.Types (CInt (..))
-import GHC.Stats (GCDetails (..), RTSStats (..), getRTSStats)
+import GHC.Stats (RTSStats (..), getRTSStats)
 import System.Mem (performMajorGC)
 
 -- | A counter of the instructions the thread that opened it retires in
@@ -42,8 +42,6 @@ openCounter = do
 data Measurement = Measurement
   { -- | The bytes it allocated.
     measuredAllocated :: !Word64,
-    -- | The bytes the garbage collector copied while it ran.
-    measuredCopied :: !Word64,
     -- | The instructions it retired, where they were counted.
     measuredInstructions :: !(Maybe Word64),
     -- | The CPU time it took, in nanoseconds, the least of the runs.
@@ -90,15 +88,14 @@ measureIO ::
 measureIO counter runs set forced = do
   (warm, _) <- once
   samples <- fmap snd <$> replicateM (max 1 runs) once
-  let allocations = [a | (a, _, _, _) <- samples]
-      (allocated, copied, instructions, _) = last samples
+  let allocations = [a | (a, _, _) <- samples]
+      (allocated, instructions, _) = last samples
   pure
     ( warm,
       Measurement
         { measuredAllocated = allocated,
-          measuredCopied = copied,
           measuredInstructions = instructions,
-          measuredTime = minimum [t | (_, _, _, t) <- samples],
+          measuredTime = minimum [t | (_, _, t) <- samples],
           measuredSpread =
             fromIntegral (maximum allocations - minimum allocations)
               / fromIntegral (max 1 (minimum allocations))
@@ -121,9 +118,6 @@ measureIO counter runs set forced = do
       pure
         ( result,
           ( allocated_bytes after - allocated_bytes before,
-            copied_bytes after
-              - copied_bytes before
-              - gcdetails_copied_bytes (gc after),
             (-) <$> ended <*> started,
             cpu_ns after - cpu_ns before
           )
