@@ -57,8 +57,11 @@ inlineSpec = \case
   NoUserInlinePrag -> mempty
 
 -- | The overlap pragma of an instance, and the separator after it.
-overlapMode :: Maybe (LocatedP OverlapMode) -> Maybe Doc
-overlapMode mode = txt . braced <$> (spelled . unLoc =<< mode)
+overlapMode :: Ctx -> Maybe (LocatedP OverlapMode) -> Maybe Doc
+overlapMode ctx mode = do
+  m <- mode
+  keyword <- spelled (unLoc m)
+  pure (at ctx m (const (txt (braced keyword))))
   where
     braced keyword = "{-# " <> keyword <> " #-}"
     spelled = \case

@@ -359,6 +359,12 @@
   line, rather than with the one that did, so that such a module is
   formatted in one pass. [Issue
   182](https://github.com/mrkkrp/tilia/issues/182).
+* Keep an overlap pragma written behind a conditional in an instance head,
+  or in that of a standalone `deriving` declaration, inside the conditional,
+  rather than put it after the conditional, which was left empty, in every
+  configuration. A comment between `instance` and the head after it is
+  indented with the head rather than put at the margin. [Issue
+  179](https://github.com/mrkkrp/tilia/issues/179).
 
 ## Tilia 0.0.2.0
 

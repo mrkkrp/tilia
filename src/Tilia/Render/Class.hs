@@ -136,16 +136,17 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     head' =
       foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning
         <> breakOrSpace
-        <> at
-          ctx
-          cid_poly_ty
-          ( \sigTy ->
-              indent $
-                foldMap (<> breakOrSpace) (overlapMode cid_overlap_mode)
-                  <> hsSigTypeBody ctx sigTy
-                  <> includeUnless
-                    (null members)
-                    (breakOrSpace <> keywordAt ctx whereSpan "where")
+        <> indent
+          ( foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
+              <> at
+                ctx
+                cid_poly_ty
+                ( \sigTy ->
+                    hsSigTypeBody ctx sigTy
+                      <> includeUnless
+                        (null members)
+                        (breakOrSpace <> keywordAt ctx whereSpan "where")
+                )
           )
 
     body =
@@ -170,7 +171,7 @@ standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
         txt "instance"
           <> foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning
           <> breakOrSpace
-          <> foldMap (<> breakOrSpace) (overlapMode deriv_overlap_mode)
+          <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
           <> nest (if indented then 1 else 0) (hsSigType ctx (hswc_body deriv_type))
 
     strategy = case deriv_strategy of
