@@ -397,6 +397,8 @@ renderExprChain ctx site = \case
           && maybe False isSingleLine (chainSpan spanOf previous)
           && placement == Normal
           && not (isDoBlock (lastOperand previous))
+          && "endif"
+            `notElem` directivesBetween ctx (chainSpan spanOf previous) (spanOf o)
 
 -- | Is this expression a @do@ or @mdo@ block?
 isDoBlock :: LHsExpr GhcPs -> Bool

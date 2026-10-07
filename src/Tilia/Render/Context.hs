@@ -21,6 +21,7 @@ module Tilia.Render.Context
     -- * What lies between two spans
     commentBetween,
     commentRightUnder,
+    directivesBetween,
     remarkUnder,
     separatedByBlank,
 
@@ -68,7 +69,8 @@ import Tilia.Source
   ( Source,
     SourceType,
     blankAt,
-    directivePresentOnLine,
+    directiveOnLine,
+    lineAt,
     sourceLines,
   )
 import Tilia.Span
@@ -231,13 +233,22 @@ commentBetween ctx a b = nextPrinted ctx a b /= b
 remarkUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
 remarkUnder ctx ma@(Just a) mb@(Just b) =
   not (separatedByBlank ctx ma mb)
-    && not (any directiveAt [spanEndLine a + 1 .. spanStartLine b - 1])
+    && null (directivesBetween ctx ma mb)
     && any
       (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
       (printedBetween ctx a b)
-  where
-    directiveAt n = directivePresentOnLine n (sourceLines (ctxSource ctx))
 remarkUnder _ _ _ = False
+
+-- | The keywords of the preprocessor directives written on the lines between
+-- the two spans.
+directivesBetween :: Ctx -> Maybe Span -> Maybe Span -> [Text]
+directivesBetween ctx (Just a) (Just b) =
+  [ keyword
+  | n <- [spanEndLine a + 1 .. spanStartLine b - 1],
+    Just (keyword, _) <-
+      [directiveOnLine =<< lineAt n (sourceLines (ctxSource ctx))]
+  ]
+directivesBetween _ _ _ = []
 
 -- | Does the first comment printed between the two spans begin on the line
 -- right under the first?

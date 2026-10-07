@@ -359,6 +359,11 @@
   line, rather than with the one that did, so that such a module is
   formatted in one pass. [Issue
   182](https://github.com/mrkkrp/tilia/issues/182).
+* Begin a line with an operator written under a conditional that chooses
+  its left operand, rather than end the operand's line with it, which put it
+  after the `#endif` at the column of the statements of a `do` block and
+  ended the block before it. [Issue
+  178](https://github.com/mrkkrp/tilia/issues/178).
 
 ## Tilia 0.0.2.0
 
