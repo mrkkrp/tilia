@@ -365,6 +365,11 @@
   configuration. A comment between `instance` and the head after it is
   indented with the head rather than put at the margin. [Issue
   179](https://github.com/mrkkrp/tilia/issues/179).
+* Put an operator that the configurations print at the end of the line of
+  what a conditional chooses, such as a `$` continuing the last statement
+  of a `do` block, at the end of each branch, rather than after the
+  `#endif` at the column of the statements, where it ended the block.
+  [Issue 178](https://github.com/mrkkrp/tilia/issues/178).
 
 ## Tilia 0.0.2.0
 
