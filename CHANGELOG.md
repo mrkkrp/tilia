@@ -327,6 +327,10 @@
   of a branch, and a directive such as `#define` written last in a branch
   no longer keeps the empty line under it. [Issue
   167](https://github.com/mrkkrp/tilia/issues/167).
+* Take the extensions a component turns on in the `extensions` field, which
+  older packages use in place of `default-extensions`, as in force, both
+  for the package being formatted and for the packages operators are looked
+  up in. [Issue 186](https://github.com/mrkkrp/tilia/issues/186).
 
 ## Tilia 0.0.2.0
 

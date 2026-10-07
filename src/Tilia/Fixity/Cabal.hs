@@ -103,7 +103,7 @@ declaredExtensions contents =
         Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
     named =
       concatMap (T.split (== ',')) . concatMap T.words $
-        fieldsNamed "default-extensions" ls
+        fieldsNamed "extensions" ls <> fieldsNamed "default-extensions" ls
     apply acc written = case T.strip written of
       name
         | Just off <- T.stripPrefix "No" name,
