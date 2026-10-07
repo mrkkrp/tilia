@@ -360,8 +360,8 @@ data Spill
   = -- | On a line of its own, at the indentation of the line it was held
     -- back for.
     SpillAtIndentation
-  | -- | On a line of its own, lined up with what was held back first.
-    SpillUnderFirst
+  | -- | On a line of its own, lined up with what was held back before it.
+    SpillUnderPrevious
   deriving (Eq, Show)
 
 -- | A line, and what the engine knew about it as it wrote it.
@@ -608,23 +608,26 @@ completing ::
   Out ->
   Out
 completing trailing indent out =
-  fresh out{outLines = reverse (finished : fmap below spilled) <> outLines out}
+  fresh out{outLines = reverse (finished : spilledLines) <> outLines out}
   where
     finished = (outLine out){lineBody = currentLine trailing out}
     spilled = drop 1 (outHeldBack out)
-    below (spill, t) =
+    spilledLines = zipWith below columns spilled
+    columns = drop 1 (scanl columnFor firstColumn (fmap fst spilled))
+    firstColumn =
+      lineIndent finished
+        + T.length (lineBody finished)
+        - T.length (heldBackFirst trailing out)
+    below column (_, t) =
       newLine
-        { lineIndent = columnFor spill,
+        { lineIndent = column,
           lineBody = adjustTrailingWhitespace trailing t
         }
-    columnFor = \case
+    columnFor previous = \case
       SpillAtIndentation
         | T.null (lineBody finished) -> indent
         | otherwise -> lineIndent finished
-      SpillUnderFirst ->
-        lineIndent finished
-          + T.length (lineBody finished)
-          - T.length (heldBackFirst trailing out)
+      SpillUnderPrevious -> previous
 
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool

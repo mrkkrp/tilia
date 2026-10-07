@@ -354,6 +354,11 @@
   guard now stays after the bar, and one lined up with the bars or with the
   right-hand side under a guard stays under it. [Issue
   184](https://github.com/mrkkrp/tilia/issues/184).
+* Line a comment carried on under a remark up with that remark also where
+  the remark goes on a line of its own because another took the end of the
+  line, rather than with the one that did, so that such a module is
+  formatted in one pass. [Issue
+  182](https://github.com/mrkkrp/tilia/issues/182).
 
 ## Tilia 0.0.2.0
 

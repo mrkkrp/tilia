@@ -92,9 +92,12 @@ spec = do
     it "puts held-back text that spills onto lines of its own at the line's indentation" $
       out (indent (txt "  a" <> held "-- x" <> held "-- y" <> hardBreak))
         `shouldBe` "    a -- x\n  -- y\n"
-    it "lines spilled held-back text up with what was held back first" $
-      out (indent (txt "  a" <> held "-- x" <> underFirst "-- y" <> hardBreak))
+    it "lines spilled held-back text up with what was held back before it" $
+      out (indent (txt "  a" <> held "-- x" <> underPrevious "-- y" <> hardBreak))
         `shouldBe` "    a -- x\n      -- y\n"
+    it "lines it up with what was held back before it where that spilled too" $
+      out (indent (txt "  a" <> held "-- x" <> held "-- y" <> underPrevious "-- z" <> hardBreak))
+        `shouldBe` "    a -- x\n  -- y\n  -- z\n"
 
   describe "margin notes" $ do
     it "go to the margin right above a directive" $
@@ -116,9 +119,9 @@ spec = do
       out (indent (cppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
         `shouldBe` "  {- x -} a\n#if X\n"
 
-held, underFirst :: Text -> Doc
+held, underPrevious :: Text -> Doc
 held = DHoldBack SpillAtIndentation
-underFirst = DHoldBack SpillUnderFirst
+underPrevious = DHoldBack SpillUnderPrevious
 
 out :: Doc -> Text
 out = printDoc defaultRenderOptions
