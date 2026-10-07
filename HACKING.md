@@ -31,6 +31,13 @@ be updated like this:
 $ TILIA_CORPUS_ACCEPT=1 cabal test
 ```
 
+Finally, Tilia formats itself, so make sure to run this command before you
+open a PR:
+
+```console
+$ nix run .#format
+```
+
 ## Benchmarks
 
 The benchmarks format a fixed sample of the Hackage corpus, check what most
@@ -87,16 +94,9 @@ $ cabal bench --benchmark-options='--baseline /tmp/before'
 ```
 
 Time is not recorded: on a quiet machine the time of all the benchmarks
-together moves by about 1% from one run to the next, and the time of one
-of them by up to 13%, even with `--runs 3`, which measures each three times
-and takes the fastest. On a busy machine it moves by far more.
-
-Finally, Tilia formats itself, so make sure to run this command before you
-open a PR:
-
-```console
-$ nix run .#format
-```
+together moves by about 1% from one run to the next, and the time of one of
+them by up to 13%, even with `--runs 3`, which measures each three times and
+takes the fastest. On a busy machine it moves by far more.
 
 ## Adding a GHC version
 
