@@ -263,7 +263,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
     spill
-      | position == UnderTheRemark = SpillUnderFirst
+      | position == UnderTheRemark = SpillUnderPrevious
       | otherwise = SpillAtIndentation
 
 -- | A comment, and the spacing that goes with it, as one region.
