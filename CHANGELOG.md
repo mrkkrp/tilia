@@ -321,6 +321,12 @@
   written, rather than lay out the conditional inside it, aligned after its
   opening bracket, and change that layout on the next pass. [Issue
   153](https://github.com/mrkkrp/tilia/issues/153).
+* Leave no empty line at the end of a branch of a conditional, whatever
+  comes out last in it. A comment written above a conditional with an empty
+  line under it is now formatted in one pass where it comes out at the end
+  of a branch, and a directive such as `#define` written last in a branch
+  no longer keeps the empty line under it. [Issue
+  167](https://github.com/mrkkrp/tilia/issues/167).
 
 ## Tilia 0.0.2.0
 

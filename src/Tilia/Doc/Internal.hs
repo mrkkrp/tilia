@@ -494,13 +494,19 @@ noting note out
     l = outLine out
     note' = note && (not (started out) || lineNote l)
 
--- | Put a directive at the margin, on a line of its own.
+-- | Put a directive at the margin, on a line of its own, with no empty line
+-- above one that ends a branch.
 directive :: CppDirectiveType -> Text -> Out -> Out
 directive type' t =
-  closeLine 0 . typed . putText 0 t . closeLine 0
+  closeLine 0 . typed . putText 0 t . endingBranch . closeLine 0
   where
     typed out =
       out{outLine = (outLine out){lineNote = False, lineDirective = Just type'}}
+    endingBranch out = case type' of
+      CppDirectiveContinues -> unspaced out
+      CppDirectiveCloses -> unspaced out
+      _ -> out
+    unspaced out = out{outLines = dropWhile (T.null . lineBody) (outLines out)}
 
 -- | Append a fragment, starting the line at the indentation if this is the
 -- first thing on it.
