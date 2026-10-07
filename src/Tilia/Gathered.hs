@@ -6,8 +6,8 @@ module Tilia.Gathered
   )
 where
 
-import Data.Data (gmapQr)
-import Data.Generics.Aliases (GenericQ, ext1Q, extQ)
+import Data.Data (Proxy (..), gmapQr, typeOf, typeRep, typeRepTyCon)
+import Data.Generics.Aliases (GenericQ, extQ)
 import GHC.Hs
 
 -- | Every node of each kind, in the order a walk from the top, left to
@@ -31,13 +31,16 @@ gathered :: HsModule GhcPs -> Gathered
 gathered hsModule = walk hsModule (Gathered [] [] [] [] [])
   where
     walk :: GenericQ (Gathered -> Gathered)
-    walk x = keep x . descend x
+    walk x
+      | annotation x = id
+      | otherwise = keep x . descend x
     descend :: GenericQ (Gathered -> Gathered)
     descend =
       (\x g -> gmapQr ($) g walk x)
         `extQ` (\(_ :: HsDocString) -> id)
         `extQ` (\(_ :: String) -> id)
-        `ext1Q` (\(_ :: EpAnn a) -> id)
+    annotation x = typeRepTyCon (typeOf x) == epAnn
+    epAnn = typeRepTyCon (typeRep (Proxy :: Proxy EpAnn))
     keep :: GenericQ (Gathered -> Gathered)
     keep =
       const id
