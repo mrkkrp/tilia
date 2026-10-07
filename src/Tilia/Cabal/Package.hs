@@ -24,6 +24,7 @@ module Tilia.Cabal.Package
 where
 
 import Data.ByteString qualified as BS
+import Data.Generics.Schemes (listify)
 import Data.IORef
 import Data.List (isSuffixOf, sortOn)
 import Data.List.NonEmpty qualified as NE
@@ -35,6 +36,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.ModuleName qualified as ModuleName
 import Distribution.PackageDescription
@@ -43,20 +45,25 @@ import Distribution.PackageDescription
     BuildInfo (..),
     CondBranch (..),
     CondTree (..),
+    ConfVar (..),
     Executable (..),
     GenericPackageDescription (..),
     Library (..),
+    PackageFlag (..),
     TestSuite (..),
     TestSuiteInterface (..),
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
-import Distribution.Parsec (showPError)
+import Distribution.Parsec (showPError, simpleParsec)
+import Distribution.System (buildArch, buildOS)
 import Distribution.Types.BuildInfo (usedExtensions)
+import Distribution.Types.CondTree (mapTreeConstrs, simplifyCondTree)
 #if MIN_VERSION_Cabal_syntax(3, 14, 0)
 import Distribution.Utils.Path (SymbolicPathX, getSymbolicPath)
 #else
 import Distribution.Utils.Path (getSymbolicPath)
 #endif
+import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
@@ -72,6 +79,7 @@ import System.FilePath
     (</>),
   )
 import Tilia.Pragma (lookupExtension)
+import Tilia.Process (readProgramOutput)
 import Tilia.Utils (attempted, quietly)
 
 -- | Why a file's extensions could not be settled.
@@ -107,13 +115,20 @@ newPackageReader :: IO PackageReader
 newPackageReader = do
   covering <- newIORef Map.empty
   described <- newIORef Map.empty
+  asked <- newIORef Nothing
+  let compiler =
+        readIORef asked >>= \case
+          Just version -> pure version
+          Nothing -> do
+            version <- compilerVersion
+            version <$ writeIORef asked (Just version)
   pure $ \path -> quietly (Left NoPackageFile) $ do
     file <- canonicalizePath path
     from <- startingDirectory file
     findCabalFile covering from >>= \case
       Nothing -> pure (Left NoPackageFile)
       Just cabalFile ->
-        componentsOf described cabalFile >>= \case
+        componentsOf compiler described cabalFile >>= \case
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
@@ -204,10 +219,11 @@ findCabalFile ref = climb []
 
 -- | What a @.cabal@ file amounts to.
 componentsOf ::
+  IO (Maybe Version) ->
   IORef (Map FilePath (Either PackageProblem [ComponentBranch])) ->
   FilePath ->
   IO (Either PackageProblem [ComponentBranch])
-componentsOf ref cabalFile = do
+componentsOf compiler ref cabalFile = do
   known <- readIORef ref
   case Map.lookup cabalFile known of
     Just answer -> pure answer
@@ -223,12 +239,44 @@ componentsOf ref cabalFile = do
           case snd (runParseResult (parseGenericPackageDescription bytes)) of
             Left (_, complaints) ->
               pure (Left (PackageMalformed cabalFile (fmap said (NE.toList complaints))))
-            Right description ->
+            Right description -> do
+              valueOf <- conditionValues compiler description
               Right
                 <$> traverse
                   (componentBranch (takeDirectory cabalFile))
-                  (sectionsInForce description)
+                  (sectionsInForce valueOf description)
     said = T.pack . showPError cabalFile
+
+-- | The value a build of a package on this platform gives each variable its
+-- conditions ask about.
+conditionValues ::
+  -- | The compiler's version, asked for only where a condition names it.
+  IO (Maybe Version) ->
+  -- | The package, whose flags take their defaults.
+  GenericPackageDescription ->
+  IO (ConfVar -> Either ConfVar Bool)
+conditionValues compiler described = do
+  version <-
+    if null (listify namesCompiler described)
+      then pure Nothing
+      else compiler
+  pure $ \case
+    OS os -> Right (os == buildOS)
+    Arch arch -> Right (arch == buildArch)
+    v@(PackageFlag name) -> maybe (Left v) Right (lookup name defaults)
+    v@(Impl GHC range) -> maybe (Left v) (Right . (`withinRange` range)) version
+    Impl _ _ -> Right False
+  where
+    namesCompiler = \case
+      Impl _ _ -> True
+      _ -> False
+    defaults = [(flagName f, flagDefault f) | f <- genPackageFlags described]
+
+-- | The version of the @ghc@ on the path, which builds the package.
+compilerVersion :: IO (Maybe Version)
+compilerVersion =
+  (simpleParsec . T.unpack . T.strip =<<)
+    <$> readProgramOutput "ghc" ["--numeric-version"]
 
 -- | One branch, with its directories resolved and its extensions settled.
 componentBranch :: FilePath -> ComponentSection -> IO ComponentBranch
@@ -250,9 +298,18 @@ componentBranch root ComponentSection{..} = do
 
 -- | What is in force in each branch of every component, in the order they
 -- are declared.
-sectionsInForce :: GenericPackageDescription -> [ComponentSection]
-sectionsInForce described =
-  (\BranchSections{..} -> inheritedSection <> ownSection)
+sectionsInForce ::
+  -- | The value the build gives each variable a condition asks about.
+  (ConfVar -> Either ConfVar Bool) ->
+  -- | The package.
+  GenericPackageDescription ->
+  [ComponentSection]
+sectionsInForce valueOf described =
+  ( \BranchSections{..} ->
+      inheritedSection
+        <> ownSection
+        <> ComponentSection (builtSettings valueOf) [] []
+  )
     <$> concat
       [ foldMap libraryBranches (condLibrary described),
         concatMap (libraryBranches . snd) (condSubLibraries described),
@@ -285,21 +342,24 @@ data BranchSections = BranchSections
   { -- | What it inherits from the branches around it.
     inheritedSection :: ComponentSection,
     -- | What it declares itself.
-    ownSection :: ComponentSection
+    ownSection :: ComponentSection,
+    -- | The build settings of its component in a build, given the value the
+    -- build gives each variable a condition asks about.
+    builtSettings :: (ConfVar -> Either ConfVar Bool) -> BuildInfo
   }
 
 -- | Every branch of a library.
-libraryBranches :: CondTree v c Library -> [BranchSections]
+libraryBranches :: CondTree ConfVar c Library -> [BranchSections]
 libraryBranches = branchesOf $ \l ->
   declaring (libBuildInfo l) (exposedModules l <> signatures l) []
 
 -- | Every branch of an executable.
-executableBranches :: CondTree v c Executable -> [BranchSections]
+executableBranches :: CondTree ConfVar c Executable -> [BranchSections]
 executableBranches = branchesOf $ \e ->
   declaring (buildInfo e) [] [entryPoint (modulePath e)]
 
 -- | Every branch of a test suite.
-suiteBranches :: CondTree v c TestSuite -> [BranchSections]
+suiteBranches :: CondTree ConfVar c TestSuite -> [BranchSections]
 suiteBranches = branchesOf $ \s ->
   case testInterface s of
     TestSuiteExeV10 _ path -> declaring (testBuildInfo s) [] [entryPoint path]
@@ -307,19 +367,26 @@ suiteBranches = branchesOf $ \s ->
     _ -> declaring (testBuildInfo s) [] []
 
 -- | Every branch of a benchmark.
-benchmarkBranches :: CondTree v c Benchmark -> [BranchSections]
+benchmarkBranches :: CondTree ConfVar c Benchmark -> [BranchSections]
 benchmarkBranches = branchesOf $ \b ->
   case benchmarkInterface b of
     BenchmarkExeV10 _ path -> declaring (benchmarkBuildInfo b) [] [entryPoint path]
     _ -> declaring (benchmarkBuildInfo b) [] []
 
 -- | Every branch of a component.
-branchesOf :: (a -> ComponentSection) -> CondTree v c a -> [BranchSections]
-branchesOf f = go mempty
+branchesOf ::
+  (Semigroup a) =>
+  (a -> ComponentSection) ->
+  CondTree ConfVar c a ->
+  [BranchSections]
+branchesOf f root = go mempty root
   where
+    built valueOf =
+      sectionInfo . f . snd $
+        simplifyCondTree valueOf (mapTreeConstrs (const ()) root)
     go inherited node =
       let own = f (condTreeData node)
-       in BranchSections inherited own
+       in BranchSections inherited own built
             : concatMap (branches (inherited <> own)) (condTreeComponents node)
     branches inherited (CondBranch _ yes no) =
       go inherited yes <> foldMap (go inherited) no

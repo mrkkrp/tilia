@@ -100,6 +100,23 @@ spec = do
         (has Cpp <$> asked (root </> "src" </> "M.hs"))
           `shouldReturn` True
 
+    it "take in those of every branch the build takes" $
+      inPackage conditionalExtensions ["src"] $ \root -> do
+        library <- asked (root </> "src" </> "M.hs")
+        (has StarIsType library, has MagicHash library)
+          `shouldBe` (False, True)
+
+    it "leave out those of a branch the build does not take" $
+      inPackage conditionalExtensions ["src"] $ \root -> do
+        library <- asked (root </> "src" </> "M.hs")
+        (has BangPatterns library, has Strict library)
+          `shouldBe` (False, False)
+
+    it "take in their own branch's too, for a module only it declares" $
+      inPackage conditionalExtensions ["src", "old"] $ \root -> do
+        old <- asked (root </> "old" </> "Old.hs")
+        (has BangPatterns old, has StarIsType old) `shouldBe` (True, False)
+
   describe "a file nothing can be settled for" $ do
     it "says so when there is no package above it" $
       withSystemTempDirectory "tilia-nopackage" $ \root ->
@@ -262,6 +279,37 @@ usesTheOldField =
       "  hs-source-dirs: src",
       "  default-language: Haskell2010",
       "  extensions: CPP"
+    ]
+
+-- | Extensions behind conditions on the compiler, one met and one not, and
+-- behind a flag on by default and one off.
+conditionalExtensions :: Text
+conditionalExtensions =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "",
+      "flag fast",
+      "  default: True",
+      "",
+      "flag strict",
+      "  default: False",
+      "",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "  if impl(ghc >= 8.6)",
+      "    default-extensions: NoStarIsType",
+      "  if impl(ghc < 8.6)",
+      "    other-modules: Old",
+      "    hs-source-dirs: old",
+      "    default-extensions: BangPatterns",
+      "  if flag(fast)",
+      "    default-extensions: MagicHash",
+      "  if flag(strict)",
+      "    default-extensions: Strict"
     ]
 
 ----------------------------------------------------------------------------
