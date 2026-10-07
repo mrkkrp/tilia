@@ -44,6 +44,7 @@ import Tilia.Span
   ( Span,
     covers,
     meets,
+    spanEndLine,
     spanStartColumn,
     spanStartLine,
   )
@@ -142,7 +143,21 @@ merge written conditionals guards varied settledOthers = go Broken
           anchors = transpose (fmap snd cut)
        in mconcat (woven layout stretches (fmap (go layout) anchors))
 
-    woven layout (s : ss) (c : cs) = foldMap (varying layout) (cutAtConditionals s) : c : woven layout ss cs
+    woven layout (s : ss) (c : cs)
+      | all (maybe False ((== DSpace) . snd) . unsnoc) s,
+        Just r <- regionOf c,
+        spanStartLine r == spanEndLine r,
+        Just (opening, ws, bs, e, gap) <- choiceAt written Last stretch,
+        not (any printsNothing (e : fmap snd bs)) =
+          opening
+            <> Doc.cppChoice
+              ws
+              [(g, b <> gap <> c) | (g, b) <- bs]
+              (e <> gap <> c)
+            : woven layout ss cs
+      | otherwise = stretch : c : woven layout ss cs
+      where
+        stretch = foldMap (varying layout) (cutAtConditionals s)
     woven layout ss [] = fmap (foldMap (varying layout) . cutAtConditionals) ss
     woven _ [] _ = []
 
