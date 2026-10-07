@@ -4881,7 +4881,7 @@ formatted       d4a0864bfc4d  unliftio-0.2.25.1/test/UnliftIO/IO/FileSpec.hs
 formatted       258e4c04879b  unliftio-0.2.25.1/test/UnliftIO/IOSpec.hs
 formatted       68c4411ed8f4  unliftio-0.2.25.1/test/UnliftIO/MemoizeSpec.hs
 formatted       f878ce9da222  unliftio-0.2.25.1/test/UnliftIO/PooledAsyncSpec.hs
-formatted       5f112bd97119  unordered-containers-0.2.21/Data/HashMap/Internal.hs
+formatted       7b9a5444a4bd  unordered-containers-0.2.21/Data/HashMap/Internal.hs
 declined        -             unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
 formatted       7be08d5816ff  unordered-containers-0.2.21/Data/HashMap/Internal/Debug.hs
 formatted       25f94316b17e  unordered-containers-0.2.21/Data/HashMap/Internal/List.hs
