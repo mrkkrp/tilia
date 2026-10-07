@@ -95,6 +95,11 @@ spec = do
         (has ImportQualifiedPost <$> asked (root </> "src" </> "M.hs"))
           `shouldReturn` False
 
+    it "take in the extensions field older packages use, as cabal does" $
+      inPackage usesTheOldField ["src"] $ \root ->
+        (has Cpp <$> asked (root </> "src" </> "M.hs"))
+          `shouldReturn` True
+
   describe "a file nothing can be settled for" $ do
     it "says so when there is no package above it" $
       withSystemTempDirectory "tilia-nopackage" $ \root ->
@@ -240,6 +245,23 @@ refusesAnEdition =
       "  hs-source-dirs: src",
       "  default-language: GHC2021",
       "  default-extensions: NoImportQualifiedPost"
+    ]
+
+-- | An extension turned on in the field that came before
+-- @default-extensions@.
+usesTheOldField :: Text
+usesTheOldField =
+  T.unlines
+    [ "cabal-version: >= 1.10",
+      "name: demo",
+      "version: 0",
+      "build-type: Simple",
+      "",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "  extensions: CPP"
     ]
 
 ----------------------------------------------------------------------------

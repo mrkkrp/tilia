@@ -154,6 +154,17 @@ spec = do
       found `shouldSatisfy` elem MultiWayIf
       found `shouldSatisfy` elem BlockArguments
 
+    it "reads the extensions field older packages use" $
+      extensions "library\n  extensions: BangPatterns\n"
+        `shouldSatisfy` elem BangPatterns
+
+    it "lets default-extensions take back what that field turns on" $
+      extensions
+        "library\n\
+        \  extensions: LambdaCase\n\
+        \  default-extensions: NoLambdaCase\n"
+        `shouldSatisfy` notElem LambdaCase
+
     it "takes one back that the .cabal turns off" $
       extensions "library\n  default-extensions: ImplicitPrelude, NoImplicitPrelude\n"
         `shouldSatisfy` notElem ImplicitPrelude

@@ -51,6 +51,7 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError)
+import Distribution.Types.BuildInfo (usedExtensions)
 #if MIN_VERSION_Cabal_syntax(3, 14, 0)
 import Distribution.Utils.Path (SymbolicPathX, getSymbolicPath)
 #else
@@ -400,7 +401,7 @@ sourceDirsOf bi = case fmap getSymbolicPath (hsSourceDirs bi) of
 -- | The extensions a component puts in force, before any module's pragmas.
 extensionsInForce :: BuildInfo -> [Extension]
 extensionsInForce bi =
-  foldl apply (GHC.languageExtensions edition) (defaultExtensions bi)
+  foldl apply (GHC.languageExtensions edition) (usedExtensions bi)
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
     apply acc = \case
