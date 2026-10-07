@@ -316,6 +316,11 @@
   constructor past the `|` the comment comes out after, and hold the
   comment off the added constructor's Haddock with an empty line. [Issue
   155](https://github.com/mrkkrp/tilia/issues/155).
+* Keep something written on one line that a conditional varies whole, such
+  as an import list or the binders of a `forall`, in each branch as it was
+  written, rather than lay out the conditional inside it, aligned after its
+  opening bracket, and change that layout on the next pass. [Issue
+  153](https://github.com/mrkkrp/tilia/issues/153).
 
 ## Tilia 0.0.2.0
 

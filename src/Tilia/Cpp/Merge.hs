@@ -100,6 +100,8 @@ merge written conditionals guards varied settledOthers = go Broken
                 d : rest <- fmap snd wds,
                 not (all (agree varied l d) rest) ->
                   choice xs
+            (WGroup Flat, merged)
+              | not (beginsWithChoice merged) -> choice xs
             (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
       DCppChoice ws bs _
@@ -396,6 +398,13 @@ agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt l
         (Just (w, x'), Just (v, y')) ->
           w == v && agree varied (layoutInside layout w) x' y'
         _ -> x == y
+
+-- | Does this document, laid out flat, print a choice before anything else?
+beginsWithChoice :: Doc -> Bool
+beginsWithChoice d = case filter (not . onlySpacing) (spineAt Flat d) of
+  DCppChoice{} : _ -> True
+  x : _ | Just (_, y) <- unwrap x -> beginsWithChoice y
+  _ -> False
 
 -- | A region's span, stretched over the span it prints first, which the
 -- Haddock of a constructor, a field or an argument is, written above or
