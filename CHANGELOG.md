@@ -395,6 +395,11 @@
 * Speed up walking a module's syntax tree, writing comments into the
   printed document, and handing a module to the lexer. Formatting is about
   10% faster. [PR 202](https://github.com/mrkkrp/tilia/pull/202).
+* Work out the configurations of a module with conditionals that do not
+  depend on one another on several cores at once. Where cores are free, a
+  module with many conditionals formats up to twice as fast, and `tilia
+  check` on lens takes 1.5 s rather than 1.8 s. [PR
+  203](https://github.com/mrkkrp/tilia/pull/203).
 
 ## Tilia 0.0.2.0
 
