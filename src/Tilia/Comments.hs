@@ -28,7 +28,6 @@ where
 
 import Data.Char (isSpace)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, listToMaybe, mapMaybe)
@@ -95,25 +94,11 @@ data Above
 commentsOf ::
   -- | The module's lines, which every comment is read against.
   Lines ->
-  -- | Comments the tree does not carry.
+  -- | The module's comments, in source order.
   [GHC.LEpaComment] ->
-  -- | The comments the tree's annotations hold.
-  [GHC.EpAnnComments] ->
   [Comment]
-commentsOf ls loose annotated =
-  fmap (uncurry (mkComment ls))
-    . dedupeOnSpan
-    . sortOn (GHC.realSrcSpanStart . fst)
-    . mapMaybe located
-    $ loose <> concatMap annComments annotated
+commentsOf ls = fmap (uncurry (mkComment ls)) . mapMaybe located
   where
-    dedupeOnSpan = \case
-      (x : y : rest) | fst x == fst y -> dedupeOnSpan (x : rest)
-      (x : rest) -> x : dedupeOnSpan rest
-      [] -> []
-    annComments = \case
-      GHC.EpaComments xs -> xs
-      GHC.EpaCommentsBalanced xs ys -> xs <> ys
     located (GHC.L anchor (GHC.EpaComment tok _)) = case anchor of
       GHC.EpaSpan (GHC.RealSrcSpan s _) -> Just (s, tok)
       _ -> Nothing

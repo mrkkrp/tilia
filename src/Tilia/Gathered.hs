@@ -7,15 +7,13 @@ module Tilia.Gathered
 where
 
 import Data.Data (gmapQr)
-import Data.Generics.Aliases (GenericQ, extQ)
+import Data.Generics.Aliases (GenericQ, ext1Q, extQ)
 import GHC.Hs
 
 -- | Every node of each kind, in the order a walk from the top, left to
 -- right, meets them.
 data Gathered = Gathered
-  { -- | The comments the annotations hold.
-    gatheredComments :: [EpAnnComments],
-    -- | Expressions.
+  { -- | Expressions.
     gatheredExpressions :: [HsExpr GhcPs],
     -- | Types.
     gatheredTypes :: [HsType GhcPs],
@@ -30,7 +28,7 @@ data Gathered = Gathered
 
 -- | Gather a module's nodes.
 gathered :: HsModule GhcPs -> Gathered
-gathered hsModule = walk hsModule (Gathered [] [] [] [] [] [])
+gathered hsModule = walk hsModule (Gathered [] [] [] [] [])
   where
     walk :: GenericQ (Gathered -> Gathered)
     walk x = keep x . descend x
@@ -39,10 +37,10 @@ gathered hsModule = walk hsModule (Gathered [] [] [] [] [] [])
       (\x g -> gmapQr ($) g walk x)
         `extQ` (\(_ :: HsDocString) -> id)
         `extQ` (\(_ :: String) -> id)
+        `ext1Q` (\(_ :: EpAnn a) -> id)
     keep :: GenericQ (Gathered -> Gathered)
     keep =
       const id
-        `extQ` (\x g -> g{gatheredComments = x : gatheredComments g})
         `extQ` (\x g -> g{gatheredExpressions = x : gatheredExpressions g})
         `extQ` (\x g -> g{gatheredTypes = x : gatheredTypes g})
         `extQ` (\x g -> g{gatheredDocs = x : gatheredDocs g})
