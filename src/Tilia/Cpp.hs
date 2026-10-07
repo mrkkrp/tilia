@@ -114,11 +114,9 @@ formatWithCpp parser render path source = do
       ( runExceptT
           ( formatAllConfigs
               parser
-              (knowing render)
+              known
               path
-              (noAnswers source)
-              Nothing
-              source
+              (reading parser known path (noAnswers source) source)
           )
       )
       (configurationBudget * linesHeld source)
@@ -127,8 +125,8 @@ formatWithCpp parser render path source = do
       <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
-    knowing c =
-      c
+    known =
+      render
         { rcImportBarriers = maybe [] (importBarriers parser source) groups,
           rcNameBarriers = maybe [] (sort . concatMap gsOwnLines) groups
         }
@@ -200,20 +198,27 @@ attempt formatting =
     TooManyConfigurations -> refuse TooManyConfigurations
     _ -> pure Nothing
 
--- | Start working out on the side, as far as its outermost constructor,
--- each configuration the budget left could still pay for, in order.
-aheadOf :: [(Text, Maybe a)] -> Spending b -> Spending b
-aheadOf texts formatting = do
-  budget <- lift get
-  let costs = scanl1 (+) (fmap (linesHeld . fst) texts)
-      affordable =
-        [a | (cost, (_, Just a)) <- zip costs texts, cost <= budget]
-  foldr par formatting affordable
+-- | A configuration, with what its conditionals come to worked out once
+-- for everything that asks.
+data Reading = Reading
+  { -- | How it was reached.
+    readingReached :: Reached,
+    -- | Its text.
+    readingSource :: Text,
+    -- | Its conditionals.
+    readingForest :: Either CppError [GroupSpec],
+    -- | Its conditionals split one at a time, with the reading of the
+    -- baseline they are varied against, where it has any.
+    readingApart :: Maybe (Variation, Reading),
+    -- | The conditional to split on first, where one holds a pragma that
+    -- changes how the rest is parsed.
+    readingPragma :: Maybe GroupSpec,
+    -- | What it comes to formatted as it is, where it holds no conditional.
+    readingFormatted :: Either CppError (Doc, CommentSummary)
+  }
 
--- | What the first configuration 'formatAllConfigs' formats for a module
--- comes to, the one every question is answered in with its first branch,
--- where it is sure to format that one first.
-firstConfiguration ::
+-- | Read a configuration.
+reading ::
   -- | What to parse a configuration with.
   ParserConfig ->
   -- | What to print it with.
@@ -224,22 +229,39 @@ firstConfiguration ::
   Reached ->
   -- | Input text.
   Text ->
-  Maybe (Either CppError (Doc, CommentSummary))
-firstConfiguration parser render path reached source = do
-  forest <- either (const Nothing) Just (readConditionals source)
-  case variations forest source of
-    Nothing ->
-      Just $
+  Reading
+reading parser render path reached source =
+  Reading
+    { readingReached = reached,
+      readingSource = source,
+      readingForest = forest,
+      readingApart = do
+        apart <- withForest (`variations` source)
+        let baseline = without (vaBaselineDropped apart) reached
+        pure (apart, reading parser render path baseline (vaBaseline apart)),
+      readingPragma = withForest (\f -> splitOnPragma parser f source),
+      readingFormatted =
         formatSingleConfig parser render path reached (withoutOpaque source)
-    Just apart
-      | isNothing (splitOnPragma parser forest source) ->
-          firstConfiguration
-            parser
-            render
-            path
-            (without (vaBaselineDropped apart) reached)
-            (vaBaseline apart)
-      | otherwise -> Nothing
+    }
+  where
+    forest = readConditionals source
+    withForest f = either (const Nothing) f forest
+
+-- | What the first configuration 'formatAllConfigs' formats comes to, where
+-- it is sure to start with the one every question is answered in with its
+-- first branch.
+firstFormatted :: Reading -> Maybe (Either CppError (Doc, CommentSummary))
+firstFormatted r = case (readingForest r, readingApart r) of
+  (Left _, _) -> Nothing
+  (Right _, Nothing) -> Just (readingFormatted r)
+  (Right _, Just (_, baseline))
+    | isNothing (readingPragma r) -> firstFormatted baseline
+    | otherwise -> Nothing
+
+-- | Start working out on the side, as far as its outermost constructor,
+-- what each configuration formats first.
+aheadOf :: [Reading] -> a -> a
+aheadOf readings x = foldr par x (mapMaybe firstFormatted readings)
 
 -- | Format every configuration of a module, and merge them into one
 -- document, with what they found besides their code.
@@ -250,37 +272,24 @@ formatAllConfigs ::
   RenderConfig ->
   -- | The file this is, for the positions in a parse error.
   FilePath ->
-  -- | How this configuration was reached.
-  Reached ->
-  -- | What the first configuration it formats comes to, where that was
-  -- worked out ahead.
-  Maybe (Either CppError (Doc, CommentSummary)) ->
-  -- | Input text.
-  Text ->
+  -- | The configuration.
+  Reading ->
   Spending (Doc, CommentSummary)
-formatAllConfigs parser render path reached ahead source = do
-  forest <- except (readConditionals source)
-  case variations forest source of
+formatAllConfigs parser render path r = do
+  forest <- except (readingForest r)
+  case readingApart r of
     Nothing -> do
       spend (linesHeld source)
-      except . flip fromMaybe ahead $
-        formatSingleConfig parser render path reached (withoutOpaque source)
-    Just apart -> do
+      except (readingFormatted r)
+    Just (apart, baseline) -> do
       budget <- lift get
-      let pragma = splitOnPragma parser forest source
+      let pragma = readingPragma r
           least = max 1 (linesHeld (blanking (fmap gsWhole forest) source))
           affordable = linearCost (budget `div` least) forest source * least <= budget
       base <-
         if isNothing pragma || affordable
           then
-            attempt $
-              formatAllConfigs
-                parser
-                render
-                path
-                (without (vaBaselineDropped apart) reached)
-                ahead
-                (vaBaseline apart)
+            attempt (formatAllConfigs parser render path baseline)
           else pure Nothing
       fragmented <- case (pragma, base) of
         (Nothing, Just b) -> join <$> attempt (inFragments parser render path reached forest source b)
@@ -294,6 +303,8 @@ formatAllConfigs parser render path reached ahead source = do
           g : _ -> together parser render path reached (configurationsOn g forest source)
           [] -> error "Tilia: a module that varies has a conditional to split on"
   where
+    reached = readingReached r
+    source = readingSource r
     oneAtATime apart base = do
       varied <- attempt (separately parser render path reached apart base)
       pure $ do
@@ -387,12 +398,8 @@ separately ::
   Spending ([Doc], CommentSummary)
 separately parser render path reached v (baseDoc, baseFound) = do
   groups <-
-    aheadOf (concat (zipWith zip (fmap cfgTexts (vaGroups v)) worked)) $
-      for (zip (vaGroups v) worked) $ \(c, as) ->
-        for (zip3 [0 ..] (cfgTexts c) as) $ \(i, t, a) ->
-          if t == vaBaseline v
-            then pure (baseDoc, mempty)
-            else formatAllConfigs parser render path (answering c i reached) a t
+    aheadOf (catMaybes (concat readings)) . for readings . traverse $
+      maybe (pure (baseDoc, mempty)) (formatAllConfigs parser render path)
   let merged =
         zipWith
           (mergeOf (reachedLines reached))
@@ -400,10 +407,10 @@ separately parser render path reached v (baseDoc, baseFound) = do
           (fmap (fmap fst) groups)
   pure (foldr par merged merged, baseFound <> foldMap (foldMap snd) groups)
   where
-    worked =
+    readings =
       [ [ if t == vaBaseline v
             then Nothing
-            else firstConfiguration parser render path (answering c i reached) t
+            else Just (reading parser render path (answering c i reached) t)
         | (i, t) <- zip [0 ..] (cfgTexts c)
         ]
       | c <- vaGroups v
@@ -433,17 +440,16 @@ inFragments parser render path reached forest source (baseDoc, baseFound) =
   case parts of
     Nothing -> pure Nothing
     Just (body, ps) -> do
-      let reachedBy = [(f, without gone reached, t) | (f, (t, gone)) <- ps]
-          worked =
-            [ (t, firstConfiguration parser render path r t)
-            | (_, r, t) <- reachedBy
+      let readings =
+            [ reading parser render path (without gone reached) t
+            | (_, (t, gone)) <- ps
             ]
       formatted <-
-        aheadOf worked . for (zip reachedBy worked) $ \((f, r, t), (_, a)) ->
-          (,) f <$> formatAllConfigs parser render path r a t
+        aheadOf readings $
+          traverse (formatAllConfigs parser render path) readings
       pure $ do
-        doc <- reassembled body [(f, d) | (f, (d, _)) <- formatted]
-        pure (doc, baseFound <> foldMap (snd . snd) formatted)
+        doc <- reassembled body (zip (fmap fst ps) (fmap fst formatted))
+        pure (doc, baseFound <> foldMap snd formatted)
   where
     parts = do
       body <- bodyOf baseDoc
@@ -508,6 +514,7 @@ together parser render path reached c = do
       e -> refuse e
   if blind then fst <$> formatted False else pure found
   where
+    readingOf = reading parser render path
     differentlyRead =
       or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
     texts = cfgTexts c
@@ -517,7 +524,9 @@ together parser render path reached c = do
               [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
       found <- fmap catMaybes . for (zip [0 ..] answers) $ \(i, (r, t)) ->
         if null (unconditionalErrors t)
-          then Just . (,) i <$> formatAllConfigs parser render path r Nothing t
+          then
+            Just . (,) i
+              <$> formatAllConfigs parser render path (readingOf r t)
           else pure Nothing
       docs <-
         except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
