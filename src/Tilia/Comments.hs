@@ -14,6 +14,7 @@ module Tilia.Comments
     commentTrailing,
     singleLine,
     holdsOff,
+    continuesHaddock,
     carriedOnFrom,
     widenTrigger,
     asOrdinary,
@@ -250,6 +251,12 @@ holdsOff c =
   commentStyle c == DocComment
     && not (bracketed c)
     && not (opensSectionHeading (NE.head (commentBody c)))
+
+-- | Would the lexer read this comment as more of a Haddock written as @--@
+-- lines right above it?
+continuesHaddock :: Comment -> Bool
+continuesHaddock c =
+  not (bracketed c) && not ("---" `T.isPrefixOf` NE.head (commentBody c))
 
 -- | Is this comment a single line?
 singleLine :: Comment -> Bool

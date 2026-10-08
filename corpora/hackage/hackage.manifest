@@ -97,8 +97,8 @@ formatted       150002ef2df6  Agda-2.8.0/src/full/Agda/Interaction/SearchAbout.h
 partly-checked  d0ed5f54b1c0  Agda-2.8.0/src/full/Agda/Main.hs
 formatted       af91d1da1775  Agda-2.8.0/src/full/Agda/Mimer/Mimer.hs
 formatted       43b9c484bd7b  Agda-2.8.0/src/full/Agda/Mimer/Options.hs
-formatted       3f7508b0e4d2  Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
-formatted       c828c94c374f  Agda-2.8.0/src/full/Agda/Syntax/Abstract/Name.hs
+formatted       f2a33cd8871c  Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
+formatted       8d168f823b1f  Agda-2.8.0/src/full/Agda/Syntax/Abstract/Name.hs
 formatted       dd887ede87e8  Agda-2.8.0/src/full/Agda/Syntax/Abstract/Pattern.hs
 formatted       8f9f098701be  Agda-2.8.0/src/full/Agda/Syntax/Abstract/PatternSynonyms.hs
 formatted       3f1f9a03363a  Agda-2.8.0/src/full/Agda/Syntax/Abstract/Pretty.hs
@@ -128,7 +128,7 @@ formatted       34a7cccaef81  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Pretty.hs
 formatted       db8fd8405ab1  Agda-2.8.0/src/full/Agda/Syntax/DoNotation.hs
 formatted       0fa4ef8ac984  Agda-2.8.0/src/full/Agda/Syntax/Fixity.hs
 formatted       f53d6a38a8a5  Agda-2.8.0/src/full/Agda/Syntax/IdiomBrackets.hs
-formatted       30d96511b2ee  Agda-2.8.0/src/full/Agda/Syntax/Info.hs
+formatted       da4470987e03  Agda-2.8.0/src/full/Agda/Syntax/Info.hs
 formatted       1bb665a03c97  Agda-2.8.0/src/full/Agda/Syntax/Internal.hs
 formatted       30fb29552f53  Agda-2.8.0/src/full/Agda/Syntax/Internal/Blockers.hs
 formatted       0c3da8bec4ce  Agda-2.8.0/src/full/Agda/Syntax/Internal/Defs.hs
@@ -144,7 +144,7 @@ formatted       1f5db6f08b8e  Agda-2.8.0/src/full/Agda/Syntax/Notation.hs
 formatted       5441d15e6659  Agda-2.8.0/src/full/Agda/Syntax/Parser.hs
 formatted       38e524b350d0  Agda-2.8.0/src/full/Agda/Syntax/Parser/Alex.hs
 formatted       b58b3e60f482  Agda-2.8.0/src/full/Agda/Syntax/Parser/Comments.hs
-formatted       4f8550591585  Agda-2.8.0/src/full/Agda/Syntax/Parser/Helpers.hs
+formatted       7fe22339886b  Agda-2.8.0/src/full/Agda/Syntax/Parser/Helpers.hs
 formatted       0131f3ce9187  Agda-2.8.0/src/full/Agda/Syntax/Parser/Layout.hs
 formatted       700549be6fd6  Agda-2.8.0/src/full/Agda/Syntax/Parser/Layout.hs-boot
 formatted       2e1b70194e94  Agda-2.8.0/src/full/Agda/Syntax/Parser/LexActions.hs
@@ -162,7 +162,7 @@ formatted       6916a745cef4  Agda-2.8.0/src/full/Agda/Syntax/Scope/Flat.hs
 formatted       73b6757a8957  Agda-2.8.0/src/full/Agda/Syntax/Scope/Monad.hs
 formatted       d3a3db0834c5  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName.hs
 formatted       f40939e29708  Agda-2.8.0/src/full/Agda/Syntax/TopLevelModuleName/Boot.hs
-formatted       0c02a910e946  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
+formatted       5f0097e8b8e9  Agda-2.8.0/src/full/Agda/Syntax/Translation/AbstractToConcrete.hs
 formatted       6d2218e4d2e4  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
 formatted       43297193ba42  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       8c2de5355091  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
@@ -690,7 +690,7 @@ formatted       706f861f1b54  aws-0.25.3/Aws/DynamoDb/Commands/Query.hs
 formatted       76d3cbe6ea1b  aws-0.25.3/Aws/DynamoDb/Commands/Scan.hs
 formatted       c6547f406402  aws-0.25.3/Aws/DynamoDb/Commands/Table.hs
 formatted       1159130413aa  aws-0.25.3/Aws/DynamoDb/Commands/UpdateItem.hs
-formatted       b92828b82a58  aws-0.25.3/Aws/DynamoDb/Core.hs
+formatted       5527efbba0d1  aws-0.25.3/Aws/DynamoDb/Core.hs
 formatted       7da30757579d  aws-0.25.3/Aws/Ec2/InstanceMetadata.hs
 formatted       64524ea72e53  aws-0.25.3/Aws/Iam.hs
 formatted       749eee8b56a6  aws-0.25.3/Aws/Iam/Commands.hs
@@ -1904,8 +1904,8 @@ formatted       649022fe6ecf  esqueleto-3.6.0.3/test/PostgreSQL/MigrateJSON.hs
 formatted       b9c4d713d02f  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
 formatted       0e0ef1763885  esqueleto-3.6.0.3/test/SQLite/Test.hs
 formatted       9c274d8e66c1  esqueleto-3.6.0.3/test/Spec.hs
-formatted       372bed5ba97c  exceptions-0.10.12/src/Control/Monad/Catch.hs
-formatted       2982a44f9995  exceptions-0.10.12/src/Control/Monad/Catch/Pure.hs
+formatted       2ddfe57b9539  exceptions-0.10.12/src/Control/Monad/Catch.hs
+formatted       95434fcb6957  exceptions-0.10.12/src/Control/Monad/Catch/Pure.hs
 formatted       da6b7265725b  exceptions-0.10.12/tests/Control/Monad/Catch/Tests.hs
 formatted       bba664ba2b8b  exceptions-0.10.12/tests/Tests.hs
 formatted       421394df9111  fay-0.24.2.0/Setup.hs
@@ -2881,7 +2881,7 @@ formatted       36dfae32602b  lens-5.3.6/src/Control/Lens/Internal/Exception.hs
 formatted       94e9c2ef7d99  lens-5.3.6/src/Control/Lens/Internal/FieldTH.hs
 formatted       8751bf3b6318  lens-5.3.6/src/Control/Lens/Internal/Fold.hs
 formatted       fe2ce335a9fd  lens-5.3.6/src/Control/Lens/Internal/Getter.hs
-formatted       febc67fc7f79  lens-5.3.6/src/Control/Lens/Internal/Indexed.hs
+formatted       72ecae413405  lens-5.3.6/src/Control/Lens/Internal/Indexed.hs
 formatted       74a115066cae  lens-5.3.6/src/Control/Lens/Internal/Instances.hs
 formatted       a9257a233659  lens-5.3.6/src/Control/Lens/Internal/Iso.hs
 formatted       62616dcfe279  lens-5.3.6/src/Control/Lens/Internal/Level.hs
