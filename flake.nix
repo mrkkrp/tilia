@@ -54,11 +54,16 @@
             touch ${lib.concatMapStringsSep " " (f: "$out/${f}") placeholders}
           '';
 
+        optimizedParser = { packages.ghc-lib-parser.ghcOptions = [ "-O2" ]; };
+
         projects = lib.genAttrs compilers (compiler:
           pkgs.haskell-nix.cabalProject {
             inherit src;
             compiler-nix-name = compiler;
-            modules = [{ packages.tilia.writeHieFiles = true; }];
+            modules = [
+              { packages.tilia.writeHieFiles = true; }
+              optimizedParser
+            ];
           });
 
         weeder =
@@ -102,12 +107,15 @@
         release = pkgs.haskell-nix.cabalProject {
           inherit src;
           compiler-nix-name = baseCompiler;
-          modules = [{
-            packages.tilia.components.exes.tilia = {
-              configureFlags = [ "--ghc-option=-optl=-static" ];
-              dontStrip = false;
-            };
-          }];
+          modules = [
+            {
+              packages.tilia.components.exes.tilia = {
+                configureFlags = [ "--ghc-option=-optl=-static" ];
+                dontStrip = false;
+              };
+            }
+            optimizedParser
+          ];
         };
 
         releaseBinary =
