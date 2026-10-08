@@ -53,7 +53,7 @@ formatted       e4f2d0d2088e  Agda-2.8.0/src/full/Agda/Interaction/CommandLine.h
 formatted       f2285f3b69f7  Agda-2.8.0/src/full/Agda/Interaction/EmacsCommand.hs
 formatted       555155a56d86  Agda-2.8.0/src/full/Agda/Interaction/EmacsTop.hs
 formatted       720e5305288c  Agda-2.8.0/src/full/Agda/Interaction/ExitCode.hs
-formatted       51f1701eb62c  Agda-2.8.0/src/full/Agda/Interaction/FindFile.hs
+formatted       e06156bc2afa  Agda-2.8.0/src/full/Agda/Interaction/FindFile.hs
 formatted       3170eb1921b4  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Common.hs
 formatted       1fb0462a1b45  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot.hs
 formatted       712b081948e2  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot/Backend.hs
@@ -175,7 +175,7 @@ formatted       64b40e96a86a  Agda-2.8.0/src/full/Agda/Termination/Order.hs
 formatted       3d6943fd6805  Agda-2.8.0/src/full/Agda/Termination/RecCheck.hs
 formatted       5d2396bcde51  Agda-2.8.0/src/full/Agda/Termination/Semiring.hs
 formatted       3e1e5a066751  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.hs
-formatted       ffe1b1667bba  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
+formatted       109612b2572f  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
 formatted       ed0ea780ef94  Agda-2.8.0/src/full/Agda/Termination/Termination.hs
 formatted       9ce4d907acfa  Agda-2.8.0/src/full/Agda/TheTypeChecker.hs
 formatted       522c2e92c2f2  Agda-2.8.0/src/full/Agda/TypeChecking/Abstract.hs
@@ -188,7 +188,7 @@ formatted       a141f28ffb17  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClau
 formatted       3142e5d8c639  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs-boot
 formatted       8daa667ddddd  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs
 formatted       47ac61419563  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs-boot
-formatted       82112bea7e94  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
+formatted       f5ba1ae3a7b9  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
 formatted       cc3a6f5cf005  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       8bb452c258d1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
 formatted       867428e9a9a1  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
@@ -205,7 +205,7 @@ formatted       ee105b08c0e0  Agda-2.8.0/src/full/Agda/TypeChecking/DisplayForm.
 formatted       fa3908c1bf4b  Agda-2.8.0/src/full/Agda/TypeChecking/DropArgs.hs
 formatted       c4bcc3ec3efc  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs
 formatted       546e2690c8bd  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs-boot
-formatted       d1998ffdc32f  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
+formatted       d796fe01f1e9  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
 formatted       4d637dbd29d8  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs-boot
 formatted       aaf8e5a6f74a  Agda-2.8.0/src/full/Agda/TypeChecking/Errors/Names.hs
 formatted       fa9468d1b394  Agda-2.8.0/src/full/Agda/TypeChecking/EtaContract.hs
@@ -220,7 +220,7 @@ formatted       e7eb98a27abe  Agda-2.8.0/src/full/Agda/TypeChecking/IApplyConflu
 formatted       87b0399276b5  Agda-2.8.0/src/full/Agda/TypeChecking/Implicit.hs
 formatted       d835876f5a10  Agda-2.8.0/src/full/Agda/TypeChecking/Injectivity.hs
 formatted       32f96c636db2  Agda-2.8.0/src/full/Agda/TypeChecking/Inlining.hs
-formatted       1414326cd5f2  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs
+formatted       38effe4219d6  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs
 formatted       daede539773d  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs-boot
 formatted       e3ca55cde230  Agda-2.8.0/src/full/Agda/TypeChecking/Irrelevance.hs
 formatted       f5e2359204d8  Agda-2.8.0/src/full/Agda/TypeChecking/Irrelevance.hs-boot
@@ -499,7 +499,7 @@ formatted       a37e7d6ad771  ShellCheck-0.11.0/src/ShellCheck/Analyzer.hs
 formatted       0df96a3d2318  ShellCheck-0.11.0/src/ShellCheck/AnalyzerLib.hs
 formatted       3308afd69855  ShellCheck-0.11.0/src/ShellCheck/CFG.hs
 formatted       82bc11b18b11  ShellCheck-0.11.0/src/ShellCheck/CFGAnalysis.hs
-formatted       64df5efa4dca  ShellCheck-0.11.0/src/ShellCheck/Checker.hs
+formatted       b5fd9efb82ac  ShellCheck-0.11.0/src/ShellCheck/Checker.hs
 formatted       8b1eac1d2cfc  ShellCheck-0.11.0/src/ShellCheck/Checks/Commands.hs
 formatted       4499e00fdc51  ShellCheck-0.11.0/src/ShellCheck/Checks/ControlFlow.hs
 formatted       0cbfece4e54b  ShellCheck-0.11.0/src/ShellCheck/Checks/Custom.hs
@@ -562,7 +562,7 @@ formatted       8e47a331bfb8  aeson-2.3.1.0/src/Data/Aeson/TH.hs
 formatted       12a0132d4a2c  aeson-2.3.1.0/src/Data/Aeson/Text.hs
 formatted       d929af4e0687  aeson-2.3.1.0/src/Data/Aeson/Types.hs
 formatted       e11d9a90b593  aeson-2.3.1.0/src/Data/Aeson/Types/Class.hs
-formatted       36f39e5a3dd4  aeson-2.3.1.0/src/Data/Aeson/Types/FromJSON.hs
+formatted       fc043ebfc291  aeson-2.3.1.0/src/Data/Aeson/Types/FromJSON.hs
 formatted       af543197c845  aeson-2.3.1.0/src/Data/Aeson/Types/Generic.hs
 formatted       a7b6903cad74  aeson-2.3.1.0/src/Data/Aeson/Types/Internal.hs
 formatted       e372019c3433  aeson-2.3.1.0/src/Data/Aeson/Types/ToJSON.hs
@@ -2325,7 +2325,7 @@ formatted       aa65b20321d6  hashable-1.5.1.0/tests/Regress.hs
 formatted       468c72120829  hashable-1.5.1.0/tests/xxhash-tests.hs
 formatted       fd56f35a1469  haxl-2.5.1.1/Haxl/Core.hs
 formatted       d1219c0fe211  haxl-2.5.1.1/Haxl/Core/CallGraph.hs
-formatted       955c8a680ebd  haxl-2.5.1.1/Haxl/Core/DataCache.hs
+formatted       df46f7db59bc  haxl-2.5.1.1/Haxl/Core/DataCache.hs
 formatted       23dc644893ba  haxl-2.5.1.1/Haxl/Core/DataSource.hs
 formatted       30d8adb0a3bc  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       270cd401eb34  haxl-2.5.1.1/Haxl/Core/Fetch.hs
@@ -2851,7 +2851,7 @@ formatted       50c9e4996c17  lens-5.3.6/benchmarks/alongside.hs
 formatted       9fb7d388f89d  lens-5.3.6/benchmarks/folds.hs
 formatted       954468d85b1f  lens-5.3.6/benchmarks/plated.hs
 formatted       474a59bad6c3  lens-5.3.6/benchmarks/traversals.hs
-formatted       ed5e8ac0099f  lens-5.3.6/benchmarks/unsafe.hs
+formatted       67948814999e  lens-5.3.6/benchmarks/unsafe.hs
 formatted       6b5d9407288a  lens-5.3.6/examples/Aeson.hs
 formatted       fcea15eace15  lens-5.3.6/examples/Plates.hs
 formatted       42c84063ca40  lens-5.3.6/examples/Pong.hs
@@ -3103,7 +3103,7 @@ formatted       f519615c70eb  pandoc-3.10.2/src/Text/Pandoc/Logging.hs
 formatted       198eaaad0ea2  pandoc-3.10.2/src/Text/Pandoc/MIME.hs
 formatted       fc58bac11b5e  pandoc-3.10.2/src/Text/Pandoc/MediaBag.hs
 formatted       e52f385e0fff  pandoc-3.10.2/src/Text/Pandoc/Options.hs
-formatted       95320ca5ed91  pandoc-3.10.2/src/Text/Pandoc/PDF.hs
+formatted       c171dffba9a8  pandoc-3.10.2/src/Text/Pandoc/PDF.hs
 formatted       127d7ca8c1db  pandoc-3.10.2/src/Text/Pandoc/Parsing.hs
 formatted       d0bfe0ebb5ca  pandoc-3.10.2/src/Text/Pandoc/Parsing/Capabilities.hs
 formatted       78249fa68c58  pandoc-3.10.2/src/Text/Pandoc/Parsing/Citations.hs
@@ -3123,7 +3123,7 @@ formatted       6168a3f9a3ab  pandoc-3.10.2/src/Text/Pandoc/Readers/CommonMark.h
 formatted       663d47f4276b  pandoc-3.10.2/src/Text/Pandoc/Readers/Creole.hs
 formatted       9a91a657b202  pandoc-3.10.2/src/Text/Pandoc/Readers/CslJson.hs
 formatted       8f06acca3961  pandoc-3.10.2/src/Text/Pandoc/Readers/Djot.hs
-formatted       7161fedc555a  pandoc-3.10.2/src/Text/Pandoc/Readers/DocBook.hs
+formatted       05fb48bb853d  pandoc-3.10.2/src/Text/Pandoc/Readers/DocBook.hs
 formatted       acd46ae3c358  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx.hs
 formatted       4fb8f147768f  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Combine.hs
 formatted       1b010d639304  pandoc-3.10.2/src/Text/Pandoc/Readers/Docx/Fields.hs
@@ -3272,7 +3272,7 @@ formatted       a7a53336237a  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Inl
 formatted       c57101b9ec66  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Table.hs
 formatted       02c7eb593d88  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Types.hs
 formatted       3d9d722a4e7e  pandoc-3.10.2/src/Text/Pandoc/Writers/Math.hs
-formatted       1dc976cdc548  pandoc-3.10.2/src/Text/Pandoc/Writers/MediaWiki.hs
+formatted       b64a72014932  pandoc-3.10.2/src/Text/Pandoc/Writers/MediaWiki.hs
 formatted       6390452aa35b  pandoc-3.10.2/src/Text/Pandoc/Writers/Ms.hs
 formatted       80ea597c2f04  pandoc-3.10.2/src/Text/Pandoc/Writers/Muse.hs
 formatted       4acde5355993  pandoc-3.10.2/src/Text/Pandoc/Writers/Native.hs
@@ -3497,7 +3497,7 @@ formatted       bc3b140ba83c  pipes-4.3.16/benchmarks/Common.hs
 formatted       e459e4d124d4  pipes-4.3.16/benchmarks/LiftBench.hs
 formatted       d100cca123ea  pipes-4.3.16/benchmarks/PreludeBench.hs
 formatted       c9e4b8790a2e  pipes-4.3.16/src/Pipes.hs
-formatted       332e8aaad352  pipes-4.3.16/src/Pipes/Core.hs
+formatted       73ed6cfff72e  pipes-4.3.16/src/Pipes/Core.hs
 formatted       e021398dbff3  pipes-4.3.16/src/Pipes/Internal.hs
 formatted       e3b36f0685b2  pipes-4.3.16/src/Pipes/Lift.hs
 formatted       82bba5f85292  pipes-4.3.16/src/Pipes/Prelude.hs
@@ -4333,7 +4333,7 @@ formatted       85d5e680f53b  stack-9.9.9/src/System/Process/Log.hs
 formatted       015e3efd2d86  stack-9.9.9/src/System/Process/PagerEditor.hs
 formatted       bc60fdf030d4  stack-9.9.9/src/System/Process/Read.hs
 formatted       c40dad9ce8ee  stack-9.9.9/src/System/Process/Run.hs
-formatted       91427a9b532d  stack-9.9.9/src/main/Main.hs
+formatted       e9412f975a02  stack-9.9.9/src/main/Main.hs
 formatted       4eec70869c80  stack-9.9.9/src/main/Plugins.hs
 formatted       50b246d28182  stack-9.9.9/src/main/Plugins/Commands.hs
 formatted       65c8c298f7aa  stack-9.9.9/src/test/Spec.hs

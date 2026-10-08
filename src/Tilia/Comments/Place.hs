@@ -1,6 +1,7 @@
 -- | Determine the placement of each 'Comment'.
 module Tilia.Comments.Place
   ( Position (..),
+    Alignment (..),
     Shape (..),
     shapeOf,
     Placements,
@@ -23,25 +24,32 @@ import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..))
 import Data.Set qualified as Set
 import Tilia.Comments
-  ( Comment (..),
+  ( Above (..),
+    Comment (..),
     carriedOnFrom,
     closesItself,
     commentTrailing,
     singleLine,
   )
+import Tilia.Doc.Internal (Spill (..))
 import Tilia.Span
 
--- | Which side of its region a comment is emitted on.
+-- | Where a comment is emitted in relation to its region.
 data Position
   = -- | Before the region.
     Before
-  | -- | After the region.
-    After
-  | -- | On lines of its own under the region, lined up with it.
-    Under
-  | -- | After the region, on a line of its own under the comment that ends
-    -- the region's line, lined up with that comment.
-    UnderTheRemark
+  | -- | After the region, on the line it ends on.
+    After Spill
+  | -- | On lines of its own under the region.
+    Under Alignment
+  deriving (Eq, Show)
+
+-- | What a comment on lines of its own under a region is lined up with.
+data Alignment
+  = -- | The column the region begins at.
+    ByTheRegion
+  | -- | The indentation in force after the region.
+    ByTheIndentation
   deriving (Eq, Show)
 
 -- | How a comment is printed in relation to the region carrying it.
@@ -53,7 +61,7 @@ data Shape
     EndsTheLine
   | -- | Held back to the end of whatever line of output it lands on,
     -- however much of that line is still to be written.
-    HeldBack
+    HeldBack Spill
   | -- | On lines of its own, keeping the empty lines the author left around
     -- it.
     OnItsOwnLines
@@ -66,11 +74,11 @@ shapeOf position c = case position of
     | closesItself c && commentFollowed c -> InPlace
     | commentTrailing c -> EndsTheLine
     | otherwise -> OnItsOwnLines
-  Under -> OnItsOwnLines
-  _
+  After spill
     | closesItself c -> InPlace
-    | singleLine c -> HeldBack
+    | singleLine c -> HeldBack spill
     | otherwise -> EndsTheLine
+  Under _ -> OnItsOwnLines
 
 -- | Comment placements not yet written: all of them when placement is
 -- decided, fewer as a walk writes them.
@@ -124,11 +132,14 @@ placeComments regions leads fences comments =
         wider a b = if endPoint a >= endPoint b then a else b
 
     against c
-      | Just placed@(_, After) <- asCommentBefore = Just placed
-      | commentTrailing c, Just r <- trailed = Just (r, After)
+      | Just placed@(_, After _) <- asCommentBefore = Just placed
+      | commentTrailing c,
+        Just r <- trailed =
+          Just (r, After SpillAtIndentation)
       | Just placed <- continues = Just placed
-      | Just r <- under = Just (r, Under)
-      | Just r <- next = Just (maybe (r, Before) (,Under) (Map.lookup r leads))
+      | Just placed <- under = Just placed
+      | Just r <- next =
+          Just (maybe (r, Before) (,Under ByTheRegion) (Map.lookup r leads))
       | otherwise = Nothing
       where
         here = commentSpan c
@@ -139,7 +150,7 @@ placeComments regions leads fences comments =
           | otherwise = Nothing
         linedUpUnder = do
           (top, _) <- IntMap.lookup (spanStartLine here + 1) runs
-          (r, Under) <- against top
+          (r, Under ByTheRegion) <- against top
           r <$ guard (candidate r)
         endingOn line =
           nearest (\r -> (Down (endPoint r), startPoint r)) (filter candidate onThatLine)
@@ -159,7 +170,7 @@ placeComments regions leads fences comments =
           where
             outside = maybe False (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
 
-        printedInPlace = shapeOf After c == InPlace
+        printedInPlace = shapeOf (After SpillAtIndentation) c == InPlace
 
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
@@ -170,8 +181,8 @@ placeComments regions leads fences comments =
           | otherwise = Nothing
 
         linedUpWith remark
-          | remark == spanStartColumn here = UnderTheRemark
-          | otherwise = After
+          | remark == spanStartColumn here = After SpillUnderPrevious
+          | otherwise = After SpillAtIndentation
 
         nothingBelowItLinesUp =
           all (\r -> spanStartColumn r < spanStartColumn here) next
@@ -179,23 +190,33 @@ placeComments regions leads fences comments =
         under
           | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,
             Just (line, column) <- commentNextLine bottom,
-            column < spanStartColumn here,
-            fmap startPoint next == Just (line, column) =
-              lineOfCode (spanStartLine (commentSpan top) - 1)
+            column /= spanStartColumn here,
+            any ((<= (line, column)) . startPoint) next =
+              lineOfCode top
           | otherwise = Nothing
 
-        lineOfCode line = do
+        lineOfCode top = do
           r <- nearest (Down . startPoint) (filter linedUp onThatLine)
-          r <$ guard (any (larger r) onThatLine)
+          guard (any (larger r) onThatLine)
+          pure (r, Under (alignedBy r))
           where
+            line = spanStartLine (commentSpan top) - 1
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
             lineEnd = maximum (fmap endPoint onThatLine)
             linedUp r =
-              spanStartColumn r == spanStartColumn here
-                && startPoint r /= endPoint r
+              startPoint r /= endPoint r
                 && endPoint r == lineEnd
-                && (spanStartLine r == line || startsItsLine r)
+                && (startsUnderIt r || holdsTheLine r)
                 && not (fencedOff r)
+            startsUnderIt r =
+              spanStartColumn r == spanStartColumn here
+                && (spanStartLine r == line || startsItsLine r)
+            holdsTheLine r =
+              commentAbove top == ContentAt (spanStartColumn here)
+                && startPoint r <= (line, spanStartColumn here)
+            alignedBy r
+              | startsUnderIt r = ByTheRegion
+              | otherwise = ByTheIndentation
             startsItsLine r =
               maybe True ((< spanStartLine r) . fst . fst) $
                 Map.lookupLT (startPoint r) regionsByStartPoint

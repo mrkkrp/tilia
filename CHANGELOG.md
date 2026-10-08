@@ -430,6 +430,14 @@
   closing bracket out of the brackets, where it lost the empty line under
   the declaration and moved again in the next pass, and print it as at any
   other column. [Issue 206](https://github.com/mrkkrp/tilia/issues/206).
+* Keep a comment lined up with the last line of a construct, and not with
+  what follows it, inside the construct, also where that line begins with
+  an operator, an arrow or a closing bracket, rather than put it at the
+  column of what follows, where it read as being about that. A comment
+  under the result type of a signature no longer goes to the margin, and
+  one under the last field of a constructor stays under it whatever column
+  `deriving` is written at. [Issue
+  205](https://github.com/mrkkrp/tilia/issues/205).
 
 ## Tilia 0.0.2.0
 
