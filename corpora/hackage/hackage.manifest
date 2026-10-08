@@ -328,7 +328,7 @@ formatted       6773a3880c72  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Im
 formatted       da382d16a0bc  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Problem.hs
 formatted       faf2b455193b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/ProblemRest.hs
 formatted       6a42cd7f2ae2  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify.hs
-formatted       085f298c263e  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
+formatted       d3a352c1c4d9  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
 formatted       dea533ec809b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/Types.hs
 formatted       2fe7b7e43894  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record.hs
 formatted       31facbc5e0fe  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs

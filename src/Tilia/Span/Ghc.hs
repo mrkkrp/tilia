@@ -7,6 +7,7 @@ module Tilia.Span.Ghc
     spanOf,
     spansOf,
     tokenSpan,
+    uniTokenSpan,
     annSpan,
     bracketsSpan,
   )
@@ -16,6 +17,7 @@ import Data.Maybe (mapMaybe)
 import GHC.Parser.Annotation
   ( AnnListBrackets (..),
     EpToken,
+    EpUniToken (..),
     HasLoc,
     getEpTokenSrcSpan,
     getHasLoc,
@@ -42,6 +44,13 @@ spanOf = spanOfSrcSpan . getHasLoc
 -- | Where a keyword or a piece of punctuation was written.
 tokenSpan :: EpToken sym -> Maybe Span
 tokenSpan = spanOfSrcSpan . getEpTokenSrcSpan
+
+-- | Where a keyword or a piece of punctuation that has a Unicode spelling
+-- was written.
+uniTokenSpan :: EpUniToken tok utok -> Maybe Span
+uniTokenSpan = \case
+  EpUniTok l _ -> annSpan l
+  NoEpUniTok -> Nothing
 
 -- | Where an annotation says something was written.
 annSpan :: (HasLoc l) => l -> Maybe Span
