@@ -16,12 +16,12 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (sortOn)
+import Data.List (minimumBy, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Ord (Down (..))
+import Data.Ord (Down (..), comparing)
 import Data.Set qualified as Set
 import Tilia.Comments
   ( Above (..),
@@ -246,11 +246,7 @@ placeComments regions leads fences comments =
     enclosingFences = enclosures fences (fmap commentSpan comments)
 
     nearest :: (Ord k) => (Span -> k) -> [Span] -> Maybe Span
-    nearest key = fmap fst . foldl' closer Nothing
-      where
-        closer best s = case best of
-          Just (_, k) | k <= key s -> best
-          _ -> Just (s, key s)
+    nearest key = fmap (minimumBy (comparing key)) . NE.nonEmpty
 
 -- | For each inner span that outer spans enclose, the latest start and the
 -- earliest end among them.

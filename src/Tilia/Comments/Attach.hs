@@ -109,13 +109,7 @@ markedSpans :: Doc -> ([Span], [Span])
 markedSpans = \case
   DLocated s d -> first (s :) (markedSpans d)
   DFence s d -> second (s :) (markedSpans d)
-  DCat a b -> markedSpans a <> markedSpans b
-  DNest _ d -> markedSpans d
-  DAlign d -> markedSpans d
-  DGroup _ d -> markedSpans d
-  DVariant a _ -> markedSpans a
-  DCppChoice _ bs e -> foldMap (markedSpans . snd) bs <> markedSpans e
-  _ -> ([], [])
+  d -> foldChildren markedSpans d
 
 -- | The innermost region each region prints first, where that one was
 -- written above it, as the Haddock of a constructor, a field or an argument
