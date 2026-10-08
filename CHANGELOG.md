@@ -416,6 +416,11 @@
   that ends the guard's line goes to the end of the line they are joined
   on, unless a comment ends the line of the `=` or `->` as well. [Issue
   209](https://github.com/mrkkrp/tilia/issues/209).
+* Keep the names of a signature for several names on one line where they
+  were written on one line, with the type under them a step in, rather than
+  put each name on a line of its own and the type a step further in than
+  the names. The same goes for a pattern synonym signature. [Issue
+  215](https://github.com/mrkkrp/tilia/issues/215).
 
 ## Tilia 0.0.2.0
 

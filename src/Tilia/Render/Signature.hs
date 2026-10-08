@@ -36,7 +36,7 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span (startOf)
-import Tilia.Span.Ghc (tokenSpan)
+import Tilia.Span.Ghc (spanOf, spansOf, tokenSpan)
 
 -- | A signature declaration.
 sigDecl :: Ctx -> Sig GhcPs -> Doc
@@ -72,19 +72,34 @@ typeSig _ _ [] _ = mempty
 typeSig ctx indentTail (n : ns) sigType
   | null ns = name ctx n <> typeAscription ctx sigType
   | otherwise =
-      name ctx n
-        <> nest
-          (if isTrue indentTail then 1 else 0)
-          ( comma
-              <> breakOrSpace
-              <> commaSep (fmap (name ctx) ns)
-              <> typeAscription ctx sigType
+      layoutAcross ctx (n : ns) $
+        variant
+          (commaSep (fmap (name ctx) (n : ns)) <> ascription)
+          ( name ctx n
+              <> nest
+                (if isTrue indentTail then 1 else 0)
+                ( comma
+                    <> breakOrSpace
+                    <> commaSep (fmap (name ctx) ns)
+                    <> ascription
+                )
           )
+  where
+    ascription =
+      layoutFrom
+        ctx
+        (spansOf (n : ns) <> spanOf sigType)
+        (typeAscription ctx sigType)
 
 -- | @pattern P :: t@.
 patSynSig :: Ctx -> [LocatedN RdrName] -> LHsSigType GhcPs -> Doc
 patSynSig ctx names sigType
-  | length names > 1 = txt "pattern" <> breakOrSpace <> indent body
+  | length names > 1 =
+      txt "pattern"
+        <> layoutAcross
+          ctx
+          names
+          (variant (space <> body) (breakOrSpace <> indent body))
   | otherwise = txt "pattern" <> space <> body
   where
     body = typeSig ctx (Don't #indentTail) names sigType
