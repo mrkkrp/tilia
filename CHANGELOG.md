@@ -421,6 +421,11 @@
   put each name on a line of its own and the type a step further in than
   the names. The same goes for a pattern synonym signature. [Issue
   215](https://github.com/mrkkrp/tilia/issues/215).
+* Print a chain of `let`s, each written as `let … in` on one line, the
+  same way: `in` ends the line and the next `let` begins the line under it,
+  at the same column, with only the last laid out as usual. A comment above
+  one of the `let`s stays above it, rather than leave the `in` before it on a
+  line of its own. [Issue 211](https://github.com/mrkkrp/tilia/issues/211).
 
 ## Tilia 0.0.2.0
 

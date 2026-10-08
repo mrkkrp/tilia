@@ -110,8 +110,12 @@ exprBody ctx site here = \case
     where
       alternative =
         guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow
-  HsLet (_, inToken) binds e ->
-    letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) inToken binds e
+  HsLet tokens binds e ->
+    letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) nested tokens binds e
+    where
+      nested = case unLoc e of
+        HsLet{} -> True
+        _ -> False
   HsDo anns flavour es -> case flavour of
     DoExpr moduleName -> doBlock moduleName "do"
     MDoExpr moduleName -> doBlock moduleName "mdo"
@@ -646,16 +650,19 @@ ifThenElse ctx bodyOf AnnsIf{aiThen, aiElse} condition thenBody elseBody =
           | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
           | otherwise = bodyPlacement (bodyOf body)
 
--- | A @let@ expression or command.
+-- | A @let@ expression or command, with @in@ ending its line where it is
+-- one of a chain written that way, and the next on the line under it.
 letIn ::
   (Body b) =>
   Ctx ->
   (LocatedA body -> b) ->
-  EpToken "in" ->
+  -- | Whether the body is another @let@.
+  Bool ->
+  (EpToken "let", EpToken "in") ->
   HsLocalBinds GhcPs ->
   LocatedA body ->
   Doc
-letIn ctx bodyOf inToken binds body =
+letIn ctx bodyOf nested (letToken, inToken) binds body =
   align $
     txt "let"
       <> space
@@ -663,10 +670,12 @@ letIn ctx bodyOf inToken binds body =
         ( localBinds ctx NoBrace binds
             <> foldMap (emptyAnchor . startOf) (tokenSpan inToken)
         )
-      <> variant space (hardBreak <> txt " ")
+      <> (if chained then space else variant space (hardBreak <> txt " "))
       <> txt "in"
-      <> space
+      <> (if chained then breakOrSpace else space)
       <> align (printBody (bodyOf body))
+  where
+    chained = nested && sameLine (tokenSpan letToken) (tokenSpan inToken)
 
 -- | The bindings of a @let@ or a @where@.
 localBinds :: Ctx -> Bracing -> HsLocalBinds GhcPs -> Doc
@@ -762,8 +771,12 @@ cmdBody ctx site = \case
   HsCmdCase _ e mg -> caseOf ctx site (CmdBody ctx) e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
-  HsCmdLet (_, inToken) binds c ->
-    letIn ctx (bodyIn (CmdBody ctx) (siteBracing site)) inToken binds c
+  HsCmdLet tokens binds c ->
+    letIn ctx (bodyIn (CmdBody ctx) (siteBracing site)) nested tokens binds c
+    where
+      nested = case unLoc c of
+        HsCmdLet{} -> True
+        _ -> False
   HsCmdDo anns es ->
     keywordAt ctx (doKeywordSpan anns) "do"
       <> statements ctx site (CmdBody ctx) es

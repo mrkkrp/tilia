@@ -1626,7 +1626,7 @@ formatted       23c195272bfd  cryptonite-0.30/Crypto/Cipher/Blowfish/Primitive.h
 formatted       7ece5bd42232  cryptonite-0.30/Crypto/Cipher/CAST5.hs
 formatted       d0210ba9a96f  cryptonite-0.30/Crypto/Cipher/CAST5/Primitive.hs
 formatted       c818f5ccfd4a  cryptonite-0.30/Crypto/Cipher/Camellia.hs
-formatted       f429b69d6156  cryptonite-0.30/Crypto/Cipher/Camellia/Primitive.hs
+formatted       6b6c104480e2  cryptonite-0.30/Crypto/Cipher/Camellia/Primitive.hs
 formatted       dbd216d2f0aa  cryptonite-0.30/Crypto/Cipher/ChaCha.hs
 formatted       bcadafa03089  cryptonite-0.30/Crypto/Cipher/ChaChaPoly1305.hs
 formatted       092e6bcae818  cryptonite-0.30/Crypto/Cipher/DES.hs
@@ -2434,7 +2434,7 @@ formatted       3fc4bde8aaae  hledger-1.52.1/Hledger/Cli/Commands/Incomestatemen
 formatted       e795242e76e2  hledger-1.52.1/Hledger/Cli/Commands/Notes.hs
 formatted       7868c26f6945  hledger-1.52.1/Hledger/Cli/Commands/Payees.hs
 formatted       74c42e16a7cb  hledger-1.52.1/Hledger/Cli/Commands/Prices.hs
-formatted       d2f13f68c5f0  hledger-1.52.1/Hledger/Cli/Commands/Print.hs
+formatted       177a0e3d59ff  hledger-1.52.1/Hledger/Cli/Commands/Print.hs
 formatted       b3664f32c410  hledger-1.52.1/Hledger/Cli/Commands/Register.hs
 formatted       fe57269eee06  hledger-1.52.1/Hledger/Cli/Commands/Rewrite.hs
 formatted       47c5a107dffd  hledger-1.52.1/Hledger/Cli/Commands/Roi.hs
@@ -2682,7 +2682,7 @@ formatted       1b17f73d1ed1  idris-1.3.4/src/Idris/CaseSplit.hs
 formatted       887228791bf4  idris-1.3.4/src/Idris/Chaser.hs
 formatted       a47646c618f2  idris-1.3.4/src/Idris/CmdOptions.hs
 formatted       4da7f931a59f  idris-1.3.4/src/Idris/Colours.hs
-formatted       f4a75f24bcf9  idris-1.3.4/src/Idris/Completion.hs
+formatted       6890f5a88278  idris-1.3.4/src/Idris/Completion.hs
 formatted       75f2ee4dbe05  idris-1.3.4/src/Idris/Core/Binary.hs
 formatted       70e0c9ec5d29  idris-1.3.4/src/Idris/Core/CaseTree.hs
 formatted       fa5732ba0860  idris-1.3.4/src/Idris/Core/Constraints.hs
@@ -2725,7 +2725,7 @@ formatted       7c4b0ef95bf4  idris-1.3.4/src/Idris/ErrReverse.hs
 formatted       28314a1db8cc  idris-1.3.4/src/Idris/Error.hs
 formatted       21bcb871fca8  idris-1.3.4/src/Idris/Help.hs
 formatted       3698ba4d3817  idris-1.3.4/src/Idris/IBC.hs
-formatted       cce75249d4d5  idris-1.3.4/src/Idris/IdeMode.hs
+formatted       5964507fe26c  idris-1.3.4/src/Idris/IdeMode.hs
 formatted       e909e2fe452b  idris-1.3.4/src/Idris/IdrisDoc.hs
 formatted       8b7f62814233  idris-1.3.4/src/Idris/Imports.hs
 formatted       3e21520569d8  idris-1.3.4/src/Idris/Info.hs
@@ -2750,7 +2750,7 @@ formatted       58ad84ded5d8  idris-1.3.4/src/Idris/Primitives.hs
 formatted       429ec8a4efee  idris-1.3.4/src/Idris/ProofSearch.hs
 formatted       168d70e142b3  idris-1.3.4/src/Idris/Prover.hs
 formatted       ad0ff1beaf54  idris-1.3.4/src/Idris/Providers.hs
-formatted       f1e4c14b910c  idris-1.3.4/src/Idris/REPL.hs
+formatted       c47d07c305a7  idris-1.3.4/src/Idris/REPL.hs
 formatted       d43671c3f627  idris-1.3.4/src/Idris/REPL/Browse.hs
 formatted       586418ee0cf6  idris-1.3.4/src/Idris/REPL/Commands.hs
 formatted       f36f6bde407f  idris-1.3.4/src/Idris/REPL/Parser.hs
@@ -4231,7 +4231,7 @@ formatted       7425a9004035  shake-0.19.9/src/Test/Errors.hs
 formatted       b698eeb22c5b  shake-0.19.9/src/Test/Existence.hs
 formatted       33dfd1039065  shake-0.19.9/src/Test/FileLock.hs
 formatted       62fa7f2a0865  shake-0.19.9/src/Test/FilePath.hs
-formatted       d53dce7544e1  shake-0.19.9/src/Test/FilePattern.hs
+formatted       19b187c8cbe6  shake-0.19.9/src/Test/FilePattern.hs
 formatted       7f088d1e23e6  shake-0.19.9/src/Test/Files.hs
 formatted       f46b5feb3e77  shake-0.19.9/src/Test/Forward.hs
 formatted       07a41b0c82df  shake-0.19.9/src/Test/History.hs
@@ -4600,7 +4600,7 @@ formatted       c57f3b48eab5  text-2.1.4/tests/Tests/Properties/LowLevel.hs
 formatted       73ce8ac597c8  text-2.1.4/tests/Tests/Properties/Read.hs
 formatted       3429b9447ca6  text-2.1.4/tests/Tests/Properties/Substrings.hs
 formatted       37dbae049e0b  text-2.1.4/tests/Tests/Properties/Text.hs
-formatted       e4f85632ee06  text-2.1.4/tests/Tests/Properties/Transcoding.hs
+formatted       13a8cbedafd1  text-2.1.4/tests/Tests/Properties/Transcoding.hs
 formatted       139bbe092e98  text-2.1.4/tests/Tests/Properties/Validate.hs
 formatted       75f4b0d7a5f3  text-2.1.4/tests/Tests/QuickCheckUtils.hs
 formatted       c6e25a3408e0  text-2.1.4/tests/Tests/RebindableSyntaxTest.hs
