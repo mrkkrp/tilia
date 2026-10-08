@@ -460,9 +460,9 @@ stmtBody ::
 stmtBody ctx site mkBody = \case
   LastStmt _ body _ _ -> printBody (mkBody site body)
   BodyStmt _ body _ _ -> printBody (mkBody site body)
-  BindStmt _ p f ->
+  BindStmt arrow p f ->
     hsPat ctx p
-      <> nest 1 (space <> txt "<-")
+      <> nest 1 (space <> maybe id located (uniTokenSpan arrow) (txt "<-"))
       <> layoutFrom ctx (spanOf p <> spanOf f) (attach placement (printBody bound))
     where
       bound = mkBody plainSite f

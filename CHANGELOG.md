@@ -438,6 +438,11 @@
   one under the last field of a constructor stays under it whatever column
   `deriving` is written at. [Issue
   205](https://github.com/mrkkrp/tilia/issues/205).
+* Keep `<-` with the pattern it binds where a conditional chooses the
+  first line of a bind statement, rather than split the conditional around
+  it and put the `<-` on a line of its own; the statement then goes into
+  each branch whole. A comment written right after a `<-` also stays on its
+  line. [Issue 197](https://github.com/mrkkrp/tilia/issues/197).
 
 ## Tilia 0.0.2.0
 
