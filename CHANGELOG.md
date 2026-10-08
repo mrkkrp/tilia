@@ -137,7 +137,7 @@ conditionals up to twice as fast where cores are free. `tilia check` diffs
 faster.
 
 Issues and pull requests: [PR 37], [PR 46], [PR 47], [PR 48], [PR 49],
-[PR 50], [PR 130], [PR 201], [PR 202], [PR 203].
+[PR 50], [PR 130], [PR 201], [PR 202], [PR 203], [PR 228].
 
 [Issue 6]: https://github.com/mrkkrp/tilia/issues/6
 [Issue 7]: https://github.com/mrkkrp/tilia/issues/7
@@ -230,6 +230,7 @@ Issues and pull requests: [PR 37], [PR 46], [PR 47], [PR 48], [PR 49],
 [Issue 215]: https://github.com/mrkkrp/tilia/issues/215
 [Issue 217]: https://github.com/mrkkrp/tilia/issues/217
 [Issue 218]: https://github.com/mrkkrp/tilia/issues/218
+[PR 228]: https://github.com/mrkkrp/tilia/pull/228
 
 ## Tilia 0.0.2.0
 

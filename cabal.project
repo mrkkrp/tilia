@@ -9,3 +9,6 @@ benchmarks: True
 constraints:
   tilia +dev,
   zlib +bundled-c-zlib
+
+package ghc-lib-parser
+  optimization: 2
