@@ -1,448 +1,235 @@
 ## Unreleased
 
-* Achieve full idempotence and correct handling of comments in all cases
-  when CPP is involved. [Issue 6](https://github.com/mrkkrp/tilia/issues/6)
-  and [Issue 7](https://github.com/mrkkrp/tilia/issues/7).
-* Put a comment that comes out right above a CPP directive at the margin.
-  [PR 34](https://github.com/mrkkrp/tilia/pull/34).
-* Format a module in which a conditional has an alternative that holds
-  nothing but `#error`, rather than declining it as having conditionals that
-  do not nest. [PR 34](https://github.com/mrkkrp/tilia/pull/34).
-* Do not repeat an expression in every alternative of a conditional when the
-  configurations lay it out differently around the part that varies. [PR
-  34](https://github.com/mrkkrp/tilia/pull/34).
-* Speed up diffing that `tilia check` performs. [PR
-  37](https://github.com/mrkkrp/tilia/pull/37).
-* Read `.tiliaignore` files the way Git reads `.gitignore` files, with
-  globs, negation, and a `.tiliaignore` in any directory of the project.
-  Leading whitespace and a leading `./` are no longer disregarded. [PR
-  41](https://github.com/mrkkrp/tilia/pull/41).
-* Keep a conditional directive that goes on to the next line with a
-  backslash whole, rather than read the lines it goes on to as code. [PR
-  39](https://github.com/mrkkrp/tilia/pull/39).
-* Indent an alternative of a conditional that continues a line further than
-  that line, so that an operator starting it does not start a statement.
-  [PR 39](https://github.com/mrkkrp/tilia/pull/39).
-* Keep an empty line written above a CPP directive on the last line of a
-  branch of a conditional. [PR 44](https://github.com/mrkkrp/tilia/pull/44).
-* Work out what a module offers once per run, however many threads ask for
-  it at the same time. A run that starts with nothing cached is up to three
-  times as fast and needs half the memory. [PR
-  46](https://github.com/mrkkrp/tilia/pull/46).
-* Walk a module's syntax tree once rather than five times, which makes
-  formatting about 10% faster. [PR
-  47](https://github.com/mrkkrp/tilia/pull/47).
-* Parse each module that operators are looked up in once a run, read each
-  source tarball once a run, and cache module summaries for local modules
-  between runs. A run is a fifth to a quarter faster. [PR
-  48](https://github.com/mrkkrp/tilia/pull/48).
-* Read the operators that interface files refer to by key, rather than run
-  `ghc --show-iface` on every interface that refers to one. A run with
-  `--no-cache` no longer starts `ghc` and is about a third faster. [PR
-  49](https://github.com/mrkkrp/tilia/pull/49).
-* Place comments and group declarations in time that does not grow with
-  the square of the size of a module. Rendering a 470 KB module with many
-  comments takes a second rather than 14. [PR
-  50](https://github.com/mrkkrp/tilia/pull/50).
-* When declining a file over an operator its imports bring in with
-  different fixities, name each fixity and the imports that bring it. [PR
-  52](https://github.com/mrkkrp/tilia/pull/52).
-* Take hidden items into account in whole-module re-exports. Before this
-  change, an operator the import hides could be taken for one the module
-  reexports, which declined files as ambiguous and could give an operator
-  the wrong fixity. [PR 52](https://github.com/mrkkrp/tilia/pull/52).
-* Employ formatting by fragments in the CPP pipeline, so that a module with
-  many conditionals no longer runs out of configurations to format. 12 of
-  the 15 Hackage corpus modules declined for that reason now format, among
-  them QuickCheck's `Test.QuickCheck.Arbitrary` and lens's
-  `Language.Haskell.TH.Lens`. [PR
-  54](https://github.com/mrkkrp/tilia/pull/54).
-* Add `tilia for-editor FILE`, to facilitate editor integrations.
-  `Tilia.Editor` offers the same to programs that use Tilia as a library.
-  [PR 51](https://github.com/mrkkrp/tilia/pull/51).
-* Sort an import whose clause is behind a CPP conditional, such as a
-  `hiding` clause behind `#if`, among the other imports, rather than sorting
-  the imports either side of the conditional apart, which a second pass then
-  sorted again. [PR 55](https://github.com/mrkkrp/tilia/pull/55).
-* Keep a comma with the item it follows when the item varies across
-  configurations, rather than put it on a line of its own after the
-  `#endif`. Several items that vary under one conditional now stay in one
-  conditional. [PR 56](https://github.com/mrkkrp/tilia/pull/56).
-* Put a conditional around an argument that only some configurations pass
-  first, rather than around it and every argument after it, which then
-  came out once in each branch. [PR
-  57](https://github.com/mrkkrp/tilia/pull/57).
-* Keep an empty line written under a comment that carries on a trailing
-  comment on the line above. [Issue
-  63](https://github.com/mrkkrp/tilia/issues/63).
-* Keep what is written after `#else` and `#endif`, such as a comment naming
-  the condition. [Issue 61](https://github.com/mrkkrp/tilia/issues/61).
-* Print an import list on one line when its parentheses were written on one
-  line. A list merged out of several is broken if any of them was written
-  across lines. The same goes for the names given with a type, as in `Maybe
-  (Just, Nothing)`, in import and export lists. [PR
-  73](https://github.com/mrkkrp/tilia/pull/73).
-* Work out the fixities in scope of a CPP module whose branches do not
-  parse together from each configuration, rather than format the whole
-  module without fixities and without checking for operators of unknown
-  fixity. Formatting often gives a module such branches, so a second pass
-  could lay out its operators differently. [Issue
-  60](https://github.com/mrkkrp/tilia/issues/60).
-* Merge imports of one module that hide names only when they hide the same
-  names, since imports hiding different names bring in more together than
-  one hiding all of them would. [PR
-  76](https://github.com/mrkkrp/tilia/pull/76).
-* Keep a name in a `hiding` list apart from the same name with its own
-  parentheses, rather than fold them together, since alone it also hides
-  any data constructor of that name. [PR
-  76](https://github.com/mrkkrp/tilia/pull/76).
-* Keep a comment written after an operator at the end of a line with the
-  operand before the operator, rather than move it after the next operand
-  when the operator goes to the start of the next line. [Issue
-  62](https://github.com/mrkkrp/tilia/issues/62).
-* Take the macros of other compilers, `__MHS__` and `__HUGS__`, as not
-  defined under a build plan for GHC, so that what only those compilers see,
-  such as an import of a module GHC does not have, is not in scope. [Issue
-  70](https://github.com/mrkkrp/tilia/issues/70).
-* Keep a conditional nested where it was written when a conditional asking
-  the same question holds a `LANGUAGE` pragma, rather than pull it outside
-  the conditional around it and copy what that one holds into both of its
-  branches. [Issue 64](https://github.com/mrkkrp/tilia/issues/64).
-* Keep a comment written before the closing bracket of a list
-  comprehension, an arithmetic sequence or a Template Haskell quote inside
-  the brackets, rather than move it after them or, when nothing follows,
-  out of the declaration. [PR 79](https://github.com/mrkkrp/tilia/pull/79).
-* Put a conditional around an argument that only some configurations pass
-  last, rather than around it and the argument before it, which then came
-  out once more under the `#else` of a second conditional. [Issue
-  66](https://github.com/mrkkrp/tilia/issues/66).
-* Put the comma before items at the end of a list that only some
-  configurations have on the line of the first of them, rather than on a
-  line of its own, and keep several such conditionals in a row apart as
-  written rather than nest them and repeat the items of one in both
-  branches of the other. [Issue 69](https://github.com/mrkkrp/tilia/issues/69).
-* Do not blame an operator on a module that could not be read where it
-  cannot have come from there: a name the module defines itself, one a
-  local binding captures, or one an import that could be read brings in.
-  A module that hands a name on is no longer held up by an unreadable
-  import that could not have supplied it, such as one under another
-  qualifier. [Issue 67](https://github.com/mrkkrp/tilia/issues/67).
-* Give an operator a local binding captures the fixity its binding group
-  declares, or `infixl 9`, rather than that of an import of the same name.
-  [Issue 67](https://github.com/mrkkrp/tilia/issues/67).
-* Take a name that one of the project's own modules, or a dependency read
-  from its source, brings in as settling the name's fixity despite an
-  unreadable import, as one read from an interface file already did. [Issue
-  84](https://github.com/mrkkrp/tilia/issues/84).
-* Settle each name a module re-exports individually, rather than give up on
-  all of them because one could have come from a module that cannot be read.
-  [Issue 86](https://github.com/mrkkrp/tilia/issues/86).
-* Give `:` its fixity wherever it is written, rather than only where the
-  `Prelude` is in scope.
-* Take the fixities of the packages that come with the compiler from the
-  compiler's interface files, rather than from a table written for one
-  version of it, and read a module one package exposes but another holds,
-  such as `GHC.Num.Integer`, as the module it stands for.
-* Read every name an interface file refers to by key, so that a name such as
-  `fmap` settles a use of it despite an unreadable import, as other names
-  already did.
-* Take a constructor, field or method that an import list brings in through
-  `T(..)` or `T(a, b)` as settling the name's fixity despite an unreadable
-  import, as a variable named on its own already did.
-* Keep a comment apart from a Haddock under it only where it comes out
-  right above one, rather than in every branch of a conditional it is
-  printed in, which a second pass then undid. [Issue
-  82](https://github.com/mrkkrp/tilia/issues/82).
-* Lay out a module with one declaration the way one with several is laid
-  out, so that where a conditional changes how many declarations there are,
-  the code after it is not repeated under both branches of another
-  conditional. [Issue 82](https://github.com/mrkkrp/tilia/issues/82).
-* Keep a module header with a `DEPRECATED` or `WARNING` pragma written on a
-  line of its own on several lines when it has no export list, rather than
-  join it onto one line. [Issue 96](https://github.com/mrkkrp/tilia/issues/96).
-* Put a comment written right after another one where that one goes, rather
-  than with what follows, so that a second comment between a name and its
-  `=` no longer moves after the `=`. [Issue
-  94](https://github.com/mrkkrp/tilia/issues/94).
-* Leave the empty line between the header and the imports where it is when
-  sorting moves the first import further down, rather than carry it into
-  the imports with a comment written right on top of that import. [Issue
-  92](https://github.com/mrkkrp/tilia/issues/92).
-* Keep a comment that an empty line sets apart from the first import, such
-  as a heading over all the imports, at the top of the imports when sorting
-  moves that import further down, rather than move it along. [Issue
-  92](https://github.com/mrkkrp/tilia/issues/92).
-* Put a directive written under the empty line that ends a `#define`
-  going on with a backslash under that empty line too, rather than right
-  under the `#define`, where it became part of the definition. [PR
-  111](https://github.com/mrkkrp/tilia/pull/111).
-* Put a line that holds nothing but a use of a function-like macro the
-  module defines, such as `WITNESSES(:: [Witness])` among the fields of a
-  record, back as it was written, rather than read it as code. A module
-  such as `Test.QuickCheck.Property` is now formatted, and the fixities it
-  declares are read from its source rather than written into Tilia. [PR
-  111](https://github.com/mrkkrp/tilia/pull/111).
-* Leave out configurations that no definition of the macros gives, such as
-  one taking the branch of `#if X` but no branch of `#ifdef X`, or one
-  taking the branch of `#if MIN_VERSION_base(4,11,0)` but no branch of `#if
-  MIN_VERSION_base(4,10,0)`, so that a module turning an extension on under
-  one of them and using it under the other is no longer declined over them.
-  [Issue 65](https://github.com/mrkkrp/tilia/issues/65).
-* Put an empty line after the imports only where declarations follow them,
-  so that a branch of a conditional holding only imports no longer ends
-  with one where another branch goes on to declarations. [Issue
-  113](https://github.com/mrkkrp/tilia/issues/113).
-* Do not repeat the declarations that follow a conditional in every one of
-  its alternatives when it holds a pragma or an import in one branch and
-  declarations in another, or asks the same question as a conditional
-  among the declarations. [Issue
-  68](https://github.com/mrkkrp/tilia/issues/68).
-* Keep a conditional choosing between a `data` and a `newtype` declaration
-  whole, rather than split it into one conditional choosing the keyword and
-  another choosing the rest, which a second run gave an empty conditional.
-  [Issue 68](https://github.com/mrkkrp/tilia/issues/68).
-* Keep a comment written right above a member of a class or an instance
-  next to the member before it, rather than set it apart with an empty
-  line the author did not write. [Issue
-  120](https://github.com/mrkkrp/tilia/issues/120).
-* Put no space between a block comment and the closing bracket or the
-  comma written right after it, as in `(Bool {- already bound -}, Int)`.
-  [Issue 122](https://github.com/mrkkrp/tilia/issues/122).
-* Keep a section heading together with the comments written right against
-  it, such as the lines of a comment listing points that begin with `*`, or
-  rules of dashes above and below a heading, rather than put empty lines
-  around it. [Issue 119](https://github.com/mrkkrp/tilia/issues/119).
-* Keep a comment written under the last line of a binding, a statement or
-  a declaration, lined up with the code on that line, under that code
-  where what follows begins further left, rather than move it out to what
-  follows. [Issue 121](https://github.com/mrkkrp/tilia/issues/121).
-* Keep a conditional that begins in a `where` clause and goes on into the
-  declarations after it whole, rather than split it in two with the empty
-  line between the declarations inside the second, which a second run moved
-  above it. [Issue 118](https://github.com/mrkkrp/tilia/issues/118).
-* Keep a conditional that begins in the middle of a declaration where it
-  was written, rather than copy the part of the declaration before it into
-  each branch, where the branches go on into the declarations after it or
-  finish it each their own way. [Issue
-  117](https://github.com/mrkkrp/tilia/issues/117).
-* Format a module in which a conditional begins above the declarations and
-  goes on into them a part at a time, as one without such a conditional is,
-  rather than vary the whole module one conditional at a time. Such modules
-  are formatted in less than half the time, some in a seventh of it.
-  [PR 130](https://github.com/mrkkrp/tilia/pull/130).
-* Keep a comment written above the `in` of a `let` among the bindings,
-  rather than move it to the other side of `in`, above the body. [Issue
-  137](https://github.com/mrkkrp/tilia/issues/137).
-* Leave out configurations that no definition of the macros gives where the
-  answers turn on no extension too, when one of them would not parse, such
-  as one taking no branch of `#if !(MIN_VERSION_base(4,16,0))` and the
-  branch of `#if !(MIN_VERSION_base(4,14,0))` around items of an export list
-  written with leading commas. [Issue
-  133](https://github.com/mrkkrp/tilia/issues/133).
-* Put a space between the last item of a list and a block comment written
-  after its trailing comma, which formatting drops, as in `(Array, bounds,
-  (!) {- assocs -})`, rather than put the comment against the item, which a
-  second run set apart. [Issue 132](https://github.com/mrkkrp/tilia/issues/132).
-* Keep a `do` block on the line of the `$` or `=` before it when an
-  operator follows the block at the column of its statements, as in `it
-  "adds" $ do` with a `` `shouldBe` `` under the block, rather than put the
-  block on a line of its own one step further in. [Issue
-  136](https://github.com/mrkkrp/tilia/issues/136).
-* Sort the names of an import list on each side of a conditional among them
-  apart, rather than sort the names inside the conditional in with the
-  others, which took it apart. [Issue
-  135](https://github.com/mrkkrp/tilia/issues/135).
-* Do not put an empty copy of a conditional nested in an import list above
-  the imports when sorting moves that import further down. [Issue
-  135](https://github.com/mrkkrp/tilia/issues/135).
-* Read a component that names no `default-language` as Haskell98, as
-  `cabal` builds it, rather than as GHC2021. An `import qualified` in such a
-  component is no longer rewritten with `qualified` after the module name,
-  which it does not compile with, and code that relies on
-  `NondecreasingIndentation` is formatted. [Issue
-  131](https://github.com/mrkkrp/tilia/issues/131).
-* Keep a module's name and its Haddock out of a conditional between the
-  name and the export list, rather than copy them into each branch. [Issue
-  134](https://github.com/mrkkrp/tilia/issues/134).
-* Format a module with a Haddock written with no space after its trigger and
-  carried on over more lines, such as `-- ^Recover from errors.`, rather
-  than refuse it because the lines after the first move along with the
-  first when the space is put in. [Issue
-  147](https://github.com/mrkkrp/tilia/issues/147).
-* Ask Cabal for a build plan of `:all` rather than `all`, which is ambiguous
-  in a package with a component named `all`, so that such a package gets a
-  plan and its modules are formatted. [Issue
-  156](https://github.com/mrkkrp/tilia/issues/156).
-* Take a comment lined up under the comment that ends the line above as
-  carrying that comment on, as one lined up under the line already was,
-  and keep it under that comment, rather than move it before what follows,
-  such as after the bar of the next constructor. [Issue
-  158](https://github.com/mrkkrp/tilia/issues/158).
-* Put a comment written on a line of its own between an operator at the end
-  of a line and its operand above the line the operator moves to, rather
-  than leave the operator alone on a line above the comment. [Issue
-  159](https://github.com/mrkkrp/tilia/issues/159).
-* Print a Haddock that holds nothing but a space as `{- | -}` rather than as
-  `-- |`, which loses the space at the end of its line and then holds
-  nothing, so that such a Haddock before a module header, a constructor, a
-  field or an argument is formatted in one pass. [Issue
-  152](https://github.com/mrkkrp/tilia/issues/152).
-* Keep a comment written under the last line of a construct that spans
-  several lines, lined up with where the construct begins, under it, as one
-  under a construct on one line is kept, rather than move it to the column
-  of what follows. A comment under the last member of a class or an
-  instance stays in the body, and a member that formatting breaks across
-  lines no longer makes a module take two passes to format. [Issue
-  151](https://github.com/mrkkrp/tilia/issues/151).
-* Sort the names of imports of one module merged across a `#define` or an
-  `#undef` line in one pass, since only the lines of a conditional keep the
-  names written on either side of them apart. [Issue
-  150](https://github.com/mrkkrp/tilia/issues/150).
-* Space a conditional as the configurations that print something in it
-  space it, rather than take the empty line around it from one that prints
-  nothing there, so that a conditional holding a pragma and an import at
-  the top of a module with no header is formatted in one pass. [Issue
-  154](https://github.com/mrkkrp/tilia/issues/154).
-* Keep a comment written between the Haddock of a constructor, a record
-  field or an argument and what the Haddock documents under the Haddock,
-  rather than move it above the Haddock. [Issue
-  148](https://github.com/mrkkrp/tilia/issues/148).
-* Keep the Haddock of a constructor, a record field or an argument in each
-  branch of a conditional it differs between, rather than keep the first
-  branch's and lose the others. [Issue
-  172](https://github.com/mrkkrp/tilia/issues/172).
-* Format a comment written between a constructor and a conditional that
-  adds another constructor after it in one pass: indent the added
-  constructor past the `|` the comment comes out after, and hold the
-  comment off the added constructor's Haddock with an empty line. [Issue
-  155](https://github.com/mrkkrp/tilia/issues/155).
-* Keep something written on one line that a conditional varies whole, such
-  as an import list or the binders of a `forall`, in each branch as it was
-  written, rather than lay out the conditional inside it, aligned after its
-  opening bracket, and change that layout on the next pass. [Issue
-  153](https://github.com/mrkkrp/tilia/issues/153).
-* Leave no empty line at the end of a branch of a conditional, whatever
-  comes out last in it. A comment written above a conditional with an empty
-  line under it is now formatted in one pass where it comes out at the end
-  of a branch, and a directive such as `#define` written last in a branch
-  no longer keeps the empty line under it. [Issue
-  167](https://github.com/mrkkrp/tilia/issues/167).
-* Take the extensions a component turns on in the `extensions` field, which
-  older packages use in place of `default-extensions`, as in force, both
-  for the package being formatted and for the packages operators are looked
-  up in. [Issue 186](https://github.com/mrkkrp/tilia/issues/186).
-* Keep a comment that ends the line of a right-hand side at the end of that
-  line where comments lined up with the right-hand side follow it, rather
-  than move it above the next declaration and, on a second run, the
-  comments under the right-hand side to the margin. [Issue
-  183](https://github.com/mrkkrp/tilia/issues/183).
-* Hold a comment written under a header pragma off the module's Haddock,
-  which it comes out right under once the pragma moves to the top, also
-  where a comment above the pragma moves up with it. An ordinary comment
-  used to run into the Haddock and change it, and an unrecognised pragma
-  was formatted in two passes. [Issue
-  185](https://github.com/mrkkrp/tilia/issues/185).
-* Keep a `DEPRECATED` or `WARNING` pragma that names nothing, rather than
-  drop it. [Issue 181](https://github.com/mrkkrp/tilia/issues/181).
-* Keep a comment written inside the empty brackets of a `deriving` clause
-  inside them, rather than move it to the start of the next line that holds
-  anything, where it made a section heading an ordinary comment or the
-  output not parse. [Issue 180](https://github.com/mrkkrp/tilia/issues/180).
-* Format a comment under the last guard of an alternative of a `case`,
-  lined up with the guard's condition, in one pass, rather than move it left
-  a step on each of two passes. A comment written right after the bar of a
-  guard now stays after the bar, and one lined up with the bars or with the
-  right-hand side under a guard stays under it. [Issue
-  184](https://github.com/mrkkrp/tilia/issues/184).
-* Line a comment carried on under a remark up with that remark also where
-  the remark goes on a line of its own because another took the end of the
-  line, rather than with the one that did, so that such a module is
-  formatted in one pass. [Issue
-  182](https://github.com/mrkkrp/tilia/issues/182).
-* Keep an overlap pragma written behind a conditional in an instance head,
-  or in that of a standalone `deriving` declaration, inside the conditional,
-  rather than put it after the conditional, which was left empty, in every
-  configuration. A comment between `instance` and the head after it is
-  indented with the head rather than put at the margin. [Issue
-  179](https://github.com/mrkkrp/tilia/issues/179).
-* Put an operator that the configurations print at the end of the line of
-  what a conditional chooses, such as a `$` continuing the last statement
-  of a `do` block, at the end of each branch, rather than after the
-  `#endif` at the column of the statements, where it ended the block.
-  [Issue 178](https://github.com/mrkkrp/tilia/issues/178).
-* Print a `do` block, a `case` or a lambda written right after a `$` that
-  begins its line on the line of that `$`, as in `f $ do`, once the `$`
-  moves to the end of the line before, the way it is printed when written
-  so, rather than on a line of its own a step further in. Where a comment
-  ends the line before, what follows the `$` still goes on a line of its
-  own. [Issue 198](https://github.com/mrkkrp/tilia/issues/198).
-* Take the extensions a component turns on behind a condition in its
-  `.cabal` file, such as `if impl(ghc >= 8.6)`, as in force where the build
-  meets the condition, judged by the `ghc` on the path, the platform and the
-  defaults of the package's flags. A module declared only behind a condition
-  the build does not meet takes that branch's extensions as well. [PR
-  200](https://github.com/mrkkrp/tilia/pull/200).
-* Keep the comments written after the last declaration of a Backpack
-  signature, which were dropped. [PR
-  201](https://github.com/mrkkrp/tilia/pull/201).
-* Read a module's comments off its tokens rather than have the parser
-  attach them to the syntax tree, which is slow for a module with many
-  comments, and in a module with conditionals stop building layouts that
-  are not printed. Formatting is about 10% faster, `--check-ast` a third
-  faster, and working out operators from the sources of dependencies a
-  fifth faster. A module with thousands of comments formats twice as fast.
-  [PR 201](https://github.com/mrkkrp/tilia/pull/201).
-* Speed up walking a module's syntax tree, writing comments into the
-  printed document, and handing a module to the lexer. Formatting is about
-  10% faster. [PR 202](https://github.com/mrkkrp/tilia/pull/202).
-* Work out the configurations of a module with conditionals that do not
-  depend on one another on several cores at once. Where cores are free, a
-  module with many conditionals formats up to twice as fast, and `tilia
-  check` on lens takes 1.5 s rather than 1.8 s. [PR
-  203](https://github.com/mrkkrp/tilia/pull/203).
-* Keep `OPTIONS_GHC` pragmas in the order they are written, which is the
-  order GHC reads their flags in, a later flag overriding an earlier one,
-  rather than sort them, and write a repeated one once only where it is
-  written twice in a row. [Issue
-  218](https://github.com/mrkkrp/tilia/issues/218).
-* Put no empty line between a Haddock written as `--` lines and a comment
-  right under it whose first line begins with `---`, which GHC already
-  does not read as more of the Haddock. [Issue
-  217](https://github.com/mrkkrp/tilia/issues/217).
-* Print a `do` block, a `case` or a lambda written right after the `=` or
-  `->` of a guard that begins its line on the line of that `=` or `->`,
-  once it moves to the end of the guard's line, the way it is printed when
-  written so, rather than on a line of its own a step further in. A comment
-  that ends the guard's line goes to the end of the line they are joined
-  on, unless a comment ends the line of the `=` or `->` as well. [Issue
-  209](https://github.com/mrkkrp/tilia/issues/209).
-* Keep the names of a signature for several names on one line where they
-  were written on one line, with the type under them a step in, rather than
-  put each name on a line of its own and the type a step further in than
-  the names. The same goes for a pattern synonym signature. [Issue
-  215](https://github.com/mrkkrp/tilia/issues/215).
-* Print a chain of `let`s, each written as `let … in` on one line, the
-  same way: `in` ends the line and the next `let` begins the line under it,
-  at the same column, with only the last laid out as usual. A comment above
-  one of the `let`s stays above it, rather than leave the `in` before it on a
-  line of its own. [Issue 211](https://github.com/mrkkrp/tilia/issues/211).
-* Keep a comment written on a line of its own at the column right after a
-  closing bracket out of the brackets, where it lost the empty line under
-  the declaration and moved again in the next pass, and print it as at any
-  other column. [Issue 206](https://github.com/mrkkrp/tilia/issues/206).
-* Keep a comment lined up with the last line of a construct, and not with
-  what follows it, inside the construct, also where that line begins with
-  an operator, an arrow or a closing bracket, rather than put it at the
-  column of what follows, where it read as being about that. A comment
-  under the result type of a signature no longer goes to the margin, and
-  one under the last field of a constructor stays under it whatever column
-  `deriving` is written at. [Issue
-  205](https://github.com/mrkkrp/tilia/issues/205).
-* Keep `<-` with the pattern it binds where a conditional chooses the
-  first line of a bind statement, rather than split the conditional around
-  it and put the `<-` on a line of its own; the statement then goes into
-  each branch whole. A comment written right after a `<-` also stays on its
-  line. [Issue 197](https://github.com/mrkkrp/tilia/issues/197).
+### Conditional compilation
+
+Modules that use the C preprocessor are formatted in one pass, with their
+comments where they were written, in all the cases found so far. Where the
+configurations of a module differ in only a part of something, such as an
+argument, an item of a list, the start of a statement, the Haddock of a
+constructor or an overlap pragma in an instance head, the conditional stays
+around that part in many more cases, rather than the code around it being
+copied into each branch, and conditionals stay nested and whole as they were
+written. A comment that comes out right above a directive goes to the
+margin, and the empty lines around a conditional and at the ends of its
+branches follow what the configurations print.
+
+Directives come out as written: one continued with a backslash, a `#define`
+continued over several lines and the directive under it, the text after
+`#else` and `#endif`, and an alternative that holds nothing but `#error`. A
+line that holds nothing but a use of a function-like macro the module
+defines is put back as written rather than read as code. Configurations that
+no definition of the macros gives are no longer tried, so a module is no
+longer declined over one of them, and what only other compilers see, behind
+`__MHS__` or `__HUGS__`, is not taken to be in scope. A module with many
+conditionals is formatted a fragment at a time, so few run out of
+configurations, and the fixities in a module whose branches do not parse
+together are worked out from each configuration.
+
+Issues and pull requests: [Issue 6], [Issue 7], [PR 34], [PR 39], [PR 44],
+[PR 54], [PR 56], [PR 57], [Issue 60], [Issue 61], [Issue 64], [Issue 65],
+[Issue 66], [Issue 68], [Issue 69], [Issue 70], [Issue 82], [PR 111],
+[Issue 113], [Issue 117], [Issue 118], [Issue 133], [Issue 134],
+[Issue 153], [Issue 154], [Issue 155], [Issue 167], [Issue 172],
+[Issue 178], [Issue 179], [Issue 197].
+
+### Operators and fixities
+
+Tilia finds the fixity of an operator more often and more precisely. It
+settles each name a module re-exports on its own, takes the names an import
+hides into account in a whole-module re-export, and no longer blames an
+operator on a module it cannot read where the operator cannot have come from
+there: a name the module defines, one a local binding captures, which takes
+the fixity its binding group declares, or one an import that can be read
+brings in, among them the constructors, fields and methods of `T(..)` and
+every name an interface file refers to by key. The fixities of the packages
+that come with the compiler are read from its interface files rather than
+from a table written for one version of it, and `:` has its fixity wherever
+it is written. Where Tilia declines a file over an operator its imports
+bring in with different fixities, it names each fixity and the imports that
+bring it.
+
+Issues and pull requests: [PR 52], [Issue 67], [Issue 84], [Issue 86],
+[PR 98], [PR 101].
+
+### Comments
+
+Comments stay with the code they were written beside in many more places:
+under the last line of a construct and lined up with it, after an operator
+that ends a line or between that operator and its operand, between a name
+and its `=`, above the `in` of a `let`, around the guards of a `case`,
+between a Haddock and what it documents, inside empty brackets and before
+closing ones, at the end of a line with comments lined up under it, under a
+remark they carry on, and after the last declaration of a Backpack
+signature, where they used to be dropped.
+
+A section heading keeps the comments written right against it. An empty line
+written under a comment is kept, none is put around a comment where the
+author wrote none, and a comment is held off a Haddock only where it would
+otherwise run into it. Block comments are spaced against brackets and commas
+as written. A Haddock written with no space after its trigger, or holding
+nothing but a space, is formatted.
+
+Issues and pull requests: [Issue 62], [Issue 63], [PR 79], [Issue 94],
+[Issue 119], [Issue 120], [Issue 121], [Issue 122], [Issue 132],
+[Issue 137], [Issue 147], [Issue 148], [Issue 151], [Issue 152],
+[Issue 158], [Issue 159], [Issue 180], [Issue 182], [Issue 183],
+[Issue 184], [Issue 185], [PR 201], [Issue 205], [Issue 206], [Issue 217].
+
+### Layout
+
+More of the layout an author chose is kept where it reads well. A `do`
+block, a `case` or a lambda stays on the line of the `$`, `=` or `->` it was
+written after; a chain of `let … in`, each on a line of its own, comes out
+as a column; the names of a signature for several names stay on one line
+where they were written on one; and a module header with a `DEPRECATED` or
+`WARNING` pragma on a line of its own keeps its lines. `OPTIONS_GHC` pragmas
+keep the order they were written in, which is the order GHC reads their
+flags in, and a `DEPRECATED` or `WARNING` pragma that names nothing is no
+longer dropped.
+
+Issues and pull requests: [Issue 96], [Issue 136], [Issue 181], [Issue 198],
+[Issue 209], [Issue 211], [Issue 215], [Issue 218].
+
+### Imports
+
+An import list written on one line stays on one line. Imports of one module
+are merged only where together they cannot bring in more than they did
+apart: imports hiding different names stay apart, and so does a name in a
+`hiding` list from the same name with its own parentheses. Sorting the
+imports leaves the empty line under the module header and a heading comment
+above the imports where they are, and it respects conditionals: an import
+whose clause is behind one sorts among the others, the names on either side
+of one in an import list sort apart, and `#define` lines no longer keep
+apart what is written either side of them.
+
+Issues and pull requests: [PR 55], [PR 73], [PR 76], [Issue 92],
+[Issue 135], [Issue 150].
+
+### Projects and tools
+
+Tilia reads a Cabal package the way `cabal` builds it: a component that
+names no `default-language` is Haskell98, the older `extensions` field
+counts, and so do extensions behind a condition the build meets. A package
+with a component named `all` gets a build plan. `.tiliaignore` files are
+read the way Git reads `.gitignore` files, with globs, negation, and a file
+in any directory. `tilia for-editor FILE`, and `Tilia.Editor` for programs
+that use Tilia as a library, are there for editor integrations.
+
+Issues and pull requests: [PR 41], [PR 51], [Issue 131], [Issue 156],
+[Issue 186], [PR 200].
+
+### Performance
+
+Tilia is faster throughout. A run works out what a module offers once,
+however many threads ask for it, parses each module that operators are
+looked up in and reads each source tarball once, keeps summaries of the
+project's own modules between runs, and reads what interface files refer to
+by key rather than run `ghc --show-iface`. A run that starts with nothing
+cached is up to three times as fast and needs half the memory.
+
+Formatting walks a module's syntax tree once, reads its comments off the
+tokens, places comments in time that does not grow with the square of the
+size of a module, and works out the configurations of conditionals that do
+not depend on one another on several cores. A module with thousands of
+comments formats twice as fast, one whose conditionals reach from above the
+declarations into them in less than half the time, and one with many
+conditionals up to twice as fast where cores are free. `tilia check` diffs
+faster.
+
+Issues and pull requests: [PR 37], [PR 46], [PR 47], [PR 48], [PR 49],
+[PR 50], [PR 130], [PR 201], [PR 202], [PR 203].
+
+[Issue 6]: https://github.com/mrkkrp/tilia/issues/6
+[Issue 7]: https://github.com/mrkkrp/tilia/issues/7
+[PR 34]: https://github.com/mrkkrp/tilia/pull/34
+[PR 37]: https://github.com/mrkkrp/tilia/pull/37
+[PR 39]: https://github.com/mrkkrp/tilia/pull/39
+[PR 41]: https://github.com/mrkkrp/tilia/pull/41
+[PR 44]: https://github.com/mrkkrp/tilia/pull/44
+[PR 46]: https://github.com/mrkkrp/tilia/pull/46
+[PR 47]: https://github.com/mrkkrp/tilia/pull/47
+[PR 48]: https://github.com/mrkkrp/tilia/pull/48
+[PR 49]: https://github.com/mrkkrp/tilia/pull/49
+[PR 50]: https://github.com/mrkkrp/tilia/pull/50
+[PR 51]: https://github.com/mrkkrp/tilia/pull/51
+[PR 52]: https://github.com/mrkkrp/tilia/pull/52
+[PR 54]: https://github.com/mrkkrp/tilia/pull/54
+[PR 55]: https://github.com/mrkkrp/tilia/pull/55
+[PR 56]: https://github.com/mrkkrp/tilia/pull/56
+[PR 57]: https://github.com/mrkkrp/tilia/pull/57
+[Issue 60]: https://github.com/mrkkrp/tilia/issues/60
+[Issue 61]: https://github.com/mrkkrp/tilia/issues/61
+[Issue 62]: https://github.com/mrkkrp/tilia/issues/62
+[Issue 63]: https://github.com/mrkkrp/tilia/issues/63
+[Issue 64]: https://github.com/mrkkrp/tilia/issues/64
+[Issue 65]: https://github.com/mrkkrp/tilia/issues/65
+[Issue 66]: https://github.com/mrkkrp/tilia/issues/66
+[Issue 67]: https://github.com/mrkkrp/tilia/issues/67
+[Issue 68]: https://github.com/mrkkrp/tilia/issues/68
+[Issue 69]: https://github.com/mrkkrp/tilia/issues/69
+[Issue 70]: https://github.com/mrkkrp/tilia/issues/70
+[PR 73]: https://github.com/mrkkrp/tilia/pull/73
+[PR 76]: https://github.com/mrkkrp/tilia/pull/76
+[PR 79]: https://github.com/mrkkrp/tilia/pull/79
+[Issue 82]: https://github.com/mrkkrp/tilia/issues/82
+[Issue 84]: https://github.com/mrkkrp/tilia/issues/84
+[Issue 86]: https://github.com/mrkkrp/tilia/issues/86
+[Issue 92]: https://github.com/mrkkrp/tilia/issues/92
+[Issue 94]: https://github.com/mrkkrp/tilia/issues/94
+[Issue 96]: https://github.com/mrkkrp/tilia/issues/96
+[PR 98]: https://github.com/mrkkrp/tilia/pull/98
+[PR 101]: https://github.com/mrkkrp/tilia/pull/101
+[PR 111]: https://github.com/mrkkrp/tilia/pull/111
+[Issue 113]: https://github.com/mrkkrp/tilia/issues/113
+[Issue 117]: https://github.com/mrkkrp/tilia/issues/117
+[Issue 118]: https://github.com/mrkkrp/tilia/issues/118
+[Issue 119]: https://github.com/mrkkrp/tilia/issues/119
+[Issue 120]: https://github.com/mrkkrp/tilia/issues/120
+[Issue 121]: https://github.com/mrkkrp/tilia/issues/121
+[Issue 122]: https://github.com/mrkkrp/tilia/issues/122
+[PR 130]: https://github.com/mrkkrp/tilia/pull/130
+[Issue 131]: https://github.com/mrkkrp/tilia/issues/131
+[Issue 132]: https://github.com/mrkkrp/tilia/issues/132
+[Issue 133]: https://github.com/mrkkrp/tilia/issues/133
+[Issue 134]: https://github.com/mrkkrp/tilia/issues/134
+[Issue 135]: https://github.com/mrkkrp/tilia/issues/135
+[Issue 136]: https://github.com/mrkkrp/tilia/issues/136
+[Issue 137]: https://github.com/mrkkrp/tilia/issues/137
+[Issue 147]: https://github.com/mrkkrp/tilia/issues/147
+[Issue 148]: https://github.com/mrkkrp/tilia/issues/148
+[Issue 150]: https://github.com/mrkkrp/tilia/issues/150
+[Issue 151]: https://github.com/mrkkrp/tilia/issues/151
+[Issue 152]: https://github.com/mrkkrp/tilia/issues/152
+[Issue 153]: https://github.com/mrkkrp/tilia/issues/153
+[Issue 154]: https://github.com/mrkkrp/tilia/issues/154
+[Issue 155]: https://github.com/mrkkrp/tilia/issues/155
+[Issue 156]: https://github.com/mrkkrp/tilia/issues/156
+[Issue 158]: https://github.com/mrkkrp/tilia/issues/158
+[Issue 159]: https://github.com/mrkkrp/tilia/issues/159
+[Issue 167]: https://github.com/mrkkrp/tilia/issues/167
+[Issue 172]: https://github.com/mrkkrp/tilia/issues/172
+[Issue 178]: https://github.com/mrkkrp/tilia/issues/178
+[Issue 179]: https://github.com/mrkkrp/tilia/issues/179
+[Issue 180]: https://github.com/mrkkrp/tilia/issues/180
+[Issue 181]: https://github.com/mrkkrp/tilia/issues/181
+[Issue 182]: https://github.com/mrkkrp/tilia/issues/182
+[Issue 183]: https://github.com/mrkkrp/tilia/issues/183
+[Issue 184]: https://github.com/mrkkrp/tilia/issues/184
+[Issue 185]: https://github.com/mrkkrp/tilia/issues/185
+[Issue 186]: https://github.com/mrkkrp/tilia/issues/186
+[Issue 197]: https://github.com/mrkkrp/tilia/issues/197
+[Issue 198]: https://github.com/mrkkrp/tilia/issues/198
+[PR 200]: https://github.com/mrkkrp/tilia/pull/200
+[PR 201]: https://github.com/mrkkrp/tilia/pull/201
+[PR 202]: https://github.com/mrkkrp/tilia/pull/202
+[PR 203]: https://github.com/mrkkrp/tilia/pull/203
+[Issue 205]: https://github.com/mrkkrp/tilia/issues/205
+[Issue 206]: https://github.com/mrkkrp/tilia/issues/206
+[Issue 209]: https://github.com/mrkkrp/tilia/issues/209
+[Issue 211]: https://github.com/mrkkrp/tilia/issues/211
+[Issue 215]: https://github.com/mrkkrp/tilia/issues/215
+[Issue 217]: https://github.com/mrkkrp/tilia/issues/217
+[Issue 218]: https://github.com/mrkkrp/tilia/issues/218
 
 ## Tilia 0.0.2.0
 
