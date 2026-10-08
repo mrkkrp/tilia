@@ -293,6 +293,31 @@ spec = do
             files
               `shouldBe` fmap (prPath root </>) ["src/A.hs", "unix/B.hs", "windows/B.hs"]
 
+    it "leaves out a component no build takes, and keeps one some build takes"
+      $ withProject
+        [ ("only.cabal", unbuildable),
+          ("src/A.hs", "module A where\n"),
+          ("app/Never.hs", "module Main where\n"),
+          ("app/Older.hs", "module Main where\n"),
+          ("app/Neither.hs", "module Main where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            fmap takeFileName files `shouldBe` ["Older.hs", "A.hs"]
+
+    it "still takes a component no build takes as a target, with no files"
+      $ withProject
+        [ ("only.cabal", unbuildable),
+          ("app/Never.hs", "module Main where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root (Qualified Nothing Exe "never") >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> filesOfComponents root cs `shouldReturn` []
+
     it "passes over a declared module with no source, such as a generated one"
       $ withProject
         [ ("only.cabal", packageWith "only" ["src"] ["A", "Paths_only"]),
@@ -477,6 +502,44 @@ withProject files act =
       | any ((== "cabal.project") . fst) fs = ProjectFile
       | (named : _) <- [p | (p, _) <- fs, ".cabal" `isSuffixOf` p] = PackageFile named
       | otherwise = ProjectFile
+
+-- | A library, an executable no build takes, one that only builds with
+-- older compilers, and one every alternative of a condition makes
+-- unbuildable.
+unbuildable :: Text
+unbuildable =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: only",
+      "version: 0.1.0.0",
+      "",
+      "library",
+      "  hs-source-dirs: src",
+      "  exposed-modules: A",
+      "  default-language: Haskell2010",
+      "",
+      "executable never",
+      "  main-is: Never.hs",
+      "  hs-source-dirs: app",
+      "  default-language: Haskell2010",
+      "  buildable: False",
+      "",
+      "executable older",
+      "  main-is: Older.hs",
+      "  hs-source-dirs: app",
+      "  default-language: Haskell2010",
+      "  if impl(ghc >= 9.2)",
+      "    buildable: False",
+      "",
+      "executable neither",
+      "  main-is: Neither.hs",
+      "  hs-source-dirs: app",
+      "  default-language: Haskell2010",
+      "  if os(windows)",
+      "    buildable: False",
+      "  else",
+      "    buildable: False"
+    ]
 
 -- | A package with two executables that share a module.
 twoComponents :: Text

@@ -373,14 +373,23 @@ benchmarkBranches = branchesOf $ \b ->
     BenchmarkExeV10 _ path -> declaring (benchmarkBuildInfo b) [] [entryPoint path]
     _ -> declaring (benchmarkBuildInfo b) [] []
 
--- | Every branch of a component.
+-- | Every branch of a component, and none of one that no build takes: one
+-- whose own settings make it unbuildable, or every alternative of one of
+-- its conditions.
 branchesOf ::
   (Semigroup a) =>
   (a -> ComponentSection) ->
   CondTree ConfVar c a ->
   [BranchSections]
-branchesOf f root = go mempty root
+branchesOf f root
+  | neverBuilt root = []
+  | otherwise = go mempty root
   where
+    neverBuilt node =
+      not (buildable (sectionInfo (f (condTreeData node))))
+        || any everyAlternative (condTreeComponents node)
+    everyAlternative (CondBranch _ yes no) =
+      neverBuilt yes && maybe False neverBuilt no
     built valueOf =
       sectionInfo . f . snd $
         simplifyCondTree valueOf (mapTreeConstrs (const ()) root)

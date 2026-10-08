@@ -400,6 +400,10 @@
   module with many conditionals formats up to twice as fast, and `tilia
   check` on lens takes 1.5 s rather than 1.8 s. [PR
   203](https://github.com/mrkkrp/tilia/pull/203).
+* Leave out the files of a component that no build takes, one whose
+  `buildable: False` holds whatever its conditions come to, rather than
+  decline them over imports the build plan cannot hold. [PR
+  204](https://github.com/mrkkrp/tilia/pull/204).
 
 ## Tilia 0.0.2.0
 

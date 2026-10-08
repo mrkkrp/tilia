@@ -63,6 +63,11 @@ spec = do
         (has BangPatterns <$> asked (root </> "new" </> "M.hs"))
           `shouldReturn` True
 
+    it "is none for a file only a component no build takes holds" $
+      inPackage besideAnUnbuildableTool ["src", "tool"] $ \root ->
+        (unclaimed <$> asked (root </> "tool" </> "Tool.hs"))
+          `shouldReturn` True
+
   describe "the setup script" $ do
     it "takes the compiler's defaults, not those of a component around it" $
       inPackage aroundTheSetupScript [] $ \root -> do
@@ -348,6 +353,24 @@ conditionalLibrary =
       "  default-extensions: BangPatterns",
       "  if impl(ghc >= 9.10)",
       "    hs-source-dirs: new"
+    ]
+
+-- | A library, and an executable no build takes.
+besideAnUnbuildableTool :: Text
+besideAnUnbuildableTool =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "executable tool",
+      "  main-is: Tool.hs",
+      "  hs-source-dirs: tool",
+      "  default-language: Haskell2010",
+      "  buildable: False"
     ]
 
 -- | Write a @.cabal@ file and the given directories, and hand back the root.
