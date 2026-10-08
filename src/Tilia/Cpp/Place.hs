@@ -131,7 +131,7 @@ restoreUnprinted source found doc = do
         ]
   let shelled = foldl (restoreConditional written) (widened doc) groups
       marked = spacedApart written (realized (widened shelled))
-      printed = Set.fromList (Nothing : fmap scope (spansIn marked))
+      printed = Set.fromList (Nothing : fmap (scope . fst) (regionsIn marked))
       noted =
         attachScopedComments
           margin
@@ -376,12 +376,12 @@ anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
 farRight :: Int
 farRight = maxBound `div` 2
 
--- | The span of every region a document records.
-spansIn :: Doc -> [Span]
-spansIn = \case
-  DLocated s d -> s : spansIn d
-  DFence s d -> s : spansIn d
-  d -> foldChildren spansIn d
+-- | Every region a document records, and what it holds.
+regionsIn :: Doc -> [(Span, Doc)]
+regionsIn = \case
+  DLocated s d -> (s, d) : regionsIn d
+  DFence s d -> (s, d) : regionsIn d
+  d -> foldChildren regionsIn d
 
 -- | The smallest span covering every region a document records.
 regionOf :: Doc -> Maybe Span
@@ -428,14 +428,9 @@ putMacroLine written doc (n, t)
 -- | Is this line inside something the document reproduces verbatim, such
 -- as a quasi-quotation, where a line cannot be put back?
 quotedAt :: Doc -> Int -> Bool
-quotedAt doc n = any inside (located doc)
+quotedAt doc n = any inside (regionsIn doc)
   where
     inside (s, x) = spanStartLine s < n && n <= spanEndLine s && reproduced x
-
-    located = \case
-      DLocated s x -> (s, x) : located x
-      DFence s x -> (s, x) : located x
-      d -> foldChildren located d
 
     reproduced = \case
       DVerbatimBreak _ _ -> True

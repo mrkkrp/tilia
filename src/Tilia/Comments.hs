@@ -169,22 +169,13 @@ transcendentComment ls c = case commentStyle c of
   BlockComment ->
     c
       { commentBody =
-          normalizeBody
-            startColumn
-            BlockComment
-            (T.intercalate "\n" (zipWith clip [startLine ..] covered))
+          normalizeBody startColumn BlockComment (sliceSpan (lineTexts ls) s)
       }
   _ -> c
   where
     s = commentSpan c
-    startLine = spanStartLine s
-    endLine = spanEndLine s
-    covered = take (endLine - startLine + 1) (drop (startLine - 1) (lineTexts ls))
-    clip n l =
-      (if n == startLine then T.drop (offsetOf l (spanStartColumn s)) else id)
-        . (if n == endLine then T.take (offsetOf l (spanEndColumn s)) else id)
-        $ l
-    startColumn = maybe 0 (`offsetOf` spanStartColumn s) (lineAt startLine ls)
+    startColumn =
+      maybe 0 (`offsetOf` spanStartColumn s) (lineAt (spanStartLine s) ls)
 
 -- | Apply the normalizations, in the only order that works: dedent before
 -- stripping, since a line of nothing but spaces has to still count as
@@ -333,13 +324,10 @@ escapeTrigger c = case commentStyle c of
   DocComment ->
     c
       { commentBody = fmap escape (commentBody c),
-        commentStyle = ordinaryStyle
+        commentStyle = if bracketed c then BlockComment else LineComment
       }
   _ -> c
   where
-    ordinaryStyle
-      | "{-" `T.isPrefixOf` NE.head (commentBody c) = BlockComment
-      | otherwise = LineComment
     escape l = case openerWidth l of
       Just n
         | (gap, rest) <- T.span (== ' ') (T.drop n l),
