@@ -108,7 +108,7 @@ formatted       854c09aa8868  Agda-2.8.0/src/full/Agda/Syntax/Builtin.hs
 formatted       838765fe3265  Agda-2.8.0/src/full/Agda/Syntax/Common.hs
 formatted       067fd4d97790  Agda-2.8.0/src/full/Agda/Syntax/Common/Aspect.hs
 formatted       24ed1641ef0b  Agda-2.8.0/src/full/Agda/Syntax/Common/KeywordRange.hs
-formatted       dcfe2b4936de  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty.hs
+formatted       6d4e6b605a89  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty.hs
 formatted       0b01caf3aafb  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty/ANSI.hs
 formatted       2ede9edea241  Agda-2.8.0/src/full/Agda/Syntax/Concrete.hs
 formatted       cf0c0006689d  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Attribute.hs
@@ -278,7 +278,7 @@ formatted       2f5659c12840  Agda-2.8.0/src/full/Agda/TypeChecking/Polarity.hs-
 formatted       2901072a89fa  Agda-2.8.0/src/full/Agda/TypeChecking/Positivity.hs
 formatted       5626959a260d  Agda-2.8.0/src/full/Agda/TypeChecking/Positivity/Occurrence.hs
 formatted       37a92ee30da4  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty.hs
-formatted       8bd6edac6240  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty.hs-boot
+formatted       7c15c0f77e82  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty.hs-boot
 formatted       9a154e2294df  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Call.hs
 formatted       f5434869778b  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Call.hs-boot
 formatted       544fac378a4f  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Constraint.hs
@@ -287,7 +287,7 @@ formatted       73740eefae14  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Warni
 formatted       bf4e737ce041  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Warning.hs-boot
 formatted       3d893370c964  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs
 formatted       3c8fe98419dd  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs-boot
-formatted       4c35c697ae34  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Base.hs
+formatted       8ed22976b92a  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Base.hs
 formatted       449b06119ca8  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical.hs
 formatted       2ea530f280a4  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs
 formatted       34da472277ef  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs-boot
@@ -482,7 +482,7 @@ formatted       19879ee226c1  QuickCheck-2.18.0.0/tests/CollectDataTypes.hs
 formatted       da3fb75adccf  QuickCheck-2.18.0.0/tests/DiscardRatio.hs
 formatted       5408e5e13bd3  QuickCheck-2.18.0.0/tests/GCoArbitraryExample.hs
 formatted       8dd012261272  QuickCheck-2.18.0.0/tests/GShrinkExample.hs
-formatted       4c75e82798d4  QuickCheck-2.18.0.0/tests/Generators.hs
+formatted       3f82e6fd307d  QuickCheck-2.18.0.0/tests/Generators.hs
 formatted       057887c409bc  QuickCheck-2.18.0.0/tests/Misc.hs
 formatted       414efdc48918  QuickCheck-2.18.0.0/tests/MonadFix.hs
 formatted       85ad2d1decbe  QuickCheck-2.18.0.0/tests/Monoids.hs
@@ -611,7 +611,7 @@ formatted       4a6ecc95787f  aeson-2.3.1.0/tests/UnitTests/OptionalFields/TH.hs
 formatted       e93203961852  aeson-2.3.1.0/tests/UnitTests/UTCTime.hs
 formatted       e865ae48f11b  ansi-terminal-1.1.5/Setup.hs
 formatted       075adef817c3  ansi-terminal-1.1.5/app/Example.hs
-formatted       2dfeaf86d2ea  ansi-terminal-1.1.5/src/System/Console/ANSI.hs
+formatted       5cffc9cf8231  ansi-terminal-1.1.5/src/System/Console/ANSI.hs
 formatted       46d19416edeb  ansi-terminal-1.1.5/unix/System/Console/ANSI/Internal.hs
 formatted       1cc713a3f254  ansi-terminal-1.1.5/win/System/Console/ANSI/Internal.hs
 formatted       1aaa3e2316a9  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
@@ -846,7 +846,7 @@ formatted       441c6539f94e  blaze-markup-0.8.3.0/src/Text/Blaze/Internal.hs
 formatted       4846f41adc9e  blaze-markup-0.8.3.0/src/Text/Blaze/Renderer/Pretty.hs
 formatted       2e54745ce84a  blaze-markup-0.8.3.0/src/Text/Blaze/Renderer/String.hs
 formatted       8bb5a6b40341  blaze-markup-0.8.3.0/src/Text/Blaze/Renderer/Text.hs
-formatted       c0f54cd6a8ef  blaze-markup-0.8.3.0/src/Text/Blaze/Renderer/Utf8.hs
+formatted       0098c6011b82  blaze-markup-0.8.3.0/src/Text/Blaze/Renderer/Utf8.hs
 formatted       c7292f26d075  blaze-markup-0.8.3.0/tests/TestSuite.hs
 formatted       efa997a477e9  blaze-markup-0.8.3.0/tests/Text/Blaze/Tests.hs
 formatted       e6ac9555645c  blaze-markup-0.8.3.0/tests/Text/Blaze/Tests/Util.hs
@@ -1567,7 +1567,7 @@ formatted       bb9810473d80  conduit-1.3.6.1/benchmarks/optimize-201408.hs
 formatted       f70f6155e62a  conduit-1.3.6.1/benchmarks/unfused.hs
 formatted       20fad0c5aecd  conduit-1.3.6.1/src/Conduit.hs
 formatted       bf88ceabad43  conduit-1.3.6.1/src/Data/Conduit.hs
-formatted       0b1a96baef80  conduit-1.3.6.1/src/Data/Conduit/Combinators.hs
+formatted       1a953cd53139  conduit-1.3.6.1/src/Data/Conduit/Combinators.hs
 formatted       f520242138c3  conduit-1.3.6.1/src/Data/Conduit/Combinators/Stream.hs
 formatted       ba13516336bd  conduit-1.3.6.1/src/Data/Conduit/Combinators/Unqualified.hs
 formatted       8e861a915c2f  conduit-1.3.6.1/src/Data/Conduit/Internal.hs
@@ -1576,7 +1576,7 @@ formatted       bbfd28e5b98b  conduit-1.3.6.1/src/Data/Conduit/Internal/Fusion.h
 formatted       54120af8edce  conduit-1.3.6.1/src/Data/Conduit/Internal/List/Stream.hs
 formatted       bf0df637e814  conduit-1.3.6.1/src/Data/Conduit/Internal/Pipe.hs
 formatted       4a4c14b72249  conduit-1.3.6.1/src/Data/Conduit/Lift.hs
-formatted       a3d647e87eeb  conduit-1.3.6.1/src/Data/Conduit/List.hs
+formatted       e698a877d8f0  conduit-1.3.6.1/src/Data/Conduit/List.hs
 formatted       98630a5362e8  conduit-1.3.6.1/src/Data/Streaming/FileRead.hs
 formatted       9860da5f427f  conduit-1.3.6.1/src/Data/Streaming/Filesystem.hs
 formatted       d9e8dbaa2534  conduit-1.3.6.1/test/Data/Conduit/Extra/ZipConduitSpec.hs
@@ -1828,7 +1828,7 @@ formatted       f005c45a7335  diagrams-core-1.5.1.2/src/Diagrams/Core/Query.hs
 formatted       5c32f24f7311  diagrams-core-1.5.1.2/src/Diagrams/Core/Style.hs
 formatted       0d93bb9387d4  diagrams-core-1.5.1.2/src/Diagrams/Core/Trace.hs
 formatted       ceb1829b99d5  diagrams-core-1.5.1.2/src/Diagrams/Core/Transform.hs
-formatted       9fefb0a9651c  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
+formatted       a5ac419d9f46  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
 formatted       a9f71c9c75d0  diagrams-core-1.5.1.2/src/Diagrams/Core/V.hs
 formatted       5cabe7655bac  distributed-process-0.7.8/benchmarks/Channels.hs
 formatted       504953bb1387  distributed-process-0.7.8/benchmarks/Latency.hs
@@ -2326,7 +2326,7 @@ formatted       468c72120829  hashable-1.5.1.0/tests/xxhash-tests.hs
 formatted       fd56f35a1469  haxl-2.5.1.1/Haxl/Core.hs
 formatted       d1219c0fe211  haxl-2.5.1.1/Haxl/Core/CallGraph.hs
 formatted       955c8a680ebd  haxl-2.5.1.1/Haxl/Core/DataCache.hs
-formatted       0873cd2369b4  haxl-2.5.1.1/Haxl/Core/DataSource.hs
+formatted       23dc644893ba  haxl-2.5.1.1/Haxl/Core/DataSource.hs
 formatted       30d8adb0a3bc  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       270cd401eb34  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
@@ -2687,7 +2687,7 @@ formatted       75f2ee4dbe05  idris-1.3.4/src/Idris/Core/Binary.hs
 formatted       70e0c9ec5d29  idris-1.3.4/src/Idris/Core/CaseTree.hs
 formatted       fa5732ba0860  idris-1.3.4/src/Idris/Core/Constraints.hs
 formatted       32e1f1dc7a41  idris-1.3.4/src/Idris/Core/DeepSeq.hs
-formatted       ca8030abd691  idris-1.3.4/src/Idris/Core/Elaborate.hs
+formatted       3b956c85cb93  idris-1.3.4/src/Idris/Core/Elaborate.hs
 formatted       d0216dc5a258  idris-1.3.4/src/Idris/Core/Evaluate.hs
 formatted       9e811f74925b  idris-1.3.4/src/Idris/Core/Execute.hs
 formatted       823bce2a23e1  idris-1.3.4/src/Idris/Core/ProofState.hs
@@ -3021,9 +3021,9 @@ formatted       9007a7528d49  optics-0.4.2.1/benchmarks/folds.hs
 formatted       6819e713d7fd  optics-0.4.2.1/benchmarks/traversals.hs
 formatted       379aca047379  optics-0.4.2.1/src/Optics.hs
 formatted       fbb3a44aca1a  optics-0.4.2.1/tests/Optics/Tests.hs
-formatted       c6d811f3b338  optics-0.4.2.1/tests/Optics/Tests/Computation.hs
-formatted       26a0cf8a6c0d  optics-0.4.2.1/tests/Optics/Tests/Core.hs
-formatted       714f321c1085  optics-0.4.2.1/tests/Optics/Tests/Eta.hs
+formatted       41b76dda3069  optics-0.4.2.1/tests/Optics/Tests/Computation.hs
+formatted       2a9b6567f5bf  optics-0.4.2.1/tests/Optics/Tests/Core.hs
+formatted       f99d8cd6ed70  optics-0.4.2.1/tests/Optics/Tests/Eta.hs
 formatted       fa94f2166eef  optics-0.4.2.1/tests/Optics/Tests/Labels/Generic.hs
 formatted       be66017a6045  optics-0.4.2.1/tests/Optics/Tests/Labels/TH.hs
 formatted       1ec08bb9f22e  optics-0.4.2.1/tests/Optics/Tests/Misc.hs
@@ -3342,7 +3342,7 @@ formatted       9159eea2487f  pandoc-3.10.2/test/Tests/Writers/AnnotatedTable.hs
 formatted       b21e7e06def4  pandoc-3.10.2/test/Tests/Writers/AsciiDoc.hs
 formatted       70088c61a9f3  pandoc-3.10.2/test/Tests/Writers/BBCode.hs
 formatted       6dcb350b3086  pandoc-3.10.2/test/Tests/Writers/ConTeXt.hs
-formatted       b26459af4504  pandoc-3.10.2/test/Tests/Writers/DocBook.hs
+formatted       eed62139c6af  pandoc-3.10.2/test/Tests/Writers/DocBook.hs
 formatted       3734475521c2  pandoc-3.10.2/test/Tests/Writers/Docx.hs
 formatted       c93a204195d1  pandoc-3.10.2/test/Tests/Writers/FB2.hs
 formatted       69041cc0bebc  pandoc-3.10.2/test/Tests/Writers/HTML.hs
@@ -3502,7 +3502,7 @@ formatted       e021398dbff3  pipes-4.3.16/src/Pipes/Internal.hs
 formatted       e3b36f0685b2  pipes-4.3.16/src/Pipes/Lift.hs
 formatted       82bba5f85292  pipes-4.3.16/src/Pipes/Prelude.hs
 formatted       436224de8a77  pipes-4.3.16/src/Pipes/Tutorial.hs
-formatted       2d58a81d02c8  pipes-4.3.16/tests/Main.hs
+formatted       068bd78f1e97  pipes-4.3.16/tests/Main.hs
 formatted       56dca68e0a87  postgrest-9.0.1/Setup.hs
 formatted       772d4f353686  postgrest-9.0.1/main/Main.hs
 formatted       e24d5ee8932f  postgrest-9.0.1/src/PostgREST/App.hs
@@ -3970,7 +3970,7 @@ formatted       b3fd15d83ccf  random-1.3.1/test/Spec/Seed.hs
 formatted       53b268e9c80a  random-1.3.1/test/Spec/Stateful.hs
 formatted       4ac47a361dee  recursion-schemes-5.2.3/examples/Expr.hs
 formatted       37b2a0b086b3  recursion-schemes-5.2.3/src/Data/Functor/Base.hs
-formatted       3ca7a5ae5fb0  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
+formatted       a84fbb2dc105  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
 formatted       60333913c12d  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
 formatted       1581398eb1b5  resourcet-1.3.0/Control/Monad/Trans/Resource.hs
 formatted       ae2967cdb48f  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
