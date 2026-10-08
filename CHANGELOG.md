@@ -426,6 +426,10 @@
   at the same column, with only the last laid out as usual. A comment above
   one of the `let`s stays above it, rather than leave the `in` before it on a
   line of its own. [Issue 211](https://github.com/mrkkrp/tilia/issues/211).
+* Keep a comment written on a line of its own at the column right after a
+  closing bracket out of the brackets, where it lost the empty line under
+  the declaration and moved again in the next pass, and print it as at any
+  other column. [Issue 206](https://github.com/mrkkrp/tilia/issues/206).
 
 ## Tilia 0.0.2.0
 

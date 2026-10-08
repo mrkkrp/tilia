@@ -192,6 +192,7 @@ placeComments regions leads fences comments =
             lineEnd = maximum (fmap endPoint onThatLine)
             linedUp r =
               spanStartColumn r == spanStartColumn here
+                && startPoint r /= endPoint r
                 && endPoint r == lineEnd
                 && (spanStartLine r == line || startsItsLine r)
                 && not (fencedOff r)
