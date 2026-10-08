@@ -148,10 +148,13 @@ takeStackHeader headerEnd = \case
     reproduce c =
       sepBy (verbatimBreak AtMargin TrimWhitespace) (fmap txt (NE.toList (commentBody c)))
 
--- | The pragmas of a header, one per line, sorted.
+-- | The pragmas of a header, one per line, sorted, with the options in the
+-- order they were written, which is the order GHC reads their flags in.
 pragmaBlock :: [HeaderPragma] -> Doc
-pragmaBlock = foldMap render . dedupe . sortOn key . concatMap split
+pragmaBlock = foldMap render . dedupe . sortOn order . concatMap split
   where
+    order p = (hpRun p, hpOrder p, extension p)
+    extension p = if hpName p == "LANGUAGE" then hpBody p else ""
     key p = (hpRun p, hpOrder p, hpBody p)
     dedupe = fmap NE.head . NE.groupBy ((==) `on` key)
     split p
