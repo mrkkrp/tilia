@@ -1084,18 +1084,22 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
           (if parentPlacement == Normal then 1 else 0)
           (attach placement (printBody bound))
   where
-    GRHS _ guards body = grhs
+    GRHS EpAnn{anns = GrhsAnn{ga_sep}} guards body = grhs
     bound = bodyIn mkBody bracing body
     separator = case style of
       EqualsSign -> "="
       RightArrow -> "->"
     placement
-      | maybe True (\g -> sameLine (Just g) (spanOf body)) endOfGuards =
+      | sameLine separatorSpan (spanOf body),
+        not (commentPrintedBetween ctx (spansOf guards) separatorSpan),
+        not (remarkBefore && remarkAfter) =
           bodyPlacement bound
       | otherwise = Normal
-    endOfGuards = case guards of
-      [] -> Nothing
-      _ -> spanOf (last guards)
+    separatorSpan = either annSpan annSpan ga_sep
+    remarkBefore = lineCommentWrittenBetween ctx (spansOf guards) separatorSpan
+    remarkAfter =
+      lineCommentWrittenBetween ctx separatorSpan (nextLine <$> separatorSpan)
+    nextLine s = mkSpan (spanEndLine s + 1, 1) (spanEndLine s + 1, 1)
 
 -- | A pattern synonym binding.
 patSynBind :: Ctx -> PatSynBind GhcPs GhcPs -> Doc

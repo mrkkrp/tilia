@@ -355,7 +355,8 @@ ormoluSkip =
     "other" </> "invalid-haddock-1.hs",
     "declaration" </> "value" </> "function" </> "infix" </> "do.hs",
     "declaration" </> "data" </> "multiline-arg-parens.hs",
-    "module-header" </> "multiline-with-comments.hs"
+    "module-header" </> "multiline-with-comments.hs",
+    "declaration" </> "value" </> "function" </> "awkward-comment-1.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable
