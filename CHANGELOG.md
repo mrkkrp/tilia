@@ -405,6 +405,10 @@
   rather than sort them, and write a repeated one once only where it is
   written twice in a row. [Issue
   218](https://github.com/mrkkrp/tilia/issues/218).
+* Put no empty line between a Haddock written as `--` lines and a comment
+  right under it whose first line begins with `---`, which GHC already
+  does not read as more of the Haddock. [Issue
+  217](https://github.com/mrkkrp/tilia/issues/217).
 
 ## Tilia 0.0.2.0
 

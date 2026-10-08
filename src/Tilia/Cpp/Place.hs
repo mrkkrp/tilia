@@ -26,6 +26,7 @@ import Tilia.Comments
   ( Comment (..),
     bracketed,
     commentPragma,
+    continuesHaddock,
     holdsOff,
     opensHaddock,
     opensSectionHeading,
@@ -155,7 +156,7 @@ restoreUnprinted source found doc = do
   pure $
     keptApart
       (summaryHaddocks found)
-      (Set.fromList [commentSpan c | c <- notes, not (bracketed c)])
+      (Map.fromList [(commentSpan c, c) | c <- notes, not (bracketed c)])
       placed
   where
     written = linesOf (Written source)
@@ -185,16 +186,17 @@ data Printed
 keptApart ::
   -- | Where the Haddocks written as @--@ lines are.
   Set Span ->
-  -- | Where the comments written as @--@ lines are.
-  Set Span ->
+  -- | The comments written as @--@ lines, by where they are.
+  Map Span Comment ->
   Doc ->
   Doc
 keptApart haddocks notes = snd . go Apart
   where
     go before = \case
       DLocated s x
-        | Set.member s notes ->
-            (ANote, DLocated s (includeWhen (before == AHaddock) blankLine <> x))
+        | Just c <- Map.lookup s notes ->
+            let under = before == AHaddock && continuesHaddock c
+             in (ANote, DLocated s (includeWhen under blankLine <> x))
         | Set.member s haddocks ->
             (AHaddock, DLocated s (includeWhen (before == ANote) blankLine <> snd (go Apart x)))
       DText t
