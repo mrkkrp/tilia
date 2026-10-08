@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Comments (Comment (..), renderComment)
 import Tilia.Comments.Place
+import Tilia.Doc.Internal (Spill (..))
 import Tilia.Parser
 import Tilia.Source (comments)
 import Tilia.Span
@@ -16,11 +17,11 @@ spec = do
   describe "a comment written after code" $ do
     it "goes to the region that ends where that code stops" $
       placedIn [foo, theOne] [] "foo = 1 -- note\n"
-        `shouldBe` [("-- note", Just (After, theOne))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, theOne))]
 
     it "goes to the nearest region before it when it ends its line" $
       placedIn [foo] [] "foo = 1 -- note\n"
-        `shouldBe` [("-- note", Just (After, foo))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, foo))]
 
     it "is left to what follows when code follows it too" $
       placedIn [foo, lastOfLineOne] [] "foo = {- note -} 1\n"
@@ -28,20 +29,26 @@ spec = do
 
     it "is taken back even so when it was written against a region" $
       placedIn [foo, upToTheEquals, lastOfLineOne] [] "foo = {- note -} 1\n"
-        `shouldBe` [("{- note -}", Just (After, upToTheEquals))]
+        `shouldBe` [ ( "{- note -}",
+                       Just (After SpillAtIndentation, upToTheEquals)
+                     )
+                   ]
 
   describe "choosing between the regions on a line" $ do
     it "takes the one ending latest" $
       placedIn [foo, theOne] [] "foo = 1 -- note\n"
-        `shouldBe` [("-- note", Just (After, theOne))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, theOne))]
 
     it "takes the outermost of those ending together" $
       placedIn [theOne, wholeOfLineOne] [] "foo = 1 -- note\n"
-        `shouldBe` [("-- note", Just (After, wholeOfLineOne))]
+        `shouldBe` [ ( "-- note",
+                       Just (After SpillAtIndentation, wholeOfLineOne)
+                     )
+                   ]
 
     it "passes over one that has not ended when the comment begins" $
       placedIn [foo, pastTheComment] [] "foo = 1 -- note\n"
-        `shouldBe` [("-- note", Just (After, foo))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, foo))]
 
   describe "a region the comment was not written inside" $ do
     it "may not have it" $
@@ -50,7 +57,7 @@ spec = do
 
     it "may when the comment is inside it too" $
       placedIn [foo, bar] [] "foo = 1 -- note\nbar = 2\n"
-        `shouldBe` [("-- note", Just (After, foo))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, foo))]
 
   describe "a fence" $ do
     it "keeps a comment printed in place from crossing it" $
@@ -59,40 +66,40 @@ spec = do
 
     it "leaves the same comment alone when there is no fence" $
       placedIn [foo, bar] [] "foo = 1 {- note -}\nbar = 2\n"
-        `shouldBe` [("{- note -}", Just (After, foo))]
+        `shouldBe` [("{- note -}", Just (After SpillAtIndentation, foo))]
 
     it "says nothing about a comment held back to the end of a line" $
       placedIn [foo, bar] [rhsOfLineOne] "foo = 1 -- note\nbar = 2\n"
-        `shouldBe` [("-- note", Just (After, foo))]
+        `shouldBe` [("-- note", Just (After SpillAtIndentation, foo))]
 
   describe "a comment carrying on a remark from the line above" $ do
     it "goes where that remark went" $
       placedIn [operand, bar'] [] carriedOn
-        `shouldBe` [ ("-- said once", Just (After, operand)),
-                     ("-- and again", Just (After, operand))
+        `shouldBe` [ ("-- said once", Just (After SpillAtIndentation, operand)),
+                     ("-- and again", Just (After SpillAtIndentation, operand))
                    ]
 
     it "does not when it is not lined up with that line" $
       placedIn [operand, bar'] [] indentedFurther
-        `shouldBe` [ ("-- said once", Just (After, operand)),
+        `shouldBe` [ ("-- said once", Just (After SpillAtIndentation, operand)),
                      ("-- and again", Just (Before, bar'))
                    ]
 
     it "does not when what follows lines up with it as well" $
       placedIn [operand, continuation] [] carriedOnThenMore
-        `shouldBe` [ ("-- said once", Just (After, operand)),
+        `shouldBe` [ ("-- said once", Just (After SpillAtIndentation, operand)),
                      ("-- and again", Just (Before, continuation))
                    ]
 
   describe "a comment lined up under a line of code" $ do
     it "goes under that line when what follows begins further left" $
       placedIn [fooDecl, operand, bar'] [] nothingAbove
-        `shouldBe` [("-- and again", Just (Under, operand))]
+        `shouldBe` [("-- and again", Just (Under ByTheRegion, operand))]
 
     it "takes the comments lined up under it along" $
       placedIn [fooDecl, operand, barAfterARun] [] aRunUnder
-        `shouldBe` [ ("-- and again", Just (Under, operand)),
-                     ("-- and once more", Just (Under, operand))
+        `shouldBe` [ ("-- and again", Just (Under ByTheRegion, operand)),
+                     ("-- and once more", Just (Under ByTheRegion, operand))
                    ]
 
     it "does not when what follows lines up with it as well" $
@@ -117,15 +124,15 @@ spec = do
   describe "a comment written right after another one" $ do
     it "goes where that comment goes" $
       placedIn [fName, fBody] [] "f {- a -} {- b -} = 1\n"
-        `shouldBe` [ ("{- a -}", Just (After, fName)),
-                     ("{- b -}", Just (After, fName))
+        `shouldBe` [ ("{- a -}", Just (After SpillAtIndentation, fName)),
+                     ("{- b -}", Just (After SpillAtIndentation, fName))
                    ]
 
     it "does so through several of them" $
       placedIn [fName, fBodyPastThree] [] "f {- a -} {- b -} {- c -} = 1\n"
-        `shouldBe` [ ("{- a -}", Just (After, fName)),
-                     ("{- b -}", Just (After, fName)),
-                     ("{- c -}", Just (After, fName))
+        `shouldBe` [ ("{- a -}", Just (After SpillAtIndentation, fName)),
+                     ("{- b -}", Just (After SpillAtIndentation, fName)),
+                     ("{- c -}", Just (After SpillAtIndentation, fName))
                    ]
 
     it "goes its own way where that comment goes before what follows" $
@@ -158,13 +165,18 @@ spec = do
       shapeOf Before (firstComment "-- note\nfoo = 1\n") `shouldBe` OnItsOwnLines
 
     it "sits in the line after a region when it closes itself" $
-      shapeOf After (firstComment "foo = 1 {- note -}\n") `shouldBe` InPlace
+      shapeOf (After SpillAtIndentation) (firstComment "foo = 1 {- note -}\n")
+        `shouldBe` InPlace
 
     it "is held back after a region when it is one line of dashes" $
-      shapeOf After (firstComment "foo = 1 -- note\n") `shouldBe` HeldBack
+      shapeOf (After SpillAtIndentation) (firstComment "foo = 1 -- note\n")
+        `shouldBe` HeldBack SpillAtIndentation
 
     it "ends the line after a region when it runs over several" $
-      shapeOf After (firstComment "foo = 1 {- one\ntwo -}\n") `shouldBe` EndsTheLine
+      shapeOf
+        (After SpillAtIndentation)
+        (firstComment "foo = 1 {- one\ntwo -}\n")
+        `shouldBe` EndsTheLine
 
 ----------------------------------------------------------------------------
 -- The regions the snippets are placed against

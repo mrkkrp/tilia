@@ -36,7 +36,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Parser.Annotation qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
-import Tilia.Source.Lines (Lines, blankAt, lineAt, lineTexts)
+import Tilia.Source.Lines (Lines, blankAt, directiveOnLine, lineAt, lineTexts)
 import Tilia.Span (Span (..), endPoint, startPoint)
 import Tilia.Span.Ghc (spanOfReal)
 
@@ -64,8 +64,8 @@ data Comment = Comment
     commentGapAbove :: Bool,
     -- | Whether to leave an empty line below it when it is printed.
     commentGapBelow :: Bool,
-    -- | Where the first line under it that is not empty begins, if there
-    -- is one.
+    -- | Where the first line under it that is neither empty nor a directive
+    -- begins, if there is one.
     commentNextLine :: Maybe (Int, Int)
   }
   deriving (Eq, Show)
@@ -151,7 +151,7 @@ commentAt ls spn style raw =
             takeWhile
               (isJust . snd)
               [(n, lineAt n ls) | n <- [spanEndLine spn + 1 ..]],
-          not (T.all isSpace l)
+          not (T.all isSpace l || isJust (directiveOnLine l))
         ]
     contentStart l = columnOf l (T.length (T.takeWhile isSpace l))
     followed = case lineAt (spanEndLine spn) ls of

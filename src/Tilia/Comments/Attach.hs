@@ -172,8 +172,8 @@ walk margin = go
             before' =
               (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
             after' =
-              [(q, c) | (q, c) <- mine, q == After || q == UnderTheRemark]
-            under' = [(q, c) | (q, c) <- mine, q == Under]
+              [(q, c) | (q, c) <- mine, q /= Before, q /= Under ByTheRegion]
+            under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
             withUnder
               | null under' = id
               | otherwise = \x -> DAlign (x <> write under')
@@ -255,7 +255,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> closeLine <> gapBelow
-  HeldBack -> holdBack spill (renderComment c)
+  HeldBack spill -> holdBack spill (renderComment c)
   OnItsOwnLines ->
     closeLineUnlessAfterOpener (commentGapAbove c)
       <> body
@@ -265,9 +265,6 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
-    spill
-      | position == UnderTheRemark = SpillUnderPrevious
-      | otherwise = SpillAtIndentation
 
 -- | A comment, and the spacing that goes with it, as one region.
 commentDoc :: Comment -> Doc -> Doc
