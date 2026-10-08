@@ -409,6 +409,13 @@
   right under it whose first line begins with `---`, which GHC already
   does not read as more of the Haddock. [Issue
   217](https://github.com/mrkkrp/tilia/issues/217).
+* Print a `do` block, a `case` or a lambda written right after the `=` or
+  `->` of a guard that begins its line on the line of that `=` or `->`,
+  once it moves to the end of the guard's line, the way it is printed when
+  written so, rather than on a line of its own a step further in. A comment
+  that ends the guard's line goes to the end of the line they are joined
+  on, unless a comment ends the line of the `=` or `->` as well. [Issue
+  209](https://github.com/mrkkrp/tilia/issues/209).
 
 ## Tilia 0.0.2.0
 
