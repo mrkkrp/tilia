@@ -400,6 +400,11 @@
   module with many conditionals formats up to twice as fast, and `tilia
   check` on lens takes 1.5 s rather than 1.8 s. [PR
   203](https://github.com/mrkkrp/tilia/pull/203).
+* Keep `OPTIONS_GHC` pragmas in the order they are written, which is the
+  order GHC reads their flags in, a later flag overriding an earlier one,
+  rather than sort them, and write a repeated one once only where it is
+  written twice in a row. [Issue
+  218](https://github.com/mrkkrp/tilia/issues/218).
 
 ## Tilia 0.0.2.0
 

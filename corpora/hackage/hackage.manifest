@@ -83,7 +83,7 @@ formatted       485f6f0b6ae7  Agda-2.8.0/src/full/Agda/Interaction/Library/Parse
 formatted       0406dc3c1480  Agda-2.8.0/src/full/Agda/Interaction/MakeCase.hs
 formatted       dccaf3f6ab13  Agda-2.8.0/src/full/Agda/Interaction/Monad.hs
 formatted       c831a742f557  Agda-2.8.0/src/full/Agda/Interaction/Options.hs
-formatted       ff905a26b6ef  Agda-2.8.0/src/full/Agda/Interaction/Options/Base.hs
+formatted       f6cdf934d690  Agda-2.8.0/src/full/Agda/Interaction/Options/Base.hs
 formatted       4b4c5936e1ee  Agda-2.8.0/src/full/Agda/Interaction/Options/Errors.hs
 formatted       e44ed789f5f9  Agda-2.8.0/src/full/Agda/Interaction/Options/HasOptions.hs
 formatted       434d46226886  Agda-2.8.0/src/full/Agda/Interaction/Options/Help.hs
@@ -349,7 +349,7 @@ formatted       322db41fd343  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/S
 formatted       904a4e241e74  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Utils.hs
 formatted       0be08dcf3e01  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/WarshallSolver.hs
 formatted       dace03972057  Agda-2.8.0/src/full/Agda/TypeChecking/Sort.hs
-formatted       e28241cb994f  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
+formatted       23e9f5a4dd33  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
 formatted       5c1090094604  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/Class.hs
 formatted       2656f0d28fba  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/DeBruijn.hs
 formatted       bdddf47208eb  Agda-2.8.0/src/full/Agda/TypeChecking/SyntacticEquality.hs
@@ -809,7 +809,7 @@ formatted       cd9295cafae2  bifunctors-5.6.3/src/Data/Bifunctor/TH.hs
 formatted       8a200a94a208  bifunctors-5.6.3/src/Data/Bifunctor/TH/Internal.hs
 formatted       4a12830ba36a  bifunctors-5.6.3/src/Data/Bifunctor/Tannen.hs
 formatted       34520394097f  bifunctors-5.6.3/src/Data/Bifunctor/Wrapped.hs
-formatted       04a6a496b2b6  bifunctors-5.6.3/tests/BifunctorSpec.hs
+formatted       de9492bff0dd  bifunctors-5.6.3/tests/BifunctorSpec.hs
 formatted       2fbd14b119a4  bifunctors-5.6.3/tests/Spec.hs
 formatted       6fd640c12d5f  bifunctors-5.6.3/tests/T89Spec.hs
 formatted       e865ae48f11b  blaze-html-0.9.2.0/Setup.hs
@@ -1467,7 +1467,7 @@ formatted       62f91f308c2e  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       b114e1735e96  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/BackendUtils.hs
 formatted       4db6008c162f  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config.hs
 formatted       b3a115fdcb04  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types.hs
-formatted       e13b5e1cf845  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types/Instances.hs
+formatted       3479d640d39c  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types/Instances.hs
 formatted       3a7e4e0507b6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/ExactPrintUtils.hs
 formatted       5d4339023e83  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/LayouterBasics.hs
 formatted       e6236562836a  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/DataDecl.hs
@@ -1894,7 +1894,7 @@ formatted       df35c8f3b6bf  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQ
 formatted       bfa22ec5fd41  esqueleto-3.6.0.3/src/Database/Esqueleto/Record.hs
 formatted       167fa1cef38a  esqueleto-3.6.0.3/src/Database/Esqueleto/SQLite.hs
 formatted       791ffee464be  esqueleto-3.6.0.3/test/Common/Record.hs
-formatted       db1a0685f736  esqueleto-3.6.0.3/test/Common/Test.hs
+formatted       7db3ef49d34f  esqueleto-3.6.0.3/test/Common/Test.hs
 formatted       07d3054c5606  esqueleto-3.6.0.3/test/Common/Test/CTE.hs
 formatted       1f83d04692e3  esqueleto-3.6.0.3/test/Common/Test/Import.hs
 formatted       2e16567983e5  esqueleto-3.6.0.3/test/Common/Test/Models.hs
@@ -2565,7 +2565,7 @@ formatted       0aaa70c4113f  hspec-core-2.11.17/src/Test/Hspec/Core/Spec/Monad.
 formatted       1b327d112974  hspec-core-2.11.17/src/Test/Hspec/Core/Timer.hs
 formatted       358c754dd8df  hspec-core-2.11.17/src/Test/Hspec/Core/Tree.hs
 formatted       80d2d2b8d380  hspec-core-2.11.17/src/Test/Hspec/Core/Util.hs
-formatted       e06b7cc46fd9  hspec-core-2.11.17/test/GetOpt/Declarative/EnvironmentSpec.hs
+formatted       4030224416bf  hspec-core-2.11.17/test/GetOpt/Declarative/EnvironmentSpec.hs
 formatted       6655e2e71bb3  hspec-core-2.11.17/test/GetOpt/Declarative/UtilSpec.hs
 formatted       aaa94a74898c  hspec-core-2.11.17/test/Helper.hs
 formatted       10aa2070ffb6  hspec-core-2.11.17/test/Mock.hs
@@ -2577,7 +2577,7 @@ formatted       819d29d3431f  hspec-core-2.11.17/test/Test/Hspec/Core/CompatSpec
 formatted       e5db68e3c868  hspec-core-2.11.17/test/Test/Hspec/Core/Config/DefinitionSpec.hs
 formatted       105756fabf5e  hspec-core-2.11.17/test/Test/Hspec/Core/Config/OptionsSpec.hs
 formatted       edfe82f15e2d  hspec-core-2.11.17/test/Test/Hspec/Core/ConfigSpec.hs
-formatted       beef08e20fe4  hspec-core-2.11.17/test/Test/Hspec/Core/Example/LocationSpec.hs
+formatted       d3f3063d7de1  hspec-core-2.11.17/test/Test/Hspec/Core/Example/LocationSpec.hs
 formatted       dc7ffd47b78e  hspec-core-2.11.17/test/Test/Hspec/Core/ExampleSpec.hs
 formatted       1a45c62099d0  hspec-core-2.11.17/test/Test/Hspec/Core/FailureReportSpec.hs
 formatted       8992979a0121  hspec-core-2.11.17/test/Test/Hspec/Core/FormatSpec.hs
@@ -2589,7 +2589,7 @@ formatted       ac2da1dd4d6b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters
 formatted       2665482bea3b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters/V1Spec.hs
 formatted       fdce61371e6b  hspec-core-2.11.17/test/Test/Hspec/Core/Formatters/V2Spec.hs
 formatted       177347d407e1  hspec-core-2.11.17/test/Test/Hspec/Core/HooksSpec.hs
-formatted       6012eee4a782  hspec-core-2.11.17/test/Test/Hspec/Core/QuickCheck/UtilSpec.hs
+formatted       ad736b09b724  hspec-core-2.11.17/test/Test/Hspec/Core/QuickCheck/UtilSpec.hs
 formatted       775321ce08bf  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/EvalSpec.hs
 formatted       7eadb8336461  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/JobQueueSpec.hs
 formatted       0d283fd19887  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/PrintSlowSpecItemsSpec.hs
@@ -4422,7 +4422,7 @@ formatted       3cda51e9e44e  stm-2.5.3.1/Control/Concurrent/STM/TArray.hs
 formatted       a3a6bd16402a  stm-2.5.3.1/Control/Concurrent/STM/TBQueue.hs
 formatted       643c4c4304ca  stm-2.5.3.1/Control/Concurrent/STM/TChan.hs
 formatted       5de1c73d983a  stm-2.5.3.1/Control/Concurrent/STM/TMVar.hs
-formatted       18c724304c12  stm-2.5.3.1/Control/Concurrent/STM/TQueue.hs
+formatted       61a61ef9eccf  stm-2.5.3.1/Control/Concurrent/STM/TQueue.hs
 formatted       0167cfd0c06a  stm-2.5.3.1/Control/Concurrent/STM/TSem.hs
 formatted       6a0ece958ded  stm-2.5.3.1/Control/Concurrent/STM/TVar.hs
 partly-checked  4ed888ed9420  stm-2.5.3.1/Control/Monad/STM.hs
@@ -4532,7 +4532,7 @@ formatted       eb1cc9cf331c  text-2.1.4/scripts/CaseFolding.hs
 formatted       a0bdad468ca4  text-2.1.4/scripts/CaseMapping.hs
 formatted       57e97be5ba61  text-2.1.4/scripts/SpecialCasing.hs
 formatted       d775bb623580  text-2.1.4/scripts/UnicodeData.hs
-partly-checked  37ad66a25017  text-2.1.4/src/Data/Text.hs
+partly-checked  0abe70d97042  text-2.1.4/src/Data/Text.hs
 formatted       d3ff1f08422c  text-2.1.4/src/Data/Text/Array.hs
 formatted       4970b89f4e7e  text-2.1.4/src/Data/Text/Encoding.hs
 formatted       d6231f7ebe99  text-2.1.4/src/Data/Text/Encoding/Error.hs
@@ -4570,7 +4570,7 @@ formatted       a41bd3d7edab  text-2.1.4/src/Data/Text/Internal/Read.hs
 formatted       ec56c867ca01  text-2.1.4/src/Data/Text/Internal/Reverse.hs
 formatted       eff6a5ffb928  text-2.1.4/src/Data/Text/Internal/Search.hs
 formatted       67bf06cca611  text-2.1.4/src/Data/Text/Internal/StrictBuilder.hs
-formatted       c40f1435fb43  text-2.1.4/src/Data/Text/Internal/Transformation.hs
+formatted       ed455e9ee12d  text-2.1.4/src/Data/Text/Internal/Transformation.hs
 formatted       18ae86a38924  text-2.1.4/src/Data/Text/Internal/Unsafe.hs
 formatted       d3b144e675ef  text-2.1.4/src/Data/Text/Internal/Unsafe/Char.hs
 formatted       8bc67bc79968  text-2.1.4/src/Data/Text/Internal/Validate.hs
@@ -4591,7 +4591,7 @@ formatted       8c35444bb7ce  text-2.1.4/tests/LiteralRuleTest.hs
 formatted       6c129d5c79c5  text-2.1.4/tests/Tests.hs
 formatted       8c9ba4deec7f  text-2.1.4/tests/Tests/Lift.hs
 formatted       eea1f5be128d  text-2.1.4/tests/Tests/Properties.hs
-formatted       a1795fe9db0d  text-2.1.4/tests/Tests/Properties/Basics.hs
+formatted       22b01cd83996  text-2.1.4/tests/Tests/Properties/Basics.hs
 formatted       4095b24da789  text-2.1.4/tests/Tests/Properties/Builder.hs
 formatted       0da554ece794  text-2.1.4/tests/Tests/Properties/CornerCases.hs
 formatted       f1e8140de487  text-2.1.4/tests/Tests/Properties/Folds.hs
@@ -4599,7 +4599,7 @@ formatted       05ba3e128127  text-2.1.4/tests/Tests/Properties/Instances.hs
 formatted       c57f3b48eab5  text-2.1.4/tests/Tests/Properties/LowLevel.hs
 formatted       73ce8ac597c8  text-2.1.4/tests/Tests/Properties/Read.hs
 formatted       3429b9447ca6  text-2.1.4/tests/Tests/Properties/Substrings.hs
-formatted       bc4a76ea99f3  text-2.1.4/tests/Tests/Properties/Text.hs
+formatted       37dbae049e0b  text-2.1.4/tests/Tests/Properties/Text.hs
 formatted       e4f85632ee06  text-2.1.4/tests/Tests/Properties/Transcoding.hs
 formatted       139bbe092e98  text-2.1.4/tests/Tests/Properties/Validate.hs
 formatted       75f4b0d7a5f3  text-2.1.4/tests/Tests/QuickCheckUtils.hs
@@ -4899,9 +4899,9 @@ formatted       284694c5798b  unordered-containers-0.2.21/benchmarks/Util/Int.hs
 formatted       771e81db1b05  unordered-containers-0.2.21/benchmarks/Util/String.hs
 formatted       2b26017dfa9e  unordered-containers-0.2.21/tests/Main.hs
 formatted       27005a00112e  unordered-containers-0.2.21/tests/Properties.hs
-formatted       b4355ecb2c36  unordered-containers-0.2.21/tests/Properties/HashMapLazy.hs
+formatted       b06c5b9e0c6c  unordered-containers-0.2.21/tests/Properties/HashMapLazy.hs
 formatted       f2a904c3a89a  unordered-containers-0.2.21/tests/Properties/HashMapStrict.hs
-formatted       a612762e1b58  unordered-containers-0.2.21/tests/Properties/HashSet.hs
+formatted       2212e9831f16  unordered-containers-0.2.21/tests/Properties/HashSet.hs
 formatted       3584a01b2cdd  unordered-containers-0.2.21/tests/Properties/List.hs
 formatted       54d1a11ab949  unordered-containers-0.2.21/tests/Regressions.hs
 formatted       d8eab8f8ddd4  unordered-containers-0.2.21/tests/Strictness.hs
@@ -4972,7 +4972,7 @@ formatted       3bc69095cb4d  vector-0.13.2.0/src/Data/Vector/Strict/Mutable.hs
 formatted       5a349caedbaf  vector-0.13.2.0/src/Data/Vector/Unboxed.hs
 formatted       1e14851054d6  vector-0.13.2.0/src/Data/Vector/Unboxed/Base.hs
 formatted       58ff39d532e3  vector-0.13.2.0/src/Data/Vector/Unboxed/Mutable.hs
-formatted       f4e17f002657  vector-0.13.2.0/tests-inspect/Inspect.hs
+formatted       e68c2d35dfab  vector-0.13.2.0/tests-inspect/Inspect.hs
 formatted       992258e8ec96  vector-0.13.2.0/tests-inspect/Inspect/DerivingVia.hs
 formatted       005977089309  vector-0.13.2.0/tests-inspect/Inspect/DerivingVia/OtherFoo.hs
 formatted       33f7105f6875  vector-0.13.2.0/tests-inspect/main.hs
