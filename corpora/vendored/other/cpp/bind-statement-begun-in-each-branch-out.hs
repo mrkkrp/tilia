@@ -8,13 +8,11 @@ f x = do
   y <-
     g
       (h x)
-      a
-      b
 #else
   y <-
     k
       (h x)
+#endif
       a
       b
-#endif
   pure y

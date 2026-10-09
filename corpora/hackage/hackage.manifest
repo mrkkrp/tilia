@@ -462,7 +462,7 @@ formatted       75a2f3be476e  QuickCheck-2.18.0.0/examples/Set.hs
 formatted       598740b3d57c  QuickCheck-2.18.0.0/examples/Simple.hs
 partly-checked  9da7c6c96a36  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
 formatted       02ad02d885d3  QuickCheck-2.18.0.0/src/Test/QuickCheck/All.hs
-partly-checked  beeaa8cce68d  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
+partly-checked  2c029612a111  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
 formatted       b394fbd4debb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Compat.hs
 partly-checked  06fafd04e06a  QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
 formatted       24dc2fbcd085  QuickCheck-2.18.0.0/src/Test/QuickCheck/Features.hs
@@ -785,10 +785,10 @@ formatted       75daea597c6a  aws-0.25.3/tests/DynamoDb/Utils.hs
 formatted       5886bbdd46c9  aws-0.25.3/tests/S3/Main.hs
 formatted       44336eea1e26  aws-0.25.3/tests/Sqs/Main.hs
 formatted       001f1d1eb163  aws-0.25.3/tests/Utils.hs
-formatted       b1dc0288cc34  base64-bytestring-1.2.1.0/Data/ByteString/Base64.hs
+formatted       10172e7983b9  base64-bytestring-1.2.1.0/Data/ByteString/Base64.hs
 formatted       8d1de483b9c4  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Internal.hs
 formatted       dae9abac8bd0  base64-bytestring-1.2.1.0/Data/ByteString/Base64/Lazy.hs
-formatted       3a5cbd3642e2  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL.hs
+formatted       efdde917444c  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL.hs
 formatted       0d8bf6b77f56  base64-bytestring-1.2.1.0/Data/ByteString/Base64/URL/Lazy.hs
 formatted       e865ae48f11b  base64-bytestring-1.2.1.0/Setup.hs
 formatted       0328dc0c3c7c  base64-bytestring-1.2.1.0/benchmarks/BM.hs
@@ -1569,7 +1569,7 @@ formatted       20fad0c5aecd  conduit-1.3.6.1/src/Conduit.hs
 formatted       bf88ceabad43  conduit-1.3.6.1/src/Data/Conduit.hs
 formatted       1a953cd53139  conduit-1.3.6.1/src/Data/Conduit/Combinators.hs
 formatted       f520242138c3  conduit-1.3.6.1/src/Data/Conduit/Combinators/Stream.hs
-formatted       ba13516336bd  conduit-1.3.6.1/src/Data/Conduit/Combinators/Unqualified.hs
+formatted       7d754c7349cf  conduit-1.3.6.1/src/Data/Conduit/Combinators/Unqualified.hs
 formatted       8e861a915c2f  conduit-1.3.6.1/src/Data/Conduit/Internal.hs
 formatted       c35f5a66accc  conduit-1.3.6.1/src/Data/Conduit/Internal/Conduit.hs
 formatted       bbfd28e5b98b  conduit-1.3.6.1/src/Data/Conduit/Internal/Fusion.hs
@@ -1611,7 +1611,7 @@ formatted       8f4df570ff4e  criterion-1.6.5.0/examples/Fibber.hs
 formatted       741778047cc1  criterion-1.6.5.0/examples/GoodReadFile.hs
 formatted       e85b2e0c3354  criterion-1.6.5.0/examples/Judy.hs
 formatted       7d1ede331f1f  criterion-1.6.5.0/examples/Maps.hs
-formatted       f396bcf9c829  criterion-1.6.5.0/examples/Overhead.hs
+formatted       fbcb8025853e  criterion-1.6.5.0/examples/Overhead.hs
 formatted       3a50edf5477c  criterion-1.6.5.0/examples/Quotes.hs
 formatted       e88811d40513  criterion-1.6.5.0/tests/Cleanup.hs
 formatted       78253dc00e1a  criterion-1.6.5.0/tests/Properties.hs
@@ -2331,7 +2331,7 @@ formatted       30d8adb0a3bc  haxl-2.5.1.1/Haxl/Core/Exception.hs
 formatted       270cd401eb34  haxl-2.5.1.1/Haxl/Core/Fetch.hs
 formatted       b4afaa8d717d  haxl-2.5.1.1/Haxl/Core/Flags.hs
 formatted       6116af7c8eab  haxl-2.5.1.1/Haxl/Core/Memo.hs
-formatted       331b6d94ce03  haxl-2.5.1.1/Haxl/Core/Monad.hs
+formatted       7f70ce88402f  haxl-2.5.1.1/Haxl/Core/Monad.hs
 formatted       19ee0e1d26fe  haxl-2.5.1.1/Haxl/Core/Parallel.hs
 formatted       d03eb9460c3a  haxl-2.5.1.1/Haxl/Core/Profile.hs
 formatted       015cb76495fb  haxl-2.5.1.1/Haxl/Core/RequestStore.hs
@@ -2529,7 +2529,7 @@ formatted       daebbe191e9f  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
 formatted       f5ded9eab569  hspec-core-2.11.17/src/Test/Hspec/Core/Config.hs
 formatted       b9ed2689f1a4  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Definition.hs
 formatted       93914a41d318  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Options.hs
-formatted       38a2774bf309  hspec-core-2.11.17/src/Test/Hspec/Core/Example.hs
+formatted       56fd96dcc2e6  hspec-core-2.11.17/src/Test/Hspec/Core/Example.hs
 formatted       78f6f2a2f383  hspec-core-2.11.17/src/Test/Hspec/Core/Example/Location.hs
 formatted       19c90134f072  hspec-core-2.11.17/src/Test/Hspec/Core/Extension.hs
 formatted       b5766e2580e3  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Config.hs
@@ -2543,7 +2543,7 @@ formatted       a49d2bd24295  hspec-core-2.11.17/src/Test/Hspec/Core/Format.hs
 formatted       b8b03afd38ee  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters.hs
 formatted       0f6c87760ec2  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Diff.hs
 formatted       337da9e04e1d  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Internal.hs
-formatted       463fbae99397  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
+formatted       64062a11578e  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty.hs
 formatted       71e26cb11ffa  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Parser.hs
 formatted       07264fb33ca8  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/Pretty/Unicode.hs
 formatted       32564aeda195  hspec-core-2.11.17/src/Test/Hspec/Core/Formatters/V1.hs
@@ -2558,7 +2558,7 @@ formatted       1be2d9c4a008  hspec-core-2.11.17/src/Test/Hspec/Core/Runner.hs
 formatted       559e8587e33c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Eval.hs
 formatted       45d877a0b59c  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/JobQueue.hs
 formatted       486c3e882e3e  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/PrintSlowSpecItems.hs
-formatted       800cbdaf0858  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
+formatted       451fa815b3f7  hspec-core-2.11.17/src/Test/Hspec/Core/Runner/Result.hs
 formatted       d699e2b567f5  hspec-core-2.11.17/src/Test/Hspec/Core/Shuffle.hs
 formatted       929d1248e847  hspec-core-2.11.17/src/Test/Hspec/Core/Spec.hs
 formatted       0aaa70c4113f  hspec-core-2.11.17/src/Test/Hspec/Core/Spec/Monad.hs
@@ -2594,7 +2594,7 @@ formatted       775321ce08bf  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/Eva
 formatted       7eadb8336461  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/JobQueueSpec.hs
 formatted       0d283fd19887  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/PrintSlowSpecItemsSpec.hs
 formatted       2781ae88628b  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/ResultSpec.hs
-formatted       5c98171187e3  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
+formatted       b677cdaeef95  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
 formatted       711af46b8809  hspec-core-2.11.17/test/Test/Hspec/Core/ShuffleSpec.hs
 formatted       109f785c9f28  hspec-core-2.11.17/test/Test/Hspec/Core/SpecSpec.hs
 formatted       ccd964421c9d  hspec-core-2.11.17/test/Test/Hspec/Core/TimerSpec.hs
@@ -2768,8 +2768,8 @@ formatted       963968c021ee  idris-1.3.4/src/Util/System.hs
 formatted       9df5a10ea1fd  idris-1.3.4/test/TestData.hs
 formatted       720af8681b46  idris-1.3.4/test/TestRun.hs
 formatted       e865ae48f11b  intero-0.1.40/Setup.hs
-formatted       41797b039ec2  intero-0.1.40/src/Completion.hs
-formatted       808924ac99ff  intero-0.1.40/src/GhciFind.hs
+formatted       621065d3b05d  intero-0.1.40/src/Completion.hs
+formatted       b0784cea4075  intero-0.1.40/src/GhciFind.hs
 partly-checked  c0aea4c4237d  intero-0.1.40/src/GhciInfo.hs
 formatted       e0fd727cd7cd  intero-0.1.40/src/GhciMonad.hs
 formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
@@ -2829,11 +2829,11 @@ formatted       bf74d49a257b  leksah-0.16.2.2/src/IDE/Pane/WebKit/Inspect.hs
 formatted       36523e19eb43  leksah-0.16.2.2/src/IDE/Pane/WebKit/Output.hs
 formatted       6d01b337aa2d  leksah-0.16.2.2/src/IDE/Pane/Workspace.hs
 formatted       9b92bdd95195  leksah-0.16.2.2/src/IDE/PaneGroups.hs
-formatted       043a3ca4d21e  leksah-0.16.2.2/src/IDE/Preferences.hs
+formatted       bc4a7202f565  leksah-0.16.2.2/src/IDE/Preferences.hs
 formatted       b428f06dc6a8  leksah-0.16.2.2/src/IDE/Session.hs
 formatted       8fd5bd558558  leksah-0.16.2.2/src/IDE/SourceCandy.hs
 formatted       402da8621309  leksah-0.16.2.2/src/IDE/Statusbar.hs
-formatted       188c4e9a0936  leksah-0.16.2.2/src/IDE/SymbolNavigation.hs
+formatted       3df2a9c1d21f  leksah-0.16.2.2/src/IDE/SymbolNavigation.hs
 formatted       265b135c829e  leksah-0.16.2.2/src/IDE/TextEditor.hs
 formatted       fc7e53f0e945  leksah-0.16.2.2/src/IDE/TextEditor/Class.hs
 formatted       1c4c5952013a  leksah-0.16.2.2/src/IDE/TextEditor/CodeMirror.hs
@@ -4539,14 +4539,14 @@ formatted       d6231f7ebe99  text-2.1.4/src/Data/Text/Encoding/Error.hs
 formatted       7580816061c0  text-2.1.4/src/Data/Text/Foreign.hs
 formatted       d26ae280631c  text-2.1.4/src/Data/Text/IO.hs
 formatted       8c24fec0de81  text-2.1.4/src/Data/Text/IO/Utf8.hs
-formatted       653829dd073b  text-2.1.4/src/Data/Text/Internal.hs
+formatted       abda1730fe53  text-2.1.4/src/Data/Text/Internal.hs
 formatted       48c631518261  text-2.1.4/src/Data/Text/Internal/ArrayUtils.hs
 formatted       bc619fb754b4  text-2.1.4/src/Data/Text/Internal/Builder.hs
 formatted       3a05c951a914  text-2.1.4/src/Data/Text/Internal/Builder/Functions.hs
 formatted       f5f871c975a4  text-2.1.4/src/Data/Text/Internal/Builder/Int/Digits.hs
 formatted       ab51e88834e1  text-2.1.4/src/Data/Text/Internal/Builder/RealFloat/Functions.hs
 formatted       7fa192160c9b  text-2.1.4/src/Data/Text/Internal/ByteStringCompat.hs
-formatted       b4bfb3453a3f  text-2.1.4/src/Data/Text/Internal/Encoding.hs
+formatted       4815054ed2f6  text-2.1.4/src/Data/Text/Internal/Encoding.hs
 formatted       43a1a670b3db  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion.hs
 formatted       88e5c54a218b  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion/Common.hs
 formatted       875961737225  text-2.1.4/src/Data/Text/Internal/Encoding/Utf16.hs

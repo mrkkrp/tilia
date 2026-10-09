@@ -13,9 +13,12 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Function (on)
-import Data.List (groupBy, maximumBy, sortOn, stripPrefix, transpose, unsnoc)
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe, maybeToList)
+import Data.List (groupBy, maximumBy, minimumBy, sortOn, stripPrefix, transpose, unsnoc)
+import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
+import Data.Monoid (All (..), Any (..))
 import Data.Ord (comparing)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives (Guard (..), Varied (..), untouched)
@@ -30,6 +33,7 @@ import Tilia.Doc.Internal
     conditionalRange,
     foldChildren,
     layoutInside,
+    mapChildren,
     onlyBreaks,
     onlySpacing,
     printedFrom,
@@ -40,14 +44,7 @@ import Tilia.Doc.Internal
     wrap,
   )
 import Tilia.Source (Lines, lineAt)
-import Tilia.Span
-  ( Span,
-    covers,
-    meets,
-    spanEndLine,
-    spanStartColumn,
-    spanStartLine,
-  )
+import Tilia.Span (Span (..), covers, endOf, endPoint, meets, startOf, startPoint)
 
 -- | A conditional other than the one asked about that answering a question
 -- settles, for some answers at least.
@@ -80,10 +77,12 @@ merge ::
 merge written conditionals guards varied settledOthers = go Broken
   where
     go _ [] = mempty
-    go layout ds@(d : rest)
-      | all (agree varied layout d) rest = d
+    go layout ds@(d : _)
+      | s : others <- spines,
+        all (agreeAll varied layout s) others =
+          d
       | Just xs <- traverse only spines = alongside layout xs
-      | otherwise = factored layout spines
+      | otherwise = factored middle layout spines
       where
         spines = fmap (spineAt layout) ds
 
@@ -92,8 +91,9 @@ merge written conditionals guards varied settledOthers = go Broken
       | Just wds <- traverse unwrap xs,
         Just w <- joint wds =
           case (w, go (layoutInside layout w) (fmap snd wds)) of
-            (WLocated _, DCppChoice{})
-              | spans <- [s | (WLocated s, _) <- wds],
+            (WLocated _, merged)
+              | onlyChoice merged,
+                spans <- [s | (WLocated s, _) <- wds],
                 Just opened <- unwrapping layout spans xs ->
                   opened
             (WGroup l, DCppChoice{})
@@ -131,19 +131,24 @@ merge written conditionals guards varied settledOthers = go Broken
           Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
           Nothing -> case spineAt l d of
             parts@(_ : _ : _) ->
-              Just . factored l $
+              Just . factored middle l $
                 [if k == inside then parts else [e] | (k, e) <- zip [0 ..] xs]
             _ -> Nothing
 
-    factored layout ss =
-      let same = agree varied layout
-          shared = foldl1 (lcs anchoring same) ss
-          cut = fmap (segments (anchored same) shared) ss
+    factored within layout ss =
+      let same (x, _) (y, _) = agree varied layout x y
+          common as bs =
+            [ (x, is <> js)
+            | ((x, is), (_, js)) <- lcs (anchoring . fst) same as bs
+            ]
+          shared = foldl1 common [zip s (pure <$> [0 :: Int ..]) | s <- ss]
+          cut =
+            [cutAt [is !! k | (_, is) <- shared] s | (k, s) <- zip [0 ..] ss]
           stretches = transpose (fmap fst cut)
           anchors = transpose (fmap snd cut)
-       in mconcat (woven layout stretches (fmap (go layout) anchors))
+       in mconcat (woven within layout stretches (fmap (go layout) anchors))
 
-    woven layout (s : ss) (c : cs)
+    woven within layout (s : ss) (c : cs)
       | all (maybe False ((== DSpace) . snd) . unsnoc) s,
         Just r <- regionOf c,
         spanStartLine r == spanEndLine r,
@@ -154,12 +159,13 @@ merge written conditionals guards varied settledOthers = go Broken
               ws
               [(g, b <> gap <> c) | (g, b) <- bs]
               (e <> gap <> c)
-            : woven layout ss cs
-      | otherwise = stretch : c : woven layout ss cs
+            : woven within layout ss cs
+      | otherwise = stretch : c : woven within layout ss cs
       where
-        stretch = foldMap (varying layout) (cutAtConditionals s)
-    woven layout ss [] = fmap (foldMap (varying layout) . cutAtConditionals) ss
-    woven _ [] _ = []
+        stretch = foldMap (varying within layout) (cutAtConditionals s)
+    woven within layout ss [] =
+      fmap (foldMap (varying within layout) . cutAtConditionals) ss
+    woven _ _ [] _ = []
 
     -- A stretch the configurations disagree over, cut where one conditional
     -- asking the question ends and the next begins, so that each comes out
@@ -194,13 +200,13 @@ merge written conditionals guards varied settledOthers = go Broken
           | otherwise = sortOn fst (o : os)
         ascending os = and (zipWith (<=) os (drop 1 os))
 
-    varying layout ss =
+    varying within layout ss =
       let (opening, ss1) = sharedStart layout ss
           (ss2, closing) = sharedEnd layout ss1
           (lead, ss3, trail) = hoisted layout ss2
        in mconcat opening
             <> mconcat lead
-            <> middle layout ss3
+            <> within layout ss3
             <> mconcat trail
             <> mconcat closing
 
@@ -225,12 +231,30 @@ merge written conditionals guards varied settledOthers = go Broken
       | all (alike layout s) rest = mconcat s
       | Just xs <- traverse only ss = go layout xs
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
-      | Just merged <- alongsideHeads layout ss,
-        weigh layout merged < weigh layout apart =
-          merged
-      | otherwise = apart
+      | otherwise =
+          minimumBy
+            (comparing (weigh layout))
+            (apart : maybeToList (alongsideHeads layout ss) <> byLines)
       where
         apart = choice (fmap (mconcat . commaFirst) ss)
+        byLines
+          | not (any continuing ss),
+            not (null (foldr1 Set.intersection (foldMap writtenAt <$> ss))),
+            (ls, cuts) <- unzip (fmap (linesOf layout) ss),
+            or cuts =
+              [factored whole layout ls]
+          | otherwise = []
+        continuing = \case
+          x : xs
+            | printsNothing x -> continuing xs
+            | Just (_, y) <- unwrap x -> continuing (spine y <> xs)
+            | otherwise -> x == DSpace
+          [] -> False
+
+    whole _ [] = mempty
+    whole layout ss@(s : rest)
+      | all (alike layout s) rest = mconcat s
+      | otherwise = choice (fmap mconcat ss)
 
     commaFirst = \case
       x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
@@ -275,7 +299,7 @@ merge written conditionals guards varied settledOthers = go Broken
                 ( joined
                     (glued (go layout heads))
                     (middle layout tails)
-                    (varying layout tails)
+                    (varying middle layout tails)
                 )
         _ -> Nothing
       where
@@ -353,6 +377,9 @@ merge written conditionals guards varied settledOthers = go Broken
 
     breaking = \case
       DDeclarationsStart -> True
+      DCat a b -> breaking a && breaking b
+      DNest _ d -> not (printsNothing d) && breaking d
+      DGroup _ d -> not (printsNothing d) && breaking d
       d -> onlyBreaks d
 
     choice ds
@@ -386,33 +413,54 @@ merge written conditionals guards varied settledOthers = go Broken
 
 -- | Would these two documents print the same, laid out like this?
 agree :: Varied -> Layout -> Doc -> Doc -> Bool
-agree varied layout a b = alike (chunked (spineAt layout a)) (chunked (spineAt layout b))
+agree varied layout a b
+  | lone a, lone b = agreeOn varied layout a b
+  | otherwise = agreeAll varied layout (spineAt layout a) (spineAt layout b)
   where
-    alike (Left s : xs) (Left t : ys) = s == t && alike xs ys
-    alike (Right x : xs) (Right y : ys) = here x y && alike xs ys
-    alike [] [] = True
-    alike _ _ = False
-    chunked ds =
-      let (space, rest) = span onlySpacing ds
-       in Left (spaceOf layout space) : case rest of
-            [] -> []
-            x : more -> Right x : chunked more
-    inside x y = agree varied layout x y
-    here x y = case (x, y) of
-      (DLocated s x', DLocated t y') ->
-        s == t
-          && ( untouched varied (reach s x') && untouched varied (reach t y')
-                 || inside x' y'
-             )
-      (DCppChoice ws bs x', DCppChoice ws' cs y') ->
-        ws == ws'
-          && length bs == length cs
-          && and [g == h && inside p q | ((g, p), (h, q)) <- zip bs cs]
-          && inside x' y'
-      _ -> case (unwrap x, unwrap y) of
-        (Just (w, x'), Just (v, y')) ->
-          w == v && agree varied (layoutInside layout w) x' y'
-        _ -> x == y
+    lone = \case
+      DCat{} -> False
+      DVariant{} -> False
+      d -> not (onlySpacing d)
+
+-- | Would these two spines print the same, laid out like this?
+agreeAll :: Varied -> Layout -> [Doc] -> [Doc] -> Bool
+agreeAll varied layout xs ys =
+  spaceOf layout space == spaceOf layout space' && case (rest, rest') of
+    ([], []) -> True
+    (x : more, y : more') ->
+      agreeOn varied layout x y && agreeAll varied layout more more'
+    _ -> False
+  where
+    (space, rest) = span onlySpacing xs
+    (space', rest') = span onlySpacing ys
+
+-- | Would these two elements of spines print the same, laid out like this?
+agreeOn :: Varied -> Layout -> Doc -> Doc -> Bool
+agreeOn varied layout x y = case (x, y) of
+  (DLocated s x', DLocated t y') ->
+    s == t
+      && ( untouched varied (reach s x')
+             && untouched varied (reach t y')
+             && startPoint s /= endPoint s
+             || inside x' y'
+         )
+  (DCppChoice ws bs x', DCppChoice ws' cs y') ->
+    ws == ws'
+      && length bs == length cs
+      && and [g == h && inside p q | ((g, p), (h, q)) <- zip bs cs]
+      && inside x' y'
+  _ -> case (unwrap x, unwrap y) of
+    (Just (w, x'), Just (v, y')) ->
+      w == v && agree varied (layoutInside layout w) x' y'
+    _ -> x == y
+  where
+    inside = agree varied layout
+
+-- | Is this document one choice, in nothing but wrappers?
+onlyChoice :: Doc -> Bool
+onlyChoice = \case
+  DCppChoice{} -> True
+  d -> maybe False (onlyChoice . snd) (unwrap d)
 
 -- | Does this document, laid out flat, print a choice before anything else?
 beginsWithChoice :: Doc -> Bool
@@ -602,23 +650,18 @@ changesAgainst ::
   [Doc] ->
   [Doc] ->
   [Change]
-changesAgainst varied same bs xs = go 0 bs xs (lcs anchoring same bs xs)
+changesAgainst varied same bs xs =
+  go 0 0 bs xs (lcs held (same `on` snd) bs' xs')
   where
-    anchor = anchored same
+    bs' = zip [0 ..] bs
+    xs' = zip [0 ..] xs
+    held = anchoring . snd
 
-    go i b x [] = between i b x
-    go i b x (c : cs) =
-      let (b', b'') = break (anchor c) b
-          (x', x'') = break (anchor c) x
-          j = i + length b'
-       in between i b' x'
-            <> held j (listToMaybe b'') (listToMaybe x'')
-            <> go (j + 1) (drop 1 b'') (drop 1 x'') cs
-
-    held j (Just b') (Just x')
-      | not (same b' x') =
-          [Change{chFrom = j, chTo = j + 1, chWith = [x'], chVaried = varied}]
-    held _ _ _ = []
+    go i _ b x [] = between i b x
+    go i j b x (((p, _), (q, _)) : cs) =
+      let (b', b'') = splitAt (p - i) b
+          (x', x'') = splitAt (q - j) x
+       in between i b' x' <> go (p + 1) (q + 1) (drop 1 b'') (drop 1 x'') cs
 
     between i b x =
       [ Change
@@ -705,6 +748,119 @@ choiceAt written edge = go Flat False
           (lineAt (spanStartLine s) written)
       Nothing -> False
 
+-- | The lines a run of documents prints and the space between them, each in
+-- the wrappers it is printed in, and whether that cuts an element of the
+-- run.
+linesOf :: Layout -> [Doc] -> ([Doc], Bool)
+linesOf layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
+  where
+    (ps, _, cut) = partsOf layout Within xs
+
+-- | A line less the wrappers that make no difference to it: a group around
+-- what does not depend on the layout, and a region around regions and
+-- nothing else, which say where the line was written already.
+plain :: Doc -> Doc
+plain = \case
+  DGroup _ d | layoutFree d -> plain d
+  DLocated _ d | onlyRegions d -> plain d
+  DFence _ d | onlyRegions d -> plain d
+  d -> mapChildren plain d
+  where
+    layoutFree = \case
+      DBreak -> False
+      DSoftBreak -> False
+      DVariant{} -> False
+      DGroup{} -> True
+      d -> getAll (foldChildren (All . layoutFree) d)
+    onlyRegions d = isJust (regionOf d) && not (bare d)
+    bare = \case
+      DLocated{} -> False
+      DFence{} -> False
+      DText t -> not (T.null t)
+      DHoldBack{} -> True
+      d -> getAny (foldChildren (Any . bare) d)
+
+-- | Where a part of a run of documents begins.
+data Place
+  = -- | On a line, after what the line already holds.
+    Within
+  | -- | Between two lines.
+    Between
+  deriving (Eq)
+
+-- | The parts a run of documents is cut into: its lines and the space
+-- between them, each in the wrappers it is printed in.
+partsOf ::
+  -- | The layout the run is printed in.
+  Layout ->
+  -- | Where the run begins.
+  Place ->
+  -- | The run.
+  [Doc] ->
+  -- | The parts in order, the first of them what the run adds to the part
+  -- it begins in, empty where the run begins a part of its own; where the
+  -- run ends, which is where what follows it begins; and whether an element
+  -- of the run holds what is printed on more than one line, so that the cut
+  -- went through it.
+  ([[Doc]], Place, Bool)
+partsOf layout = walk [[]] False
+  where
+    walk ls cut place = \case
+      [] -> (reverse ls, place, cut)
+      x : xs
+        | Just (w, y) <- unwrap x,
+          w /= WCppMarginNote,
+          w /= WAlign || place == Between,
+          let inside = layoutInside layout w,
+          (ps, place', cut') <- partsOf inside place (spineAt inside y),
+          length (filter (not . null) ps) > 1 ->
+            walk
+              (onto (if w == WAlign then ps else wrapped w ps) ls)
+              (cut || cut' || length (filter (not . all blank) ps) > 1)
+              place'
+              xs
+        | printsNothing x || x == DSpace -> walk (onto [[x]] ls) cut place xs
+        | opensWithBreak layout x,
+          place == Between ->
+            walk (onto [[x]] ls) cut place xs
+        | opensWithBreak layout x -> walk ([x] : ls) cut Between xs
+        | place == Within -> walk (onto [[x]] ls) cut place xs
+        | otherwise -> walk ([x] : ls) cut Within xs
+    onto ps ls = case (ps, ls) of
+      (p : rest, l : done) -> reverse rest <> ((l <> p) : done)
+      _ -> reverse ps <> ls
+    wrapped w = case w of
+      WLocated s -> marked DLocated s (startOf s) True
+      WFence s -> marked DFence s (startOf s) True
+      _ -> fmap (\p -> [wrap w (mconcat p) | not (null p)])
+    marked region s from first = \case
+      [] -> []
+      p : rest
+        | all blank p -> p : marked region s from first rest
+        | Just r <- regionOf d -> p : marked region s (endOf r) False rest
+        | otherwise -> [region s' d] : marked region s s' False rest
+        where
+          d = mconcat p
+          final = all (all blank) rest
+          s'
+            | first && final = s
+            | first = startOf s
+            | final = endOf s
+            | otherwise = from
+
+-- | Where the regions a document holds were written.
+writtenAt :: Doc -> Set Span
+writtenAt = \case
+  DLocated s d -> Set.insert s (writtenAt d)
+  DFence s d -> Set.insert s (writtenAt d)
+  d -> foldChildren writtenAt d
+
+-- | Does this document print nothing but space and what ends a line?
+blank :: Doc -> Bool
+blank = all spacing . spine
+  where
+    spacing x = onlySpacing x || maybe False (blank . snd) (unwrap x)
+
 -- | Does the first thing this document puts on the page end a line?
 opensWithBreak :: Layout -> Doc -> Bool
 opensWithBreak layout d = case dropWhile (== DSpace) (spineAt layout d) of
@@ -740,10 +896,12 @@ weigh layout = go
 
 -- | The longest run of elements two spines have in common, in order,
 -- allowing for anything either of them has that the other does not, of
--- those that could hold them together.
-lcs :: (a -> Bool) -> (a -> a -> Bool) -> [a] -> [a] -> [a]
+-- those that could hold them together, each with its counterpart.
+lcs :: (a -> Bool) -> (a -> b -> Bool) -> [a] -> [b] -> [(a, b)]
 lcs holds same xs ys =
-  filter holds opening <> table middleX middleY <> filter holds closing
+  filter (holds . fst) (zip opening ys)
+    <> table middleX middleY
+    <> filter (holds . fst) closing
   where
     agreeing as bs = length (takeWhile id (zipWith same as bs))
 
@@ -751,8 +909,9 @@ lcs holds same xs ys =
     (opening, xs1) = splitAt ahead xs
     ys1 = drop ahead ys
     behind = agreeing (reverse xs1) (reverse ys1)
-    (middleX, closing) = splitAt (length xs1 - behind) xs1
-    middleY = take (length ys1 - behind) ys1
+    (middleX, closingX) = splitAt (length xs1 - behind) xs1
+    (middleY, closingY) = splitAt (length ys1 - behind) ys1
+    closing = zip closingX closingY
 
     table [] _ = []
     table _ [] = []
@@ -765,13 +924,9 @@ lcs holds same xs ys =
               (n, acc) : case rest of
                 [] -> []
                 ((y, (dn, ds), (an, as')) : more)
-                  | holds x, same x y -> cells (dn + 1) (x : ds) more
+                  | holds x, same x y -> cells (dn + 1) ((x, y) : ds) more
                   | n >= an -> cells n acc more
                   | otherwise -> cells an as' more
-
--- | Only let something that was printed line two spines up.
-anchored :: (Doc -> Doc -> Bool) -> Doc -> Doc -> Bool
-anchored same a b = anchoring a && same a b
 
 -- | Could this element hold two spines together, if it turned up in both?
 anchoring :: Doc -> Bool
@@ -779,9 +934,9 @@ anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
   DDeclarationsStart -> False
-  DNest _ d -> located d || not (printsNothing d)
+  DNest _ d -> located d || not (blank d)
   DAlign d -> located d || not (printsNothing d)
-  DGroup _ d -> located d || not (printsNothing d)
+  DGroup _ d -> located d || not (blank d)
   d -> not (onlySpacing d)
   where
     located = \case
@@ -793,27 +948,14 @@ anchoring = \case
       DGroup _ d -> located d
       _ -> False
 
--- | A spine cut at the elements it shares with the others: one stretch
--- before each of them, and one after the last, and the elements themselves.
---
--- The matched elements come back rather than being dropped because the
--- caller cannot assume they are interchangeable: 'agree' does not look
--- inside a region the conditional leaves alone.
-segments ::
-  -- | Whether an element of the spine is the shared one being looked for.
-  (a -> a -> Bool) ->
-  -- | The shared elements, in order, to cut at.
-  [a] ->
-  -- | The spine to cut.
-  [a] ->
-  -- | The stretches between the cuts, and the elements cut at.
-  ([[a]], [a])
-segments same = go
+-- | A spine cut at the given positions: one stretch before each of them,
+-- and one after the last.
+cutAt :: [Int] -> [a] -> ([[a]], [a])
+cutAt = go 0
   where
-    go [] s = ([s], [])
-    go (c : cs) s = case break (same c) s of
-      (before', matched : rest) -> keeping before' matched (go cs rest)
-      (before', []) -> keeping before' c (go cs [])
-      where
-        keeping before' matched (stretches, anchors) =
-          (before' : stretches, matched : anchors)
+    go _ [] s = ([s], [])
+    go i (p : ps) s = case splitAt (p - i) s of
+      (before, x : after) ->
+        let (stretches, xs) = go (p + 1) ps after
+         in (before : stretches, x : xs)
+      (before, []) -> ([before], [])
