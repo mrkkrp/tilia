@@ -1,3 +1,9 @@
+## Unreleased
+
+* Keep code that every configuration prints alike out of the branches of a
+  conditional in many more cases rather than copying it into each of them.
+  [PR 229](https://github.com/mrkkrp/tilia/pull/229).
+
 ## Tilia 0.1.0.0
 
 ### Conditional compilation

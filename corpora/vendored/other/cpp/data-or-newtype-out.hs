@@ -9,12 +9,11 @@ import Data.IORef (IORef)
 data Cell = Cell
   { cellRef :: {-# UNPACK #-} !(IORef Char),
     cellCount :: {-# UNPACK #-} !Int
-  }
 #else
 newtype Cell = Cell
   { cellRef :: IORef Char
-  }
 #endif
+  }
 
 blank :: Char
 blank = ' '

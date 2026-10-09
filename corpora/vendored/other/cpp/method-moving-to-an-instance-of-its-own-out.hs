@@ -11,10 +11,8 @@ instance Monoid Summary where
 
 #if MIN_VERSION_base(4,11,0)
 instance Semigroup Summary where
-  Summary x1 x2 `mappend` Summary y1 y2 = Summary (x1 + y1) (x2 + y2)
-#else
-  Summary x1 x2 `mappend` Summary y1 y2 = Summary (x1 + y1) (x2 + y2)
 #endif
+  Summary x1 x2 `mappend` Summary y1 y2 = Summary (x1 + y1) (x2 + y2)
 
 isSuccess :: Summary -> Bool
 isSuccess (Summary _ failures) = failures == 0
