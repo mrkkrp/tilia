@@ -18,6 +18,7 @@ module Tilia.Cabal.Plan
     tokenForEnvAndBuildPlan,
     tokenForBuildPlan,
     macrosOf,
+    versionMacros,
     plannedCompiler,
     generatedModules,
 
@@ -332,11 +333,38 @@ checkedOutIn distDir plan = do
 -- | The version macros a plan settles.
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
+  ( versionMacros
+      (numberedVersion =<< T.stripPrefix "ghc-" (bpCompiler plan))
+      (Map.mapMaybe sole versions)
+  )
+    { macroPlannedPackages =
+        Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
+    }
+  where
+    versions =
+      Map.fromListWith
+        Set.union
+        [ (ppName p, Set.singleton v)
+        | p <- bpPackages plan,
+          Just v <- [numberedVersion (ppVersion p)]
+        ]
+    sole vs = case Set.toList vs of
+      [v] -> Just v
+      _ -> Nothing
+
+-- | The version macros the compiler's version and each package's settle.
+versionMacros ::
+  -- | The compiler's version.
+  Maybe [Integer] ->
+  -- | Each package's version, by name.
+  Map Text [Integer] ->
+  Macros
+versionMacros given versions =
   mempty
     { macroExactVersions =
         Map.fromList
           ( [ ("MIN_VERSION_" <> underscored name, version)
-            | (name, [version]) <- Map.toList (Map.map Set.toList versions)
+            | (name, version) <- Map.toList versions
             ]
               <> [("MIN_VERSION_GLASGOW_HASKELL", v) | v <- toList compiler]
           ),
@@ -353,24 +381,12 @@ macrosOf plan =
       macroUndefined =
         if null compiler
           then Set.empty
-          else Set.fromList ["__MHS__", "__HUGS__"],
-      macroPlannedPackages =
-        Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
+          else Set.fromList ["__MHS__", "__HUGS__"]
     }
   where
-    versions =
-      Map.fromListWith
-        Set.union
-        [ (ppName p, Set.singleton v)
-        | p <- bpPackages plan,
-          Just v <- [numberedVersion (ppVersion p)]
-        ]
-    compiler = do
-      version <- T.stripPrefix "ghc-" (bpCompiler plan)
-      parts <- numberedVersion version
-      case parts of
-        _ : _ : _ -> Just (take 4 (parts <> repeat 0))
-        _ -> Nothing
+    compiler = case given of
+      Just parts@(_ : _ : _) -> Just (take 4 (parts <> repeat 0))
+      _ -> Nothing
     nth i xs = if i < length xs then xs !! i else 0
 
 -- | The version of GHC a plan is for, where it is for GHC.
