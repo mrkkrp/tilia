@@ -33,10 +33,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
+import Data.Time (addUTCTime, getCurrentTime)
 import System.Directory
   ( createDirectoryIfMissing,
     doesFileExist,
     getPermissions,
+    setModificationTime,
     setOwnerExecutable,
     setPermissions,
   )
@@ -214,6 +216,25 @@ preparation = describe "preparing a project" $ do
       prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Right ()
       readIORef steps
         `shouldReturn` [solving, narrowSolve, fetching, narrowFetch]
+
+  it "does not solve again where solving left the plan as it was" $
+    withChangedPackage $ \dir -> do
+      stale <- checkReadiness [] dir
+      stale `shouldBe` PlanStale [dir </> "thing.cabal"]
+      steps <- newIORef []
+      prepareWith (obliging steps) (futilityFor (Do #useCache) dir) [] dir stale
+        `shouldReturn` Right ()
+      readIORef steps `shouldReturn` [solving]
+      checkReadiness [] dir `shouldReturn` Ready
+
+  it "solves again where a file changed after the last solve" $
+    withChangedPackage $ \dir -> do
+      stale <- checkReadiness [] dir
+      steps <- newIORef []
+      _ <- prepareWith (obliging steps) (futilityFor (Do #useCache) dir) [] dir stale
+      later <- addUTCTime 60 <$> getCurrentTime
+      setModificationTime (dir </> "thing.cabal") later
+      checkReadiness [] dir `shouldReturn` PlanStale [dir </> "thing.cabal"]
 
   describe "a plan narrower than the run" $ do
     it "notices a component the plan says nothing about" $
@@ -1733,6 +1754,23 @@ withTempProject plan act =
 
 writePlan :: FilePath -> Text -> IO ()
 writePlan dir = T.writeFile (planPathFor dir)
+
+-- | A project whose @.cabal@ file changed after its plan was written, under
+-- a plan of its own, so that what it leaves in the cache is its own.
+withChangedPackage :: (FilePath -> IO a) -> IO a
+withChangedPackage act =
+  withTempProject Nothing $ \dir -> do
+    writePlan dir $
+      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
+      \[{\"pkg-name\":\""
+        <> T.pack (takeBaseName dir)
+        <> "\",\"pkg-version\":\"1.0\",\"component-name\":\"lib\",\
+           \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
+    now <- getCurrentTime
+    setModificationTime (planPathFor dir) (addUTCTime (-60) now)
+    T.writeFile (dir </> "thing.cabal") ""
+    setModificationTime (dir </> "thing.cabal") (addUTCTime (-30) now)
+    act dir
 
 -- | A plan naming one package that no package cache can have a tarball
 -- for, so that reading it leaves something to fetch.
