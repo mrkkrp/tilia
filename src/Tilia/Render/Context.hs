@@ -21,6 +21,9 @@ module Tilia.Render.Context
     -- * What lies between two spans
     commentPrintedBetween,
     lineCommentWrittenBetween,
+    startTogether,
+    directivesBetween,
+    underDirective,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -41,6 +44,7 @@ module Tilia.Render.Context
   )
 where
 
+import Data.Char (isSpace)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -69,7 +73,8 @@ import Tilia.Source
   ( Source,
     SourceType,
     blankAt,
-    directivePresentOnLine,
+    directiveOnLine,
+    lineAt,
     sourceLines,
   )
 import Tilia.Span
@@ -233,18 +238,61 @@ lineCommentWrittenBetween ctx (Just a) (Just b) =
   holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
 lineCommentWrittenBetween _ _ _ = False
 
+-- | Do the two spans start on one line as written, or the second at the
+-- start of a line with nothing but preprocessor directives above it since
+-- the first?
+startTogether :: Ctx -> Maybe Span -> Maybe Span -> Bool
+startTogether ctx ma@(Just a) mb@(Just b) =
+  spanStartLine a == spanStartLine b || directivesBetween (const True) ctx ma mb
+startTogether _ _ _ = False
+
+-- | Does the second span start a line with nothing above it since the line
+-- the first starts on but preprocessor directives whose keywords satisfy the
+-- predicate?
+directivesBetween :: (Text -> Bool) -> Ctx -> Maybe Span -> Maybe Span -> Bool
+directivesBetween kind ctx (Just a) mb@(Just b) =
+  spanStartLine a + 1 < spanStartLine b
+    && all (directiveAt kind ctx) [spanStartLine a + 1 .. spanStartLine b - 1]
+    && beginsLine ctx mb
+directivesBetween _ _ _ _ = False
+
+-- | Does this span start a line right under a preprocessor directive whose
+-- keyword satisfies the predicate?
+underDirective :: (Text -> Bool) -> Ctx -> Maybe Span -> Bool
+underDirective kind ctx ms@(Just s) =
+  directiveAt kind ctx (spanStartLine s - 1) && beginsLine ctx ms
+underDirective _ _ Nothing = False
+
+-- | Does this line hold a preprocessor directive whose keyword satisfies the
+-- predicate?
+directiveAt :: (Text -> Bool) -> Ctx -> Int -> Bool
+directiveAt kind ctx n =
+  maybe
+    False
+    (kind . fst)
+    (directiveOnLine =<< lineAt n (sourceLines (ctxSource ctx)))
+
+-- | Was this span written first on its line?
+beginsLine :: Ctx -> Maybe Span -> Bool
+beginsLine ctx (Just s) =
+  maybe
+    False
+    (T.all isSpace . T.take (spanStartColumn s - 1))
+    (lineAt (spanStartLine s) (sourceLines (ctxSource ctx)))
+beginsLine _ Nothing = False
+
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no
 -- preprocessor directive anywhere between?
 remarkUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
 remarkUnder ctx ma@(Just a) mb@(Just b) =
   not (separatedByBlank ctx ma mb)
-    && not (any directiveAt [spanEndLine a + 1 .. spanStartLine b - 1])
+    && not (any (directiveAt (const True) ctx) between)
     && any
       (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
       (printedBetween ctx a b)
   where
-    directiveAt n = directivePresentOnLine n (sourceLines (ctxSource ctx))
+    between = [spanEndLine a + 1 .. spanStartLine b - 1]
 remarkUnder _ _ _ = False
 
 -- | Does the first comment printed between the two spans begin on the line

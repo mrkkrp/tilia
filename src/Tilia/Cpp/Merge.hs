@@ -229,7 +229,11 @@ merge written conditionals guards varied settledOthers = go Broken
     middle _ [] = mempty
     middle layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
-      | Just xs <- traverse only ss = go layout xs
+      | Just xs <- traverse only ss,
+        let descended = go layout xs =
+          if repeating layout descended
+            then minimumBy (comparing (weigh layout)) (descended : byLines)
+            else descended
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | otherwise =
           minimumBy
@@ -455,6 +459,17 @@ agreeOn varied layout x y = case (x, y) of
     _ -> x == y
   where
     inside = agree varied layout
+
+-- | Does a choice this document strings together repeat in every
+-- alternative what was written once?
+repeating :: Layout -> Doc -> Bool
+repeating layout d = case filter (not . onlySpacing) (spineAt layout d) of
+  [x] | Just (w, y) <- unwrap x -> repeating (layoutInside layout w) y
+  xs ->
+    or
+      [ not (null (foldr1 Set.intersection (writtenAt <$> e : fmap snd bs)))
+      | DCppChoice _ bs e <- xs
+      ]
 
 -- | Is this document one choice, in nothing but wrappers?
 onlyChoice :: Doc -> Bool

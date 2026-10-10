@@ -473,7 +473,7 @@ formatted       27b454ea364e  QuickCheck-2.18.0.0/src/Test/QuickCheck/Modifiers.
 formatted       09230f4d022f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monadic.hs
 formatted       a94b9d13da2f  QuickCheck-2.18.0.0/src/Test/QuickCheck/Monoids.hs
 formatted       0c4f8c706edf  QuickCheck-2.18.0.0/src/Test/QuickCheck/Poly.hs
-formatted       7ad2b4286dd4  QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
+formatted       3c937d9861f1  QuickCheck-2.18.0.0/src/Test/QuickCheck/Property.hs
 formatted       d248979763fb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Random.hs
 formatted       67a6c49f2d76  QuickCheck-2.18.0.0/src/Test/QuickCheck/State.hs
 formatted       d6690aaf2529  QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs
@@ -4532,7 +4532,7 @@ formatted       eb1cc9cf331c  text-2.1.4/scripts/CaseFolding.hs
 formatted       a0bdad468ca4  text-2.1.4/scripts/CaseMapping.hs
 formatted       57e97be5ba61  text-2.1.4/scripts/SpecialCasing.hs
 formatted       d775bb623580  text-2.1.4/scripts/UnicodeData.hs
-partly-checked  0abe70d97042  text-2.1.4/src/Data/Text.hs
+partly-checked  1e55021d157f  text-2.1.4/src/Data/Text.hs
 formatted       d3ff1f08422c  text-2.1.4/src/Data/Text/Array.hs
 formatted       4970b89f4e7e  text-2.1.4/src/Data/Text/Encoding.hs
 formatted       d6231f7ebe99  text-2.1.4/src/Data/Text/Encoding/Error.hs
@@ -4547,7 +4547,7 @@ formatted       f5f871c975a4  text-2.1.4/src/Data/Text/Internal/Builder/Int/Digi
 formatted       ab51e88834e1  text-2.1.4/src/Data/Text/Internal/Builder/RealFloat/Functions.hs
 formatted       7fa192160c9b  text-2.1.4/src/Data/Text/Internal/ByteStringCompat.hs
 formatted       4815054ed2f6  text-2.1.4/src/Data/Text/Internal/Encoding.hs
-formatted       43a1a670b3db  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion.hs
+formatted       5a047ace8d16  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion.hs
 formatted       88e5c54a218b  text-2.1.4/src/Data/Text/Internal/Encoding/Fusion/Common.hs
 formatted       875961737225  text-2.1.4/src/Data/Text/Internal/Encoding/Utf16.hs
 formatted       48ea4745d7e8  text-2.1.4/src/Data/Text/Internal/Encoding/Utf32.hs
@@ -4560,7 +4560,7 @@ formatted       3c7c18d05ebf  text-2.1.4/src/Data/Text/Internal/Fusion/Types.hs
 formatted       32b50634031b  text-2.1.4/src/Data/Text/Internal/IO.hs
 formatted       e2bb47936e11  text-2.1.4/src/Data/Text/Internal/IsAscii.hs
 formatted       538632ba614a  text-2.1.4/src/Data/Text/Internal/Lazy.hs
-formatted       76efe1116cd2  text-2.1.4/src/Data/Text/Internal/Lazy/Encoding/Fusion.hs
+formatted       9f9b11487eac  text-2.1.4/src/Data/Text/Internal/Lazy/Encoding/Fusion.hs
 formatted       c627413119e8  text-2.1.4/src/Data/Text/Internal/Lazy/Fusion.hs
 formatted       a3c76abdf09c  text-2.1.4/src/Data/Text/Internal/Lazy/Search.hs
 formatted       e22062ee35e8  text-2.1.4/src/Data/Text/Internal/Measure.hs
@@ -4586,7 +4586,7 @@ formatted       737ca3b98c79  text-2.1.4/src/Data/Text/Lazy/Internal.hs
 formatted       4053796b9111  text-2.1.4/src/Data/Text/Lazy/Read.hs
 formatted       95185ba2e9b4  text-2.1.4/src/Data/Text/Read.hs
 formatted       a764e2fbcaba  text-2.1.4/src/Data/Text/Show.hs
-formatted       5aa1e6b706a4  text-2.1.4/src/Data/Text/Unsafe.hs
+formatted       ce35262cd7ed  text-2.1.4/src/Data/Text/Unsafe.hs
 formatted       8c35444bb7ce  text-2.1.4/tests/LiteralRuleTest.hs
 formatted       6c129d5c79c5  text-2.1.4/tests/Tests.hs
 formatted       8c9ba4deec7f  text-2.1.4/tests/Tests/Lift.hs

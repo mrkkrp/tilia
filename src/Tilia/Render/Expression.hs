@@ -356,7 +356,11 @@ renderExprChain ctx site = \case
             laidOut
     where
       placement =
-        chainPlacement exprHangs (chainSpan spanOf firstOne) (NE.last operands)
+        chainPlacement
+          ctx
+          exprHangs
+          (chainSpan spanOf firstOne)
+          (NE.last operands)
       laidOut bracing =
         renderExprChain ctx (withBracing bracing site) firstOne
           <> pieces bracing firstOne operators rest
@@ -370,8 +374,11 @@ renderExprChain ctx site = \case
               then
                 space
                   <> hsExpr ctx o
-                  <> attach
+                  <> under
                     (tailPlacement isLast (chainSpan spanOf previous) o operand)
+                    previous
+                    o
+                    operand
                     (rendered <> rest')
               else
                 attachOperator
@@ -383,11 +390,22 @@ renderExprChain ctx site = \case
                   rendered
                   <> rest'
       pieces _ _ _ _ = mempty
+      under Normal previous o operand
+        | chainSpan spanOf previous == chainSpan spanOf firstOne,
+          underDirective ("if" `T.isPrefixOf`) ctx (chainSpan spanOf firstOne),
+          directivesBetween
+            (== "endif")
+            ctx
+            (spanOf o)
+            (chainSpan spanOf operand),
+          not (siteInBlock site) =
+            (breakOrSpace <>)
+      under p _ _ _ = attach p
       tailPlacement isLast before o operand
         | isLast,
           not (maybe True isSingleLine (chainSpan spanOf operand)),
           not (lineCommentWrittenBetween ctx before (spanOf o)) =
-            chainPlacement exprHangs (spanOf o) operand
+            chainPlacement ctx exprHangs (spanOf o) operand
         | otherwise = Normal
       commentedOperators =
         or (zipWith commentedBefore (NE.toList operands) operators)
@@ -412,22 +430,19 @@ isDoBlock e = case unLoc e of
   _ -> False
 
 -- | Whether an operand hangs, which it can only where it starts on the line
--- the given span starts on.
+-- the given span starts on, as far as the preprocessor's lines go.
 chainPlacement ::
   (HasLoc l) =>
+  Ctx ->
   (a -> Placement) ->
   Maybe Span ->
   OpChain (GenLocated l a) op ->
   Placement
-chainPlacement placer leader operand = case operand of
-  Operand (L _ n) | startsTogether -> placer n
-  Chain (first :| _) _ -> chainPlacement placer leader first
+chainPlacement ctx placer leader operand = case operand of
+  Operand (L _ n)
+    | startTogether ctx leader (chainSpan spanOf operand) -> placer n
+  Chain (first :| _) _ -> chainPlacement ctx placer leader first
   _ -> Normal
-  where
-    startsTogether =
-      case (leader, chainSpan spanOf operand) of
-        (Just a, Just b) -> spanStartLine a == spanStartLine b
-        _ -> False
 
 -- | Is this quoted constraint nothing but a variable?
 loneVariableExpr :: LHsExpr GhcPs -> Bool
@@ -815,6 +830,7 @@ cmdChain ctx site l op r =
         where
           placement =
             chainPlacement
+              ctx
               cmdTopHangs
               (chainSpan spanOf firstOne)
               (NE.last operands)
