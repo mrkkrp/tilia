@@ -36,9 +36,9 @@ check        200596840     518018971  blaze-html-0.9.2.0/src/Text/Blaze/Html5/At
 check         64909808     129336050  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
 check         90216104     179673316  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
 check        128706544     268524094  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
-check        523421640     948918927  haxl-2.5.1.1/Haxl/Core/Monad.hs
+check        523591944     949188985  haxl-2.5.1.1/Haxl/Core/Monad.hs
 check        221698872     460191261  idris-1.3.4/src/Idris/Elab/Term.hs
-check        337902136     578774153  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
+check        338015648     579027098  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
 check         61404624     129978443  megaparsec-9.8.1/Text/Megaparsec/Internal.hs
 check         82146616     174226709  optparse-applicative-0.19.0.0/tests/test.hs
 check         51737992      90794039  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
@@ -69,7 +69,7 @@ format       174818320     326282752  blaze-html-0.9.2.0/src/Text/Blaze/Html5/At
 format       125166848     238009392  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
 format       181178648     343277190  distributed-process-0.7.8/src/Control/Distributed/Process/Node.hs
 format       313098528     589932450  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
-format       771718072    1540040255  haxl-2.5.1.1/Haxl/Core/Monad.hs
+format       771718072    1540235498  haxl-2.5.1.1/Haxl/Core/Monad.hs
 format       504082456     961724034  idris-1.3.4/src/Idris/Elab/Term.hs
 format      1340529160    2711040392  lens-5.3.6/src/Control/Lens/Wrapped.hs
 format       403478464     737112328  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
@@ -95,7 +95,7 @@ format      1009683968    1978828410  unordered-containers-0.2.21/Data/HashMap/I
 format       507741568     948221777  unpacked-containers-0/src/Map/Internal.hs
 format       551670016    1043238816  vector-0.13.2.0/src/Data/Vector/Generic.hs
 format       139272304     260827865  xmonad-0.18.1/src/XMonad/Operations.hs
-recall         8859616      20673165  aeson-2.3.1.0
+recall         8862248      20673165  aeson-2.3.1.0
 recall         5962200      14249047  conduit-1.3.6.1
 recall         5407168      12260501  free-5.2
 recall        14514072      42776343  lens-5.3.6
@@ -107,10 +107,10 @@ recall         6086816      14006770  semigroupoids-6.0.2
 recall         6907136      15391475  servant-0.20.3.0
 recall         8964848      18364085  text-2.1.4
 recall         7811608      17871557  vector-0.13.2.0
-resolve     1907049288    3408898187  aeson-2.3.1.0
+resolve     1890101288    3382366359  aeson-2.3.1.0
 resolve      463756144     840405370  conduit-1.3.6.1
 resolve      506976816     909847941  free-5.2
-resolve     3094285240    5429459675  lens-5.3.6
+resolve     3095567504    5431288567  lens-5.3.6
 resolve      235814952     461608251  megaparsec-9.8.1
 resolve      252811728     486288083  mtl-2.3.2
 resolve       85010368     215600755  optics-0.4.2.1
@@ -118,4 +118,4 @@ resolve       97429760     228174375  pandoc-types-1.23.1.2
 resolve      157523936     331187444  semigroupoids-6.0.2
 resolve      238466264     487199146  servant-0.20.3.0
 resolve     1204924096    2137560709  text-2.1.4
-resolve     2506787784    4303302980  vector-0.13.2.0
+resolve     2490422752    4277364780  vector-0.13.2.0

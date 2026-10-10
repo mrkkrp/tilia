@@ -406,7 +406,9 @@ macrosOf plan =
       macroUndefined =
         if null compiler
           then Set.empty
-          else Set.fromList ["__MHS__", "__HUGS__"]
+          else Set.fromList ["__MHS__", "__HUGS__"],
+      macroPackages =
+        Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
     }
   where
     versions =

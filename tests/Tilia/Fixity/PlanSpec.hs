@@ -68,7 +68,7 @@ spec :: Spec
 spec = do
   preparation
   tokens
-  compilerMacros
+  plannedMacros
   reexports
   hscModules
   generatedModuleSpec
@@ -120,17 +120,34 @@ tokens = describe "the token a plan is cached under" $ do
             ]
         }
 
--- | What a plan says about the macros of the compiler it is for.
-compilerMacros :: Spec
-compilerMacros = describe "the macros a plan settles" $ do
+-- | What a plan says about macros.
+plannedMacros :: Spec
+plannedMacros = describe "the macros a plan settles" $ do
   it "has those of other compilers undefined under a plan for GHC" $
     macroUndefined (macrosOf (planFor "ghc-9.10.3"))
       `shouldBe` Set.fromList ["__MHS__", "__HUGS__"]
 
   it "has nothing undefined under a plan for another compiler" $
     macroUndefined (macrosOf (planFor "mhs-0.15.4.0")) `shouldBe` Set.empty
+
+  it "holds every package of the plan, as its version macros spell it" $
+    macroPackages (macrosOf twoPackages)
+      `shouldBe` Just (Set.fromList ["base", "data_default"])
   where
     planFor compiler = BuildPlan{bpCompiler = compiler, bpPackages = []}
+    twoPackages =
+      BuildPlan
+        { bpCompiler = "ghc-9.10.3",
+          bpPackages =
+            [ PlanPackage
+                { ppName = name,
+                  ppVersion = "1.0",
+                  ppSource = PreExisting,
+                  ppComponents = []
+                }
+            | name <- ["base", "data-default"]
+            ]
+        }
 
 -- | 'Plan.checkReadiness', with the cache in use as it is by default.
 checkReadiness :: [PlanComponent] -> FilePath -> IO Readiness

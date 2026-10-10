@@ -19,6 +19,11 @@
   module that brings in an operator of the same name from elsewhere is no
   longer declined over the two disagreeing.
   [Issue 238](https://github.com/mrkkrp/tilia/issues/238).
+* The `VERSION_` and `MIN_VERSION_` macros of a package the build plan does
+  not hold are taken to be undefined, as Cabal defines them only for the
+  dependencies of a component. A module is no longer declined over an
+  operator that only a branch behind `#ifdef VERSION_x` imports where the
+  plan has no `x`. [Issue 241](https://github.com/mrkkrp/tilia/issues/241).
 
 ## Tilia 0.1.0.0
 

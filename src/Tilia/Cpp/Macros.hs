@@ -36,6 +36,10 @@ data Macros = Macros
     -- | The macros known not to be defined, such as those of the compilers
     -- other than the one the plan is for, like @__MHS__@.
     macroUndefined :: Set Text,
+    -- | The packages a plan holds, as their version macros spell them, where
+    -- that is known: the @VERSION_@ and @MIN_VERSION_@ macros of any other
+    -- package are not defined.
+    macroPackages :: Maybe (Set Text),
     -- | The version, or number, each macro is known to reach, a number
     -- being a version of one part.
     macroAtLeast :: Map Text [Integer],
@@ -51,6 +55,9 @@ instance Semigroup Macros where
         macroNumbers = macroNumbers a <> macroNumbers b,
         macroDefined = macroDefined a <> macroDefined b,
         macroUndefined = macroUndefined a <> macroUndefined b,
+        macroPackages = case (macroPackages a, macroPackages b) of
+          (Just x, Just y) -> Just (Set.intersection x y)
+          (x, y) -> x <|> y,
         macroAtLeast = Map.unionWith max (macroAtLeast a) (macroAtLeast b),
         macroBelow = Map.unionWith min (macroBelow a) (macroBelow b)
       }
@@ -62,6 +69,7 @@ instance Monoid Macros where
         macroNumbers = Map.empty,
         macroDefined = Set.empty,
         macroUndefined = Set.empty,
+        macroPackages = Nothing,
         macroAtLeast = Map.empty,
         macroBelow = Map.empty
       }
@@ -96,6 +104,10 @@ isDefined macros n
       || Set.member n (macroDefined macros) =
       Just True
   | Set.member n (macroUndefined macros) = Just False
+  | Just held <- macroPackages macros,
+    Just p <- T.stripPrefix "VERSION_" n <|> T.stripPrefix "MIN_VERSION_" n,
+    Set.notMember p held =
+      Just False
   | otherwise = Nothing
 
 -- | The number a macro stands for, where that is known.
