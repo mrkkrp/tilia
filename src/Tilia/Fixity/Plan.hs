@@ -33,6 +33,7 @@ module Tilia.Fixity.Plan
     guessedPackageCacheRoot,
     Futility (..),
     undiscoveredFutility,
+    futilityFor,
     prepareWith,
     loadPlan,
 
@@ -97,6 +98,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
+import Data.Time (UTCTime, getCurrentTime)
 import Data.Unique (Unique, newUnique)
 import GHC.Generics (Generic)
 import GHC.Hs (HsModule)
@@ -500,7 +502,8 @@ checkReadiness caching wanted projectDir =
   readBuildPlan (planPathFor projectDir) >>= \case
     Left _ -> pure PlanMissing
     Right plan -> do
-      newer <- filesNewerThanPlan plan projectDir
+      solved <- cachedSolveTime =<< openCache caching =<< tokenForBuildPlan plan
+      newer <- filesNewerThanPlan plan projectDir solved
       let covered = plannedComponents plan
           missing = [spellComponent c | c <- wanted, c `notElem` covered]
       case (newer, missing) of
@@ -531,10 +534,12 @@ builtAlready installed p = any matches installed
   where
     matches i = ipName i == ppName p && ipVersion i == ppVersion p
 
--- | The project files that have changed since the plan was written.
-filesNewerThanPlan :: BuildPlan -> FilePath -> IO [FilePath]
-filesNewerThanPlan plan projectDir = quietly [] $ do
-  planTime <- getModificationTime (planPathFor projectDir)
+-- | The project files that have changed since the plan was written, and
+-- since the last solve, which leaves a plan it would not change as it was.
+filesNewerThanPlan :: BuildPlan -> FilePath -> Maybe UTCTime -> IO [FilePath]
+filesNewerThanPlan plan projectDir solved = quietly [] $ do
+  written <- getModificationTime (planPathFor projectDir)
+  let planTime = maybe written (max written) solved
   atRoot <- quietly [] (listDirectory projectDir)
   inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
   let candidates =
@@ -565,7 +570,10 @@ data Futility = Futility
     -- | The packages an earlier fetch was still short of afterwards.
     fetchWasFutileFor :: IO [Text],
     -- | Remember what a fetch left missing.
-    rememberFutileFetch :: [Text] -> IO ()
+    rememberFutileFetch :: [Text] -> IO (),
+    -- | Remember when a solve started, so that no change made before it
+    -- makes the plan stale.
+    rememberSolveTime :: UTCTime -> IO ()
   }
 
 -- | The state when we know nothing about futile actions yet.
@@ -575,7 +583,8 @@ undiscoveredFutility =
     { solveWasFutile = pure False,
       rememberFutileSolve = pure (),
       fetchWasFutileFor = pure [],
-      rememberFutileFetch = const (pure ())
+      rememberFutileFetch = const (pure ()),
+      rememberSolveTime = const (pure ())
     }
 
 -- | A memory kept in the cache, under the plan the project has now.
@@ -586,7 +595,8 @@ futilityFor caching projectDir =
       rememberFutileSolve = withCache () storeFutileSolve,
       fetchWasFutileFor = withCache [] cachedFutileFetch,
       rememberFutileFetch = \packages ->
-        withCache () (`storeFutileFetch` packages)
+        withCache () (`storeFutileFetch` packages),
+      rememberSolveTime = \started -> withCache () (`storeSolveTime` started)
     }
   where
     withCache fallback use =
@@ -645,10 +655,12 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
                   left <- sourcesShortOf caching plan
                   rememberFutileFetch futility (fmap ppName left)
                   pure (Right ())
-    solveThenFetch =
+    solveThenFetch = do
+      started <- getCurrentTime
       tryWholeProject ["build", ":all", "--dry-run"] >>= \case
         Left err -> pure (Left err)
-        Right () ->
+        Right () -> do
+          rememberSolveTime futility started
           checkReadiness caching wanted projectDir >>= \case
             SourcesMissing _ -> fetch
             PlanNarrow _ -> rememberFutileSolve futility >> fetchWhatIsShort

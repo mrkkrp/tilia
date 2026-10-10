@@ -21,6 +21,8 @@ module Tilia.Fixity.Cache
     storeFutileSolve,
     cachedFutileFetch,
     storeFutileFetch,
+    cachedSolveTime,
+    storeSolveTime,
   )
 where
 
@@ -37,7 +39,9 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Read qualified as T
+import Data.Time (UTCTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
+import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import System.Directory
   ( XdgDirectory (XdgCache),
     createDirectoryIfMissing,
@@ -437,6 +441,21 @@ cachedFutileFetch cache =
 storeFutileFetch :: Cache -> [Text] -> IO ()
 storeFutileFetch cache =
   writeAtomically (at cache ["fetches", tokenOf cache]) . T.unlines
+
+-- | When the project was last solved under this plan.
+cachedSolveTime :: Cache -> IO (Maybe UTCTime)
+cachedSolveTime cache =
+  join
+    <$> readIfPresent
+      (at cache ["solve-times", tokenOf cache])
+      (iso8601ParseM . T.unpack . T.strip)
+
+-- | Remember when the project was solved under this plan.
+storeSolveTime :: Cache -> UTCTime -> IO ()
+storeSolveTime cache =
+  writeAtomically (at cache ["solve-times", tokenOf cache])
+    . T.pack
+    . iso8601Show
 
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
