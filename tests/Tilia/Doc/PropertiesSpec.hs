@@ -50,14 +50,6 @@ spec = do
         let t = out (flat d)
          in counterexample (show t) (length (T.lines t) <= 1)
 
-    it "renders a group with a single-line span as flat" $
-      property $ \(FlatSafeDoc d) (SingleLineSpan s) ->
-        out (group s d) === out (flat d)
-
-    it "renders a group with a multi-line span as broken" $
-      property $ \(FlatSafeDoc d) (MultiLineSpan s) ->
-        out (group s d) === out (broken d)
-
   describe "provenance" $
     it "does not affect the output" $
       property $ \(AnyDoc d) (AnySpan s) ->

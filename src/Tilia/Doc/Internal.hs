@@ -23,7 +23,6 @@ module Tilia.Doc.Internal
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
-    groupLayout,
 
     -- * Rendering
     RenderOptions (..),
@@ -37,7 +36,7 @@ import Data.List (unsnoc)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Tilia.Span (Span, isSingleLine, spanEndLine, spanStartLine)
+import Tilia.Span (Span, spanEndLine, spanStartLine)
 
 ----------------------------------------------------------------------------
 -- Documents
@@ -292,14 +291,6 @@ data TrailingWhitespace
   | -- | Keep it.
     KeepWhitespace
   deriving (Eq, Show)
-
--- | Decide how to lay a group out.
-groupLayout :: Maybe Span -> Layout
-groupLayout = \case
-  Nothing -> Flat
-  Just s
-    | isSingleLine s -> Flat
-    | otherwise -> Broken
 
 ----------------------------------------------------------------------------
 -- Rendering

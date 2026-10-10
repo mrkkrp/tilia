@@ -7,8 +7,6 @@ module Tilia.Gen
     PlainDoc (..),
     FlatSafeDoc (..),
     AnySpan (..),
-    SingleLineSpan (..),
-    MultiLineSpan (..),
     docTexts,
   )
 where
@@ -29,29 +27,6 @@ newtype AnySpan = AnySpan Span
 instance Arbitrary AnySpan where
   arbitrary = AnySpan <$> genSpan
   shrink (AnySpan s) = AnySpan <$> shrinkSpan s
-
--- | A span that occupied one line.
-newtype SingleLineSpan = SingleLineSpan Span
-  deriving (Eq, Show)
-
-instance Arbitrary SingleLineSpan where
-  arbitrary = do
-    l <- choose (1, 20)
-    c0 <- choose (1, 40)
-    c1 <- choose (c0, 80)
-    pure (SingleLineSpan (mkSpan (l, c0) (l, c1)))
-
--- | A span that ran across several lines.
-newtype MultiLineSpan = MultiLineSpan Span
-  deriving (Eq, Show)
-
-instance Arbitrary MultiLineSpan where
-  arbitrary = do
-    l0 <- choose (1, 20)
-    n <- choose (1, 5)
-    c0 <- choose (1, 40)
-    c1 <- choose (1, 80)
-    pure (MultiLineSpan (mkSpan (l0, c0) (l0 + n, c1)))
 
 genSpan :: Gen Span
 genSpan = do

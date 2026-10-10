@@ -10,7 +10,6 @@ import Tilia.Doc.Combinators
 import Tilia.Doc.Internal
   ( Doc (DCppDirective, DHoldBack),
     Spill (..),
-    groupLayout,
   )
 import Tilia.Span
 
@@ -27,14 +26,6 @@ spec = do
     it "takes the earlier start column when starts share a line" $
       mkSpan (1, 9) (1, 20) <> mkSpan (1, 3) (1, 5)
         `shouldBe` mkSpan (1, 3) (1, 20)
-
-  describe "groupLayout" $ do
-    it "goes flat with no span" $
-      groupLayout Nothing `shouldBe` Flat
-    it "goes flat for a single-line span" $
-      groupLayout (Just (mkSpan (1, 1) (1, 9))) `shouldBe` Flat
-    it "goes broken for a multi-line span" $
-      groupLayout (Just (mkSpan (1, 1) (2, 9))) `shouldBe` Broken
 
   describe "atoms" $ do
     it "renders nothing for an empty document" $

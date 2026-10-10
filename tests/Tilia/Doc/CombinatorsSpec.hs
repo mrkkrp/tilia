@@ -20,12 +20,6 @@ spec = do
       out (flat (txt "a" <> breakOrNothing <> txt "b")) `shouldBe` "ab\n"
     it "becomes a break when broken, leaving nothing behind" $
       out (broken (txt "a" <> breakOrNothing <> txt "b")) `shouldBe` "a\nb\n"
-    it "follows a single-line span" $
-      out (group (mkSpan (1, 1) (1, 9)) (txt "a" <> breakOrSpace <> txt "b"))
-        `shouldBe` "a b\n"
-    it "follows a multi-line span" $
-      out (group (mkSpan (1, 1) (2, 9)) (txt "a" <> breakOrSpace <> txt "b"))
-        `shouldBe` "a\nb\n"
     it "lets an inner group override the enclosing layout" $
       out (flat (txt "a" <> broken (breakOrSpace <> txt "b")))
         `shouldBe` "a\nb\n"
@@ -37,10 +31,6 @@ spec = do
       out (flat (variant (txt "one") (txt "many"))) `shouldBe` "one\n"
     it "takes the second branch when broken" $
       out (broken (variant (txt "one") (txt "many"))) `shouldBe` "many\n"
-    it "follows the span like any other group" $ do
-      let v = variant (txt "one") (txt "many")
-      out (group (mkSpan (1, 1) (1, 9)) v) `shouldBe` "one\n"
-      out (group (mkSpan (1, 1) (2, 9)) v) `shouldBe` "many\n"
 
   describe "provenance" $
     it "does not affect layout" $ do

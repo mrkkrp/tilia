@@ -104,7 +104,7 @@ parseConfiguration config path written source =
           Right
             ParsedModule
               { pmModule = hsModule,
-                pmSource = sourceOf written (lexedComments start),
+                pmSource = uncurry (sourceOf written) (lexed start),
                 pmGathered = gathered hsModule,
                 pmSourceType = sourceType,
                 pmPrologue = prologueOf (lineTexts written),
@@ -182,16 +182,26 @@ importLayout config source =
       GHC.ITsemi -> False
       t -> not (isComment t)
 
--- | Lex every comment, in source order, from the state a parse starts in.
-lexedComments :: GHC.PState -> [LEpaComment]
-lexedComments s =
+-- | Lex every comment, in source order, and the line each quasi-quotation
+-- written over several lines ends on, by the line it begins on, from the
+-- state a parse starts in.
+lexed :: GHC.PState -> ([LEpaComment], IntMap Int)
+lexed s =
   case GHC.lexTokenStream (GHC.options s) (GHC.buffer s) loc of
     GHC.PFailed _ -> error "Tilia: a module that parses cannot fail to lex"
     GHC.POk _ tokens ->
-      [ GHC.commentToAnnotation (GHC.L l t)
-      | GHC.L (GHC.RealSrcSpan l _) t <- tokens,
-        isComment t
-      ]
+      ( [ GHC.commentToAnnotation (GHC.L l t)
+        | GHC.L (GHC.RealSrcSpan l _) t <- tokens,
+          isComment t
+        ],
+        IntMap.fromList
+          [ (GHC.srcSpanStartLine l, GHC.srcSpanEndLine l)
+          | GHC.xtest GHC.QqBit (GHC.pExtsBitmap (GHC.options s)),
+            GHC.L (GHC.RealSrcSpan l _) t <- tokens,
+            isQuasiQuote t,
+            GHC.srcSpanStartLine l < GHC.srcSpanEndLine l
+          ]
+      )
   where
     loc = GHC.psRealLoc (GHC.loc s)
 
@@ -202,6 +212,13 @@ isComment = \case
   GHC.ITblockComment _ _ -> True
   GHC.ITdocComment _ _ -> True
   GHC.ITdocOptions _ _ -> True
+  _ -> False
+
+-- | Is this token a quasi-quotation?
+isQuasiQuote :: GHC.Token -> Bool
+isQuasiQuote = \case
+  GHC.ITquasiQuote _ -> True
+  GHC.ITqQuasiQuote _ -> True
   _ -> False
 
 -- | The state to start reading a module in.

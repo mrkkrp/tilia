@@ -23,7 +23,6 @@ module Tilia.Doc.Combinators
 
     -- * Layout
     Layout (..),
-    group,
     flat,
     broken,
     variant,
@@ -81,7 +80,6 @@ import Tilia.Doc.Internal
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
-    groupLayout,
     mapChildren,
     printsNothing,
   )
@@ -103,7 +101,7 @@ space :: Doc
 space = DSpace
 
 -- | A place the line may break. It becomes a line break if the enclosing
--- 'group' is broken, and a space if it is flat. This is the workhorse: it
+-- group is broken, and a space if it is flat. This is the workhorse: it
 -- is what lets one printer serve both layouts.
 breakOrSpace :: Doc
 breakOrSpace = DBreak
@@ -153,11 +151,6 @@ declarationsStart = DDeclarationsStart
 ----------------------------------------------------------------------------
 -- Layout
 
--- | Lay the document out as the input had it: flat if the construct was
--- written on one line, broken if it was spread across several.
-group :: Span -> Doc -> Doc
-group s = DGroup (groupLayout (Just s))
-
 -- | Force flat layout.
 flat :: Doc -> Doc
 flat = DGroup Flat
@@ -166,7 +159,7 @@ flat = DGroup Flat
 broken :: Doc -> Doc
 broken = DGroup Broken
 
--- | Choose according to the layout the enclosing 'group' settled on.
+-- | Choose according to the layout the enclosing group settled on.
 --
 -- Reach for this only when the two layouts differ by more than where the
 -- breaks fall.
