@@ -26,7 +26,8 @@ macros =
             ("__GLASGOW_HASKELL_PATCHLEVEL1__", 3),
             ("__GLASGOW_HASKELL_PATCHLEVEL2__", 0)
           ],
-      macroUndefined = Set.fromList ["__MHS__", "__HUGS__"]
+      macroUndefined = Set.fromList ["__MHS__", "__HUGS__"],
+      macroPackages = Just (Set.fromList ["thing"])
     }
 
 -- | What this guard comes to, given the plan above.
@@ -51,8 +52,19 @@ spec = do
       fmap answer ["if MIN_VERSION_thing(1,2)", "if MIN_VERSION_thing(1,2,3,1)"]
         `shouldBe` [Just True, Just False]
 
-    it "says nothing about a package the plan does not name" $
-      answer "if MIN_VERSION_other(1,0,0)" `shouldBe` Nothing
+    it "has the macros of a package the plan does not hold undefined" $
+      fmap
+        answer
+        [ "ifdef VERSION_other",
+          "ifndef VERSION_other",
+          "if defined(MIN_VERSION_other)",
+          "if MIN_VERSION_other(1,0,0)"
+        ]
+        `shouldBe` [Just False, Just True, Just False, Just False]
+
+    it "says nothing about other packages where the plan's are unknown" $
+      guardHolds macros{macroPackages = Nothing} "ifdef VERSION_other"
+        `shouldBe` Nothing
 
   describe "a guard about the compiler" $ do
     it "reads its version as the compiler spells it" $
