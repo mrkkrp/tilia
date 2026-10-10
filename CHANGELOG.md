@@ -13,6 +13,10 @@
   the compiler's version is taken from the plan, and a plan that solving
   left as it was is not solved again on every run after a `.cabal` file is
   saved. [PR 236](https://github.com/mrkkrp/tilia/pull/236).
+* `Tilia.Editor.compiledSession` builds a session from what a program that
+  has compiled the project already knows, such as a language server, so that
+  formatting needs neither Cabal nor the sources of dependencies.
+  [Issue 234](https://github.com/mrkkrp/tilia/issues/234).
 
 ## Tilia 0.1.0.0
 

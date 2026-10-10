@@ -8,14 +8,24 @@
 module Tilia.EditorSpec (spec) where
 
 import Data.Choice (pattern Don't)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Version (makeVersion)
+import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-import Tilia.Editor (editorSession, formatBuffer)
+import Tilia.Editor
+  ( Compiled (..),
+    compiledSession,
+    editorSession,
+    formatBuffer,
+  )
+import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..), OpName (..))
+import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Format (FormatError, formatErrorExitCode)
 import Tilia.Run (Outcome (..))
 
@@ -83,6 +93,26 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #debugFixity)
         `shouldReturn` Just 2
 
+  describe "given what compiling the project establishes" $ do
+    it "takes fixities from the interfaces it is given" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
+          `shouldReturn` CameTo "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
+
+    it "declines an operator from a module it is given no interface of" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
+          `shouldReturn` CameDeclined 15
+
+    it "parses with the extensions it is given rather than the package's" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nf = \\case\n    _ -> 1\n"
+          `shouldReturn` CameTo "module Uses where\n\nf = \\case\n  _ -> 1\n"
+
+    it "leaves out the branches the versions it is given rule out" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") versioned `shouldReturn` CameOut
+
 -- | A formatted module with a conditional around two alternatives, which do
 -- not parse one after the other.
 alternatives :: Text
@@ -127,6 +157,26 @@ alternativesUsingUnknown =
       "#endif"
     ]
 
+-- | A module with a branch for a version of the package other than the one
+-- built, which uses an operator from a module only that version has.
+versioned :: Text
+versioned =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "",
+      "module Uses where",
+      "",
+      "#if MIN_VERSION_fake(1,0,0)",
+      "import Nowhere",
+      "",
+      "x = a <?> b",
+      "#else",
+      "import Ops",
+      "",
+      "x = a <+> b",
+      "#endif"
+    ]
+
 -- | What formatting a buffer came to, with errors told apart by the status
 -- they exit with.
 data Came
@@ -157,12 +207,65 @@ failure = formatErrorExitCode
 -- handed to the test as a way to format a buffer as one of its files.
 withProject :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
 withProject act =
+  inProject $ \dir project -> do
+    let planFile = dir </> "elsewhere" </> "plan.json"
+    write planFile $
+      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":[\
+      \{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
+      \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}]}"
+    act $ \file text -> do
+      let path = project </> file
+      editorSession
+        path
+        (Just planFile)
+        (Don't #useCache)
+        (Don't #download)
+        (Don't #checkAst)
+        (Don't #checkIdempotence)
+        (Don't #debugFixity)
+        >>= \case
+          Left e -> pure (CameFailed (failure e))
+          Right session -> came <$> formatBuffer session path text
+
+-- | The project of 'withProject', with what compiling it would establish
+-- given instead of a plan: @LambdaCase@ in force, version 0.1.0.0 of the
+-- package, and the interfaces of @Ops@ and of an empty @Prelude@.
+withCompiled :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
+withCompiled act =
+  inProject $ \_ project ->
+    act $ \file text -> do
+      let path = project </> file
+      compiledSession path compiled (Don't #checkAst) (Don't #checkIdempotence)
+        >>= \case
+          Left e -> pure (CameFailed (failure e))
+          Right session -> came <$> formatBuffer session path text
+  where
+    compiled =
+      Compiled
+        { compiledExtensions = [ImplicitPrelude, LambdaCase],
+          compiledWith = makeVersion [9, 14, 1],
+          compiledPackages = Map.singleton "fake" (makeVersion [0, 1, 0, 0]),
+          compiledInterface = pure . (`Map.lookup` interfaces)
+        }
+    interfaces =
+      Map.fromList
+        [ ( "Ops",
+            HiFile
+              { hiModule = "Ops",
+                hiExports = [Avail (HiName "Ops" InTerms (OpName "<+>"))],
+                hiFixities = [(InTerms, OpName "<+>", Fixity LeftAssoc 6)]
+              }
+          ),
+          ("Prelude", HiFile{hiModule = "Prelude", hiExports = [], hiFixities = []})
+        ]
+
+-- | A project with a module declaring @infixl 6 <+>@ and a @.tiliaignore@
+-- excluding @src/Generated.hs@, given to the test with the directory it is
+-- in.
+inProject :: (FilePath -> FilePath -> Expectation) -> Expectation
+inProject act =
   withSystemTempDirectory "tilia-editor" $ \dir -> do
     let project = dir </> "project"
-        planFile = dir </> "elsewhere" </> "plan.json"
-        write path text = do
-          createDirectoryIfMissing True (takeDirectory path)
-          T.writeFile path text
     write (project </> "fake.cabal") $
       T.unlines
         [ "cabal-version: 2.4",
@@ -181,20 +284,10 @@ withProject act =
           "(<+>) = const"
         ]
     write (project </> ".tiliaignore") "src/Generated.hs\n"
-    write planFile $
-      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":[\
-      \{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
-      \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}]}"
-    act $ \file text -> do
-      let path = project </> file
-      editorSession
-        path
-        (Just planFile)
-        (Don't #useCache)
-        (Don't #download)
-        (Don't #checkAst)
-        (Don't #checkIdempotence)
-        (Don't #debugFixity)
-        >>= \case
-          Left e -> pure (CameFailed (failure e))
-          Right session -> came <$> formatBuffer session path text
+    act dir project
+
+-- | Write a file, with the directories it is in.
+write :: FilePath -> Text -> IO ()
+write path text = do
+  createDirectoryIfMissing True (takeDirectory path)
+  T.writeFile path text

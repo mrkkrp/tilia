@@ -21,6 +21,7 @@ module Tilia.Fixity.Plan
     tokenForBuildPlan,
     macrosOf,
     plannedCompiler,
+    versionMacros,
 
     -- * Readiness
     Readiness (..),
@@ -44,6 +45,7 @@ module Tilia.Fixity.Plan
     newResolver,
     newResolverVia,
     newResolverWith,
+    newResolverFrom,
     withReexports,
     scopeFor,
   )
@@ -144,7 +146,7 @@ import Tilia.Fixity.Cabal
     sourceDirs,
   )
 import Tilia.Fixity.Cache
-import Tilia.Fixity.HiFile (primopFixities)
+import Tilia.Fixity.HiFile (HiFile, primopFixities)
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
 import Tilia.Parser
@@ -385,11 +387,34 @@ checkedOutIn distDir plan = do
 -- | The version macros a plan settles.
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
+  versionMacros
+    (numberedVersion =<< T.stripPrefix "ghc-" (bpCompiler plan))
+    (Map.mapMaybe sole versions)
+  where
+    versions =
+      Map.fromListWith
+        Set.union
+        [ (ppName p, Set.singleton v)
+        | p <- bpPackages plan,
+          Just v <- [numberedVersion (ppVersion p)]
+        ]
+    sole vs = case Set.toList vs of
+      [v] -> Just v
+      _ -> Nothing
+
+-- | The version macros the compiler's version and each package's settle.
+versionMacros ::
+  -- | The compiler's version.
+  Maybe [Integer] ->
+  -- | Each package's version, by name.
+  Map Text [Integer] ->
+  Macros
+versionMacros given versions =
   mempty
     { macroVersions =
         Map.fromList
           ( [ ("MIN_VERSION_" <> underscored name, version)
-            | (name, [version]) <- Map.toList (Map.map Set.toList versions)
+            | (name, version) <- Map.toList versions
             ]
               <> [("MIN_VERSION_GLASGOW_HASKELL", v) | v <- toList compiler]
           ),
@@ -409,19 +434,9 @@ macrosOf plan =
           else Set.fromList ["__MHS__", "__HUGS__"]
     }
   where
-    versions =
-      Map.fromListWith
-        Set.union
-        [ (ppName p, Set.singleton v)
-        | p <- bpPackages plan,
-          Just v <- [numberedVersion (ppVersion p)]
-        ]
-    compiler = do
-      version <- T.stripPrefix "ghc-" (bpCompiler plan)
-      parts <- numberedVersion version
-      case parts of
-        _ : _ : _ -> Just (take 4 (parts <> repeat 0))
-        _ -> Nothing
+    compiler = case given of
+      Just parts@(_ : _ : _) -> Just (take 4 (parts <> repeat 0))
+      _ -> Nothing
     nth i xs = if i < length xs then xs !! i else 0
 
 -- | The version of GHC a plan is for, where it is for GHC.
@@ -1000,6 +1015,30 @@ newResolverWith routes cache installed tarballs plan = do
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty}
+
+-- | A 'Resolver' that reads every module out of the interface given for it,
+-- for a program that has compiled the project and holds its interfaces.
+newResolverFrom ::
+  -- | The interface of a module, by name.
+  (Text -> IO (Maybe HiFile)) ->
+  IO Resolver
+newResolverFrom given = do
+  flights <- newMVar (Flights Map.empty Map.empty)
+  interfacesRead <- newMemo
+  answersRead <- newMemo
+  let interfaceOf modName =
+        memoized flights interfacesRead Nothing modName $
+          case Map.lookup modName primopFixities of
+            Just declared -> pure (Just (asInterface declared))
+            Nothing ->
+              (either (const Nothing) Just . fromHiFile modName =<<)
+                <$> given modName
+  pure
+    Resolver
+      { askModule = \modName ->
+          memoized flights answersRead unreadable modName $
+            fromInterface interfaceOf modName
+      }
 
 -- | Answers filed under the names they are about, each worked out once.
 data Memo v = Memo Unique (IORef (Map Text (MVar v)))

@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Formatting a file, with everything the project can tell us about it.
 module Tilia.Format
@@ -12,6 +13,8 @@ module Tilia.Format
     sessionRoot,
     PlanSource (..),
     newSession,
+    Compiled (..),
+    compiledSession,
     fixityNotesOf,
     formatSource,
     rewritten,
@@ -30,6 +33,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Version (Version, versionBranch)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import Tilia.Cabal.Package
   ( PackageProblem (..),
@@ -59,6 +63,7 @@ import Tilia.Fixity
     unknownOperators,
   )
 import Tilia.Fixity.Debug (FixityNotes, fixityNotes)
+import Tilia.Fixity.HiFile (HiFile)
 import Tilia.Fixity.Plan
   ( PlanComponent,
     Resolver (..),
@@ -66,10 +71,12 @@ import Tilia.Fixity.Plan
     fetchUninstalled,
     loadPlan,
     macrosOf,
+    newResolverFrom,
     newResolverVia,
     plannedCompiler,
     readGivenPlan,
     scopeFor,
+    versionMacros,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser
@@ -278,6 +285,52 @@ newSession start planSource caching downloading checkAst checkIdempotence debugF
   where
     need :: FormatError -> Maybe a -> ExceptT FormatError IO a
     need e = maybe (throwE e) pure
+
+-- | What compiling a file's component establishes, which a session
+-- otherwise works out with Cabal, the package database, and the sources of
+-- dependencies.
+data Compiled = Compiled
+  { -- | The extensions the component puts in force.
+    compiledExtensions :: [Extension],
+    -- | The version of the compiler.
+    compiledWith :: Version,
+    -- | The version of each package the component depends on, by name.
+    compiledPackages :: Map Text Version,
+    -- | The interface of a module the component can import, by name.
+    compiledInterface :: Text -> IO (Maybe HiFile)
+  }
+
+-- | Settle everything that does not depend on the file being formatted from
+-- what compiling its component establishes.
+compiledSession ::
+  -- | The file.
+  FilePath ->
+  -- | What compiling its component establishes.
+  Compiled ->
+  -- | Check AST equivalence.
+  Choice "checkAst" ->
+  -- | Check idempotence.
+  Choice "checkIdempotence" ->
+  IO (Either FormatError Session)
+compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
+  project <-
+    maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
+  resolver <- liftIO (newResolverFrom compiledInterface)
+  pure
+    Session
+      { sessionRoot = project,
+        sessionResolver = resolver,
+        sessionMacros =
+          versionMacros
+            (Just (numbers compiledWith))
+            (fmap numbers compiledPackages),
+        sessionPackage = \_ -> pure (Right compiledExtensions),
+        sessionCheckAst = checkAst,
+        sessionCheckIdempotence = checkIdempotence,
+        sessionFixityNotes = Nothing
+      }
+  where
+    numbers = fmap toInteger . versionBranch
 
 -- | What the run made of every file's operators, by file.
 --

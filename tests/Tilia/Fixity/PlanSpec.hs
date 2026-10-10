@@ -51,6 +51,7 @@ import Test.Hspec
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Cache (PlanToken (..), openCache, storePackageCache)
+import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Fixity.PackageDb
   ( Installed (..),
     InstalledPackage (..),
@@ -73,6 +74,7 @@ spec = do
   hscModules
   generatedModuleSpec
   askedAtOnce
+  givenInterfaces
   readBefore
   gitDependencies
   repositories
@@ -955,6 +957,46 @@ askedAtOnce = describe "modules asked about from several threads at once" $
             forM_ (zip [0 ..] found) $ \(i, fixities) ->
               (Map.lookup (InTerms, ringOperator i) =<< fixities)
                 `shouldBe` Just (Fixity RightAssoc (i `mod` 10))
+
+-- | A resolver over interfaces handed to it, as an editor that has compiled
+-- the project holds them.
+givenInterfaces :: Spec
+givenInterfaces = describe "a resolver over the interfaces it is given" $ do
+  it "reads a module's own fixities" $ do
+    resolver <- newResolverFrom given
+    fixitiesOf resolver "Ops" `shouldReturn` Just plus
+
+  it "reads a fixity a module passes on where it is declared" $ do
+    resolver <- newResolverFrom given
+    fixitiesOf resolver "Facade" `shouldReturn` Just plus
+
+  it "says nothing about a module it is not given" $ do
+    resolver <- newResolverFrom given
+    fixitiesOf resolver "Nowhere" `shouldReturn` Nothing
+
+  it "says nothing about a module given an interface of another" $ do
+    resolver <- newResolverFrom (\_ -> given "Ops")
+    fixitiesOf resolver "Facade" `shouldReturn` Nothing
+  where
+    plus = Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)
+    given m = pure (Map.lookup m interfaces)
+    interfaces =
+      Map.fromList
+        [ ( "Ops",
+            HiFile
+              { hiModule = "Ops",
+                hiExports = [Avail (HiName "Ops" InTerms (OpName "<+>"))],
+                hiFixities = [(InTerms, OpName "<+>", Fixity RightAssoc 5)]
+              }
+          ),
+          ( "Facade",
+            HiFile
+              { hiModule = "Facade",
+                hiExports = [Avail (HiName "Ops" InTerms (OpName "<+>"))],
+                hiFixities = []
+              }
+          )
+        ]
 
 -- | A module of the project's own, which an earlier run has read.
 readBefore :: Spec
