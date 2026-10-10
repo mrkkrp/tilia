@@ -75,21 +75,30 @@ decoded =
     "text"
   ]
 
--- | The packages the compiler ships with and the corpus does not hold, at
--- the versions it ships, which the plan names so that the macros of their
--- versions are defined.
-shipped :: [(Text, Text)]
-shipped =
-  [ ("array", "0.5.8.0"),
+-- | The packages the corpus's packages depend on and it does not hold, at
+-- the versions the compiler ships or versions those packages accept, which
+-- the plan names so that the macros of their versions are defined.
+dependencies :: [(Text, Text)]
+dependencies =
+  [ ("StateVar", "1.2.2"),
+    ("array", "0.5.8.0"),
     ("base", "4.20.2.0"),
     ("binary", "0.8.9.3"),
     ("bytestring", "0.12.2.0"),
     ("containers", "0.7"),
     ("deepseq", "1.5.0.0"),
     ("directory", "1.3.8.5"),
+    ("distributive", "0.6.3"),
     ("filepath", "1.5.4.0"),
     ("ghc-prim", "0.12.0"),
+    ("http-media", "0.8.1.1"),
+    ("indexed-traversable", "0.1.5"),
+    ("mono-traversable", "1.0.21.0"),
+    ("os-string", "2.0.7"),
+    ("primitive", "0.9.1.0"),
     ("process", "1.6.26.1"),
+    ("tagged", "0.8.11"),
+    ("tasty-inspection-testing", "0.2.1"),
     ("template-haskell", "2.22.0.0"),
     ("unix", "2.8.7.0")
   ]
@@ -126,7 +135,7 @@ fixityBenchmarks dir = do
         BuildPlan
           { bpCompiler = "ghc-9.10.3",
             bpPackages =
-              [PlanPackage n v PreExisting [] | (n, v) <- shipped]
+              [PlanPackage n v PreExisting [] | (n, v) <- dependencies]
                 <> fmap fst tarballs
           }
       fetched release = corpus </> release <.> "tar.gz"
