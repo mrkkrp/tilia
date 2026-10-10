@@ -19,6 +19,12 @@
   module that brings in an operator of the same name from elsewhere is no
   longer declined over the two disagreeing.
   [Issue 238](https://github.com/mrkkrp/tilia/issues/238).
+* A record field whose first line is written in each branch of a
+  conditional, with a body the branches share after the `#endif`, comes out
+  as written, rather than as its name, a `=` on a line of its own and a
+  second conditional, which formatting again indented further. Where several
+  such fields follow one another, the body of the first is no longer copied
+  into each branch. [Issue 240](https://github.com/mrkkrp/tilia/issues/240).
 
 ## Tilia 0.1.0.0
 

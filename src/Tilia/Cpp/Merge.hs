@@ -254,10 +254,15 @@ merge written conditionals guards varied settledOthers = go Broken
     whole _ [] = mempty
     whole layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
-      | Just xs <- traverse (only . filter (not . blank)) ss,
-        not (any (onOneLine layout) xs) =
-          go layout (fmap mconcat ss)
+      | Just splits <- traverse firstPart ss,
+        not (any (\(_, x, _) -> onOneLine layout x) splits) =
+          go layout [mconcat (spacing <> [x]) | (spacing, x, _) <- splits]
+            <> whole layout [more | (_, _, more) <- splits]
       | otherwise = choice (fmap mconcat ss)
+
+    firstPart parts = case break (not . blank) parts of
+      (spacing, x : more) -> Just (spacing, x, more)
+      _ -> Nothing
 
     commaFirst = \case
       x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
