@@ -67,6 +67,7 @@ import Tilia.Fixity.Plan
     loadPlan,
     macrosOf,
     newResolverVia,
+    plannedCompiler,
     readGivenPlan,
     scopeFor,
   )
@@ -259,7 +260,7 @@ newSession start planSource caching downloading checkAst checkIdempotence debugF
           then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
       (,) plan <$> liftIO (newResolverVia caching routes plan)
-  askPackage <- liftIO newPackageReader
+  askPackage <- liftIO (newPackageReader (plannedCompiler plan))
   notes <-
     if isTrue debugFixity
       then Just <$> liftIO (newIORef Map.empty)

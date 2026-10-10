@@ -14,6 +14,7 @@ import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
+import Tilia.Fixity.Plan (BuildPlan (..), plannedCompiler)
 
 spec :: Spec
 spec = do
@@ -112,6 +113,13 @@ spec = do
         (has BangPatterns library, has Strict library)
           `shouldBe` (False, False)
 
+    it "take the compiler's version from the plan where it names one" $
+      inPackage conditionalExtensions ["src"] $ \root -> do
+        ask <- newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" []))
+        library <- ask (root </> "src" </> "M.hs")
+        (has StarIsType library, has BangPatterns library)
+          `shouldBe` (True, True)
+
     it "take in their own branch's too, for a module only it declares" $
       inPackage conditionalExtensions ["src", "old"] $ \root -> do
         old <- asked (root </> "old" </> "Old.hs")
@@ -134,21 +142,21 @@ spec = do
   describe "a reader kept between files" $ do
     it "answers as a fresh one would" $
       inPackage twoComponents ["src", "test"] $ \root -> do
-        ask <- newPackageReader
+        ask <- newPackageReader Nothing
         kept <- traverse ask (modules root)
         fresh <- traverse asked (modules root)
         kept `shouldBe` fresh
 
     it "reads a package once, not once per file" $
       inPackage twoComponents ["src"] $ \root -> do
-        ask <- newPackageReader
+        ask <- newPackageReader Nothing
         first <- ask (root </> "src" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` first
 
     it "remembers every directory the walk went through" $
       inPackage twoComponents ["src" </> "deep"] $ \root -> do
-        ask <- newPackageReader
+        ask <- newPackageReader Nothing
         deep <- ask (root </> "src" </> "deep" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` deep
@@ -362,7 +370,7 @@ inPackage contents dirs use =
 -- is not about caching wants.
 asked :: FilePath -> IO (Either PackageProblem [Extension])
 asked path = do
-  ask <- newPackageReader
+  ask <- newPackageReader Nothing
   ask path
 
 -- | One module in each of the two components.

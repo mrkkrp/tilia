@@ -1077,7 +1077,7 @@ packageReaderFor :: Corpus -> IO (FilePath -> IO [Extension])
 packageReaderFor corpus
   | not (corpusInPackages corpus) = pure (const (pure []))
   | otherwise = do
-      reader <- newPackageReader
+      reader <- newPackageReader Nothing
       pure (fmap (either (const []) id) . reader)
 
 -- | The extensions an example may be written with.
