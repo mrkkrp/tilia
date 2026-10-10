@@ -254,6 +254,9 @@ merge written conditionals guards varied settledOthers = go Broken
     whole _ [] = mempty
     whole layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
+      | Just xs <- traverse (only . filter (not . blank)) ss,
+        not (any (onOneLine layout) xs) =
+          go layout (fmap mconcat ss)
       | otherwise = choice (fmap mconcat ss)
 
     commaFirst = \case
@@ -756,6 +759,21 @@ linesOf layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
   where
     (ps, _, cut) = partsOf layout Within xs
 
+-- | Does this document print on one line, holding neither a line break nor
+-- a choice?
+onOneLine :: Layout -> Doc -> Bool
+onOneLine layout = all single . spineAt layout
+  where
+    single x = case unwrap x of
+      Just (w, y) -> onOneLine (layoutInside layout w) y
+      Nothing -> case x of
+        DHardBreak -> False
+        DBreak -> layout == Flat
+        DSoftBreak -> layout == Flat
+        DVerbatimBreak{} -> False
+        DCppChoice{} -> False
+        _ -> True
+
 -- | A line less the wrappers that make no difference to it: a group around
 -- what does not depend on the layout, and a region around regions and
 -- nothing else, which say where the line was written already.
@@ -770,6 +788,7 @@ plain = \case
       DBreak -> False
       DSoftBreak -> False
       DVariant{} -> False
+      DCppChoice{} -> False
       DGroup{} -> True
       d -> getAll (foldChildren (All . layoutFree) d)
     onlyRegions d = isJust (regionOf d) && not (bare d)
