@@ -17,7 +17,7 @@ module Tilia.Fixity.DependenciesSpec (spec) where
 
 import Control.Monad (filterM)
 import Data.ByteString qualified as BS
-import Data.Choice (pattern Do, pattern Is)
+import Data.Choice (pattern Do, pattern Don't, pattern Is)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
 import Data.Map.Strict qualified as Map
@@ -33,6 +33,7 @@ import Test.Hspec
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
+import Tilia.Fixity.Cache (PlanToken (..), openCache)
 import Tilia.Fixity.Interface (Interface (..), readInterface)
 import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
@@ -65,11 +66,12 @@ withPlan plan = do
       readFromSourcePackages =
         Set.fromList (fmap depPackage dependencies)
           `Set.difference` shippedPackages
+  noCache <- runIO (openCache (Don't #useCache) (PlanToken ""))
   missing <-
     runIO $
       filterM (fmap not . doesFileExist . snd)
         . filter ((`Set.member` readFromSourcePackages) . ppName . fst)
-        =<< plannedTarballs plan
+        =<< plannedTarballs noCache plan
   describe "the tree this project is built against" $ do
     it "is a real dependency tree and not an empty plan" $
       length dependencies `shouldSatisfy` (>= 30)

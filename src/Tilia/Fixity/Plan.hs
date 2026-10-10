@@ -517,16 +517,14 @@ checkReadiness caching wanted projectDir =
 -- | The packages the plan expects to fetch whose sources are not here.
 sourcesShortOf :: Choice "useCache" -> BuildPlan -> IO [PlanPackage]
 sourcesShortOf caching plan = do
-  tarballs <- filter (isFetchable . fst) <$> plannedTarballs plan
+  cache <- openCache caching =<< tokenForBuildPlan plan
+  tarballs <- filter (isFetchable . fst) <$> plannedTarballs cache plan
   absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
-  short <-
-    if null absent
-      then pure []
-      else do
-        cache <- openCache caching =<< tokenForBuildPlan plan
-        installed <- getInstalledPackages cache
-        pure (filter (not . builtAlready installed) absent)
-  pure short
+  if null absent
+    then pure []
+    else do
+      installed <- getInstalledPackages cache
+      pure (filter (not . builtAlready installed) absent)
 
 -- | Has the compiler got this package already?
 builtAlready :: [InstalledPackage] -> PlanPackage -> Bool
@@ -736,15 +734,29 @@ loadPlan caching downloading wanted projectDir = do
       _ -> readBuildPlan (planPathFor projectDir)
 
 -- | Every planned package whose source could be in the package cache, with
--- where that would be.
-plannedTarballs :: BuildPlan -> IO [(PlanPackage, FilePath)]
-plannedTarballs plan = do
-  cacheRoot <- packageCacheRoot
-  repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
-  traverse
-    (\p -> (,) p <$> tarballFor cacheRoot repos p)
-    [p | p <- bpPackages plan, not (isLocal p)]
+-- where that would be: under the package cache @cabal@ last named, unless
+-- a tarball it downloads is not there, when @cabal@ is asked again.
+plannedTarballs :: Cache -> BuildPlan -> IO [(PlanPackage, FilePath)]
+plannedTarballs cache plan =
+  cachedPackageCache cache >>= \case
+    Just remembered -> do
+      tarballs <- under remembered
+      absent <-
+        filterM
+          (fmap not . doesFileExist . snd)
+          (filter (isFetchable . fst) tarballs)
+      if null absent then pure tarballs else asked
+    Nothing -> asked
   where
+    asked = do
+      cacheRoot <- packageCacheRoot
+      storePackageCache cache cacheRoot
+      under cacheRoot
+    under cacheRoot = do
+      repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
+      traverse
+        (\p -> (,) p <$> tarballFor cacheRoot repos p)
+        [p | p <- bpPackages plan, not (isLocal p)]
     isLocal p = case ppSource p of
       LocalPackage _ -> True
       CheckedOut _ -> True
@@ -882,11 +894,11 @@ newResolverVia ::
   BuildPlan ->
   IO Resolver
 newResolverVia caching routes plan = do
+  cache <- openCache caching =<< tokenForBuildPlan plan
   tarballs <-
     if FromSource `elem` routes
-      then plannedTarballs plan
+      then plannedTarballs cache plan
       else pure []
-  cache <- openCache caching =<< tokenForBuildPlan plan
   installed <- getInstalledPackages cache
   newResolverWith routes cache installed tarballs plan
 
