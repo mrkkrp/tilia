@@ -4,6 +4,8 @@
 -- | Definitions to support editor integrations.
 module Tilia.Editor
   ( editorSession,
+    Compiled (..),
+    compiledSession,
     formatBuffer,
   )
 where
@@ -18,9 +20,11 @@ import Tilia.Cabal.Target
     componentsOfTarget,
   )
 import Tilia.Format
-  ( FormatError,
+  ( Compiled (..),
+    FormatError,
     PlanSource (..),
     Session,
+    compiledSession,
     newSession,
     sessionRoot,
   )
