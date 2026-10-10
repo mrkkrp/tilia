@@ -19,7 +19,7 @@ spec :: Spec
 spec = do
   describe "what a module declares" $ do
     it "reads a fixity line" $
-      declares "fixities infixl 9 !, infixl 9 !?, infixl 9 \\\\\n"
+      declares "exports:\n  !\n  !?\n  \\\\\nfixities infixl 9 !, infixl 9 !?, infixl 9 \\\\\n"
         `shouldBe` [ (OpName "!", Fixity LeftAssoc 9),
                      (OpName "!?", Fixity LeftAssoc 9),
                      (OpName "\\\\", Fixity LeftAssoc 9)
@@ -27,7 +27,8 @@ spec = do
 
     it "reads one wrapped across lines" $
       declares
-        "fixities infixr 0 $, infixr 0 $!, infixl 4 *>, infixr 5 ++,\n\
+        "exports:\n  $\n  $!\n  *>\n  ++\n  .\n  :|\n  <$\n\
+        \fixities infixr 0 $, infixr 0 $!, infixl 4 *>, infixr 5 ++,\n\
         \         infixr 9 ., infixr 5 :|, infixl 4 <$\n"
         `shouldBe` [ (OpName "$", Fixity RightAssoc 0),
                      (OpName "$!", Fixity RightAssoc 0),
@@ -39,22 +40,22 @@ spec = do
                    ]
 
     it "reads every direction, and a name used in backticks" $
-      declares "fixities infixl 7 div, infix 4 ===, infixr 1 .&&.\n"
+      declares "exports:\n  div\n  ===\n  .&&.\nfixities infixl 7 div, infix 4 ===, infixr 1 .&&.\n"
         `shouldBe` [ (OpName ".&&.", Fixity RightAssoc 1),
                      (OpName "===", Fixity NoAssoc 4),
                      (OpName "div", Fixity LeftAssoc 7)
                    ]
 
     it "reads the precedence GHC gives the function arrow" $
-      declares "fixities infixr -1 ->\n"
+      declares "exports:\n  ->\nfixities infixr -1 ->\n"
         `shouldBe` [(OpName "->", Fixity RightAssoc (-1))]
 
     it "reads it alongside ordinary ones" $
-      declares "fixities infixr -1 ->, infixl 9 !\n"
+      declares "exports:\n  ->\n  !\nfixities infixr -1 ->, infixl 9 !\n"
         `shouldBe` [(OpName "!", Fixity LeftAssoc 9), (OpName "->", Fixity RightAssoc (-1))]
 
     it "passes over an entry it cannot read, and keeps the rest" $
-      declares "fixities infixl notadigit ?, infixl 9 !, infixl\n"
+      declares "exports:\n  ?\n  !\nfixities infixl notadigit ?, infixl 9 !, infixl\n"
         `shouldBe` [(OpName "!", Fixity LeftAssoc 9)]
 
     it "says nothing for a module that declares nothing" $
@@ -114,31 +115,31 @@ spec = do
 
   describe "which namespace a fixity governs" $ do
     it "gives one to types where the module declares a type of that name" $
-      declaresIn "fixities infix 4 :~:\nab12\n  data (:~:) a b where\n"
+      declaresIn "exports:\n  :~:\nfixities infix 4 :~:\nab12\n  data (:~:) a b where\n"
         `shouldBe` [((InTypes, OpName ":~:"), Fixity NoAssoc 4)]
 
     it "gives one to terms where nothing declares a type of that name" $
-      declaresIn "fixities infixl 9 !\nab12\n  (!) :: Int -> Int -> Int\n"
+      declaresIn "exports:\n  !\nfixities infixl 9 !\nab12\n  (!) :: Int -> Int -> Int\n"
         `shouldBe` [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
 
     it "reads a type synonym as a type" $
-      declaresIn "fixities infixr 5 :+\nab12\n  type (:+) :: * -> * -> *\n"
+      declaresIn "exports:\n  :+\nfixities infixr 5 :+\nab12\n  type (:+) :: * -> * -> *\n"
         `shouldBe` [((InTypes, OpName ":+"), Fixity RightAssoc 5)]
 
     it "reads a type family as a type" $
-      declaresIn "fixities infixl 6 ==\nab12\n  type family (==) a b where\n"
+      declaresIn "exports:\n  ==\nfixities infixl 6 ==\nab12\n  type family (==) a b where\n"
         `shouldBe` [((InTypes, OpName "=="), Fixity LeftAssoc 6)]
 
     it "reads a class as a type" $
-      declaresIn "fixities infixl 4 <%>\nab12\n  class (<%>) a where\n"
+      declaresIn "exports:\n  <%>\nfixities infixl 4 <%>\nab12\n  class (<%>) a where\n"
         `shouldBe` [((InTypes, OpName "<%>"), Fixity LeftAssoc 4)]
 
     it "takes a role declaration as saying the name is a type" $
-      declaresIn "fixities infixl 9 !\nab12\n  type role (!) nominal\n"
+      declaresIn "exports:\n  !\nfixities infixl 9 !\nab12\n  type role (!) nominal\n"
         `shouldBe` [((InTypes, OpName "!"), Fixity LeftAssoc 9)]
 
     it "is not misled by declarations of other names" $
-      declaresIn "fixities infixl 9 !\nab12\n  data Other a b where\n  (!) :: Int\n"
+      declaresIn "exports:\n  !\nfixities infixl 9 !\nab12\n  data Other a b where\n  (!) :: Int\n"
         `shouldBe` [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
 
   describe "the members of a name" $ do
@@ -186,6 +187,30 @@ spec = do
         (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTerms "field"]] []))
         `shouldBe` Right (Just (Set.fromList [(InTerms, OpName "field")]))
 
+  describe "a fixity for a name the module does not export" $ do
+    it "is left out of a decoded interface" $
+      fmap
+        (Map.toList . interfaceDeclares)
+        ( fromHiFile
+            "M"
+            ( HiFile
+                "M"
+                [Avail (inM InTerms "<+>")]
+                [ (InTerms, OpName "<+>", Fixity LeftAssoc 3),
+                  (InTerms, OpName "<~>", Fixity RightAssoc 2)
+                ]
+            )
+        )
+        `shouldBe` Right [((InTerms, OpName "<+>"), Fixity LeftAssoc 3)]
+
+    it "is left out of what ghc --show-iface prints" $
+      declares "exports:\n  <+>\n  parser\nfixities infixl 3 <+>, infixr 2 <~>\n"
+        `shouldBe` [(OpName "<+>", Fixity LeftAssoc 3)]
+
+    it "is left out where the module passes on another name spelled the same" $
+      declares "exports:\n  GHC.Internal.Base.>>=\nfixities infixr 2 >>=\n"
+        `shouldBe` []
+
   describe "sections it has no use for" $
     it "is not confused by the rest of the file" $ do
       let out =
@@ -194,6 +219,7 @@ spec = do
             \interface Data.Aeson 9103\n\
             \  interface hash: 6b4f\n\
             \exports:\n\
+            \  !\n\
             \  Data.Aeson.Types.FromJSON..:\n\
             \fixities infixl 9 !\n\
             \direct package dependencies: base-4.20.2.0 bytestring-0.12.2.0\n\
@@ -214,7 +240,7 @@ spec = do
         `shouldBe` Nothing
 
     it "reads one that names the module asked for" $
-      declares "fixities infixl 9 !\n" `shouldBe` [(OpName "!", Fixity LeftAssoc 9)]
+      declares "exports:\n  !\nfixities infixl 9 !\n" `shouldBe` [(OpName "!", Fixity LeftAssoc 9)]
 
 header :: Text -> Text
 header modName = "interface " <> modName <> " 9103\n"
