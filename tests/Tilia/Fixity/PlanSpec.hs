@@ -401,6 +401,19 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M ((<+>)) where\nimport Control.Arrow\ninfixr 3 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"
       `shouldReturn` Just (Fixity RightAssoc 3)
 
+  it "is not the module's own where the module does not export it" $
+    chased "module M (parser) where\ninfixr 3 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\nparser :: Int\nparser = 1 <+> 2\n"
+      `shouldReturn` Nothing
+
+  it "is the module's own for a constructor handed on with its type" $ do
+    answer <- chasedModule "module M (T (..)) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
+    Map.lookup (InTerms, OpName ":+") (establishedFixities answer)
+      `shouldBe` Just (Fixity LeftAssoc 6)
+
+  it "is not the module's own for a constructor its type is handed on without" $ do
+    answer <- chasedModule "module M (T) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
+    Map.lookup (InTerms, OpName ":+") (establishedFixities answer) `shouldBe` Nothing
+
   it "is not answered at all when the module it came from cannot be read" $
     chased "module M ((<+>)) where\nimport No.Such.Module\n"
       `shouldReturn` Nothing

@@ -13,6 +13,12 @@
   the compiler's version is taken from the plan, and a plan that solving
   left as it was is not solved again on every run after a `.cabal` file is
   saved. [PR 236](https://github.com/mrkkrp/tilia/pull/236).
+* The fixity a module declares for an operator it does not export is no
+  longer taken to be that operator's fixity in the modules importing it,
+  whether the module is read from its source or from its interface file. A
+  module that brings in an operator of the same name from elsewhere is no
+  longer declined over the two disagreeing.
+  [Issue 238](https://github.com/mrkkrp/tilia/issues/238).
 
 ## Tilia 0.1.0.0
 

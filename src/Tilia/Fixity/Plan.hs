@@ -1550,12 +1550,16 @@ withReexports reach modName summary =
       more <- reached $ \i ->
         Map.notMember (importModule i) listed && any (suppliedBy i) members
       let answers = Map.union listed more
+          parts = fmap (exported answers reexported) items
       pure . together $
         mempty
-          { establishedFixities = summaryFixities summary,
+          { establishedFixities =
+              Map.restrictKeys
+                (summaryFixities summary)
+                (foldMap (certainNames . establishedCertain) parts),
             establishedMembers = summaryListedMembers summary
           }
-          : fmap (exported answers reexported) items
+          : parts
   where
     imports = summaryImports summary
     declared = summaryDeclaredMembers summary

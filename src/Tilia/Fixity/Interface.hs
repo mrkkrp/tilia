@@ -17,7 +17,7 @@ import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe, maybeToList)
+import Data.Maybe (isNothing, mapMaybe, maybeToList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -31,8 +31,8 @@ import Tilia.Utils (quietly)
 
 -- | What an interface says about the operators a module offers.
 data Interface = Interface
-  { -- | The fixities the module declares itself, by the namespace each
-    -- governs.
+  { -- | The fixities the module declares itself for the names it exports,
+    -- by the namespace each governs.
     interfaceDeclares :: Fixities,
     -- | The names it reexports, each with the source module.
     interfaceReexports :: [(Text, OpName)],
@@ -74,7 +74,11 @@ fromHiFile modName HiFile{..}
       Right
         Interface
           { interfaceDeclares =
-              Map.fromList [((namespace, op), fixity) | (namespace, op, fixity) <- hiFixities],
+              Map.fromList
+                [ ((namespace, op), fixity)
+                | (namespace, op, fixity) <- hiFixities,
+                  Set.member (namespace, op) exportedHere
+                ],
             interfaceReexports =
               [ (m, op)
               | names <- exports,
@@ -85,13 +89,15 @@ fromHiFile modName HiFile{..}
             interfaceExports =
               Just
                 Certain
-                  { certainNames = Set.fromList [(namespace, op) | (_, namespace, op) <- exported],
+                  { certainNames = exportedHere,
                     certainMembers = members
                   }
           }
   where
     exports = concatMap resolved hiExports
     exported = concatMap exportedNames hiExports
+    exportedHere =
+      Set.fromList [(namespace, op) | (_, namespace, op) <- exported]
     members =
       Map.fromListWith
         Set.union
@@ -125,7 +131,10 @@ parseInterface modName out
           { interfaceDeclares =
               namespaced
                 (typeNamesIn out)
-                (Map.fromList (concatMap declared (sectionsNamed "fixities"))),
+                ( Map.restrictKeys
+                    fixities
+                    (foldMap ownExports (sectionsNamed "exports:"))
+                ),
             interfaceReexports = concatMap reexports (sectionsNamed "exports:"),
             interfaceMembers =
               Map.unionsWith Set.union (fmap membersIn (sectionsNamed "exports:")),
@@ -140,7 +149,15 @@ parseInterface modName out
       | (heading, body) <- sections out,
         heading == name
       ]
+    fixities = Map.fromList (concatMap declared (sectionsNamed "fixities"))
     declared = mapMaybe fixityEntry . T.splitOn ","
+    ownExports section =
+      Set.fromList
+        [ OpName name
+        | (parent, kids) <- exportEntries section,
+          name <- parent : kids,
+          isNothing (moduleOf name)
+        ]
     reexports = concatMap reexportsIn . T.words
     membersIn section =
       Map.fromListWith
