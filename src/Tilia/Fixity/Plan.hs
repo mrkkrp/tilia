@@ -13,6 +13,7 @@ module Tilia.Fixity.Plan
     newResolver,
     newResolverVia,
     newResolverWith,
+    newResolverFrom,
     withReexports,
     scopeFor,
   )
@@ -53,7 +54,7 @@ import Tilia.Fixity
 import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, pathOfModule, readArchive, writtenForHsc)
 import Tilia.Fixity.Cabal (declaredExtensions, packageModules)
 import Tilia.Fixity.Cache
-import Tilia.Fixity.HiFile (primopFixities)
+import Tilia.Fixity.HiFile (HiFile, primopFixities)
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
@@ -204,6 +205,30 @@ newResolverWith routes cache installed tarballs packageReader plan = do
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty}
+
+-- | A 'Resolver' that reads every module out of the interface given for it,
+-- for a program that has compiled the project and holds its interfaces.
+newResolverFrom ::
+  -- | The interface of a module, by name.
+  (Text -> IO (Maybe HiFile)) ->
+  IO Resolver
+newResolverFrom given = do
+  flights <- newFlights
+  interfacesRead <- newMemo
+  answersRead <- newMemo
+  let interfaceOf modName =
+        memoized flights interfacesRead Nothing modName $
+          case Map.lookup modName primopFixities of
+            Just declared -> pure (Just (asInterface declared))
+            Nothing ->
+              (either (const Nothing) Just . fromHiFile modName =<<)
+                <$> given modName
+  pure
+    Resolver
+      { askModule = \modName ->
+          memoized flights answersRead unreadable modName $
+            fromInterface interfaceOf modName
+      }
 
 -- | Work out what a module can see, using a resolver to reach its imports.
 --
