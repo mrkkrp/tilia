@@ -237,7 +237,7 @@ application ctx site f x =
     lastArg = NE.last args
     initSpan = spanOf f <> (startOf <$> spanOf lastArg)
     placement
-      | maybe False isSingleLine initSpan = exprHangs (unLoc lastArg)
+      | maybe False (writtenOnOneLine ctx) initSpan = exprHangs (unLoc lastArg)
       | otherwise = Normal
     headAndInit bracing =
       hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
@@ -400,7 +400,7 @@ renderExprChain ctx site = \case
       endsHanging = exprHangs (unLoc (lastOperand chain)) == Hanging
       couldTrail previous o =
         isSeparator (fixityOf ctx o)
-          && maybe False isSingleLine (chainSpan spanOf previous)
+          && maybe False (writtenOnOneLine ctx) (chainSpan spanOf previous)
           && placement == Normal
           && not (isDoBlock (lastOperand previous))
 

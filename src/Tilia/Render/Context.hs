@@ -34,6 +34,7 @@ module Tilia.Render.Context
     layoutFrom,
     layoutWithin,
     layoutAcross,
+    writtenOnOneLine,
     attachOperator,
 
     -- * Haddocks
@@ -70,6 +71,7 @@ import Tilia.Source
     SourceType,
     blankAt,
     directivePresentOnLine,
+    quoteEndingFrom,
     sourceLines,
   )
 import Tilia.Span
@@ -294,7 +296,7 @@ at_ ctx f l = at ctx l f
 -- of an @if@—and for nothing else.
 atSpan :: Ctx -> Maybe Span -> Doc -> Doc
 atSpan _ Nothing d = d
-atSpan _ (Just s) d = located s (group s d)
+atSpan ctx (Just s) d = located s (layoutFrom ctx (Just s) d)
 
 -- | A keyword, claiming the span it was written on.
 keywordAt :: Ctx -> Maybe Span -> Text -> Doc
@@ -309,10 +311,12 @@ fenceWithin _ (Just s) d = fence s d
 -- | Lay a region out as it was written, and claim nothing.
 --
 -- The region decides one thing—whether what is printed here goes on one
--- line or several.
+-- line or several. The lines of a quasi-quotation count as one, since they
+-- are reproduced rather than laid out.
 layoutFrom :: Ctx -> Maybe Span -> Doc -> Doc
-layoutFrom _ Nothing d = flat d
-layoutFrom _ (Just s) d = group s d
+layoutFrom ctx s
+  | maybe True (writtenOnOneLine ctx) s = flat
+  | otherwise = broken
 
 -- | Lay a construct out from the region its contents occupy rather than the
 -- region it occupies.
@@ -328,7 +332,7 @@ layoutWithin ::
   Doc
 layoutWithin ctx whole contents d
   | any (holdsLineComment ctx) whole = broken d
-  | otherwise = maybe (flat d) (`group` d) contents
+  | otherwise = layoutFrom ctx contents d
 
 -- | 'layoutFrom' over the region several located things cover.
 layoutAcross :: (HasLoc l) => Ctx -> [GenLocated l a] -> Doc -> Doc
@@ -364,6 +368,15 @@ attachOperator placement before here after op operand = case here of
   where
     indentation o =
       located (mkSpan (spanStartLine o, 1) (startPoint o)) mempty
+
+-- | Was the region written on one line, the lines of a quasi-quotation
+-- counting as one?
+writtenOnOneLine :: Ctx -> Span -> Bool
+writtenOnOneLine ctx s = from (spanStartLine s)
+  where
+    from n =
+      n >= spanEndLine s
+        || maybe False from (quoteEndingFrom n (ctxSource ctx))
 
 -- | Does a comment that takes whole lines begin inside this span?
 holdsLineComment :: Ctx -> Span -> Bool

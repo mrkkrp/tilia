@@ -3,6 +3,11 @@
 * Keep code that every configuration prints alike out of the branches of a
   conditional in many more cases rather than copying it into each of them.
   [PR 229](https://github.com/mrkkrp/tilia/pull/229).
+* Lay a construct holding a quasi-quotation written over several lines out
+  as if the quasi-quotation were written on one line, since its lines are
+  reproduced. It stays on the line of what comes before it, and what follows
+  its `|]` stays on the line of the `|]`, rather than going on lines of
+  their own. [Issue 208](https://github.com/mrkkrp/tilia/issues/208).
 
 ## Tilia 0.1.0.0
 
