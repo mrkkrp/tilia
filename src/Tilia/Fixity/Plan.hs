@@ -20,6 +20,7 @@ module Tilia.Fixity.Plan
     tokenForEnvAndBuildPlan,
     tokenForBuildPlan,
     macrosOf,
+    plannedCompiler,
 
     -- * Readiness
     Readiness (..),
@@ -100,6 +101,7 @@ import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Unique (Unique, newUnique)
+import Distribution.Version (Version, mkVersion)
 import GHC.Generics (Generic)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
@@ -421,6 +423,12 @@ macrosOf plan =
         _ : _ : _ -> Just (take 4 (parts <> repeat 0))
         _ -> Nothing
     nth i xs = if i < length xs then xs !! i else 0
+
+-- | The version of GHC a plan is for, where it is for GHC.
+plannedCompiler :: BuildPlan -> Maybe Version
+plannedCompiler plan =
+  mkVersion . fmap fromInteger
+    <$> (numberedVersion =<< T.stripPrefix "ghc-" (bpCompiler plan))
 
 -- | The modules @cabal@ writes itself for a plan's packages.
 generatedModules :: BuildPlan -> Set Text
@@ -922,7 +930,7 @@ newResolverWith routes cache installed tarballs plan = do
   local <- localModules plan
   flights <- newMVar (Flights Map.empty Map.empty)
   answersRead <- newMemo
-  askPackage <- newPackageReader
+  askPackage <- newPackageReader (plannedCompiler plan)
   extensionsRead <- newMemo
   summariesRead <- newMemo
   archivesRead <- newMemo

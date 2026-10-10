@@ -8,6 +8,11 @@
   reproduced. It stays on the line of what comes before it, and what follows
   its `|]` stays on the line of the `|]`, rather than going on lines of
   their own. [Issue 208](https://github.com/mrkkrp/tilia/issues/208).
+* A run whose build plan is up to date and whose cache is filled starts no
+  other program: where `cabal` keeps the sources it downloads is remembered,
+  the compiler's version is taken from the plan, and a plan that solving
+  left as it was is not solved again on every run after a `.cabal` file is
+  saved. [PR 236](https://github.com/mrkkrp/tilia/pull/236).
 
 ## Tilia 0.1.0.0
 

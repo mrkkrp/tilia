@@ -23,6 +23,7 @@ module Tilia.Cabal.Package
   )
 where
 
+import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Data.ByteString qualified as BS
 import Data.Generics.Schemes (listify)
 import Data.IORef
@@ -111,17 +112,20 @@ describePackageProblem = \case
 type PackageReader = FilePath -> IO (Either PackageProblem [Extension])
 
 -- | A 'PackageReader' that remembers what it has already worked out.
-newPackageReader :: IO PackageReader
-newPackageReader = do
+newPackageReader ::
+  -- | The compiler's version, where the build plan names it, which spares
+  -- asking the compiler.
+  Maybe Version ->
+  IO PackageReader
+newPackageReader planned = do
   covering <- newIORef Map.empty
   described <- newIORef Map.empty
-  asked <- newIORef Nothing
-  let compiler =
-        readIORef asked >>= \case
-          Just version -> pure version
-          Nothing -> do
-            version <- compilerVersion
-            version <$ writeIORef asked (Just version)
+  known <- newMVar (Just <$> planned)
+  let compiler = modifyMVar known $ \case
+        Just version -> pure (Just version, version)
+        Nothing -> do
+          version <- compilerVersion
+          pure (Just version, version)
   pure $ \path -> quietly (Left NoPackageFile) $ do
     file <- canonicalizePath path
     from <- startingDirectory file
