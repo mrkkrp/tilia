@@ -50,6 +50,7 @@ import System.Timeout (timeout)
 import Test.Hspec
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
+import Tilia.Fixity.Cache (PlanToken (..), openCache, storePackageCache)
 import Tilia.Fixity.PackageDb
   ( Installed (..),
     InstalledPackage (..),
@@ -596,6 +597,41 @@ packageCache = describe "where the package cache is looked for" $ do
       withLayouts $
         \xdg _ -> guessedPackageCacheRoot `shouldReturn` xdg
 
+  describe "and where it was remembered" $ do
+    it "is not asked again where the plan's tarballs are there" $
+      withRemembered True $ \root asked found -> do
+        asked `shouldBe` []
+        found `shouldBe` [root </> "hackage.haskell.org/thing/1.0/thing-1.0.tar.gz"]
+
+    it "is asked again where a tarball of the plan is not there" $
+      withRemembered False $ \_ asked _ ->
+        asked `shouldBe` ["path"]
+
+-- | Find the tarballs of a plan wanting one package from Hackage, where the
+-- package cache was remembered to be a directory of its own, holding the
+-- tarball or not, and hand over the directory, the commands the stand-in
+-- for @cabal@ was given, and where each tarball was found.
+withRemembered ::
+  Bool ->
+  (FilePath -> [String] -> [FilePath] -> Expectation) ->
+  Expectation
+withRemembered holding act =
+  withSystemTempDirectory "tilia-remembered" $ \root -> do
+    let at = root </> "hackage.haskell.org" </> "thing" </> "1.0"
+    when holding $ do
+      createDirectoryIfMissing True at
+      T.writeFile (at </> "thing-1.0.tar.gz") "not really a tarball"
+    cache <- openCache (Do #useCache) (PlanToken (T.pack (takeBaseName root)))
+    storePackageCache cache root
+    withTempProject (Just (fromRepository hackage)) $ \dir ->
+      readBuildPlan (planPathFor dir) >>= \case
+        Left why -> expectationFailure (T.unpack why)
+        Right plan -> do
+          (asked, found) <- runsCabal (plannedTarballs cache plan)
+          act root asked (fmap snd found)
+  where
+    hackage = "{\"type\":\"secure-repo\",\"uri\":\"https://hackage.haskell.org/\"}"
+
 -- | A plan handed over to be taken as it is.
 givenPlans :: Spec
 givenPlans = describe "a plan trusted as up to date" $ do
@@ -742,9 +778,11 @@ withCache cached planText act =
         readBuildPlan (planPathFor dir) >>= \case
           Left why -> expectationFailure (T.unpack why)
           Right plan ->
-            plannedTarballs plan >>= \case
-              [(_, found)] -> act found
-              other -> expectationFailure (show (fmap snd other))
+            openCache (Don't #useCache) (PlanToken "")
+              >>= (`plannedTarballs` plan)
+              >>= \case
+                [(_, found)] -> act found
+                other -> expectationFailure (show (fmap snd other))
   where
     put cabalDir (repo, held, version) = do
       let at =

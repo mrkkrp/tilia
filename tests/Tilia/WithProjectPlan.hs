@@ -14,7 +14,7 @@ module Tilia.WithProjectPlan
 where
 
 import Control.Monad (filterM, unless)
-import Data.Choice (pattern Do)
+import Data.Choice (pattern Do, pattern Don't)
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -31,6 +31,7 @@ import Tilia.Cabal.Target
     componentsOfTarget,
     describeTargetProblem,
   )
+import Tilia.Fixity.Cache (PlanToken (..), openCache)
 import Tilia.Fixity.PackageDb
   ( Installed (..),
     InstalledPackage (..),
@@ -76,11 +77,12 @@ prepare =
 fetchMissingSources :: BuildPlan -> IO ()
 fetchMissingSources plan = do
   installed <- readInstalledPackages
+  noCache <- openCache (Don't #useCache) (PlanToken "")
   let unread = modulelessIn installed
   absent <-
     filterM (fmap not . doesFileExist . snd)
       . filter (not . (`Set.member` unread) . ppName . fst)
-      =<< plannedTarballs plan
+      =<< plannedTarballs noCache plan
   unless (null absent) $ do
     putStrLn ("fetching the source of " <> show (length absent) <> " package(s)")
     refused <- filterM (fmap isNothing . fetch . fst) absent

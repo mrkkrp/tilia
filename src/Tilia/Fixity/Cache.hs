@@ -23,6 +23,8 @@ module Tilia.Fixity.Cache
     storeFutileFetch,
     cachedSolveTime,
     storeSolveTime,
+    cachedPackageCache,
+    storePackageCache,
   )
 where
 
@@ -456,6 +458,16 @@ storeSolveTime cache =
   writeAtomically (at cache ["solve-times", tokenOf cache])
     . T.pack
     . iso8601Show
+
+-- | Where @cabal@ last said it keeps the sources it downloads.
+cachedPackageCache :: Cache -> IO (Maybe FilePath)
+cachedPackageCache cache =
+  readIfPresent (at cache ["package-cache", tokenOf cache]) (T.unpack . T.strip)
+
+-- | Remember where @cabal@ keeps the sources it downloads.
+storePackageCache :: Cache -> FilePath -> IO ()
+storePackageCache cache =
+  writeAtomically (at cache ["package-cache", tokenOf cache]) . T.pack
 
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
