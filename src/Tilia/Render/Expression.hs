@@ -301,7 +301,12 @@ fieldBind ::
   Doc
 fieldBind ctx label HsFieldBind{..} =
   label hfbLHS
-    <> includeUnless hfbPun (space <> txt "=" <> attach placement (hsExpr ctx hfbRHS))
+    <> includeUnless
+      hfbPun
+      ( space
+          <> maybe id located (tokenSpan =<< hfbAnn) (txt "=")
+          <> attach placement (hsExpr ctx hfbRHS)
+      )
   where
     placement
       | sameLine (spanOf hfbLHS) (spanOf hfbRHS) = exprHangs (unLoc hfbRHS)
