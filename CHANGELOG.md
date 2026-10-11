@@ -55,6 +55,12 @@
   module no longer parsed. An `of` written after the `#endif` goes at the
   end of each branch, and a comment written after `of` stays after it rather
   than in front of it. [Issue 250](https://github.com/mrkkrp/tilia/issues/250).
+* A `let` whose `in` ends its line, followed by another `let` on the next
+  line, is kept as one of a chain however many lines its bindings take. One
+  written in each branch of a conditional stays there as written, rather
+  than coming out with its `let` and `in` outside the conditional and, once
+  formatted again, as an `in let` on one line.
+  [Issue 251](https://github.com/mrkkrp/tilia/issues/251).
 
 ## Tilia 0.1.0.0
 
