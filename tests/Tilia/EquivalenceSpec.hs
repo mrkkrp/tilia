@@ -134,6 +134,14 @@ spec = do
       "module M where\n\n-- about Set\nimport Data.Set\n\n-- about Map\nimport Data.Map\n"
         `keepsTheCommentsOf` "module M where\n\n-- about Map\nimport Data.Map\n\n-- about Set\nimport Data.Set\n"
 
+    it "does not mind a comment carried on under the last import moving with it" $
+      "module M where\nimport Data.Maybe\nimport Data.Char () -- not needed, just\n                    -- re-exported\n"
+        `keepsTheCommentsOf` "module M where\n\nimport Data.Char () -- not needed, just\n                    -- re-exported\nimport Data.Maybe\n"
+
+    it "notices a comment carried on under the last import going missing" $
+      "module M where\nimport Data.Maybe\nimport Data.Char () -- not needed, just\n                    -- re-exported\n"
+        `losesTheCommentsOf` "module M where\n\nimport Data.Char () -- not needed, just\nimport Data.Maybe\n"
+
 ----------------------------------------------------------------------------
 -- Helpers
 
