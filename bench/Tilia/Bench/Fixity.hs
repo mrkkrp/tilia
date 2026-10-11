@@ -1,12 +1,14 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- | What the benchmarks of fixity resolution measure: reading every module
--- of a few packages of the Hackage corpus out of their tarballs, the same
--- out of a cache that an earlier reading filled, and decoding every
--- interface of a few packages the compiler ships with.
+-- of a few packages of the Hackage corpus out of their tarballs, each under
+-- the build plan cabal solves for it, the same out of a cache that an
+-- earlier reading filled, and decoding every interface of a few packages
+-- the compiler ships with.
 module Tilia.Bench.Fixity (withFixityBenchmarks) where
 
 import Control.DeepSeq (force)
@@ -19,11 +21,13 @@ import Data.Choice (pattern Do, pattern Don't)
 import Data.Either (rights)
 import Data.Foldable (for_)
 import Data.IORef (newIORef, readIORef, writeIORef)
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as T
 import Data.Traversable (for)
+import Data.Version (showVersion)
 import System.Directory
   ( createDirectoryIfMissing,
     createFileLink,
@@ -32,6 +36,7 @@ import System.Directory
   )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((<.>), (</>))
+import System.Info (fullCompilerVersion)
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
@@ -47,23 +52,6 @@ import Tilia.Fixity.PackageDb
   )
 import Tilia.Fixity.Plan
 
--- | The packages of the Hackage corpus whose every module is read.
-resolved :: [String]
-resolved =
-  [ "lens-5.3.6",
-    "aeson-2.3.1.0",
-    "megaparsec-9.8.1",
-    "servant-0.20.3.0",
-    "conduit-1.3.6.1",
-    "vector-0.13.2.0",
-    "text-2.1.4",
-    "free-5.2",
-    "optics-0.4.2.1",
-    "semigroupoids-6.0.2",
-    "pandoc-types-1.23.1.2",
-    "mtl-2.3.2"
-  ]
-
 -- | The packages the compiler ships with whose every interface is decoded.
 decoded :: [Text]
 decoded =
@@ -75,24 +63,10 @@ decoded =
     "text"
   ]
 
--- | The packages the compiler ships with and the corpus does not hold, at
--- the versions it ships, which the plan names so that the macros of their
--- versions are defined.
-shipped :: [(Text, Text)]
-shipped =
-  [ ("array", "0.5.8.0"),
-    ("base", "4.20.2.0"),
-    ("binary", "0.8.9.3"),
-    ("bytestring", "0.12.2.0"),
-    ("containers", "0.7"),
-    ("deepseq", "1.5.0.0"),
-    ("directory", "1.3.8.5"),
-    ("filepath", "1.5.4.0"),
-    ("ghc-prim", "0.12.0"),
-    ("process", "1.6.26.1"),
-    ("template-haskell", "2.22.0.0"),
-    ("unix", "2.8.7.0")
-  ]
+-- | Where the plans the packages of the corpus are read under are kept,
+-- relative to the package.
+plansPath :: FilePath
+plansPath = "bench/bench.plans"
 
 -- | Set the benchmarks of fixity resolution up in a directory of their own,
 -- run what is given on them and on a digest of the interfaces they decode,
@@ -117,45 +91,60 @@ withFixityBenchmarks use = do
 fixityBenchmarks :: FilePath -> IO (Either Text ([Benchmark], Text))
 fixityBenchmarks dir = do
   corpus <- (</> corpusName hackagePackages) <$> corpusCache
+  (solvedWith, plans) <- readPlans plansPath
   let releases = case corpusSource hackagePackages of
         HackageReleases names -> names
         _ -> []
       tarballOf release = dir </> "tarballs" </> release <.> "tar.gz"
-      tarballs = [(planned release, tarballOf release) | release <- releases]
-      plan =
-        BuildPlan
-          { bpCompiler = "ghc-9.10.3",
-            bpPackages =
-              [PlanPackage n v PreExisting [] | (n, v) <- shipped]
-                <> fmap fst tarballs
-          }
+      tarballs =
+        [(planned (T.pack release), tarballOf release) | release <- releases]
       fetched release = corpus </> release <.> "tar.gz"
+      builtWith = T.pack ("ghc-" <> showVersion fullCompilerVersion)
+      unheld = [release | (release, _) <- plans, release `notElem` releases]
+      solveAgain what =
+        Left $
+          "The plans in "
+            <> T.pack plansPath
+            <> " are for "
+            <> what
+            <> ". Solve them again with ./generate-bench-plans.py."
   missing <- filterM (fmap not . doesFileExist . fetched) releases
   case missing of
     release : _ ->
       pure (Left ("No tarball at " <> T.pack (fetched release) <> "."))
+    _
+      | solvedWith /= builtWith ->
+          pure (solveAgain (solvedWith <> ", not " <> builtWith))
+    _
+      | release : _ <- unheld ->
+          pure (solveAgain (T.pack release <> ", which the corpus lacks"))
     [] -> do
       for_ releases $ \release ->
         createFileLink (fetched release) (tarballOf release)
       none <- openCache (Don't #useCache) (PlanToken "")
       cache <- cacheUnder (dir </> "cache")
       interfaces <- interfacesOf decoded
-      let reading kept modules = do
-            resolver <- newResolverWith [FromSource] kept [] tarballs plan
-            pure $ do
-              answers <- traverse (askModule resolver) modules
-              length <$> evaluate (force answers)
-      packages <- for resolved $ \release -> do
+      packages <- for plans $ \(release, held) -> do
         modules <- fromMaybe [] <$> packageModules (tarballOf release)
         filled <- newIORef False
-        let recalling = do
+        let plan =
+              BuildPlan
+                { bpCompiler = solvedWith,
+                  bpPackages = fmap planned held
+                }
+            reading kept = do
+              resolver <- newResolverWith [FromSource] kept [] tarballs plan
+              pure $ do
+                answers <- traverse (askModule resolver) modules
+                length <$> evaluate (force answers)
+            recalling = do
               done <- readIORef filled
               unless done $ do
-                _ <- join (reading cache modules)
+                _ <- join (reading cache)
                 writeIORef filled True
-              reading cache modules
+              reading cache
         pure
-          [ Benchmark Resolve (T.pack release) (reading none modules),
+          [ Benchmark Resolve (T.pack release) (reading none),
             Benchmark Recall (T.pack release) recalling
           ]
       pure $
@@ -168,7 +157,7 @@ fixityBenchmarks dir = do
           )
   where
     planned release =
-      let (name, version) = T.breakOnEnd "-" (T.pack release)
+      let (name, version) = T.breakOnEnd "-" release
        in PlanPackage (T.dropEnd 1 name) version PreExisting []
     decoding files = do
       fresh <- evaluate (force [(m, BS.copy bytes) | (m, bytes) <- files])
@@ -176,6 +165,23 @@ fixityBenchmarks dir = do
         length . rights
           <$> evaluate
             (force [fromHiFile m =<< decodeHiFile bytes | (m, bytes) <- fresh])
+
+-- | The compiler some plans were solved with, and every package of the
+-- corpus they are for, with the packages its plan holds as @name-version@.
+readPlans :: FilePath -> IO (Text, [(String, [Text])])
+readPlans path = do
+  written <- filter meant . T.lines <$> T.readFile path
+  pure
+    ( mconcat (mapMaybe (T.stripPrefix "compiler ") written),
+      plansIn (filter (not . ("compiler " `T.isPrefixOf`)) written)
+    )
+  where
+    meant line = not (T.null line || "#" `T.isPrefixOf` line)
+    plansIn = \case
+      [] -> []
+      release : rest ->
+        let (held, others) = span (" " `T.isPrefixOf`) rest
+         in (T.unpack release, fmap T.strip held) : plansIn others
 
 -- | A cache of fixities in a directory.
 cacheUnder :: FilePath -> IO Cache

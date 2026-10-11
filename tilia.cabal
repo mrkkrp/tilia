@@ -16,6 +16,7 @@ description: A formatter for Haskell source code.
 category: Development, Formatting
 build-type: Simple
 extra-source-files:
+  bench/bench.plans
   bench/bench.record
   corpora/hackage/hackage.manifest
   corpora/hackage/hackage.report

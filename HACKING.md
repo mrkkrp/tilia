@@ -64,6 +64,21 @@ change to it like any other:
 $ TILIA_BENCH_ACCEPT=1 cabal bench
 ```
 
+The packages whose modules the benchmarks read are named in
+`bench/bench.plans`, each with the build plan it is read under, which says
+which branches of its conditionals the versions of its dependencies rule
+out. A plan is what cabal solves for the package on its own with the base
+compiler, at the `index-state` of `cabal.project`. Solve them again when the
+base compiler changes, or to read other packages or other versions of them,
+naming each at the version the corpus holds, and record the benchmarks
+again. The compiler must hold only the packages it ships with, since cabal
+plans the packages a compiler holds at the versions it holds, so under Nix
+it is a store path rather than the development shell's `ghc`:
+
+```console
+$ ./generate-bench-plans.py --ghc /path/to/ghc-9.10.3/bin/ghc
+```
+
 What is allocated depends on the compiler, so the record is made with the
 base compiler, and CI checks it there. The instructions depend on the
 processor as well, so they are checked only on the processor the record
@@ -146,7 +161,8 @@ benchmarks, and provides the default development shell. When it changes,
 which happens when the oldest version is dropped, update `GHC_VERSION` in
 `.github/workflows/release.yaml` to match, as well as the `restore-keys` of
 the `format` job and the compiler and `restore-keys` of the `bench` job in
-`ci.yaml`, and record the benchmarks again with the new base compiler.
+`ci.yaml`, and solve the plans of the benchmarks again and record them with
+the new base compiler.
 
 ## Switching `ghc-lib-parser`
 
