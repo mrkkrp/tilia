@@ -44,6 +44,11 @@
   trailing comment of the last import and sorting moves that import, with
   the comment, above another.
   [Issue 252](https://github.com/mrkkrp/tilia/issues/252).
+* A type or class imported with `(..)` from a module that exports it without
+  its members, such as `ParseError (..)` from `Text.Parsec`, is no longer
+  taken to bring in every operator that module exports. A module that brings
+  in an operator of the same name from elsewhere is no longer declined over
+  the two disagreeing. [Issue 253](https://github.com/mrkkrp/tilia/issues/253).
 
 ## Tilia 0.1.0.0
 

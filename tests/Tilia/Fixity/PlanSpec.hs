@@ -1376,6 +1376,13 @@ withPlan plan = do
         Map.lookup (OpName "T") members
           `shouldBe` Just (Set.fromList [OpName "A", OpName ":|"])
 
+    it "reads none for a type a local module exports without them"
+      $ withFakeProject
+        [("src/Members.hs", "module Members (T) where\ndata T = A | Int :| Int\n")]
+      $ \rs -> do
+        members <- membersIn rs "Members"
+        Map.lookup (OpName "T") members `shouldBe` Just Set.empty
+
     it "follows a type to the module that declares it"
       $ withFakeProject
         [ ("src/Facade.hs", "module Facade (T (..)) where\nimport Inner\n"),
@@ -1679,6 +1686,17 @@ withPlan plan = do
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Unresolved (ModuleChain ("Core" :| ["A"]) :| [])
+
+    it "brings in no operator with a type exported without its members"
+      $ withFakeProject
+        [ ("src/Ops.hs", "module Ops (T, (<+>)) where\ninfixr 1 <+>\ndata T = T\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"),
+          ("src/Other.hs", "module Other ((<+>)) where\ninfixl 6 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a - b\n")
+        ]
+      $ \rs -> do
+        let m = parse "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
+        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "<+>")
+          `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Other")
 
   describe "the whole pipeline, from source text to a fixity" $ do
     it "resolves an operator through a real import" $

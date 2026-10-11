@@ -102,11 +102,9 @@ fromHiFile modName HiFile{..}
       Map.fromListWith
         Set.union
         [ (op, Set.fromList [(namespace, kid) | (_, namespace, kid) <- kids])
-        | parent@(_, _, op) : named <- exports,
-          let kids = case named of
-                first : rest | first == parent -> rest
-                _ -> named,
-          not (null kids)
+        | AvailTC p ns <- hiExports,
+          Just parent@(_, _, op) <- [known p],
+          let kids = filter (/= parent) (mapMaybe known ns)
         ]
     exportedNames = \case
       Avail n -> maybeToList (known n)
