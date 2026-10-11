@@ -2690,7 +2690,7 @@ formatted       32e1f1dc7a41  idris-1.3.4/src/Idris/Core/DeepSeq.hs
 formatted       3b956c85cb93  idris-1.3.4/src/Idris/Core/Elaborate.hs
 formatted       d0216dc5a258  idris-1.3.4/src/Idris/Core/Evaluate.hs
 formatted       9e811f74925b  idris-1.3.4/src/Idris/Core/Execute.hs
-formatted       823bce2a23e1  idris-1.3.4/src/Idris/Core/ProofState.hs
+formatted       a0c632cd26d6  idris-1.3.4/src/Idris/Core/ProofState.hs
 formatted       0ccd6a932fe8  idris-1.3.4/src/Idris/Core/ProofTerm.hs
 formatted       cd52f6495e8c  idris-1.3.4/src/Idris/Core/TT.hs
 formatted       d6069959015f  idris-1.3.4/src/Idris/Core/Typecheck.hs

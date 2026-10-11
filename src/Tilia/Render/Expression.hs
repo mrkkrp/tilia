@@ -675,18 +675,19 @@ letIn ::
   Doc
 letIn ctx bodyOf nested (letToken, inToken) binds body =
   align $
-    txt "let"
+    written (tokenSpan letToken) (txt "let")
       <> space
       <> align
         ( localBinds ctx NoBrace binds
             <> foldMap (emptyAnchor . startOf) (tokenSpan inToken)
         )
-      <> (if chained then space else variant space (hardBreak <> txt " "))
-      <> txt "in"
+      <> written (tokenSpan inToken) (separator <> txt "in")
       <> (if chained then breakOrSpace else space)
       <> align (printBody (bodyOf body))
   where
-    chained = nested && sameLine (tokenSpan letToken) (tokenSpan inToken)
+    chained = nested && not (sameLine (tokenSpan inToken) (spanOf body))
+    separator = if chained then space else variant space (hardBreak <> txt " ")
+    written s d = if chained then fenceWithin ctx s d else d
 
 -- | The bindings of a @let@ or a @where@.
 localBinds :: Ctx -> Bracing -> HsLocalBinds GhcPs -> Doc

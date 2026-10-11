@@ -14,3 +14,12 @@ glaze x =
 -- Written all on one line, the chain stays on it.
 fire :: Int -> Int
 fire x = let a = x + 1 in let b = a * 2 in a + b
+
+-- A let whose bindings take several lines chains the same way where its in
+-- ends the last of them.
+cool :: Int -> Int
+cool x =
+  let a = x + 1
+      b = a * 2 in
+  let c = a + b
+   in c
