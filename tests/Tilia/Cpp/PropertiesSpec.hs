@@ -83,7 +83,8 @@ spec = modifyMaxSuccess (const 5000) $
 -- else, so that a module comes out with some of its conditionals answered
 -- and some of them left open.
 macros :: Macros
-macros = mempty{macroVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
+macros =
+  mempty{macroExactVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
 
 format :: Text -> Either Text Text
 format source = case formatWithCpp defaultParserConfig defaultRenderConfig "M.hs" source of

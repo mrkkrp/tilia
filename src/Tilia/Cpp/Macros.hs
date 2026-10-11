@@ -21,49 +21,62 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 
--- | What is known about macros.
+-- | What is known about macros, either from a build plan or implied by the
+-- answers a configuration gives its conditionals.
 data Macros = Macros
-  { -- | The macros that take a version apart and compare it:
-    -- @MIN_VERSION_containers@ and the like, each under the version the
-    -- plan resolved that package to. @MIN_VERSION_GLASGOW_HASKELL@ is one
-    -- of these, under the compiler's four-part version.
-    macroVersions :: Map Text [Integer],
-    -- | The macros that stand for a number, which is @__GLASGOW_HASKELL__@
-    -- and its patch levels.
-    macroNumbers :: Map Text Integer,
-    -- | The macros known to be defined, though not to what.
+  { -- | The versions from the build plan that @MIN_VERSION_@ macros compare
+    -- with, by macro name, for packages the plan holds at one version only,
+    -- and the compiler's version for @MIN_VERSION_GLASGOW_HASKELL@.
+    macroExactVersions :: Map Text [Integer],
+    -- | The numbers that @__GLASGOW_HASKELL__@ and its patch levels expand
+    -- to, from the build plan.
+    macroExactNumbers :: Map Text Integer,
+    -- | The macros known to be defined as implied by the answers that reach
+    -- a configuration.
     macroDefined :: Set Text,
-    -- | The macros known not to be defined, such as those of the compilers
-    -- other than the one the plan is for, like @__MHS__@.
+    -- | The macros known not to be defined: from the build plan, those of
+    -- the compilers other than the one it is for, like @__MHS__@, and
+    -- otherwise implied by the answers that reach a configuration.
     macroUndefined :: Set Text,
-    -- | The version, or number, each macro is known to reach, a number
-    -- being a version of one part.
-    macroAtLeast :: Map Text [Integer],
-    -- | The version, or number, each macro is known to stay below.
-    macroBelow :: Map Text [Integer]
+    -- | Every package the build plan holds, at however many versions, as
+    -- their version macros spell them: the @VERSION_@ and @MIN_VERSION_@
+    -- macros of any other package are not defined. 'Nothing' without a
+    -- build plan.
+    macroPlannedPackages :: Maybe (Set Text),
+    -- | Implied by answers, the version, or number, each macro is known to
+    -- reach, a number being a version of one part.
+    macroLowerBounds :: Map Text [Integer],
+    -- | Implied by answers, the version, or number, each macro is known to
+    -- stay below.
+    macroUpperBounds :: Map Text [Integer]
   }
   deriving (Eq, Show)
 
 instance Semigroup Macros where
   a <> b =
     Macros
-      { macroVersions = macroVersions a <> macroVersions b,
-        macroNumbers = macroNumbers a <> macroNumbers b,
+      { macroExactVersions = macroExactVersions a <> macroExactVersions b,
+        macroExactNumbers = macroExactNumbers a <> macroExactNumbers b,
         macroDefined = macroDefined a <> macroDefined b,
         macroUndefined = macroUndefined a <> macroUndefined b,
-        macroAtLeast = Map.unionWith max (macroAtLeast a) (macroAtLeast b),
-        macroBelow = Map.unionWith min (macroBelow a) (macroBelow b)
+        macroPlannedPackages =
+          macroPlannedPackages a <|> macroPlannedPackages b,
+        macroLowerBounds =
+          Map.unionWith max (macroLowerBounds a) (macroLowerBounds b),
+        macroUpperBounds =
+          Map.unionWith min (macroUpperBounds a) (macroUpperBounds b)
       }
 
 instance Monoid Macros where
   mempty =
     Macros
-      { macroVersions = Map.empty,
-        macroNumbers = Map.empty,
+      { macroExactVersions = Map.empty,
+        macroExactNumbers = Map.empty,
         macroDefined = Set.empty,
         macroUndefined = Set.empty,
-        macroAtLeast = Map.empty,
-        macroBelow = Map.empty
+        macroPlannedPackages = Nothing,
+        macroLowerBounds = Map.empty,
+        macroUpperBounds = Map.empty
       }
 
 -- | Does a conditional's guard hold, where what is known settles it?
@@ -83,26 +96,30 @@ impliedBy holds = maybe mempty (go holds) . expressionOf
         | h -> mempty{macroDefined = Set.singleton n}
         | otherwise -> mempty{macroUndefined = Set.singleton n}
       Reaches n v
-        | h -> mempty{macroAtLeast = Map.singleton n (trimmed v)}
-        | otherwise -> mempty{macroBelow = Map.singleton n (trimmed v)}
+        | h -> mempty{macroLowerBounds = Map.singleton n (trimmed v)}
+        | otherwise -> mempty{macroUpperBounds = Map.singleton n (trimmed v)}
       Macro n | h -> mempty{macroDefined = Set.singleton n}
       _ -> mempty
 
 -- | Whether a macro is defined, where that is known.
 isDefined :: Macros -> Text -> Maybe Bool
 isDefined macros n
-  | Map.member n (macroVersions macros)
-      || Map.member n (macroNumbers macros)
+  | Map.member n (macroExactVersions macros)
+      || Map.member n (macroExactNumbers macros)
       || Set.member n (macroDefined macros) =
       Just True
   | Set.member n (macroUndefined macros) = Just False
+  | Just held <- macroPlannedPackages macros,
+    Just p <- T.stripPrefix "VERSION_" n <|> T.stripPrefix "MIN_VERSION_" n,
+    Set.notMember p held =
+      Just False
   | otherwise = Nothing
 
 -- | The number a macro stands for, where that is known.
 numberOf :: Macros -> Text -> Maybe Integer
 numberOf macros n = case isDefined macros n of
   Just False -> Just 0
-  _ -> Map.lookup n (macroNumbers macros)
+  _ -> Map.lookup n (macroExactNumbers macros)
 
 -- | Does a macro's version, or number, reach this one, where what is known
 -- settles it?
@@ -110,13 +127,13 @@ reaches :: Macros -> Text -> [Integer] -> Maybe Bool
 reaches macros n wanted = case held of
   Just v -> Just (trimmed v >= w)
   Nothing
-    | any (>= w) (Map.lookup n (macroAtLeast macros)) -> Just True
-    | any (<= w) (Map.lookup n (macroBelow macros)) -> Just False
+    | any (>= w) (Map.lookup n (macroLowerBounds macros)) -> Just True
+    | any (<= w) (Map.lookup n (macroUpperBounds macros)) -> Just False
     | otherwise -> Nothing
   where
     w = trimmed wanted
     held =
-      Map.lookup n (macroVersions macros) <|> (pure <$> numberOf macros n)
+      Map.lookup n (macroExactVersions macros) <|> (pure <$> numberOf macros n)
 
 -- | A version without the zeros at its end, which 'compare' orders as
 -- versions are ordered.
