@@ -597,7 +597,9 @@ caseOf ctx site mkBody scrutinee mg =
   txt "case"
     <> space
     <> hsExpr ctx scrutinee
-    <> joinedBy "of"
+    <> space
+    <> indent (txt "of")
+    <> breakOrSpace
     <> bracedForSite site alternatives
   where
     alternatives b = underSite site (matchGroup ctx b mkBody CaseStyle mg)
