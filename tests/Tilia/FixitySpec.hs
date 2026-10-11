@@ -459,6 +459,10 @@ spec = do
       listedMembersIn "module M (T (..)) where\nimport Elsewhere\n"
         `shouldBe` []
 
+    it "hands on no members of a name exported without them" $
+      listedMembersIn "module M (T, U) where\nimport Elsewhere\ndata T = A | Int :| Int\n"
+        `shouldBe` [(OpName "T", []), (OpName "U", [])]
+
   describe "layer 2: imports" $ do
     it "brings in an operator among the members of a type" $
       lookupFixity (scopeWithMembers "import Members (T (..))\n") InTerms Nothing (OpName ":|")

@@ -344,6 +344,7 @@ listedMembers hsModule = case hsmodExports hsModule of
   where
     declared = Map.map (Set.map snd) (declaredMembers hsModule)
     fromIE = \case
+      IEThingAbs _ n _ -> [(nameOf n, Set.empty)]
       IEThingAll _ n _ -> [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
       IEThingWith _ n _ ns _ -> [(nameOf n, Set.fromList (fmap nameOf ns))]
       _ -> []

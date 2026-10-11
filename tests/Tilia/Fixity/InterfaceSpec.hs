@@ -181,6 +181,12 @@ spec = do
               )
           )
 
+    it "gives a type exported without its members none" $
+      fmap
+        interfaceMembers
+        (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTypes "T"]] []))
+        `shouldBe` Right (Map.fromList [(OpName "T", Set.empty)])
+
     it "does not take a type for exported where only its field is" $
       fmap
         (fmap certainNames . interfaceExports)
