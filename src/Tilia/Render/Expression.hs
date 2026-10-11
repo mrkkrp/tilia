@@ -1100,16 +1100,19 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
   _ ->
     maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
+      maybe id fence headSpan guardHead
+        <> nest
+          (if parentPlacement == Normal then 1 else 0)
+          (attach placement (printBody bound))
+  where
+    GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
+    guardHead =
       txt "|"
         <> space
         <> align (commaSep (fmap (align . hsStmt ctx) guards))
         <> space
         <> indent (txt separator)
-        <> nest
-          (if parentPlacement == Normal then 1 else 0)
-          (attach placement (printBody bound))
-  where
-    GRHS EpAnn{anns = GrhsAnn{ga_sep}} guards body = grhs
+    headSpan = (<>) <$> (tokenSpan =<< ga_vbar) <*> separatorSpan
     bound = bodyIn mkBody bracing body
     separator = case style of
       EqualsSign -> "="
