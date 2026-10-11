@@ -36,6 +36,10 @@
   pattern guard comes out under the opening one, rather than a step further
   in, which only a layout block needs.
   [Issue 210](https://github.com/mrkkrp/tilia/issues/210).
+* The `of` of a `case` written on a line of its own after a conditional
+  comes out indented past the `case`, as written, rather than at the column
+  of the statement, where it began a new one and the module no longer
+  parsed. [Issue 237](https://github.com/mrkkrp/tilia/issues/237).
 
 ## Tilia 0.1.0.0
 
