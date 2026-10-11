@@ -21,7 +21,7 @@ import Data.ByteString qualified as BS
 import Data.Choice (pattern Is)
 import Data.Data
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
-import Data.List (sortOn)
+import Data.List (sortOn, unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -61,6 +61,7 @@ import Tilia.Comments
   ( Comment (..),
     Pragma (..),
     asOrdinary,
+    carriedOnFrom,
     commentPragma,
     commentTrailing,
     triggerEscaped,
@@ -466,13 +467,13 @@ commentDifference parsedBefore parsedAfter
     asRead m =
       concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
-    belowHeader m = filter (not . inHeader m) . ordinary
-    withinHeader m = filter (inHeader m) . ordinary
+    belowHeader m cs = filter (not . inHeader m cs) (ordinary cs)
+    withinHeader m cs = filter (inHeader m cs) (ordinary cs)
     settled = sortOn bodyKey
 
-    inHeader m c = case lastRearrangedLine m of
-      Nothing -> False
-      Just lastLine -> spanStartLine (commentSpan c) <= lastLine
+    inHeader m cs = case lastRearrangedLine m cs of
+      Nothing -> const False
+      Just lastLine -> (<= lastLine) . spanStartLine . commentSpan
 
     lost = pragmasOf before `Set.difference` pragmasOf after
     gained = pragmasOf after `Set.difference` pragmasOf before
@@ -523,16 +524,32 @@ bodyKey c = case commentBody c of
   ls -> ls
 
 -- | The last line the formatter may reorder: the end of the last import, or
--- of the module header where there are no imports.
+-- of the module header where there are no imports, and of the comments
+-- under it that carry on a remark at its end and travel with it.
 --
 -- 'Nothing' where the module has neither header nor imports.
-lastRearrangedLine :: HsModule GhcPs -> Maybe Int
-lastRearrangedLine m = spanEndLine <$> (spansOf (hsmodImports m) <> header)
+lastRearrangedLine :: HsModule GhcPs -> [Comment] -> Maybe Int
+lastRearrangedLine m cs =
+  carriedPast . spanEndLine <$> (spansOf (hsmodImports m) <> header)
   where
     header =
       foldMap spanOf (hsmodName m)
         <> foldMap spanOf (hsmodDeprecMessage (hsmodExt m))
         <> foldMap spanOf (hsmodExports m)
+    carriedPast lastLine =
+      maybe lastLine (spanEndLine . commentSpan . snd) . unsnoc $
+        takeWhile
+          (maybe False ((<= lastLine) . fst) . carriedOnFrom (remarks <> run))
+          run
+      where
+        remarks = [c | c <- cs, spanEndLine (commentSpan c) == lastLine]
+        run = following (lastLine + 1) cs
+    following n = \case
+      c : more
+        | spanStartLine (commentSpan c) < n -> following n more
+        | spanStartLine (commentSpan c) == n ->
+            c : following (spanEndLine (commentSpan c) + 1) more
+      _ -> []
 
 -- | The pragmas a module carries, however they were written.
 --

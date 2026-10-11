@@ -40,6 +40,10 @@
   comes out indented past the `case`, as written, rather than at the column
   of the statement, where it began a new one and the module no longer
   parsed. [Issue 237](https://github.com/mrkkrp/tilia/issues/237).
+* `--check-ast` no longer reports a comment as lost where it carries on the
+  trailing comment of the last import and sorting moves that import, with
+  the comment, above another.
+  [Issue 252](https://github.com/mrkkrp/tilia/issues/252).
 
 ## Tilia 0.1.0.0
 
