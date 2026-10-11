@@ -16,10 +16,11 @@ inAnAlternative n =
       stop
     _ -> go n
 
--- Crossing a token in the middle of a construct is another matter: it
--- neither leaves the construct nor lands in front of it.
+-- A token in the middle of a construct is another matter: a comment after
+-- it stays after it, neither leaving the construct nor landing in front of
+-- it.
 inTheMiddle n =
-  case n {- worth a look -} of
+  case n of {- worth a look -}
     0 -> stop
     _ -> go n
 
