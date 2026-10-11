@@ -386,14 +386,14 @@ checkedOutIn distDir plan = do
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
   mempty
-    { macroVersions =
+    { macroExactVersions =
         Map.fromList
           ( [ ("MIN_VERSION_" <> underscored name, version)
             | (name, [version]) <- Map.toList (Map.map Set.toList versions)
             ]
               <> [("MIN_VERSION_GLASGOW_HASKELL", v) | v <- toList compiler]
           ),
-      macroNumbers =
+      macroExactNumbers =
         Map.fromList
           [ entry
           | (major : minor : patches) <- toList compiler,
@@ -406,7 +406,9 @@ macrosOf plan =
       macroUndefined =
         if null compiler
           then Set.empty
-          else Set.fromList ["__MHS__", "__HUGS__"]
+          else Set.fromList ["__MHS__", "__HUGS__"],
+      macroPlannedPackages =
+        Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
     }
   where
     versions =

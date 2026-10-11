@@ -15,18 +15,19 @@ import Tilia.Cpp.Macros
 macros :: Macros
 macros =
   mempty
-    { macroVersions =
+    { macroExactVersions =
         Map.fromList
           [ ("MIN_VERSION_thing", [1, 2, 3]),
             ("MIN_VERSION_GLASGOW_HASKELL", [9, 10, 3, 0])
           ],
-      macroNumbers =
+      macroExactNumbers =
         Map.fromList
           [ ("__GLASGOW_HASKELL__", 910),
             ("__GLASGOW_HASKELL_PATCHLEVEL1__", 3),
             ("__GLASGOW_HASKELL_PATCHLEVEL2__", 0)
           ],
-      macroUndefined = Set.fromList ["__MHS__", "__HUGS__"]
+      macroUndefined = Set.fromList ["__MHS__", "__HUGS__"],
+      macroPlannedPackages = Just (Set.fromList ["thing"])
     }
 
 -- | What this guard comes to, given the plan above.
@@ -51,8 +52,19 @@ spec = do
       fmap answer ["if MIN_VERSION_thing(1,2)", "if MIN_VERSION_thing(1,2,3,1)"]
         `shouldBe` [Just True, Just False]
 
-    it "says nothing about a package the plan does not name" $
-      answer "if MIN_VERSION_other(1,0,0)" `shouldBe` Nothing
+    it "has the macros of a package the plan does not hold undefined" $
+      fmap
+        answer
+        [ "ifdef VERSION_other",
+          "ifndef VERSION_other",
+          "if defined(MIN_VERSION_other)",
+          "if MIN_VERSION_other(1,0,0)"
+        ]
+        `shouldBe` [Just False, Just True, Just False, Just False]
+
+    it "says nothing about other packages where the plan's are unknown" $
+      guardHolds macros{macroPlannedPackages = Nothing} "ifdef VERSION_other"
+        `shouldBe` Nothing
 
   describe "a guard about the compiler" $ do
     it "reads its version as the compiler spells it" $
