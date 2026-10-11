@@ -6,11 +6,10 @@ check :: IO ()
 check = do
   case answer
 #ifdef SECOND
-    second
+    second of
 #else
-    first
+    first of
 #endif
-    of
     _ -> pure ()
 
 find :: IO ()
@@ -23,10 +22,9 @@ find = do
 #endif
     (moduleName "Polysemy")
 #if __GLASGOW_HASKELL__ >= 904
-    NoQualifier
+    NoQualifier of
 #else
-    Nothing
+    Nothing of
 #endif
-    of
     Found _ -> pure ()
     _ -> fail "not found"

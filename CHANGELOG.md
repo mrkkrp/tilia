@@ -49,6 +49,12 @@
   taken to bring in every operator that module exports. A module that brings
   in an operator of the same name from elsewhere is no longer declined over
   the two disagreeing. [Issue 253](https://github.com/mrkkrp/tilia/issues/253).
+* A `case` whose head is written whole in each branch of a conditional comes
+  out as written, rather than with `case` once above the conditional and the
+  scrutinee at the column of the statement, where it began a new one and the
+  module no longer parsed. An `of` written after the `#endif` goes at the
+  end of each branch, and a comment written after `of` stays after it rather
+  than in front of it. [Issue 250](https://github.com/mrkkrp/tilia/issues/250).
 
 ## Tilia 0.1.0.0
 

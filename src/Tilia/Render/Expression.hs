@@ -101,7 +101,7 @@ exprBody ctx site here = \case
   SectionR _ op x -> hsExpr ctx op <> breakOrSpace <> indent (hsExpr ctx x)
   ExplicitTuple _ args boxity -> tuple ctx here (closingFor site) boxity args
   ExplicitSum _ tag arity e -> unboxedSum (closingFor site) tag arity (hsExpr ctx e)
-  HsCase _ e mg -> caseOf ctx site (ExprBody ctx) e mg
+  HsCase anns e mg -> caseOf ctx site (ExprBody ctx) anns e mg
   HsIf anns c t e -> ifThenElse ctx (bodyIn (ExprBody ctx) (siteBracing site)) anns c t e
   HsMultiIf _ guards ->
     txt "if"
@@ -590,15 +590,16 @@ caseOf ::
   Ctx ->
   Site ->
   BodyOf body b ->
+  EpAnnHsCase ->
   LHsExpr GhcPs ->
   MatchGroup GhcPs (LocatedA body) ->
   Doc
-caseOf ctx site mkBody scrutinee mg =
-  txt "case"
+caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
+  maybe id located (tokenSpan hsCaseAnnCase) (txt "case")
     <> space
     <> hsExpr ctx scrutinee
     <> space
-    <> indent (txt "of")
+    <> indent (maybe id located (tokenSpan hsCaseAnnOf) (txt "of"))
     <> breakOrSpace
     <> bracedForSite site alternatives
   where
@@ -778,7 +779,7 @@ cmdBody ctx site = \case
       <> indent (hsExpr ctx e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
   HsCmdPar _ c -> parens (hsCmd ctx plainSite c)
-  HsCmdCase _ e mg -> caseOf ctx site (CmdBody ctx) e mg
+  HsCmdCase anns e mg -> caseOf ctx site (CmdBody ctx) anns e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
   HsCmdLet tokens binds c ->
