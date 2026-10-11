@@ -25,6 +25,12 @@
   second conditional, which formatting again indented further. Where several
   such fields follow one another, the body of the first is no longer copied
   into each branch. [Issue 240](https://github.com/mrkkrp/tilia/issues/240).
+* What is worked out from the source of a dependency that is not built is
+  remembered for the build plan it was worked out under, since the plan says
+  which branches of the dependency's conditionals are read. A project with
+  another compiler or other versions of its dependencies no longer takes
+  what was worked out under different ones.
+  [PR 247](https://github.com/mrkkrp/tilia/pull/247).
 
 ## Tilia 0.1.0.0
 

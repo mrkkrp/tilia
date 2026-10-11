@@ -74,6 +74,7 @@ spec = do
   generatedModuleSpec
   askedAtOnce
   readBefore
+  readUnderAnotherPlan
   gitDependencies
   repositories
   packageCache
@@ -995,6 +996,34 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
           "a <+> b = a + b"
         ]
     localDirsOf plan = [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
+
+-- | A module of a dependency, read out of its tarball by an earlier run
+-- under another plan.
+readUnderAnotherPlan :: Spec
+readUnderAnotherPlan =
+  describe "a dependency's module, read by an earlier run" $
+    it "is read again under a plan that settles its conditionals otherwise" $
+      withFakeArchiveUnder [("Ops.hs", versioned)] $ \resolverFor -> do
+        resolverFor "ghc-9.10.3"
+          >>= (`fixitiesOf` "Ops")
+          >>= (`shouldBe` Just (declaring (Fixity RightAssoc 2)))
+        resolverFor "ghc-9.12.1"
+          >>= (`fixitiesOf` "Ops")
+          >>= (`shouldBe` Just (declaring (Fixity LeftAssoc 6)))
+  where
+    versioned =
+      T.unlines
+        [ "{-# LANGUAGE CPP #-}",
+          "module Ops ((<+>)) where",
+          "#if __GLASGOW_HASKELL__ >= 912",
+          "infixl 6 <+>",
+          "#else",
+          "infixr 2 <+>",
+          "#endif",
+          "(<+>) :: Int -> Int -> Int",
+          "a <+> b = a + b"
+        ]
+    declaring = Map.singleton (InTerms, OpName "<+>")
 
 -- | How many modules the ring has.
 ringSize :: Int
@@ -2042,6 +2071,15 @@ withFakePlan sources act =
 -- the tarball below and no further, and leaves nothing behind.
 withFakeArchive :: [(FilePath, Text)] -> (Resolver -> IO a) -> IO a
 withFakeArchive sources act =
+  withFakeArchiveUnder sources (\resolverFor -> resolverFor "ghc-0.0" >>= act)
+
+-- | 'withFakeArchive', giving a resolver under a plan for the compiler
+-- named, every one of them remembering in the same cache.
+withFakeArchiveUnder ::
+  [(FilePath, Text)] ->
+  ((Text -> IO Resolver) -> IO a) ->
+  IO a
+withFakeArchiveUnder sources act =
   withSystemTempDirectory "tilia-archive" $ \dir -> do
     let held = T.unpack (name <> "-" <> version)
         tarball =
@@ -2056,11 +2094,12 @@ withFakeArchive sources act =
     writeTarball tarball $
       (held </> T.unpack name <> ".cabal", cabal)
         : [(held </> path, text) | (path, text) <- sources]
-    T.writeFile (dir </> "plan.json") plan
     withEnvironment [("CABAL_DIR", dir), ("XDG_CACHE_HOME", dir </> "cache")] $
-      readBuildPlan (dir </> "plan.json") >>= \case
-        Left why -> error (T.unpack why)
-        Right p -> newResolver p >>= act
+      act $ \compiler -> do
+        T.writeFile (dir </> "plan.json") (planFor compiler)
+        readBuildPlan (dir </> "plan.json") >>= \case
+          Left why -> error (T.unpack why)
+          Right p -> newResolver p
   where
     name = "tilia-hsc-fixture"
     version = "1.0"
@@ -2075,9 +2114,10 @@ withFakeArchive sources act =
           "  default-language: Haskell2010"
         ]
     moduleIn (path, _) = T.replace "/" "." (T.pack (dropExtension path))
-    plan =
-      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
-      \[{\"pkg-name\":\""
+    planFor compiler =
+      "{\"compiler-id\":\""
+        <> compiler
+        <> "\",\"install-plan\":[{\"pkg-name\":\""
         <> name
         <> "\",\"pkg-version\":\""
         <> version

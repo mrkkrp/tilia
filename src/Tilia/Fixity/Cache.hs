@@ -25,6 +25,7 @@ module Tilia.Fixity.Cache
     storeSolveTime,
     cachedPackageCache,
     storePackageCache,
+    tokenOf,
   )
 where
 
@@ -66,7 +67,8 @@ data Cache = Cache FilePath PlanToken | NoCache
 -- order to be able to cache the expensive class of lookup failures that are
 -- related to chasing module re-export chains. Rather than track what each
 -- failure leaned on, all of them are tied to the plan and the environment
--- as a whole.
+-- as a whole. So is what reading a module out of a tarball establishes,
+-- since the plan settles which branches of its conditionals are read.
 --
 -- The environment belongs in it because availability of a module the plan
 -- names depends on where we run the query and that is settled outside the

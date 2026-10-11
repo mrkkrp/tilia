@@ -1219,7 +1219,7 @@ resolveModule
       viaArchive = case Map.lookup modName wkIndex of
         Nothing -> pure Nothing
         Just (package, tarball) ->
-          throughCache package $
+          throughCache (package <> "-" <> tokenOf wkCache) $
             fromSource
               wkModuleInArchive
               wkSummariesOf
