@@ -466,9 +466,12 @@ stmtBody ctx site mkBody = \case
   LastStmt _ body _ _ -> printBody (mkBody site body)
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
-    hsPat ctx p
+    hsPatClosing ctx (closingFor site) p
       <> nest 1 (space <> maybe id located (uniTokenSpan arrow) (txt "<-"))
-      <> layoutFrom ctx (spanOf p <> spanOf f) (attach placement (printBody bound))
+      <> layoutFrom
+        ctx
+        (fmap endOf (spanOf p) <> spanOf f)
+        (attach placement (printBody bound))
     where
       bound = mkBody plainSite f
       placement

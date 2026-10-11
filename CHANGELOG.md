@@ -30,6 +30,12 @@
   dependencies of a component. A module is no longer declined over an
   operator that only a branch behind `#ifdef VERSION_x` imports where the
   plan has no `x`. [Issue 241](https://github.com/mrkkrp/tilia/issues/241).
+* A pattern written over several lines keeps `<-` and the expression after
+  it on its last line where they were written there, in a pattern guard as
+  in a `do` block, and the closing bracket of a list or tuple pattern in a
+  pattern guard comes out under the opening one, rather than a step further
+  in, which only a layout block needs.
+  [Issue 210](https://github.com/mrkkrp/tilia/issues/210).
 
 ## Tilia 0.1.0.0
 

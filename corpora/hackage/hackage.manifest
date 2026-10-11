@@ -57,7 +57,7 @@ formatted       e06156bc2afa  Agda-2.8.0/src/full/Agda/Interaction/FindFile.hs
 formatted       3170eb1921b4  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Common.hs
 formatted       1fb0462a1b45  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot.hs
 formatted       712b081948e2  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot/Backend.hs
-formatted       c6bb09f6d106  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot/Base.hs
+formatted       fffa70657044  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Dot/Base.hs
 formatted       773365a6b3e4  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Emacs.hs
 formatted       4f4d736f1b38  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/FromAbstract.hs
 formatted       5731f6a6b8ee  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Generate.hs
@@ -230,7 +230,7 @@ formatted       443b56fdd0d7  Agda-2.8.0/src/full/Agda/TypeChecking/Level/Solve.
 formatted       ae0893a4561e  Agda-2.8.0/src/full/Agda/TypeChecking/LevelConstraints.hs
 formatted       07c423dfa0e3  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs
 formatted       00b8f5e75aa7  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs-boot
-formatted       97862a8dea84  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs
+formatted       b1629098648f  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs
 formatted       52101179c5b2  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs-boot
 formatted       e1fc76d1f4fb  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Mention.hs
 formatted       9825c48e7a9c  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Occurs.hs
@@ -333,7 +333,7 @@ formatted       dea533ec809b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Un
 formatted       2fe7b7e43894  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record.hs
 formatted       31facbc5e0fe  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
 formatted       ccd5b1bd7f62  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs-boot
-formatted       49e329be866f  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
+formatted       1750e7e26332  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
 formatted       3c2ae59cbddd  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
 formatted       0b03fe8ecc8f  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances.hs
 formatted       6c20bf188f6d  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Abstract.hs
@@ -735,7 +735,7 @@ formatted       77560acf62f4  aws-0.25.3/Aws/S3/Commands/GetBucketVersioning.hs
 formatted       09bf54b50d8a  aws-0.25.3/Aws/S3/Commands/GetObject.hs
 formatted       b2f36afa32e0  aws-0.25.3/Aws/S3/Commands/GetService.hs
 formatted       d6ff6d8b8056  aws-0.25.3/Aws/S3/Commands/HeadObject.hs
-formatted       bc19177d1d47  aws-0.25.3/Aws/S3/Commands/Multipart.hs
+formatted       342f7fc5f61d  aws-0.25.3/Aws/S3/Commands/Multipart.hs
 formatted       311a84a6ddb3  aws-0.25.3/Aws/S3/Commands/PutBucket.hs
 formatted       2428bf962e66  aws-0.25.3/Aws/S3/Commands/PutBucketVersioning.hs
 formatted       046379db06b2  aws-0.25.3/Aws/S3/Commands/PutObject.hs
@@ -2490,7 +2490,7 @@ formatted       8499a9dafb7a  hlint-3.10/src/Hint/Fixities.hs
 formatted       aab2b0975534  hlint-3.10/src/Hint/Import.hs
 formatted       7fa5ea0b1e9a  hlint-3.10/src/Hint/Lambda.hs
 formatted       272b8222175a  hlint-3.10/src/Hint/List.hs
-formatted       8f1d0c686e2b  hlint-3.10/src/Hint/ListRec.hs
+formatted       1601e1e0f2da  hlint-3.10/src/Hint/ListRec.hs
 formatted       3027b7686bbd  hlint-3.10/src/Hint/Match.hs
 formatted       7215f269ef89  hlint-3.10/src/Hint/Monad.hs
 formatted       4d078aac9ede  hlint-3.10/src/Hint/Naming.hs
@@ -2502,7 +2502,7 @@ formatted       0076ccb5bd1c  hlint-3.10/src/Hint/Pragma.hs
 formatted       5dd8e1ba7821  hlint-3.10/src/Hint/Restrict.hs
 formatted       a55fbaad4a77  hlint-3.10/src/Hint/Smell.hs
 formatted       3308ee100b88  hlint-3.10/src/Hint/Type.hs
-formatted       a7c7f90eb40c  hlint-3.10/src/Hint/Unsafe.hs
+formatted       c433ccccd5d9  hlint-3.10/src/Hint/Unsafe.hs
 formatted       48cd04ad2e02  hlint-3.10/src/HsColour.hs
 formatted       dd9801a47942  hlint-3.10/src/Idea.hs
 formatted       576b754ba5d4  hlint-3.10/src/Language/Haskell/HLint.hs
@@ -2739,7 +2739,7 @@ formatted       969e2318f735  idris-1.3.4/src/Idris/Output.hs
 formatted       05a01adec344  idris-1.3.4/src/Idris/Package.hs
 formatted       2a5fae85b8c9  idris-1.3.4/src/Idris/Package/Common.hs
 formatted       90885df148d3  idris-1.3.4/src/Idris/Package/Parser.hs
-formatted       ab0906fb24a3  idris-1.3.4/src/Idris/Parser.hs
+formatted       da68c807f135  idris-1.3.4/src/Idris/Parser.hs
 formatted       e4d16cf46f6b  idris-1.3.4/src/Idris/Parser/Data.hs
 formatted       56341a9cef2a  idris-1.3.4/src/Idris/Parser/Expr.hs
 formatted       de7138f89659  idris-1.3.4/src/Idris/Parser/Helpers.hs
@@ -3082,7 +3082,7 @@ formatted       ba128290e789  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Name.hs
 formatted       76559347a97c  pandoc-3.10.2/src/Text/Pandoc/Citeproc/Util.hs
 formatted       1b13d0dc5e1b  pandoc-3.10.2/src/Text/Pandoc/Class.hs
 formatted       121629e38e36  pandoc-3.10.2/src/Text/Pandoc/Class/CommonState.hs
-formatted       e2b41d9d63a2  pandoc-3.10.2/src/Text/Pandoc/Class/IO.hs
+formatted       9c00e6af7063  pandoc-3.10.2/src/Text/Pandoc/Class/IO.hs
 formatted       554e3fd3f722  pandoc-3.10.2/src/Text/Pandoc/Class/PandocIO.hs
 formatted       c65acaaeb3de  pandoc-3.10.2/src/Text/Pandoc/Class/PandocMonad.hs
 formatted       af26c6ef7be1  pandoc-3.10.2/src/Text/Pandoc/Class/PandocPure.hs
@@ -5102,7 +5102,7 @@ formatted       96d18ec66a91  yesod-core-1.7.0.0/src/Yesod/Core/Class/Handler.hs
 formatted       3b253a2dbaa1  yesod-core-1.7.0.0/src/Yesod/Core/Class/Yesod.hs
 formatted       7b7185683c72  yesod-core-1.7.0.0/src/Yesod/Core/Content.hs
 formatted       bc567e14f9ae  yesod-core-1.7.0.0/src/Yesod/Core/Dispatch.hs
-formatted       20bff70e126c  yesod-core-1.7.0.0/src/Yesod/Core/Handler.hs
+formatted       180c2fc8e3b6  yesod-core-1.7.0.0/src/Yesod/Core/Handler.hs
 formatted       88d4d8c2323a  yesod-core-1.7.0.0/src/Yesod/Core/Internal.hs
 formatted       212235b50682  yesod-core-1.7.0.0/src/Yesod/Core/Internal/LiteApp.hs
 formatted       b02eb40e75c3  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Request.hs
