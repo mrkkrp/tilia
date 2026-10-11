@@ -9,6 +9,7 @@
 -- | Patterns.
 module Tilia.Render.Pattern
   ( hsPat,
+    hsPatClosing,
     fieldOcc,
     unboxedSum,
   )
@@ -32,7 +33,11 @@ import Tilia.Span.Ghc
 
 -- | A pattern.
 hsPat :: Ctx -> LPat GhcPs -> Doc
-hsPat ctx = hsPatIn ctx NoBrace (Isn't #inAsPat)
+hsPat ctx = hsPatClosing ctx Indented
+
+-- | A pattern whose outermost bracket closes where it is told to.
+hsPatClosing :: Ctx -> ClosingIndent -> LPat GhcPs -> Doc
+hsPatClosing ctx = hsPatIn ctx NoBrace (Isn't #inAsPat)
 
 -- | A pattern that knows where it stands.
 hsPatIn ::
@@ -42,10 +47,13 @@ hsPatIn ::
   Bracing ->
   -- | Is this inside an as-pattern?
   Choice "inAsPat" ->
+  -- | Where its outermost bracket closes.
+  ClosingIndent ->
   -- | The pattern.
   LPat GhcPs ->
   Doc
-hsPatIn ctx bracing inAsPat l = at ctx l (patBody ctx bracing inAsPat (spanOf l))
+hsPatIn ctx bracing inAsPat closing l =
+  at ctx l (patBody ctx bracing inAsPat closing (spanOf l))
 
 -- | Every shape a pattern can take.
 patBody ::
@@ -55,24 +63,31 @@ patBody ::
   Bracing ->
   -- | Is this inside an as-pattern?
   Choice "inAsPat" ->
+  -- | Where its outermost bracket closes.
+  ClosingIndent ->
   -- | Where the pattern was written.
   Maybe Span ->
   -- | The pattern.
   Pat GhcPs ->
   Doc
-patBody ctx bracing inAsPat here = \case
+patBody ctx bracing inAsPat closing here = \case
   WildPat _ -> txt "_"
   VarPat _ n -> name ctx n
   LazyPat _ p -> txt "~" <> recur p
-  AsPat _ n p -> name ctx n <> txt "@" <> hsPatIn ctx bracing (Is #inAsPat) p
-  ParPat _ p -> parensWith Indented (insideBrackets here (recur p))
+  AsPat _ n p ->
+    name ctx n <> txt "@" <> hsPatIn ctx bracing (Is #inAsPat) Indented p
+  ParPat _ p -> parensWith closing (insideBrackets here (recur p))
   BangPat _ p -> txt "!" <> recur p
-  ListPat _ ps -> bracketsWith Indented (insideBrackets here (commaSep (fmap recur ps)))
+  ListPat _ ps ->
+    bracketsWith closing (insideBrackets here (commaSep (fmap recur ps)))
   TuplePat _ ps boxity ->
-    tupleBrackets boxity (insideBrackets here (commaSep (fmap (align . recur) ps)))
+    tupleBrackets
+      boxity
+      closing
+      (insideBrackets here (commaSep (fmap (align . recur) ps)))
   OrPat _ ps ->
     itemsSepBy (fromBool (isTrue inAsPat)) bracing (fmap recur (NE.toList ps))
-  SumPat _ p tag arity -> unboxedSum Indented tag arity (recur p)
+  SumPat _ p tag arity -> unboxedSum closing tag arity (recur p)
   ConPat _ con details -> conPattern ctx bracing inAsPat here con details
   ViewPat _ e p ->
     align $
@@ -94,7 +109,7 @@ patBody ctx bracing inAsPat here = \case
   EmbTyPat _ (HsTP _ ty) -> txt "type" <> space <> hsType ctx ty
   InvisPat _ (HsTP _ ty) -> txt "@" <> hsType ctx ty
   where
-    recur = hsPatIn ctx bracing inAsPat
+    recur = hsPatIn ctx bracing inAsPat Indented
 
 -- | A constructor pattern, in whichever of its three forms.
 conPattern ::
@@ -126,7 +141,7 @@ conPattern ctx bracing inAsPat here con = \case
       recur l
         <> attachOperator Normal (spanOf l) (spanOf con) (spanOf r) (name ctx con) (recur r)
   where
-    recur = hsPatIn ctx bracing inAsPat
+    recur = hsPatIn ctx bracing inAsPat Indented
     field = either wildcard (at_ ctx (patFieldBind ctx))
     wildcard l = at ctx l (const (txt ".."))
     visibleFields dotdot fields = case dotdot of
@@ -156,10 +171,10 @@ unboxedSum closing tag arity d =
     after = replicate (arity - tag) space
 
 -- | The brackets a tuple pattern is written with.
-tupleBrackets :: Boxity -> Doc -> Doc
+tupleBrackets :: Boxity -> ClosingIndent -> Doc -> Doc
 tupleBrackets = \case
-  Boxed -> parensWith Indented
-  Unboxed -> unboxedWith Indented
+  Boxed -> parensWith
+  Unboxed -> unboxedWith
 
 -- | With @NegativeLiterals@ on, @- 1@ and @-1@ are different expressions, so
 -- the minus of a negated literal has to keep its distance.
