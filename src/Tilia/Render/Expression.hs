@@ -33,8 +33,8 @@ import GHC.Hs hiding (Fixity)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.Basic (Boxity (..))
 import GHC.Types.Fixity (LexicalFixity (..))
-import GHC.Types.Name.Occurrence (isVarOcc)
-import GHC.Types.Name.Reader (RdrName, mkVarUnqual, rdrNameOcc)
+import GHC.Types.Name.Occurrence (isVarOcc, occNameString)
+import GHC.Types.Name.Reader (RdrName (..), mkVarUnqual, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc
   ( GenLocated (..),
@@ -96,7 +96,16 @@ exprBody ctx site here = \case
   NegApp _ e _ -> txt "-" <> negationGap ctx e <> hsExpr ctx e
   HsPar _ e ->
     layoutWithin ctx here (spanOf e) $
-      parensWith (closingFor site) (insideBrackets here (hsExpr ctx e))
+      parensWith (closingFor site) (insideBrackets here (apart (hsExpr ctx e)))
+    where
+      apart d = case unLoc e of
+        SectionR _ (L _ (HsVar _ (L _ (Unqual o)))) _
+          | unboxedParens, take 1 (occNameString o) == "#" -> space <> d
+        SectionL _ _ (L _ (HsVar _ (L _ (Unqual o))))
+          | unboxedParens, occNameString o == "#" -> d <> space
+        _ -> d
+      unboxedParens =
+        extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums
   SectionL _ x op -> hsExpr ctx x <> breakOrSpace <> indent (hsExpr ctx op)
   SectionR _ op x -> hsExpr ctx op <> breakOrSpace <> indent (hsExpr ctx x)
   ExplicitTuple _ args boxity -> tuple ctx here (closingFor site) boxity args

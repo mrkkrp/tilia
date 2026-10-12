@@ -81,7 +81,7 @@ adorn ctx here x = go
     itsOwn = atSpan ctx . annSpan
     inParens d = txt "(" <> d <> txt ")"
     spaceOutHash d
-      | extensionOn ctx UnboxedSums,
+      | extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums,
         Unqual (occNameString -> '#' : _) <- x =
           space <> d <> space
       | otherwise = d
