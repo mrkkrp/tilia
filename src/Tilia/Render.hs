@@ -11,7 +11,7 @@ import Data.Choice (fromBool)
 import Data.IntMap.Strict qualified as IntMap
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -109,6 +109,7 @@ renderConfiguration settings parsed =
               (comments (pmSource parsed))
               (hsmodImports m)
         }
+    carryingOn = carriedOnFrom loose
     ctx =
       Ctx
         { ctxExtensions = rcExtensions settings,
@@ -118,8 +119,11 @@ renderConfiguration settings parsed =
           ctxSource = pmSource parsed,
           ctxLineComments = indexOn (filter (not . closesItself) loose),
           ctxCarryingOn =
-            Set.fromList
-              (startPoint . commentSpan <$> filter (isJust . carriedOnFrom loose) loose),
+            Map.fromList
+              [ (startPoint (commentSpan c), remark)
+              | c <- loose,
+                Just (_, remark) <- [carryingOn c]
+              ],
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot
         }

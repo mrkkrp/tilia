@@ -260,7 +260,7 @@ singleLine c = case commentBody c of
 -- comments that carry it on in turn, and the column that comment begins at.
 carriedOnFrom :: [Comment] -> Comment -> Maybe (Int, Int)
 carriedOnFrom cs = \c ->
-  if commentTrailing c
+  if commentTrailing c || commentFollowed c
     then Nothing
     else
       go
@@ -286,7 +286,7 @@ carriedOnFrom cs = \c ->
         ]
     go column line above
       | Just remark <- IntMap.lookup line remarks,
-        above == ContentAt column || remark == column =
+        above == ContentAt column || remark <= column =
           Just (line, remark)
       | Just (col, above') <- IntMap.lookup line ownLineComments,
         col == column,
