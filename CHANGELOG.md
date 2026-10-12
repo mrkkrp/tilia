@@ -6,6 +6,10 @@
 * A fixity declaration written without a precedence, such as
   ``infixr `cons` ``, comes out without one rather than with the `9` it
   defaults to. [Issue 267](https://github.com/mrkkrp/tilia/issues/267).
+* The `where` of a module header written once after the `#endif` of a
+  conditional around the export list stays there rather than being copied
+  into each branch, and comments written right before or after it stay on
+  their side of it. [Issue 266](https://github.com/mrkkrp/tilia/issues/266).
 
 ## Tilia 0.1.1.0
 

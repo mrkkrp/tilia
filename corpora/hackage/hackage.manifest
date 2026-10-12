@@ -669,7 +669,7 @@ formatted       c4481214d6c0  attoparsec-0.14.4/tests/QC/Buffer.hs
 formatted       ae7fa7b38a4b  attoparsec-0.14.4/tests/QC/ByteString.hs
 formatted       455e4866502a  attoparsec-0.14.4/tests/QC/Combinator.hs
 formatted       2bd326ae7162  attoparsec-0.14.4/tests/QC/Common.hs
-formatted       7558d60104bb  attoparsec-0.14.4/tests/QC/IPv6/Internal.hs
+formatted       394bfa5dcceb  attoparsec-0.14.4/tests/QC/IPv6/Internal.hs
 formatted       0692feda416d  attoparsec-0.14.4/tests/QC/IPv6/Types.hs
 formatted       08452f3d9508  attoparsec-0.14.4/tests/QC/Rechunked.hs
 formatted       0bab40e54197  attoparsec-0.14.4/tests/QC/Simple.hs
