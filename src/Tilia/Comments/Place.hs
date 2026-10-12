@@ -175,13 +175,13 @@ placeComments regions leads fences comments =
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
         continues
-          | nothingBelowItLinesUp,
-            Just (anchor, remark) <- carriedOn c =
+          | Just (anchor, remark) <- carriedOn c,
+            remark <= spanStartColumn here || nothingBelowItLinesUp =
               (,linedUpWith remark) <$> endingOn anchor
           | otherwise = Nothing
 
         linedUpWith remark
-          | remark == spanStartColumn here = After SpillUnderPrevious
+          | remark <= spanStartColumn here = After SpillUnderPrevious
           | otherwise = After SpillAtIndentation
 
         nothingBelowItLinesUp =

@@ -14,6 +14,11 @@
   `again $`, comes out once after the `#endif` rather than in each branch
   where it is written at the column of the prefix.
   [Issue 263](https://github.com/mrkkrp/tilia/issues/263).
+* A comment carrying on the remark that ends the line above stays with that
+  remark where it is lined up under it and the code under the comment begins
+  at the same column, or where it is indented further than the remark,
+  rather than going with the code that follows.
+  [Issue 255](https://github.com/mrkkrp/tilia/issues/255).
 
 ## Tilia 0.1.1.0
 

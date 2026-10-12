@@ -93,8 +93,9 @@ data Ctx = Ctx
     ctxCaptured :: Map Span Fixity,
     -- | The comments that take whole lines, by starting position.
     ctxLineComments :: Map (Int, Int) Comment,
-    -- | Where each comment that carries on a trailing comment begins.
-    ctxCarryingOn :: Set (Int, Int),
+    -- | The column of the trailing comment each comment that carries one on
+    -- begins at, by where that comment begins.
+    ctxCarryingOn :: Map (Int, Int) Int,
     -- | The module as its author wrote it.
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
@@ -218,11 +219,11 @@ printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
         Map.dropWhileAntitone (< endPoint a) (ctxLineComments ctx)
     printedAfter c =
       commentTrailing c
-        || ( Set.member (startPoint s) (ctxCarryingOn ctx)
-               && spanStartColumn b < spanStartColumn s
-           )
+        || maybe False carriesOn (Map.lookup (startPoint s) (ctxCarryingOn ctx))
       where
         s = commentSpan c
+        carriesOn remark =
+          remark <= spanStartColumn s || spanStartColumn b < spanStartColumn s
 
 -- | Is a comment going to be printed between the two spans?
 commentPrintedBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
