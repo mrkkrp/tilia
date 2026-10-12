@@ -3,6 +3,7 @@ name: tilia
 version: 0.1.1.0
 license: BSD-3-Clause
 license-file: LICENSE.md
+author: Mark Karpov <markkarpov92@gmail.com>
 maintainer: Mark Karpov <markkarpov92@gmail.com>
 tested-with:
   ghc ==9.10.3
