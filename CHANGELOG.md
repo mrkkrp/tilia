@@ -10,6 +10,10 @@
   conditional around the export list stays there rather than being copied
   into each branch, and comments written right before or after it stay on
   their side of it. [Issue 266](https://github.com/mrkkrp/tilia/issues/266).
+* Code that one branch of a conditional puts a prefix in front of, such as
+  `again $`, comes out once after the `#endif` rather than in each branch
+  where it is written at the column of the prefix.
+  [Issue 263](https://github.com/mrkkrp/tilia/issues/263).
 
 ## Tilia 0.1.1.0
 

@@ -132,8 +132,25 @@ merge written conditionals guards varied settledOthers = go Broken
           Nothing -> case spineAt l d of
             parts@(_ : _ : _) ->
               Just . factored middle l $
-                [if k == inside then parts else [e] | (k, e) <- zip [0 ..] xs]
+                [ if k == inside then tucked inside l parts else [e]
+                | (k, e) <- zip [0 ..] xs
+                ]
             _ -> Nothing
+
+        tucked inside l parts = case unsnoc parts of
+          Just (front, DNest _ y)
+            | e : _ <-
+                [ e
+                | e <- xs,
+                  regionOf e == regionOf y,
+                  fmap spanStartColumn (regionOf e) == column,
+                  printDoc defaultRenderOptions (DGroup l y)
+                    == printDoc defaultRenderOptions e
+                ] ->
+                front <> [e]
+          _ -> parts
+          where
+            column = spanStartColumn <$> listToMaybe (drop inside spans)
 
     factored within layout ss =
       let same (x, _) (y, _) = agree varied layout x y
