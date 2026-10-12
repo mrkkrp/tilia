@@ -301,14 +301,16 @@ ieItem ctx here withComma = \case
       <> at ctx n (wrappedName ctx)
       <> comma'
       <> itemDocumentation doc
-  IEThingAll (warning, _) n doc ->
+  IEThingAll (warning, (_, dots, _)) n doc ->
     exportWarning warning
       <> at ctx n (wrappedName ctx)
       <> space
-      <> txt "(..)"
+      <> txt "("
+      <> keywordAt ctx (tokenSpan dots) ".."
+      <> txt ")"
       <> comma'
       <> itemDocumentation doc
-  IEThingWith (warning, (open, _, _, close)) n wildcard members doc ->
+  IEThingWith (warning, (open, dots, _, close)) n wildcard members doc ->
     align
       ( exportWarning warning
           <> at ctx n (wrappedName ctx)
@@ -328,7 +330,7 @@ ieItem ctx here withComma = \case
         NoIEWildcard -> rendered
         IEWildcard n' ->
           let (before, after) = splitAt n' rendered
-           in before <> [txt ".."] <> after
+           in before <> [keywordAt ctx (tokenSpan dots) ".."] <> after
   IEModuleContents (warning, _) m ->
     exportWarning warning <> at ctx m (moduleHeadName ctx) <> comma'
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
