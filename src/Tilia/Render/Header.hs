@@ -235,8 +235,8 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
             ( breakOrSpace
                 <> foldMap warning hsmodDeprecMessage
                 <> foldMap exports' hsmodExports
-                <> txt "where"
             )
+          <> keywordAt ctx (tokenSpan (am_where (anns hsmodAnn))) "where"
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
     warning w = at ctx w warningTxt <> breakOrSpace
