@@ -35,7 +35,7 @@ import System.FilePath ((<.>), (</>))
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
-import Tilia.Corpus (Corpus (..), Source (..), corpusCache, hackagePackages)
+import Tilia.Corpus (Corpus (..), corpusCache, hackagePackages)
 import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache (Cache, PlanToken (..), openCache)
 import Tilia.Fixity.HiFile (decodeHiFile)
@@ -62,6 +62,35 @@ resolved =
     "semigroupoids-6.0.2",
     "pandoc-types-1.23.1.2",
     "mtl-2.3.2"
+  ]
+
+-- | The packages of the Hackage corpus the libraries of the resolved ones
+-- depend on, which the plan holds with their tarballs.
+heldDependencies :: [String]
+heldDependencies =
+  [ "QuickCheck-2.18.0.0",
+    "ansi-terminal-1.1.5",
+    "attoparsec-0.14.4",
+    "bifunctors-5.6.3",
+    "comonad-5.0.10",
+    "contravariant-1.5.6",
+    "dlist-1.0",
+    "exceptions-0.10.12",
+    "hashable-1.5.1.0",
+    "http-types-0.12.6",
+    "optparse-applicative-0.19.0.0",
+    "parser-combinators-1.3.1",
+    "profunctors-5.6.3",
+    "random-1.3.1",
+    "resourcet-1.3.0",
+    "scientific-0.3.8.1",
+    "stm-2.5.3.1",
+    "tasty-1.5.4",
+    "th-abstraction-0.7.2.0",
+    "time-1.16.0.1",
+    "transformers-0.6.3.0",
+    "unordered-containers-0.2.21",
+    "uuid-types-1.0.6.1"
   ]
 
 -- | The packages the compiler ships with whose every interface is decoded.
@@ -132,9 +161,7 @@ withFixityBenchmarks use = do
 fixityBenchmarks :: FilePath -> IO (Either Text ([Benchmark], Text))
 fixityBenchmarks dir = do
   corpus <- (</> corpusName hackagePackages) <$> corpusCache
-  let releases = case corpusSource hackagePackages of
-        HackageReleases names -> names
-        _ -> []
+  let releases = resolved <> heldDependencies
       tarballOf release = dir </> "tarballs" </> release <.> "tar.gz"
       tarballs = [(planned release, tarballOf release) | release <- releases]
       plan =
