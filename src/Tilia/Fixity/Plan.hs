@@ -150,7 +150,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (inParallel, quietly)
+import Tilia.Utils (byteOrderMark, inParallel, quietly)
 
 ----------------------------------------------------------------------------
 -- The plan
@@ -1189,7 +1189,8 @@ resolveModule
         readFileText path >>= \case
           Nothing -> pure unreadable
           Just source ->
-            fromSummaries (wkReach visiting') modName =<< wkSummariesOf modName source
+            fromSummaries (wkReach visiting') modName
+              =<< wkSummariesOf modName (snd (byteOrderMark source))
     | Just original <- Map.lookup modName wkReexported,
       Map.notMember modName wkInterfaces =
         wkReach visiting' original

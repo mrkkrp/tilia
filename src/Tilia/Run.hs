@@ -46,7 +46,15 @@ import Tilia.Format
   )
 import Tilia.Newline (NewlineStyle (Lf), getNewlineStyle, setNewlineStyle)
 import Tilia.Palette (Color (Bad, Good, Middling, Place), Palette, marker, paint)
-import Tilia.Utils (asUtf8, attempted, inParallel, indent, lineWidth, wrapTo)
+import Tilia.Utils
+  ( asUtf8,
+    attempted,
+    byteOrderMark,
+    inParallel,
+    indent,
+    lineWidth,
+    wrapTo,
+  )
 
 ----------------------------------------------------------------------------
 -- Outcomes
@@ -118,9 +126,11 @@ outcomeOf ::
   Text ->
   IO Outcome
 outcomeOf session path before =
-  formatSource session path (setNewlineStyle Lf before) >>= \case
+  formatSource session path (setNewlineStyle Lf source) >>= \case
     Left e -> pure (if refused e then Declined e else Failed e)
-    Right formatted -> pure (formattingOutcome before formatted)
+    Right formatted -> pure (formattingOutcome before (mark <> formatted))
+  where
+    (mark, source) = byteOrderMark before
 
 -- | Read a source file as UTF-8.
 readAsUtf8 :: FilePath -> IO (Either Text Text)
