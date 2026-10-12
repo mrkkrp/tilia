@@ -27,6 +27,10 @@
 * A comment under a quasi-quotation written over several lines stays out of
   it, rather than being moved before its `|]`, which changed what was
   quoted. [Issue 274](https://github.com/mrkkrp/tilia/issues/274).
+* A module that begins with a byte order mark, which GHC skips, is
+  formatted and keeps the mark, and fixities are taken from a project module
+  that begins with one, rather than its not parsing.
+  [Issue 275](https://github.com/mrkkrp/tilia/issues/275).
 
 ## Tilia 0.1.1.0
 

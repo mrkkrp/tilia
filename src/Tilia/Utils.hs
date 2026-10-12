@@ -7,6 +7,7 @@ module Tilia.Utils
   ( quietly,
     attempted,
     asUtf8,
+    byteOrderMark,
     lineWidth,
     indent,
     wrapTo,
@@ -59,6 +60,11 @@ asUtf8 :: BS.ByteString -> Either Text Text
 asUtf8 bytes = case T.decodeUtf8' bytes of
   Right text -> Right text
   Left _ -> Left "it is not valid UTF-8"
+
+-- | The byte order mark a text begins with, which GHC skips, if it has one,
+-- and the rest of it.
+byteOrderMark :: Text -> (Text, Text)
+byteOrderMark t = T.splitAt (if "\xFEFF" `T.isPrefixOf` t then 1 else 0) t
 
 -- | The line width for the terminal output of this program.
 lineWidth :: Int

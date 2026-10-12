@@ -7,10 +7,11 @@
 -- | Formatting what an editor holds of a module.
 module Tilia.EditorSpec (spec) where
 
+import Data.ByteString qualified as BS
 import Data.Choice (pattern Don't)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
+import Data.Text.Encoding qualified as T
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
@@ -41,10 +42,20 @@ spec = describe "formatting what an editor holds" $ do
       buffer ("src" </> "Ops.hs") "module Ops where\r\nx=1\r\n"
         `shouldReturn` CameTo "module Ops where\r\n\r\nx = 1\r\n"
 
+  it "keeps the byte order mark the buffer begins with" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Ops.hs") "\xFEFFmodule Ops where\nx=1\n"
+        `shouldReturn` CameTo "\xFEFFmodule Ops where\n\nx = 1\n"
+
   it "takes fixities from the modules the buffer imports" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
         `shouldReturn` CameTo "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
+
+  it "takes fixities from a module that begins with a byte order mark" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Uses.hs") "module Uses where\nimport Marked\nx=a <-> b\n"
+        `shouldReturn` CameTo "module Uses where\n\nimport Marked\n\nx = a <-> b\n"
 
   it "declines an operator from a module it cannot read" $
     withProject $ \buffer ->
@@ -152,7 +163,8 @@ came = \case
 failure :: FormatError -> Int
 failure = formatErrorExitCode
 
--- | A project with a module declaring @infixl 6 <+>@, a @.tiliaignore@
+-- | A project with a module declaring @infixl 6 <+>@, one beginning with a
+-- byte order mark declaring @infixr 0 <->@, a @.tiliaignore@
 -- excluding @src/Generated.hs@, and a plan for it trusted as up to date,
 -- handed to the test as a way to format a buffer as one of its files.
 withProject :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
@@ -162,14 +174,14 @@ withProject act =
         planFile = dir </> "elsewhere" </> "plan.json"
         write path text = do
           createDirectoryIfMissing True (takeDirectory path)
-          T.writeFile path text
+          BS.writeFile path (T.encodeUtf8 text)
     write (project </> "fake.cabal") $
       T.unlines
         [ "cabal-version: 2.4",
           "name: fake",
           "version: 0.1.0.0",
           "library",
-          "  exposed-modules: Ops",
+          "  exposed-modules: Ops, Marked",
           "  hs-source-dirs: src",
           "  default-language: Haskell2010"
         ]
@@ -179,6 +191,13 @@ withProject act =
           "infixl 6 <+>",
           "(<+>) :: a -> a -> a",
           "(<+>) = const"
+        ]
+    write (project </> "src" </> "Marked.hs") $
+      T.unlines
+        [ "\xFEFFmodule Marked ((<->)) where",
+          "infixr 0 <->",
+          "(<->) :: a -> a -> a",
+          "(<->) = const"
         ]
     write (project </> ".tiliaignore") "src/Generated.hs\n"
     write planFile $
