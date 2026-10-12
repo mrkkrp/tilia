@@ -24,6 +24,9 @@
   `( #<| )` and the section `( #<| x)`, and `#` alone the space before a
   closing one, as in `(x # )`, rather than coming out as `(#` or `#)`, which
   do not parse. [Issue 273](https://github.com/mrkkrp/tilia/issues/273).
+* A comment under a quasi-quotation written over several lines stays out of
+  it, rather than being moved before its `|]`, which changed what was
+  quoted. [Issue 274](https://github.com/mrkkrp/tilia/issues/274).
 
 ## Tilia 0.1.1.0
 
