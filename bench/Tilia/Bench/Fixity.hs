@@ -17,7 +17,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.Choice (pattern Do, pattern Don't)
 import Data.Either (rights)
-import Data.Foldable (for_)
+import Data.Foldable (find, for_)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Text (Text)
@@ -35,7 +35,7 @@ import System.FilePath ((<.>), (</>))
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
-import Tilia.Corpus (Corpus (..), corpusCache, hackagePackages)
+import Tilia.Corpus (Corpus (..), Source (..), corpusCache, hackagePackages)
 import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache (Cache, PlanToken (..), openCache)
 import Tilia.Fixity.HiFile (decodeHiFile)
@@ -48,49 +48,49 @@ import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 
 -- | The packages of the Hackage corpus whose every module is read.
-resolved :: [String]
+resolved :: [Text]
 resolved =
-  [ "lens-5.3.6",
-    "aeson-2.3.1.0",
-    "megaparsec-9.8.1",
-    "servant-0.20.3.0",
-    "conduit-1.3.6.1",
-    "vector-0.13.2.0",
-    "text-2.1.4",
-    "free-5.2",
-    "optics-0.4.2.1",
-    "semigroupoids-6.0.2",
-    "pandoc-types-1.23.1.2",
-    "mtl-2.3.2"
+  [ "lens",
+    "aeson",
+    "megaparsec",
+    "servant",
+    "conduit",
+    "vector",
+    "text",
+    "free",
+    "optics",
+    "semigroupoids",
+    "pandoc-types",
+    "mtl"
   ]
 
 -- | The packages of the Hackage corpus the libraries of the resolved ones
 -- depend on, which the plan holds with their tarballs.
-heldDependencies :: [String]
+heldDependencies :: [Text]
 heldDependencies =
-  [ "QuickCheck-2.18.0.0",
-    "ansi-terminal-1.1.5",
-    "attoparsec-0.14.4",
-    "bifunctors-5.6.3",
-    "comonad-5.0.10",
-    "contravariant-1.5.6",
-    "dlist-1.0",
-    "exceptions-0.10.12",
-    "hashable-1.5.1.0",
-    "http-types-0.12.6",
-    "optparse-applicative-0.19.0.0",
-    "parser-combinators-1.3.1",
-    "profunctors-5.6.3",
-    "random-1.3.1",
-    "resourcet-1.3.0",
-    "scientific-0.3.8.1",
-    "stm-2.5.3.1",
-    "tasty-1.5.4",
-    "th-abstraction-0.7.2.0",
-    "time-1.16.0.1",
-    "transformers-0.6.3.0",
-    "unordered-containers-0.2.21",
-    "uuid-types-1.0.6.1"
+  [ "QuickCheck",
+    "ansi-terminal",
+    "attoparsec",
+    "bifunctors",
+    "comonad",
+    "contravariant",
+    "dlist",
+    "exceptions",
+    "hashable",
+    "http-types",
+    "optparse-applicative",
+    "parser-combinators",
+    "profunctors",
+    "random",
+    "resourcet",
+    "scientific",
+    "stm",
+    "tasty",
+    "th-abstraction",
+    "time",
+    "transformers",
+    "unordered-containers",
+    "uuid-types"
   ]
 
 -- | The packages the compiler ships with whose every interface is decoded.
@@ -148,20 +148,44 @@ dependencies =
 -- collections fall in the benchmarks that run after it, so this goes after
 -- the benchmarks of formatting.
 withFixityBenchmarks :: (([Benchmark], Text) -> IO a) -> IO (Either Text a)
-withFixityBenchmarks use = do
-  pid <- getCurrentPid
-  let dir = printf "/tmp/tilia-bench-%010d" (fromIntegral pid :: Int)
-  bracket_
-    (createDirectoryIfMissing True (dir </> "tarballs"))
-    (removePathForcibly dir)
-    (fixityBenchmarks dir >>= traverse use)
+withFixityBenchmarks use = case releases of
+  Left problem -> pure (Left problem)
+  Right (toResolve, held) -> do
+    pid <- getCurrentPid
+    let dir = printf "/tmp/tilia-bench-%010d" (fromIntegral pid :: Int)
+    bracket_
+      (createDirectoryIfMissing True (dir </> "tarballs"))
+      (removePathForcibly dir)
+      (fixityBenchmarks dir toResolve held >>= traverse use)
+  where
+    releases =
+      (,)
+        <$> traverse corpusRelease resolved
+        <*> traverse corpusRelease heldDependencies
+
+-- | The release of a package the Hackage corpus holds.
+corpusRelease :: Text -> Either Text String
+corpusRelease name =
+  maybe (Left ("The Hackage corpus holds no " <> name <> ".")) Right $
+    find ((== name) . ppName . planned) releases
+  where
+    releases = case corpusSource hackagePackages of
+      HackageReleases names -> names
+      _ -> []
 
 -- | The benchmarks of fixity resolution, set up in the directory given, and
 -- a digest of the interfaces they decode.
-fixityBenchmarks :: FilePath -> IO (Either Text ([Benchmark], Text))
-fixityBenchmarks dir = do
+fixityBenchmarks ::
+  -- | The directory to set them up in.
+  FilePath ->
+  -- | The releases whose every module is read.
+  [String] ->
+  -- | The releases the plan holds besides them.
+  [String] ->
+  IO (Either Text ([Benchmark], Text))
+fixityBenchmarks dir toResolve held = do
   corpus <- (</> corpusName hackagePackages) <$> corpusCache
-  let releases = resolved <> heldDependencies
+  let releases = toResolve <> held
       tarballOf release = dir </> "tarballs" </> release <.> "tar.gz"
       tarballs = [(planned release, tarballOf release) | release <- releases]
       plan =
@@ -187,7 +211,7 @@ fixityBenchmarks dir = do
             pure $ do
               answers <- traverse (askModule resolver) modules
               length <$> evaluate (force answers)
-      packages <- for resolved $ \release -> do
+      packages <- for toResolve $ \release -> do
         modules <- fromMaybe [] <$> packageModules (tarballOf release)
         filled <- newIORef False
         let recalling = do
@@ -209,15 +233,18 @@ fixityBenchmarks dir = do
             digestOf interfaces
           )
   where
-    planned release =
-      let (name, version) = T.breakOnEnd "-" (T.pack release)
-       in PlanPackage (T.dropEnd 1 name) version PreExisting []
     decoding files = do
       fresh <- evaluate (force [(m, BS.copy bytes) | (m, bytes) <- files])
       pure $
         length . rights
           <$> evaluate
             (force [fromHiFile m =<< decodeHiFile bytes | (m, bytes) <- fresh])
+
+-- | A release of the Hackage corpus as a package of the plan.
+planned :: String -> PlanPackage
+planned release =
+  let (name, version) = T.breakOnEnd "-" (T.pack release)
+   in PlanPackage (T.dropEnd 1 name) version PreExisting []
 
 -- | A cache of fixities in a directory.
 cacheUnder :: FilePath -> IO Cache
