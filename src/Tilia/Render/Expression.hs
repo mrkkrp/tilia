@@ -1205,7 +1205,7 @@ untypedSplice ctx deco = \case
     txt "["
       <> name ctx quoter
       <> txt "|"
-      <> at ctx str (verbatim . T.pack . unpackFS)
+      <> verbatim (T.pack (unpackFS (unLoc str)))
       <> txt "|]"
 
 -- | A Template Haskell splice, typed or not.
