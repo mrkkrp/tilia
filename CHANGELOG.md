@@ -3,6 +3,9 @@
 * A comment written beside the `..` of an item of an import or export list,
   as in `T ({- c -} ..)`, stays inside its parentheses rather than moving to
   the item after it. [Issue 254](https://github.com/mrkkrp/tilia/issues/254).
+* A fixity declaration written without a precedence, such as
+  ``infixr `cons` ``, comes out without one rather than with the `9` it
+  defaults to. [Issue 267](https://github.com/mrkkrp/tilia/issues/267).
 
 ## Tilia 0.1.1.0
 

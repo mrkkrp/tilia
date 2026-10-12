@@ -45,7 +45,7 @@ sigDecl ctx = \case
   PatSynSig _ names sigType -> patSynSig ctx names sigType
   ClassOpSig _ isDefault names sigType ->
     includeWhen isDefault (txt "default" <> space) <> typeSig ctx (Do #indentTail) names sigType
-  FixSig _ sig -> fixitySig ctx sig
+  FixSig ((_, written), _) sig -> fixitySig ctx written sig
   InlineSig _ n prag -> inlineSig ctx n prag
   SpecSig _ n types prag ->
     specialiseSig ctx Nothing (noLocA (HsVar NoExtField n)) types prag
@@ -104,13 +104,12 @@ patSynSig ctx names sigType
   where
     body = typeSig ctx (Don't #indentTail) names sigType
 
--- | @infixl 5 <+>@.
-fixitySig :: Ctx -> FixitySig GhcPs -> Doc
-fixitySig ctx (FixitySig namespace names (Fixity precedence direction)) =
+-- | @infixl 5 <+>@, with the precedence only where one is written.
+fixitySig :: Ctx -> Maybe EpaLocation -> FixitySig GhcPs -> Doc
+fixitySig ctx written (FixitySig namespace names (Fixity prec direction)) =
   txt keyword
     <> space
-    <> outputable precedence
-    <> space
+    <> foldMap (const (outputable prec <> space)) written
     <> namespaceSpec namespace
     <> align (commaSep (fmap (name ctx) names))
   where

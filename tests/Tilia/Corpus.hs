@@ -361,7 +361,8 @@ ormoluSkip =
     "declaration" </> "signature" </> "pattern" </> "multiline.hs",
     "declaration" </> "splice" </> "quasiquote.hs",
     "declaration" </> "value" </> "function" </> "quasi-quotes.hs",
-    "declaration" </> "value" </> "function" </> "operator-comments-0.hs"
+    "declaration" </> "value" </> "function" </> "operator-comments-0.hs",
+    "declaration" </> "signature" </> "fixity" </> "infix.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable
