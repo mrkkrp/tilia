@@ -236,6 +236,7 @@ hackageReleases =
     "esqueleto-3.6.0.3",
     "exceptions-0.10.12",
     "fay-0.24.2.0",
+    "flatparse-0.5.6.1",
     "free-5.2",
     "fsnotify-0.4.4.0",
     "hakyll-4.17.0.0",
