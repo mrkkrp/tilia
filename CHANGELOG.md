@@ -19,6 +19,11 @@
   at the same column, or where it is indented further than the remark,
   rather than going with the code that follows.
   [Issue 255](https://github.com/mrkkrp/tilia/issues/255).
+* With `UnboxedTuples` on, as with `UnboxedSums` already, an operator that
+  begins with `#` keeps the space after an opening parenthesis, as in
+  `( #<| )` and the section `( #<| x)`, and `#` alone the space before a
+  closing one, as in `(x # )`, rather than coming out as `(#` or `#)`, which
+  do not parse. [Issue 273](https://github.com/mrkkrp/tilia/issues/273).
 
 ## Tilia 0.1.1.0
 
