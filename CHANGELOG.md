@@ -1,4 +1,4 @@
-## Unreleased
+## Tilia 0.1.1.0
 
 * Keep code that every configuration prints alike out of the branches of a
   conditional in many more cases rather than copying it into each of them.
