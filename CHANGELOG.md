@@ -31,6 +31,10 @@
   formatted and keeps the mark, and fixities are taken from a project module
   that begins with one, rather than its not parsing.
   [Issue 275](https://github.com/mrkkrp/tilia/issues/275).
+* `Tilia.Editor.compiledSession` builds a session from what a program that
+  has compiled the project already knows, such as a language server, so that
+  formatting needs neither Cabal nor the sources of dependencies.
+  [Issue 234](https://github.com/mrkkrp/tilia/issues/234).
 
 ## Tilia 0.1.1.0
 
