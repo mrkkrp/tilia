@@ -110,13 +110,13 @@ recalled recall remember work =
 -- | The modules a package exposes, if that was worked out before.
 cachedModules :: Cache -> Text -> IO (Maybe [Text])
 cachedModules cache package =
-  readIfPresent (at cache ["modules", package]) $
+  readIfPresent (at cache (modulesFile package)) $
     filter (not . T.null) . T.lines
 
 -- | Remember what a package exposes.
 storeModules :: Cache -> Text -> [Text] -> IO ()
 storeModules cache package =
-  writeAtomically (at cache ["modules", package]) . T.unlines
+  writeAtomically (at cache (modulesFile package)) . T.unlines
 
 -- | What was established about a module before, if anything.
 cachedEstablished ::
@@ -130,7 +130,7 @@ cachedEstablished ::
   -- left unsettled was left so under another plan.
   IO (Maybe Established)
 cachedEstablished cache package modName =
-  fmap join . readIfPresent (at cache ["established", package, modName]) $
+  fmap join . readIfPresent (at cache (establishedFile package modName)) $
     assembled . fmap T.words . T.lines
   where
     assembled entries = do
@@ -179,7 +179,7 @@ storeEstablished ::
   Established ->
   IO ()
 storeEstablished cache package modName established =
-  writeAtomically path . renderLines $
+  writeAtomically (at cache (establishedFile package modName)) . renderLines $
     fmap (("fixity" :) . renderFixity) (Map.toList fixities)
       <> [ ["unsettled", tokenOf cache] <> chain <> renderNamespaced names
          | (chain, names) <- Map.toList (establishedUnsettled established)
@@ -201,7 +201,6 @@ storeEstablished cache package modName established =
            Just kids /= Map.lookup (OpName parent) written
          ]
   where
-    path = at cache ["established", package, modName]
     fixities = establishedFixities established
     certain = establishedCertain established
     written = Map.map (Set.map snd) (certainMembers certain)
@@ -218,7 +217,7 @@ cachedSummaries ::
   -- | What it said, or 'Nothing' if nothing is remembered for that stamp.
   IO (Maybe (Maybe (NonEmpty ModuleSummary)))
 cachedSummaries cache key stamp =
-  fmap join . readIfPresent (at cache ["summaries", key]) $ \contents ->
+  fmap join . readIfPresent (at cache (summariesFile key)) $ \contents ->
     case T.lines contents of
       (header : rest) | header == readFrom stamp -> parseSummaries rest
       _ -> Nothing
@@ -236,7 +235,7 @@ storeSummaries ::
   Maybe (NonEmpty ModuleSummary) ->
   IO ()
 storeSummaries cache key stamp summaries =
-  writeAtomically (at cache ["summaries", key]) . T.unlines $
+  writeAtomically (at cache (summariesFile key)) . T.unlines $
     readFrom stamp : renderSummaries summaries
 
 -- | The first line of a remembered summary: what it was read from, and the
@@ -370,7 +369,7 @@ parseSummaries = \case
 -- see it.
 cachedInstalled :: Cache -> IO (Maybe [InstalledPackage])
 cachedInstalled cache = quietly Nothing $ do
-  readIfPresent (at cache ["installed", tokenOf cache]) T.lines >>= \case
+  readIfPresent (at cache (installedFile cache)) T.lines >>= \case
     Nothing -> pure Nothing
     Just ls -> do
       let (databases, packages) = span (T.isPrefixOf "db ") ls
@@ -404,7 +403,7 @@ storeInstalled cache found
   | null databases = pure ()
   | otherwise = quietly () $ do
       stamps <- traverse stampOf databases
-      writeAtomically (at cache ["installed", tokenOf cache]) . renderLines $
+      writeAtomically (at cache (installedFile cache)) . renderLines $
         [["db", stamp, T.pack path] | (path, stamp) <- zip databases stamps]
           <> concatMap packageLines (installedPackages found)
   where
@@ -423,12 +422,12 @@ stampOf path =
 -- and left the plan exactly as before.
 cachedFutileSolve :: Cache -> IO Bool
 cachedFutileSolve cache =
-  isJust <$> readIfPresent (at cache ["solves", tokenOf cache]) (const ())
+  isJust <$> readIfPresent (at cache (solvesFile cache)) (const ())
 
 -- | Remember that solving again did not widen the plan.
 storeFutileSolve :: Cache -> IO ()
 storeFutileSolve cache =
-  writeAtomically (at cache ["solves", tokenOf cache]) ""
+  writeAtomically (at cache (solvesFile cache)) ""
 
 -- | The packages an earlier run was still short of after asking @cabal@ to
 -- fetch them.
@@ -436,38 +435,36 @@ cachedFutileFetch :: Cache -> IO [Text]
 cachedFutileFetch cache =
   fromMaybe []
     <$> readIfPresent
-      (at cache ["fetches", tokenOf cache])
+      (at cache (fetchesFile cache))
       (filter (not . T.null) . T.lines)
 
 -- | Remember what fetching left missing.
 storeFutileFetch :: Cache -> [Text] -> IO ()
 storeFutileFetch cache =
-  writeAtomically (at cache ["fetches", tokenOf cache]) . T.unlines
+  writeAtomically (at cache (fetchesFile cache)) . T.unlines
 
 -- | When the project was last solved under this plan.
 cachedSolveTime :: Cache -> IO (Maybe UTCTime)
 cachedSolveTime cache =
   join
     <$> readIfPresent
-      (at cache ["solve-times", tokenOf cache])
+      (at cache (solveTimeFile cache))
       (iso8601ParseM . T.unpack . T.strip)
 
 -- | Remember when the project was solved under this plan.
 storeSolveTime :: Cache -> UTCTime -> IO ()
 storeSolveTime cache =
-  writeAtomically (at cache ["solve-times", tokenOf cache])
-    . T.pack
-    . iso8601Show
+  writeAtomically (at cache (solveTimeFile cache)) . T.pack . iso8601Show
 
 -- | Where @cabal@ last said it keeps the sources it downloads.
 cachedPackageCache :: Cache -> IO (Maybe FilePath)
 cachedPackageCache cache =
-  readIfPresent (at cache ["package-cache", tokenOf cache]) (T.unpack . T.strip)
+  readIfPresent (at cache (packageCacheFile cache)) (T.unpack . T.strip)
 
 -- | Remember where @cabal@ keeps the sources it downloads.
 storePackageCache :: Cache -> FilePath -> IO ()
 storePackageCache cache =
-  writeAtomically (at cache ["package-cache", tokenOf cache]) . T.pack
+  writeAtomically (at cache (packageCacheFile cache)) . T.pack
 
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
@@ -551,6 +548,38 @@ at :: Cache -> [Text] -> Maybe FilePath
 at cache path = case cache of
   Cache root _ -> Just (foldl (</>) root (fmap T.unpack path))
   NoCache -> Nothing
+
+-- | The path of the modules a package exposes.
+modulesFile :: Text -> [Text]
+modulesFile package = ["modules", package]
+
+-- | The path of what reading a module established.
+establishedFile :: Text -> Text -> [Text]
+establishedFile package modName = ["established", package, modName]
+
+-- | The path of what each configuration of a project module says.
+summariesFile :: Text -> [Text]
+summariesFile key = ["summaries", key]
+
+-- | The path of the packages the compiler can see.
+installedFile :: Cache -> [Text]
+installedFile cache = ["installed", tokenOf cache]
+
+-- | The path of the mark that solving again did not widen the plan.
+solvesFile :: Cache -> [Text]
+solvesFile cache = ["solves", tokenOf cache]
+
+-- | The path of what fetching left missing.
+fetchesFile :: Cache -> [Text]
+fetchesFile cache = ["fetches", tokenOf cache]
+
+-- | The path of when the project was last solved.
+solveTimeFile :: Cache -> [Text]
+solveTimeFile cache = ["solve-times", tokenOf cache]
+
+-- | The path of the directory @cabal@ downloads sources into.
+packageCacheFile :: Cache -> [Text]
+packageCacheFile cache = ["package-cache", tokenOf cache]
 
 -- | The token a cache is kept under.
 tokenOf :: Cache -> Text
