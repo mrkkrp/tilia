@@ -89,4 +89,4 @@ spec = do
       out (flat (includeUnless True (txt "a"))) `shouldBe` ""
 
 out :: Doc -> Text
-out = printDoc defaultRenderOptions
+out = printDoc

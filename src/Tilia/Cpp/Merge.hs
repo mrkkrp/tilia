@@ -23,7 +23,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives (Guard (..), Varied (..), untouched)
 import Tilia.Cpp.Place (regionOf)
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Doc (printDoc)
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Doc.Internal
   ( Conditional (..),
@@ -144,8 +144,8 @@ merge written conditionals guards varied settledOthers = go Broken
                 | e <- xs,
                   regionOf e == regionOf y,
                   fmap spanStartColumn (regionOf e) == column,
-                  printDoc defaultRenderOptions (DGroup l y)
-                    == printDoc defaultRenderOptions e
+                  printDoc (DGroup l y)
+                    == printDoc e
                 ] ->
                 front <> [e]
           _ -> parts
@@ -335,7 +335,7 @@ merge written conditionals guards varied settledOthers = go Broken
         lineEnding h hs
           | all ((== printed h) . printed) hs = layout
           | otherwise = Flat
-        printed = printDoc defaultRenderOptions
+        printed = printDoc
 
     endingWith t d = fromMaybe (d <> t) (inAlternatives d)
       where

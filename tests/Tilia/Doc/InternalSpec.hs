@@ -115,7 +115,7 @@ held = DHoldBack SpillAtIndentation
 underPrevious = DHoldBack SpillUnderPrevious
 
 out :: Doc -> Text
-out = printDoc defaultRenderOptions
+out = printDoc
 
 directive :: Doc
 directive = DCppDirective (mkSpan (9, 1) (9, 6)) "if X"

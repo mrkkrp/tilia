@@ -25,8 +25,6 @@ module Tilia.Doc.Internal
     TrailingWhitespace (..),
 
     -- * Rendering
-    RenderOptions (..),
-    defaultRenderOptions,
     render,
   )
 where
@@ -295,16 +293,9 @@ data TrailingWhitespace
 ----------------------------------------------------------------------------
 -- Rendering
 
--- | Knobs for 'render'.
-newtype RenderOptions = RenderOptions
-  { -- | Columns per indentation step.
-    roIndentStep :: Int
-  }
-  deriving (Eq, Show)
-
--- | Two columns per step.
-defaultRenderOptions :: RenderOptions
-defaultRenderOptions = RenderOptions{roIndentStep = 2}
+-- | Columns per indentation step.
+indentStep :: Int
+indentStep = 2
 
 -- | What the engine carries while walking a document.
 data Env = Env
@@ -312,8 +303,6 @@ data Env = Env
     envIndent :: !Int,
     -- | The layout of the innermost group.
     envLayout :: !Layout,
-    -- | Columns per indentation step.
-    envIndentStep :: !Int,
     -- | Whether what is written now is a note, which goes to the margin
     -- right above a preprocessor directive.
     envNote :: !Bool
@@ -414,14 +403,13 @@ emptyOut =
     }
 
 -- | Turn a document into text.
-render :: RenderOptions -> Doc -> Text
-render opts doc = finish (roIndentStep opts) (go env doc emptyOut)
+render :: Doc -> Text
+render doc = finish (go env doc emptyOut)
   where
     env =
       Env
         { envIndent = 0,
           envLayout = Broken,
-          envIndentStep = roIndentStep opts,
           envNote = False
         }
 
@@ -450,7 +438,7 @@ go env = \case
   DHardBreak -> breakLine (envIndent env)
   DVerbatimBreak lineStart trailing -> verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
-  DNest n d -> go env{envIndent = envIndent env + n * envIndentStep env} d
+  DNest n d -> go env{envIndent = envIndent env + n * indentStep} d
   DAlign d -> \out ->
     go env{envIndent = max (envIndent env) (outColumn out)} d out
   DCppMarginNote d -> \out ->
@@ -698,24 +686,16 @@ adjustTrailingWhitespace = \case
 
 -- | Assemble the final text: one trailing newline, no blank lines at the
 -- end, no trailing whitespace anywhere.
-finish ::
-  -- | Columns per indentation step.
-  Int ->
-  Out ->
-  Text
-finish step out =
+finish :: Out -> Text
+finish out =
   case dropWhile (T.null . lineBody) (outLines (breakLine 0 out)) of
     [] -> ""
-    ls -> T.unlines (lineText <$> notesToMargin (continued step (reverse ls)))
+    ls -> T.unlines (lineText <$> notesToMargin (continued (reverse ls)))
 
 -- | Indent each alternative of a conditional that continues the line before
 -- the conditional further than that line.
-continued ::
-  -- | Columns per indentation step.
-  Int ->
-  [Line] ->
-  [Line]
-continued step = walk [] 0 False
+continued :: [Line] -> [Line]
+continued = walk [] 0 False
   where
     walk frames previous pending = \case
       [] -> []
@@ -736,7 +716,7 @@ continued step = walk [] 0 False
         | lineContinues l,
           not (linePinned l),
           at <= before ->
-            (before, before - at + step) : rest
+            (before, before - at + indentStep) : rest
         where
           at = lineIndent l + sum (fmap snd rest)
       _ -> frames

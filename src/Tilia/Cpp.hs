@@ -45,7 +45,7 @@ import Tilia.Cpp.Directives
 import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
 import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Doc (printDoc)
 import Tilia.Doc.Internal
   ( Doc (..),
     Layout (..),
@@ -107,7 +107,7 @@ formatWithCpp parser render path source = do
       )
       (configurationBudget * linesHeld source)
   formatted <-
-    printDoc defaultRenderOptions
+    printDoc
       <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where

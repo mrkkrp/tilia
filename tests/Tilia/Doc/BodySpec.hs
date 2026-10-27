@@ -58,4 +58,4 @@ spec = do
         `shouldBe` Hanging
 
 out :: Doc -> Text
-out = printDoc defaultRenderOptions
+out = printDoc
