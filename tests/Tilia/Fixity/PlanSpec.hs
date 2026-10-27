@@ -61,7 +61,7 @@ import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
-import Tilia.TestUtils (parsed, withEnvironment)
+import Tilia.TestUtils (parsed, unreadOnly, withEnvironment)
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
@@ -2116,8 +2116,3 @@ writeTarball path entries =
     entry (inside, text) = case Tar.toTarPath False inside of
       Left why -> error why
       Right tarPath -> pure (Tar.fileEntry tarPath (BL.fromStrict (T.encodeUtf8 text)))
-
--- | The one import blamed for an operator, unread on its own account and so
--- with nothing below it.
-unreadOnly :: Text -> NonEmpty ModuleChain
-unreadOnly m = ModuleChain (m :| []) :| []

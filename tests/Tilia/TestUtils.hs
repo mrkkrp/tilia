@@ -3,15 +3,18 @@ module Tilia.TestUtils
   ( withEnvironment,
     parsed,
     commentsIn,
+    unreadOnly,
   )
 where
 
 import Control.Exception (bracket)
 import Data.Foldable (traverse_)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import Tilia.Comments (Comment)
+import Tilia.Fixity (ModuleChain (..))
 import Tilia.Parser
   ( ParsedModule (..),
     defaultParserConfig,
@@ -41,3 +44,8 @@ parsed source = case parseModule defaultParserConfig "M.hs" source of
 -- | Every comment in a module.
 commentsIn :: Text -> [Comment]
 commentsIn = comments . pmSource . parsed
+
+-- | The one import blamed for an operator, unread on its own account and so
+-- with nothing below it.
+unreadOnly :: Text -> NonEmpty ModuleChain
+unreadOnly m = ModuleChain (m :| []) :| []
