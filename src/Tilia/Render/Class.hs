@@ -61,7 +61,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     head' =
       breakOrSpace
         <> indent
-          ( foldMap (classContext ctx) ctxt
+          ( foldMap (leftContext ctx) ctxt
               <> layoutFrom ctx headSpan classHead
               <> indent (funDeps ctx fdeps)
               <> includeUnless
@@ -102,12 +102,6 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
 isCTuple :: RdrName -> Int -> Bool
 isCTuple (Exact n) arity = isCTupleTyConName n && n == cTupleTyConName arity
 isCTuple _ _ = False
-
--- | A context on a class head, with the @=>@ that follows it.
-classContext :: Ctx -> LHsContext GhcPs -> Doc
-classContext ctx ctxt
-  | null (unLoc ctxt) = mempty
-  | otherwise = context ctx ctxt <> joinedBy "=>"
 
 -- | The functional dependencies of a class.
 funDeps :: Ctx -> [LHsFunDep GhcPs] -> Doc
