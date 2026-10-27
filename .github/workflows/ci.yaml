@@ -55,7 +55,7 @@ jobs:
             ~/.cache/cabal/packages/*/*
             !~/.cache/cabal/packages/*/01-index.*
             !~/.cache/cabal/packages/*/*.json
-          key: cabal-${{ matrix.ghc }}-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
+          key: cabal-${{ matrix.ghc }}-${{ hashFiles('cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-${{ matrix.ghc }}-
       - uses: actions/cache@v6
@@ -63,7 +63,7 @@ jobs:
           path: |
             ~/.cache/tilia/*
             !~/.cache/tilia/corpus
-          key: tilia-${{ matrix.ghc }}-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal', 'src/**') }}
+          key: tilia-${{ matrix.ghc }}-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
             tilia-${{ matrix.ghc }}-
       - uses: actions/cache@v6
@@ -124,7 +124,7 @@ jobs:
             ~/.cache/cabal/packages/*/*
             !~/.cache/cabal/packages/*/01-index.*
             !~/.cache/cabal/packages/*/*.json
-          key: cabal-format-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal') }}
+          key: cabal-format-${{ hashFiles('cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-format-
             cabal-ghc9103-
@@ -133,7 +133,7 @@ jobs:
           path: |
             ~/.cache/tilia/*
             !~/.cache/tilia/corpus
-          key: tilia-format-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal', 'src/**') }}
+          key: tilia-format-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
             tilia-format-
             tilia-ghc9103-
