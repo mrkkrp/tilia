@@ -12,11 +12,12 @@ import Data.Text qualified as T
 import Test.Hspec hiding (after, before)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
-import Tilia.Cpp (answeredLeaves, formatWithCpp, withoutRuledOut)
+import Tilia.Cpp (formatWithCpp, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
+import Tilia.TestUtils (answeredLeaves)
 import Tilia.Utils (tshow)
 
 spec :: Spec

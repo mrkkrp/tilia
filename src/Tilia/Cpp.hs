@@ -19,17 +19,8 @@ module Tilia.Cpp
     -- * Splitting
     Guard (..),
     Configurations (..),
-    configurations,
-    leaves,
     branchLeaves,
     correspondingBranches,
-    linearLeaves,
-    countLeaves,
-    answeredLeaves,
-    answeredLinearLeaves,
-
-    -- * Diagnostics
-    regions,
   )
 where
 
@@ -42,7 +33,6 @@ import Data.Foldable (traverse_)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
-import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Monoid (Any (..))
@@ -82,11 +72,7 @@ import Tilia.Source
     dropping,
     linesOf,
   )
-import Tilia.Span
-  ( Span,
-    spanEndLine,
-    spanStartLine,
-  )
+import Tilia.Span (spanEndLine, spanStartLine)
 
 ----------------------------------------------------------------------------
 -- Formatting
@@ -715,19 +701,3 @@ mergeOf written c =
     (cfgGuards c)
     (cfgWholes c)
     []
-
-----------------------------------------------------------------------------
--- Diagnostics
-
--- | Every region a document records provenance for, with what was printed
--- there.
---
--- The outermost wins where a span appears twice, which is the one
--- 'Tilia.Comments.Attach.attachComments' gives a comment to.
-regions :: Doc -> Map Span Doc
-regions = Map.fromListWith (\_ outer -> outer) . go
-  where
-    go = \case
-      DLocated s d -> (s, d) : go d
-      DVariant a _ -> go a
-      d -> foldChildren go d

@@ -1,8 +1,10 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Whether documents printed from different configurations line up.
 module Tilia.CppSpec (spec) where
 
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, maybeToList)
 import Data.Text (Text)
@@ -10,11 +12,12 @@ import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Cpp
 import Tilia.Cpp.Directives (implied)
-import Tilia.Doc.Internal (Doc)
+import Tilia.Doc.Internal (Doc (..), foldChildren)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig, renderModule)
 import Tilia.Span (Span)
+import Tilia.TestUtils (configurations, countLeaves, leaves, linearLeaves)
 
 -- | Format a module which uses the C preprocessor, configured with nothing.
 formatCpp :: Text -> Either Text Text
@@ -730,3 +733,16 @@ documentOf :: Text -> Either String Doc
 documentOf source = case parseModule defaultParserConfig "<cpp>" source of
   Left _ -> Left ("did not parse:\n" <> T.unpack source)
   Right parsed -> Right (renderModule defaultRenderConfig parsed)
+
+-- | Every region a document records provenance for, with what was printed
+-- there.
+--
+-- The outermost wins where a span appears twice, which is the one
+-- 'Tilia.Comments.Attach.attachComments' gives a comment to.
+regions :: Doc -> Map Span Doc
+regions = Map.fromListWith (\_ outer -> outer) . go
+  where
+    go = \case
+      DLocated s d -> (s, d) : go d
+      DVariant a _ -> go a
+      d -> foldChildren go d

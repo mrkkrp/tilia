@@ -20,13 +20,7 @@ import System.FilePath (replaceExtension)
 import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
 import Tilia.Corpus.Manifest
-import Tilia.Cpp
-  ( answeredLeaves,
-    answeredLinearLeaves,
-    countLeaves,
-    describeCppError,
-    usesCpp,
-  )
+import Tilia.Cpp (describeCppError, usesCpp)
 import Tilia.Diff (diff)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
 import Tilia.Palette (Palette (Plain), paletteFor)
@@ -40,6 +34,7 @@ import Tilia.Pragma (effectiveExtensions, movesPositions)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig (formatCppExample, printExample)
+import Tilia.TestUtils (answeredLeaves, answeredLinearLeaves, countLeaves)
 
 spec :: Spec
 spec = do
