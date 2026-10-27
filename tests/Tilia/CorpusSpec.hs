@@ -25,26 +25,21 @@ import Tilia.Cpp
     answeredLinearLeaves,
     countLeaves,
     describeCppError,
-    everyBranch,
-    formatWithCpp,
     usesCpp,
   )
 import Tilia.Diff (diff)
-import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
 import Tilia.Palette (Palette (Plain), paletteFor)
 import Tilia.Parser
   ( ParseError (..),
     ParsedModule (..),
-    ParserConfig,
     parseModule,
     parserConfigFor,
   )
 import Tilia.Pragma (effectiveExtensions, movesPositions)
-import Tilia.Render (RenderConfig, defaultRenderConfig, renderModule)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
-import Tilia.TestConfig (exampleRenderConfig)
+import Tilia.TestConfig (formatCppExample, printExample)
 
 spec :: Spec
 spec = do
@@ -351,10 +346,7 @@ checkPure palette path package source expected
     config = parserConfigFor package
     inForce = effectiveExtensions package source
     parse = either (const Nothing) Just . parseModule config path
-    render parsed =
-      printDoc
-        defaultRenderOptions
-        (renderModule (exampleRenderConfig package source (pure parsed)) parsed)
+    render = printExample package source
 
 ----------------------------------------------------------------------------
 -- Checking an example that involved the preprocessor
@@ -362,7 +354,7 @@ checkPure palette path package source expected
 -- | Everything that can be established about an example with conditionals in
 -- it.
 checkCpp :: Palette -> FilePath -> [Extension] -> Text -> Maybe Text -> Result
-checkCpp palette path package source expected = case formatWithCpp parser render path source of
+checkCpp palette path package source expected = case formatCppExample package path source of
   Left why -> Result Declined (describeCppError why) noDigest
   Right formatted -> case (countLeaves source, countLeaves formatted) of
     (Left why, _) ->
@@ -408,7 +400,7 @@ checkCpp palette path package source expected = case formatWithCpp parser render
         (Right went, Right came)
           | (why : _) <- alongside went came ->
               told formatted Broken (why <> "\n" <> against formatted)
-          | otherwise -> case formatWithCpp parser (renderConfigFor parser path package formatted) path formatted of
+          | otherwise -> case formatCppExample package path formatted of
               Left why ->
                 told formatted Broken ("the output cannot be formatted again: " <> describeCppError why)
               Right settled
@@ -463,7 +455,6 @@ checkCpp palette path package source expected = case formatWithCpp parser render
     parse = parseModule parser path
 
     parser = parserConfigFor package
-    render = renderConfigFor parser path package source
 
 -- | Why a parse failed, and where in the file, but not which file.
 --
@@ -494,8 +485,3 @@ linesAround text problem = case spanStartLine <$> spanOfSrcSpan (peSpan problem)
 -- | How many configurations one example gets compared over.
 configurationsToCheck :: Integer
 configurationsToCheck = 64
-
--- | What to print an example's configurations with.
-renderConfigFor :: ParserConfig -> FilePath -> [Extension] -> Text -> RenderConfig
-renderConfigFor parser path package source =
-  maybe defaultRenderConfig (exampleRenderConfig package source) (everyBranch parser path source)
