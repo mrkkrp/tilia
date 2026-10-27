@@ -34,6 +34,7 @@ import System.FilePath ((<.>), (</>))
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
+import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Corpus (Corpus (..), Source (..), corpusCache, hackagePackages)
 import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache (Cache, PlanToken (..), openCache)
@@ -207,7 +208,8 @@ fixityBenchmarks dir toResolve held = do
       cache <- cacheUnder (dir </> "cache")
       interfaces <- interfacesOf decoded
       let reading kept modules = do
-            resolver <- newResolverWith [FromSource] kept [] tarballs plan
+            packageReader <- newPackageReader (plannedCompiler plan)
+            resolver <- newResolverWith [FromSource] kept [] tarballs packageReader plan
             pure $ do
               answers <- traverse (askModule resolver) modules
               length <$> evaluate (force answers)
