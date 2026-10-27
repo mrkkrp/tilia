@@ -368,11 +368,19 @@ forallTelescope ctx = \case
   HsForAllInvis _ bndrs -> forallBndrs ctx Invisible (tyVarBndr ctx) bndrs
   HsForAllVis _ bndrs -> forallBndrs ctx Visible (tyVarBndr ctx) bndrs
 
--- | The binders a signature quantifies over, when it names them.
-outerBndrs :: Ctx -> HsOuterTyVarBndrs Specificity GhcPs -> Doc
-outerBndrs ctx = \case
+-- | The binders a signature or an equation quantifies over, where it names
+-- them.
+outerBndrs ::
+  (TyVarBndrFlag flag) =>
+  Ctx ->
+  -- | What separates them from what follows.
+  Doc ->
+  HsOuterTyVarBndrs flag GhcPs ->
+  Doc
+outerBndrs ctx separator = \case
   HsOuterImplicit _ -> mempty
-  HsOuterExplicit _ bndrs -> forallTelescope ctx (mkHsForAllInvisTele noAnn bndrs)
+  HsOuterExplicit _ bndrs ->
+    forallBndrs ctx Invisible (tyVarBndr ctx) bndrs <> separator
 
 -- | A type together with whatever it quantifies over.
 hsSigType :: Ctx -> LHsSigType GhcPs -> Doc
@@ -381,12 +389,7 @@ hsSigType ctx = at_ ctx (hsSigTypeBody ctx)
 -- | A signature type whose location the caller has already entered.
 hsSigTypeBody :: Ctx -> HsSigType GhcPs -> Doc
 hsSigTypeBody ctx HsSig{..} =
-  outerBndrs ctx sig_bndrs
-    <> ( case sig_bndrs of
-           HsOuterImplicit{} -> mempty
-           HsOuterExplicit{} -> afterBinders
-       )
-    <> hsType ctx sig_body
+  outerBndrs ctx afterBinders sig_bndrs <> hsType ctx sig_body
   where
     afterBinders
       | typeIsDocumented (unLoc sig_body) = hardBreak

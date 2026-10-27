@@ -207,10 +207,7 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
   where
     -- @data instance forall k (a :: k). D a = …@ binds its variables ahead
     -- of the head, exactly as a type family instance does.
-    outerBinders = case feqn_bndrs of
-      HsOuterImplicit NoExtField -> mempty
-      HsOuterExplicit _ bndrs ->
-        forallBndrs ctx Invisible (tyVarBndr ctx) bndrs <> breakOrSpace
+    outerBinders = outerBndrs ctx breakOrSpace feqn_bndrs
 
 -- | A @data family@ or @type family@ declaration.
 famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
@@ -284,12 +281,10 @@ tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc
 tyFamInstEqn ctx FamEqn{..} =
   binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
   where
-    (binders, hasBinders) = case feqn_bndrs of
-      HsOuterImplicit NoExtField -> (mempty, False)
-      HsOuterExplicit _ bndrs ->
-        ( forallBndrs ctx Invisible (tyVarBndr ctx) bndrs <> breakOrSpace,
-          not (null bndrs)
-        )
+    binders = outerBndrs ctx breakOrSpace feqn_bndrs
+    hasBinders = case feqn_bndrs of
+      HsOuterExplicit _ (_ : _) -> True
+      _ -> False
 
     lhs =
       layoutFrom ctx (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats) $
