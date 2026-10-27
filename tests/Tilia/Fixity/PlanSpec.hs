@@ -61,6 +61,7 @@ import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
+import Tilia.TestUtils (withEnvironment)
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
@@ -2126,18 +2127,6 @@ writeTarball path entries =
     entry (inside, text) = case Tar.toTarPath False inside of
       Left why -> error why
       Right tarPath -> pure (Tar.fileEntry tarPath (BL.fromStrict (T.encodeUtf8 text)))
-
--- | Run something with the given variables set, and the environment as it
--- was afterwards however it turns out.
-withEnvironment :: [(String, String)] -> IO a -> IO a
-withEnvironment vars act = bracket set restore (const act)
-  where
-    set = traverse remember vars
-    remember (key, value) = do
-      was <- lookupEnv key
-      setEnv key value
-      pure (key, was)
-    restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
 
 -- | The one import blamed for an operator, unread on its own account and so
 -- with nothing below it.

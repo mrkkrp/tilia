@@ -30,7 +30,6 @@ import System.Directory
     doesFileExist,
     removePathForcibly,
   )
-import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((<.>), (</>))
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
@@ -46,6 +45,7 @@ import Tilia.Fixity.PackageDb
     readInstalledPackages,
   )
 import Tilia.Fixity.Plan
+import Tilia.TestUtils (withEnvironment)
 
 -- | The packages of the Hackage corpus whose every module is read.
 resolved :: [Text]
@@ -248,12 +248,10 @@ planned release =
 
 -- | A cache of fixities in a directory.
 cacheUnder :: FilePath -> IO Cache
-cacheUnder dir = do
-  before <- lookupEnv "XDG_CACHE_HOME"
-  setEnv "XDG_CACHE_HOME" dir
-  cache <- openCache (Do #useCache) (PlanToken "benchmarks")
-  maybe (unsetEnv "XDG_CACHE_HOME") (setEnv "XDG_CACHE_HOME") before
-  pure cache
+cacheUnder dir =
+  withEnvironment
+    [("XDG_CACHE_HOME", dir)]
+    (openCache (Do #useCache) (PlanToken "benchmarks"))
 
 -- | The interfaces of every module of the installed packages named, each
 -- package by its name and version.
