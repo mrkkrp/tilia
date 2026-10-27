@@ -36,7 +36,22 @@ flag dev
   default: False
   manual: True
 
+common common-ghc-options
+  ghc-options:
+    -O2
+    -Wall
+
+  if flag(dev)
+    ghc-options:
+      -Werror
+      -Wredundant-constraints
+      -Wpartial-fields
+      -Wunused-packages
+      -haddock
+      -Winvalid-haddock
+
 library
+  import: common-ghc-options
   exposed-modules:
     Tilia.Cabal.Package
     Tilia.Cabal.Project
@@ -126,22 +141,8 @@ library
     transformers >=0.5 && <0.7,
     zlib >=0.6 && <0.8,
 
-  if flag(dev)
-    ghc-options:
-      -O2
-      -Wall
-      -Werror
-      -Wredundant-constraints
-      -Wpartial-fields
-      -Wunused-packages
-      -haddock
-      -Winvalid-haddock
-  else
-    ghc-options:
-      -O2
-      -Wall
-
 executable tilia
+  import: common-ghc-options
   main-is: Main.hs
   hs-source-dirs: app
   other-modules: Paths_tilia
@@ -173,22 +174,8 @@ executable tilia
     -rtsopts
     "-with-rtsopts=-N12 -A32m"
 
-  if flag(dev)
-    ghc-options:
-      -O2
-      -Wall
-      -Werror
-      -Wredundant-constraints
-      -Wpartial-fields
-      -Wunused-packages
-      -haddock
-      -Winvalid-haddock
-  else
-    ghc-options:
-      -O2
-      -Wall
-
 test-suite tests
+  import: common-ghc-options
   type: exitcode-stdio-1.0
   main-is: Main.hs
   build-tool-depends: hspec-discover:hspec-discover >=2 && <3
@@ -262,22 +249,8 @@ test-suite tests
     -rtsopts
     "-with-rtsopts=-M8G -N"
 
-  if flag(dev)
-    ghc-options:
-      -O2
-      -Wall
-      -Werror
-      -Wredundant-constraints
-      -Wpartial-fields
-      -Wunused-packages
-      -haddock
-      -Winvalid-haddock
-  else
-    ghc-options:
-      -O2
-      -Wall
-
 benchmark bench
+  import: common-ghc-options
   type: exitcode-stdio-1.0
   main-is: Main.hs
   hs-source-dirs:
@@ -319,18 +292,3 @@ benchmark bench
     -threaded
     -rtsopts
     "-with-rtsopts=-N1 -A1g -O1g -C1000 -T"
-
-  if flag(dev)
-    ghc-options:
-      -O2
-      -Wall
-      -Werror
-      -Wredundant-constraints
-      -Wpartial-fields
-      -Wunused-packages
-      -haddock
-      -Winvalid-haddock
-  else
-    ghc-options:
-      -O2
-      -Wall
