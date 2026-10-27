@@ -15,21 +15,16 @@ module Tilia.Cpp.Directives
     -- * Splitting
     Guard (..),
     Configurations (..),
-    configurations,
     configurationsOn,
     Varied (..),
     untouched,
-    leaves,
     branchLeaves,
     implied,
     settledBranch,
     correspondingBranches,
     ruledOutBranch,
     unconditionalErrors,
-    linearLeaves,
-    countLeaves,
-    answeredLeaves,
-    answeredLinearLeaves,
+    Assignment,
     resolved,
 
     -- * The directives themselves
@@ -213,14 +208,6 @@ data Configurations = Configurations
   }
   deriving (Eq, Show)
 
--- | Split a module on its first outermost conditional, and on every other
--- one written behind the same directives, wherever in the module it sits.
-configurations :: Text -> Maybe Configurations
-configurations source = do
-  forest <- scanConditionals source
-  gs <- listToMaybe forest
-  pure (configurationsOn gs forest source)
-
 -- | Split a module on one of its conditionals, and on every other one
 -- written behind the same directives.
 configurationsOn ::
@@ -259,10 +246,6 @@ untouched :: Varied -> Span -> Bool
 untouched (Varied ranges) s = not (any reaches ranges)
   where
     reaches (from, to) = spanStartLine s <= to && from <= spanEndLine s
-
--- | Every configuration of a module, with every conditional resolved.
-leaves :: Text -> Either CppError [Text]
-leaves = fmap (fmap snd) . answeredLeaves
 
 -- | One configuration for every branch of every conditional, and no more.
 branchLeaves :: Text -> Either CppError [Text]
@@ -437,89 +420,8 @@ unconditionalErrors source =
     groups = [gsWhole g | forest <- maybeToList (scanConditionals source), g <- allGroups forest]
     encloses n (from, to) = from < n && n < to
 
--- | The configurations reached by varying one conditional at a time.
-linearLeaves :: Text -> Either CppError [Text]
-linearLeaves = fmap (fmap snd) . answeredLinearLeaves
-
--- | How many configurations a module has, without building any of them,
--- and so counting those no definition of the macros gives.
-countLeaves :: Text -> Either CppError Integer
-countLeaves source = do
-  forest <- readConditionals source
-  pure (sum [across answers forest | answers <- combinations (afforded forest)])
-  where
-    across answers = product . fmap (one answers)
-    one answers gs = case lookup (gsGuards gs) answers of
-      Just i -> across answers (nestedIn gs i)
-      Nothing -> sum [across answers (nestedIn gs i) | i <- [0 .. gsCount gs - 1]]
-    combinations = traverse (\(g, k) -> [(g, i) | i <- [0 .. k - 1]])
-    afforded forest = go 1 (repeated forest)
-      where
-        go _ [] = []
-        go n ((g, k) : rest)
-          | n * toInteger k <= guardsToTie = (g, k) : go (n * toInteger k) rest
-          | otherwise = []
-
--- | The guards a module asks more than once, and how many answers each has.
-repeated :: [GroupSpec] -> [([Guard], Int)]
-repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
-  where
-    asked gss = concat [(gsGuards gs, gsCount gs) : asked (concat (gsNested gs)) | gs <- gss]
-    times = Map.fromListWith (+) [(g, 1 :: Int) | (g, _) <- asked forest]
-    twice g = Map.findWithDefault 0 g times >= 2
-
-    distinct _ [] = []
-    distinct seen (q@(g, _) : rest)
-      | Map.member g seen = distinct seen rest
-      | otherwise = q : distinct (Map.insert g () seen) rest
-
--- | How many combinations of answers 'countLeaves' will enumerate.
-guardsToTie :: Integer
-guardsToTie = 4096
-
--- | Every configuration some definition of the macros gives, and the
--- answers that reach it.
-answeredLeaves :: Text -> Either CppError [(Assignment, Text)]
-answeredLeaves =
-  fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
-  where
-    go answers source = case configurations source of
-      Nothing | not (null (unconditionalErrors source)) -> Right []
-      Nothing -> (\t -> [(answers, t)]) <$> resolved source
-      Just c ->
-        concat
-          <$> traverse
-            (\(i, t) -> go (Map.insert (cfgGuards c) i answers) t)
-            (zip [0 ..] (cfgTexts c))
-
 -- | Which branch every question was answered with to reach a configuration.
 type Assignment = Map [Guard] Int
-
--- | The same, labelled by the answers that reach each one, and for the same
--- reason as 'answeredLeaves'.
-answeredLinearLeaves :: Text -> Either CppError [(Assignment, Text)]
-answeredLinearLeaves =
-  fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
-  where
-    go answers source = case configurations source of
-      Nothing -> (\t -> [(answers, t)]) <$> resolved source
-      Just c -> case zip [0 ..] (cfgTexts c) of
-        [] -> Right []
-        (i, first) : rest ->
-          (<>)
-            <$> go (Map.insert (cfgGuards c) i answers) first
-            <*> traverse (held answers (cfgGuards c)) rest
-      where
-        held before gs (i, t) = answeredBaseline (Map.insert gs i before) t
-
--- | The configuration in which every question still to be asked takes its
--- first branch, and the answers that gives.
-answeredBaseline :: Assignment -> Text -> Either CppError (Assignment, Text)
-answeredBaseline answers source = case configurations source of
-  Nothing -> (answers,) <$> resolved source
-  Just c -> case cfgTexts c of
-    [] -> Right (answers, source)
-    t : _ -> answeredBaseline (Map.insert (cfgGuards c) 0 answers) t
 
 -- | A module with every conditional answered, and its other directives
 -- taken out, or why its conditionals do not make sense.
