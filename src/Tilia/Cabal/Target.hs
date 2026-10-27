@@ -62,8 +62,8 @@ import Tilia.Cabal.Package
     sourceExtensions,
     suiteBranches,
   )
+import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
-import Tilia.Fixity.Plan (PlanComponent (..))
 import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
 import Tilia.Utils (attempted, quietly)
 

@@ -48,6 +48,8 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.Info qualified
 import System.Timeout (timeout)
 import Test.Hspec
+import Tilia.Cabal.Plan hiding (checkReadiness, prepareWith)
+import Tilia.Cabal.Plan qualified as Plan
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Cache (PlanToken (..), openCache, storePackageCache)
@@ -57,8 +59,7 @@ import Tilia.Fixity.PackageDb
     compilerIdentity,
     readInstalledPackages,
   )
-import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
-import Tilia.Fixity.Plan qualified as Plan
+import Tilia.Fixity.Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
 import Tilia.TestUtils (parsed, routedResolver, unreadOnly, withEnvironment)

@@ -37,6 +37,14 @@ import Tilia.Cabal.Package
     describePackageProblem,
     newPackageReader,
   )
+import Tilia.Cabal.Plan
+  ( PlanComponent,
+    fetchUninstalled,
+    loadPlan,
+    macrosOf,
+    plannedCompiler,
+    readGivenPlan,
+  )
 import Tilia.Cabal.Project (ProjectRoot (..))
 import Tilia.Cpp
   ( CppError (..),
@@ -60,15 +68,9 @@ import Tilia.Fixity
   )
 import Tilia.Fixity.Debug (FixityNotes, fixityNotes)
 import Tilia.Fixity.Plan
-  ( PlanComponent,
-    Resolver (..),
+  ( Resolver (..),
     Route (FromInterface, FromSource),
-    fetchUninstalled,
-    loadPlan,
-    macrosOf,
     newResolverVia,
-    plannedCompiler,
-    readGivenPlan,
     scopeFor,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)

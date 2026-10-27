@@ -31,6 +31,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
 import Test.Hspec
 import Tilia.BootFixities (bootFixities)
+import Tilia.Cabal.Plan
 import Tilia.Cpp (blankCpp)
 import Tilia.Fixity
 import Tilia.Fixity.Cache (PlanToken (..), openCache)
