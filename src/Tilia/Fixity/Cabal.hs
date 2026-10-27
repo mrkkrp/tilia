@@ -27,7 +27,7 @@ import Data.Text.Encoding qualified as T
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Pragma (lookupExtension)
-import Tilia.Utils (quietly)
+import Tilia.Utils (fieldWords, quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
 -- source tarball.
@@ -71,10 +71,7 @@ containedModules t =
     modulesUnder field =
       concatMap moduleNames . fieldsNamed field . T.lines
       where
-        moduleNames =
-          filter looksLikeModule
-            . concatMap (T.split (== ','))
-            . T.words
+        moduleNames = filter looksLikeModule . fieldWords
         looksLikeModule m = case T.uncons m of
           Just (c, _) -> c `elem` ['A' .. 'Z']
           Nothing -> False
@@ -83,13 +80,7 @@ containedModules t =
 sourceDirs :: Text -> [Text]
 sourceDirs contents = Data.List.nub (named <> ["."])
   where
-    named =
-      filter (not . T.null)
-        . fmap T.strip
-        . concatMap (T.split (== ','))
-        . concatMap T.words
-        . fieldsNamed "hs-source-dirs"
-        $ T.lines contents
+    named = concatMap fieldWords (fieldsNamed "hs-source-dirs" (T.lines contents))
 
 -- | The extensions a package puts in force, read from its @.cabal@ file.
 declaredExtensions :: Text -> [Extension]
@@ -102,7 +93,7 @@ declaredExtensions contents =
       editions ->
         Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
     named =
-      concatMap (T.split (== ',')) . concatMap T.words $
+      concatMap fieldWords $
         fieldsNamed "extensions" ls <> fieldsNamed "default-extensions" ls
     apply acc written = case T.strip written of
       name
