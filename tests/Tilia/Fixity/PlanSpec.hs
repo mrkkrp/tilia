@@ -61,7 +61,7 @@ import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
-import Tilia.TestUtils (withEnvironment)
+import Tilia.TestUtils (parsed, withEnvironment)
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
@@ -1098,11 +1098,8 @@ chased source = do
 -- | What the chase makes of one module against that world.
 chasedModule :: Text -> IO Established
 chasedModule source =
-  withReexports reach "M" (summarize (Is #implicitPrelude) (pmModule parsed))
+  withReexports reach "M" (summarize (Is #implicitPrelude) (pmModule (parsed source)))
   where
-    parsed = case parseModule defaultParserConfig "M.hs" source of
-      Left _ -> error "the test input did not parse"
-      Right m -> m
     reach m =
       pure $ case m of
         "Control.Arrow" -> bringing (Fixity RightAssoc 5)
@@ -1410,7 +1407,7 @@ withPlan plan = do
           ("src/Inner.hs", "module Inner (T (..)) where\ninfixr 5 :|\ndata T = A | Int :| Int\n")
         ]
       $ \rs -> do
-        let m = parse "module M where\nimport Facade (T (..))\n"
+        let m = parsed "module M where\nimport Facade (T (..))\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName ":|")
           `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Facade")
@@ -1512,7 +1509,7 @@ withPlan plan = do
     it "settles an operator no unread module in scope could have declared" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
-          let m = parse "module M where\nimport Opaque\n"
+          let m = parsed "module M where\nimport Opaque\n"
           scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<??>")
             `shouldBe` Resolved defaultFixity ReportDefault
@@ -1520,7 +1517,7 @@ withPlan plan = do
     it "leaves one alone that the unread module's list does name" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
-          let m = parse "module M where\nimport Opaque\n"
+          let m = parsed "module M where\nimport Opaque\n"
           scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<+>")
             `shouldBe` Unresolved (ModuleChain ("Opaque" :| ["No.Such.Module"]) :| [])
@@ -1648,7 +1645,7 @@ withPlan plan = do
           ("src/B.hs", "module B (clampTo) where\nclampTo :: Int -> Int -> Int\nclampTo = min\n")
         ]
       $ \rs -> do
-        let m = parse "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
+        let m = parsed "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "clampTo")
           `shouldBe` Resolved defaultFixity ReportDefault
@@ -1659,7 +1656,7 @@ withPlan plan = do
           ("src/B.hs", "{-# LANGUAGE TypeOperators #-}\nmodule B ((:+:)) where\ndata a :+: b = a :+: b\n")
         ]
       $ \rs -> do
-        let m = parse "module C (w) where\nimport A\nimport B\nw = 1 :+: 2\n"
+        let m = parsed "module C (w) where\nimport A\nimport B\nw = 1 :+: 2\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName ":+:")
           `shouldBe` Unresolved (unreadOnly "A")
@@ -1671,7 +1668,7 @@ withPlan plan = do
           ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
         ]
       $ \rs -> do
-        let m = parse "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Resolved defaultFixity ReportDefault
@@ -1683,7 +1680,7 @@ withPlan plan = do
           ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
         ]
       $ \rs -> do
-        let m = parse "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Unresolved (ModuleChain ("Core" :| ["A"]) :| [])
@@ -1694,7 +1691,7 @@ withPlan plan = do
           ("src/Other.hs", "module Other ((<+>)) where\ninfixl 6 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a - b\n")
         ]
       $ \rs -> do
-        let m = parse "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
+        let m = parsed "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
         scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "<+>")
           `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Other")
@@ -1958,11 +1955,8 @@ endToEnd ::
   (Scope -> Expectation) ->
   Expectation
 endToEnd resolver source assertion =
-  case parseModule defaultParserConfig "test.hs" source of
-    Left _ -> expectationFailure "the test input did not parse"
-    Right pm -> do
-      scope <- scopeFor resolver (Is #implicitPrelude) (pure (pmModule pm))
-      assertion scope
+  scopeFor resolver (Is #implicitPrelude) (pure (pmModule (parsed source)))
+    >>= assertion
 
 -- | Check one expected fixity, returning a description of any mismatch.
 check ::
@@ -2022,11 +2016,6 @@ opaqueSource =
       "f :: Int",
       "f = 1"
     ]
-
-parse :: Text -> ParsedModule
-parse source = case parseModule defaultParserConfig "M.hs" source of
-  Left _ -> error "the test input did not parse"
-  Right pm -> pm
 
 -- | A project of made-up modules, with a build plan written by hand.
 --

@@ -10,13 +10,8 @@ import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import Test.Hspec
 import Tilia.Equivalence
-import Tilia.Parser
-  ( ParsedModule,
-    defaultParserConfig,
-    describeParseError,
-    parseModule,
-    pmModule,
-  )
+import Tilia.Parser (pmModule)
+import Tilia.TestUtils (parsed)
 
 spec :: Spec
 spec = do
@@ -168,8 +163,3 @@ difference went came = commentDifference (parsed went) (parsed came)
 
 treeOf :: Text -> HsModule GhcPs
 treeOf = pmModule . parsed
-
-parsed :: Text -> ParsedModule
-parsed source = case parseModule defaultParserConfig "Test.hs" source of
-  Left problem -> error (T.unpack (describeParseError problem))
-  Right m -> m

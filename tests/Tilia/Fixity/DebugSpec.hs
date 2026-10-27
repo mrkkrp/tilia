@@ -23,7 +23,8 @@ import Tilia.Fixity
   )
 import Tilia.Fixity.Debug (fixityNotes, renderFixityNotes)
 import Tilia.Palette (Palette (Plain))
-import Tilia.Parser (defaultParserConfig, describeParseError, parseModule, pmModule)
+import Tilia.Parser (pmModule)
+import Tilia.TestUtils (parsed)
 import Tilia.Utils (lineWidth, visibleLength)
 
 spec :: Spec
@@ -174,16 +175,14 @@ notesThrough ::
   IO [Text]
 notesThrough chains world source =
   renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure parsed)
+    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure module')
   where
     scope = resolveScope (Is #implicitPrelude) answerOf (pure hsModule)
     answerOf m = case exportsOf m of
       Just fixities -> mempty{establishedFixities = fixities}
       Nothing -> mempty{establishedUntold = Set.singleton (fromMaybe [] (lookup m chains))}
-    hsModule = pmModule parsed
-    parsed = case parseModule defaultParserConfig "M.hs" ("module M where\n" <> source) of
-      Left problem -> error (T.unpack (describeParseError problem))
-      Right m -> m
+    hsModule = pmModule module'
+    module' = parsed ("module M where\n" <> source)
     exportsOf m = do
       declared <- lookup m world
       inBothNamespaces . Map.fromList . fmap (\(op, fixity) -> (OpName op, fixity))

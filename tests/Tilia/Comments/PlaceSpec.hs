@@ -8,9 +8,8 @@ import Test.Hspec
 import Tilia.Comments (Comment (..), renderComment)
 import Tilia.Comments.Place
 import Tilia.Doc.Internal (Spill (..))
-import Tilia.Parser
-import Tilia.Source (comments)
 import Tilia.Span
+import Tilia.TestUtils (commentsIn)
 
 spec :: Spec
 spec = do
@@ -330,8 +329,3 @@ firstComment :: Text -> Comment
 firstComment src = case commentsIn src of
   (c : _) -> c
   [] -> error "the test input had no comments"
-
-commentsIn :: Text -> [Comment]
-commentsIn src = case parseModule defaultParserConfig "test.hs" src of
-  Left _ -> error "the test input did not parse"
-  Right pm -> comments (pmSource pm)

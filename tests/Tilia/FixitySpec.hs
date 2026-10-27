@@ -20,6 +20,7 @@ import Tilia.Cpp (blankCpp, branchLeaves)
 import Tilia.Fixity
 import Tilia.Parser
 import Tilia.Span (spanStartColumn, spanStartLine)
+import Tilia.TestUtils (parsed)
 
 spec :: Spec
 spec = do
@@ -826,11 +827,6 @@ exportsOf = \case
   _ -> Just Map.empty
   where
     whichever = Just . inBothNamespaces . Map.fromList
-
-parsed :: Text -> ParsedModule
-parsed src = case parseModule defaultParserConfig "test.hs" src of
-  Left _ -> error "the test input did not parse"
-  Right pm -> pm
 
 -- | The fixities a module declares, by name alone.
 --

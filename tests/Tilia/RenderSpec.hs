@@ -18,8 +18,8 @@ import Tilia.Fixity
     Reach (..),
     Scope (..),
   )
-import Tilia.Parser (defaultParserConfig, parseModule)
 import Tilia.Render
+import Tilia.TestUtils (parsed)
 
 spec :: Spec
 spec = do
@@ -293,13 +293,12 @@ formatWith :: Maybe Scope -> [Text] -> [Text]
 formatWith scope = withSettings defaultRenderConfig{rcScope = scope}
 
 withSettings :: RenderConfig -> [Text] -> [Text]
-withSettings settings input =
-  case parseModule defaultParserConfig "<test>" source of
-    Left _ -> error ("did not parse:\n" <> T.unpack source)
-    Right parsed ->
-      T.lines (printDoc defaultRenderOptions (renderModule settings parsed))
-  where
-    source = T.unlines input
+withSettings settings =
+  T.lines
+    . printDoc defaultRenderOptions
+    . renderModule settings
+    . parsed
+    . T.unlines
 
 -- | A module with comments in all the places that are hard to put them
 -- back.
