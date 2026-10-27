@@ -24,9 +24,9 @@ import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Corpus (Example (..))
 import Tilia.Cpp (usesCpp)
 import Tilia.Format (rewritten)
-import Tilia.Parser (parseModule, parserConfigFor)
-import Tilia.Pragma (effectiveExtensions)
+import Tilia.Parser (parseModule)
 import Tilia.TestConfig (formatCppExample, printExample)
+import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
 
 -- | What part of a run a benchmark measures.
 data Stage
@@ -145,10 +145,10 @@ corpusSubjects examples =
 -- | Modules made to stress one part of the formatter each.
 syntheticSubjects :: [Subject]
 syntheticSubjects =
-  [ subjectOf [] False "synthetic/comments" commented,
-    subjectOf [] False "synthetic/imports" imported,
-    subjectOf [] False "synthetic/conditionals" conditional,
-    subjectOf [] False "synthetic/nesting" nested
+  [ subjectOf Nothing False "synthetic/comments" commented,
+    subjectOf Nothing False "synthetic/imports" imported,
+    subjectOf Nothing False "synthetic/conditionals" conditional,
+    subjectOf Nothing False "synthetic/nesting" nested
   ]
   where
     commented =
@@ -203,7 +203,7 @@ syntheticSubjects =
 
 -- | A module to format, and to check what that printed where it is
 -- checked.
-subjectOf :: [Extension] -> Bool -> Text -> Text -> Subject
+subjectOf :: Maybe [Extension] -> Bool -> Text -> Text -> Subject
 subjectOf package isChecked name source =
   Subject
     { subjectName = name,
@@ -217,16 +217,16 @@ subjectOf package isChecked name source =
   where
     path = T.unpack name
     parser = parserConfigFor package
-    cpp = usesCpp (effectiveExtensions package source) source
+    cpp = usesCpp (effectiveExtensionsFor package source) source
     tree
       | cpp = Nothing
       | otherwise = either (const Nothing) Just (parseModule parser path source)
 
 -- | What formatting a module prints, as the corpus does it, or 'Nothing'
 -- where it is declined.
-formatted :: [Extension] -> FilePath -> Text -> Maybe Text
+formatted :: Maybe [Extension] -> FilePath -> Text -> Maybe Text
 formatted package path source
-  | usesCpp (effectiveExtensions package source) source =
+  | usesCpp (effectiveExtensionsFor package source) source =
       either (const Nothing) Just (formatCppExample package path source)
   | otherwise =
       either

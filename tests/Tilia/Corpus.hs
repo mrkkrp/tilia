@@ -889,9 +889,10 @@ data Example = Example
     -- for an example within one that happens to have none.
     exampleReference :: Maybe FilePath,
     -- | What the package around it puts in force, already resolved from its
-    -- @.cabal@ file. Empty for a corpus whose examples are not modules of a
-    -- package; see 'corpusInPackages'.
-    exampleExtensions :: [Extension]
+    -- @.cabal@ file. 'Nothing' for a corpus whose examples are not modules
+    -- of a package, see 'corpusInPackages', and for one whose package could
+    -- not be read.
+    exampleExtensions :: Maybe [Extension]
   }
   deriving (Eq, Show)
 
@@ -1080,12 +1081,12 @@ examplesIn corpus root = do
       fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
 
 -- | What each of a corpus's examples has in force before its own pragmas.
-packageReaderFor :: Corpus -> IO (FilePath -> IO [Extension])
+packageReaderFor :: Corpus -> IO (FilePath -> IO (Maybe [Extension]))
 packageReaderFor corpus
-  | not (corpusInPackages corpus) = pure (const (pure []))
+  | not (corpusInPackages corpus) = pure (const (pure Nothing))
   | otherwise = do
       reader <- newPackageReader Nothing
-      pure (fmap (either (const []) id) . reader)
+      pure (fmap (either (const Nothing) Just) . reader)
 
 haskellFilesIn :: FilePath -> IO [FilePath]
 haskellFilesIn dir = do

@@ -35,14 +35,14 @@ import Tilia.Fixity
     resolveScope,
     unreadable,
   )
-import Tilia.Parser (ParsedModule (..), parserConfigFor)
-import Tilia.Pragma (effectiveExtensions)
+import Tilia.Parser (ParsedModule (..))
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
+import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
 
 -- | How to format one corpus example.
 exampleRenderConfig ::
   -- | What the package around it puts in force, if it is a module of one.
-  [Extension] ->
+  Maybe [Extension] ->
   Text ->
   -- | Its configurations, parsed.
   NonEmpty ParsedModule ->
@@ -50,7 +50,7 @@ exampleRenderConfig ::
 exampleRenderConfig package source parsed =
   defaultRenderConfig
     { rcExtensions =
-        Set.fromList (effectiveExtensions package source),
+        Set.fromList (effectiveExtensionsFor package source),
       rcScope =
         Just
           ( underEveryQualifier
@@ -81,7 +81,7 @@ exampleRenderConfig package source parsed =
 -- | Print a corpus example that does not use the preprocessor.
 printExample ::
   -- | What the package around it puts in force, if it is a module of one.
-  [Extension] ->
+  Maybe [Extension] ->
   Text ->
   -- | It, parsed.
   ParsedModule ->
@@ -93,7 +93,7 @@ printExample package source parsed =
 -- | Format a corpus example that uses the preprocessor.
 formatCppExample ::
   -- | What the package around it puts in force, if it is a module of one.
-  [Extension] ->
+  Maybe [Extension] ->
   FilePath ->
   Text ->
   Either CppError Text

@@ -12,8 +12,6 @@ module Tilia.Parser
     ParseError (..),
     describeParseError,
     ParserConfig (..),
-    defaultParserConfig,
-    parserConfigFor,
     ghcLibParserVersion,
   )
 where
@@ -313,24 +311,6 @@ newtype ParserConfig = ParserConfig
   { -- | Extensions to enable before parsing.
     pcExtensions :: [Extension]
   }
-
--- | What to parse with when there is no package to ask.
-defaultParserConfig :: ParserConfig
-defaultParserConfig = parserConfigFor []
-
--- | What to parse with, given whatever the package had to say.
-parserConfigFor ::
-  -- | What the package puts in force, or nothing if there is no package.
-  [Extension] ->
-  -- | The resulting parser config.
-  ParserConfig
-parserConfigFor package =
-  ParserConfig
-    { pcExtensions =
-        if null package
-          then GHC.languageExtensions (Just GHC.GHC2021)
-          else package
-    }
 
 -- | What a file's name says it holds.
 sourceTypeOf :: FilePath -> SourceType

@@ -15,9 +15,9 @@ import Test.QuickCheck
 import Tilia.Cpp (formatWithCpp, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
-import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
+import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
-import Tilia.TestUtils (answeredLeaves)
+import Tilia.TestUtils (answeredLeaves, defaultParserConfig)
 import Tilia.Utils (tshow)
 
 spec :: Spec

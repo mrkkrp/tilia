@@ -77,10 +77,9 @@ import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser
   ( ParseError,
     ParsedModule,
-    ParserConfig,
+    ParserConfig (..),
     describeParseError,
     parseModule,
-    parserConfigFor,
     pmGathered,
     pmModule,
   )
@@ -302,7 +301,7 @@ formatSource session path source = runExceptT $ do
     throwE (PositionPragmas path)
   package <- orElse (NoPackage path) =<< liftIO (sessionPackage session path)
   let resolver = sessionResolver session
-      config = parserConfigFor package
+      config = ParserConfig package
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
          in (Set.fromList declared, usesCpp declared text)
