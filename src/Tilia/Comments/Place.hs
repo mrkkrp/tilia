@@ -27,6 +27,7 @@ import Tilia.Comments
   ( Above (..),
     Comment (..),
     carriedOnFrom,
+    carriesOn,
     closesItself,
     commentTrailing,
     singleLine,
@@ -176,16 +177,13 @@ placeComments regions leads fences comments =
 
         continues
           | Just (anchor, remark) <- carriedOn c,
-            remark <= spanStartColumn here || nothingBelowItLinesUp =
+            carriesOn remark here next =
               (,linedUpWith remark) <$> endingOn anchor
           | otherwise = Nothing
 
         linedUpWith remark
           | remark <= spanStartColumn here = After SpillUnderPrevious
           | otherwise = After SpillAtIndentation
-
-        nothingBelowItLinesUp =
-          all (\r -> spanStartColumn r < spanStartColumn here) next
 
         under
           | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,

@@ -55,7 +55,7 @@ import GHC.Types.Name.Occurrence (occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..))
 import GHC.Types.SrcLoc qualified as GHC
-import Tilia.Comments (Comment (..), CommentStyle (..), commentTrailing)
+import Tilia.Comments (Comment (..), CommentStyle (..), carriesOn, commentTrailing)
 import Tilia.Doc.Combinators
 import Tilia.Fixity
   ( Fixity,
@@ -217,11 +217,10 @@ printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
         Map.dropWhileAntitone (< endPoint a) (ctxLineComments ctx)
     printedAfter c =
       commentTrailing c
-        || maybe False carriesOn (Map.lookup (startPoint s) (ctxCarryingOn ctx))
-      where
-        s = commentSpan c
-        carriesOn remark =
-          remark <= spanStartColumn s || spanStartColumn b < spanStartColumn s
+        || maybe
+          False
+          (\remark -> carriesOn remark (commentSpan c) (Just b))
+          (Map.lookup (startPoint (commentSpan c)) (ctxCarryingOn ctx))
 
 -- | Is a comment going to be printed between the two spans?
 commentPrintedBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
