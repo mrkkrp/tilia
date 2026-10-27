@@ -7,6 +7,7 @@ module Tilia.Span
     blankBetween,
     meets,
     covers,
+    zeroWidth,
     startOf,
     endOf,
     startPoint,
@@ -68,6 +69,10 @@ meets a b = startPoint a <= endPoint b && startPoint b <= endPoint a
 -- | Does the first cover all of the second?
 covers :: Span -> Span -> Bool
 covers a b = startPoint a <= startPoint b && endPoint b <= endPoint a
+
+-- | Does a span cover nothing written, as an empty anchor's does?
+zeroWidth :: Span -> Bool
+zeroWidth s = startPoint s == endPoint s
 
 -- | A zero-width span at the start of the given one.
 startOf :: Span -> Span

@@ -23,7 +23,7 @@ import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
 import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
-import Tilia.Span (endPoint, isSingleLine, startPoint)
+import Tilia.Span (Span (..), endPoint, isSingleLine, startPoint)
 import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 
 -- | Sort and fold together a module's imports.
@@ -49,7 +49,7 @@ normalizeImports implicitPrelude barriers directives written imports =
         (combineImports directives written)
         [((importIdentity implicitPrelude i, hiddenNames i, alone i), i) | i <- is]
     alone i
-      | any strands (spanOf i) = startLineOf i
+      | any strands (spanOf i) = lineOf i
       | otherwise = 0
       where
         strands s =
@@ -58,9 +58,6 @@ normalizeImports implicitPrelude barriers directives written imports =
             (filter loose (commentsWithin s written))
         loose = not . commentTrailing
     unanchored starts c = not (any (> endPoint (commentSpan c)) starts)
-    startLineOf i = case srcSpanStart (getLocA i) of
-      RealSrcLoc l _ -> srcLocLine l
-      _ -> 0
 
 -- | The names an import hides, where it hides any, so that only imports
 -- hiding the same names are folded together.
@@ -111,9 +108,10 @@ cutAtBarriers barriers xs =
   groupBy ((==) `on` fst) [(between i, i) | i <- xs] & fmap (fmap snd)
   where
     between i = length (takeWhile (< lineOf i) barriers)
-    lineOf i = case srcSpanStart (getLocA i) of
-      RealSrcLoc l _ -> srcLocLine l
-      _ -> 0
+
+-- | The line an item begins on, or 0 for one without a place in the input.
+lineOf :: GenLocated SrcSpanAnnA a -> Int
+lineOf = maybe 0 spanStartLine . spanOf
 
 -- | Sort by the keys, then replace each run of equal keys by one value
 -- folded out of it.

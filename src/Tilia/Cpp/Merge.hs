@@ -44,7 +44,7 @@ import Tilia.Doc.Internal
     wrap,
   )
 import Tilia.Source (Lines, lineAt)
-import Tilia.Span (Span (..), covers, endOf, endPoint, meets, startOf, startPoint)
+import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 
 -- | A conditional other than the one asked about that answering a question
 -- settles, for some answers at least.
@@ -466,7 +466,7 @@ agreeOn varied layout x y = case (x, y) of
     s == t
       && ( untouched varied (reach s x')
              && untouched varied (reach t y')
-             && startPoint s /= endPoint s
+             && not (zeroWidth s)
              || inside x' y'
          )
   (DCppChoice ws bs x', DCppChoice ws' cs y') ->

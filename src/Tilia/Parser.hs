@@ -22,6 +22,7 @@ import Data.Foldable (toList)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (isSuffixOf, nub, sortOn)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -33,7 +34,7 @@ import GHC.Hs (HsModule (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
-import GHC.Parser.Annotation (LEpaComment, getLocA)
+import GHC.Parser.Annotation (LEpaComment)
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
@@ -43,8 +44,8 @@ import GHC.Utils.Outputable qualified as GHC
 import Tilia.Gathered (Gathered (..), gathered)
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, linesOf, sourceOf)
-import Tilia.Span (Span (..))
-import Tilia.Span.Ghc (spanOfReal)
+import Tilia.Span (Span (..), startPoint)
+import Tilia.Span.Ghc (spanOf)
 
 -- | A parsed module, together with the comments found in it.
 data ParsedModule = ParsedModule
@@ -292,18 +293,8 @@ prologueOf ls = case span isShebang ls of
 -- | The start of the first thing that is not part of the header.
 headerEndOf :: HsModule GhcPs -> Maybe Span
 headerEndOf hsModule =
-  foldl' earliest Nothing $
-    fmap getLocA (hsmodImports hsModule)
-      <> fmap getLocA (hsmodDecls hsModule)
-  where
-    earliest acc l = case GHC.srcSpanToRealSrcSpan l of
-      Nothing -> acc
-      Just s ->
-        let this = spanOfReal s
-         in Just (maybe this (keepEarlier this) acc)
-    keepEarlier a b
-      | (spanStartLine a, spanStartColumn a) <= (spanStartLine b, spanStartColumn b) = a
-      | otherwise = b
+  listToMaybe . sortOn startPoint $
+    mapMaybe spanOf (hsmodImports hsModule) <> mapMaybe spanOf (hsmodDecls hsModule)
 
 -- | Why a module did not parse.
 data ParseError = ParseError
