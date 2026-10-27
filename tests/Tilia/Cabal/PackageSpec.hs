@@ -14,7 +14,7 @@ import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
-import Tilia.Fixity.Plan (BuildPlan (..), plannedCompiler)
+import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 
 spec :: Spec
 spec = do

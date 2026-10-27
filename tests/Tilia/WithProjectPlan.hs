@@ -24,6 +24,13 @@ import System.Directory (doesFileExist)
 import System.FilePath (takeDirectory, (</>))
 import System.IO.Unsafe (unsafePerformIO)
 import Test.Hspec (Spec)
+import Tilia.Cabal.Plan
+  ( BuildPlan (..),
+    PackageSource (..),
+    PlanPackage (..),
+    loadPlan,
+    plannedTarballs,
+  )
 import Tilia.Cabal.Project (findProjectRoot)
 import Tilia.Cabal.Target
   ( Target (..),
@@ -36,13 +43,6 @@ import Tilia.Fixity.PackageDb
   ( Installed (..),
     InstalledPackage (..),
     readInstalledPackages,
-  )
-import Tilia.Fixity.Plan
-  ( BuildPlan (..),
-    PackageSource (..),
-    PlanPackage (..),
-    loadPlan,
-    plannedTarballs,
   )
 import Tilia.Process (readProgramOutput)
 

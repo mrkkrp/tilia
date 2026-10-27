@@ -35,6 +35,7 @@ import System.Process (getCurrentPid)
 import Text.Printf (printf)
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
 import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cabal.Plan
 import Tilia.Corpus (Corpus (..), Source (..), corpusCache, hackagePackages)
 import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache (Cache, PlanToken (..), openCache)

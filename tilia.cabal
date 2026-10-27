@@ -54,6 +54,7 @@ library
   import: common-ghc-options
   exposed-modules:
     Tilia.Cabal.Package
+    Tilia.Cabal.Plan
     Tilia.Cabal.Project
     Tilia.Cabal.Target
     Tilia.Comments

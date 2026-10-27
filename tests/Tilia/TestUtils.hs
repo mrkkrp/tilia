@@ -34,6 +34,7 @@ import Data.Text qualified as T
 import Data.Word (Word64)
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
 import Tilia.Comments (Comment)
 import Tilia.Cpp.Directives
   ( Assignment,
@@ -51,7 +52,7 @@ import Tilia.Cpp.Directives
     unconditionalErrors,
   )
 import Tilia.Fixity (ModuleChain (..))
-import Tilia.Fixity.Plan (BuildPlan, Resolver, Route, newResolverVia, plannedCompiler)
+import Tilia.Fixity.Plan (Resolver, Route, newResolverVia)
 import Tilia.Parser
   ( ParsedModule (..),
     defaultParserConfig,

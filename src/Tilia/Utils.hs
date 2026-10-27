@@ -6,6 +6,7 @@
 module Tilia.Utils
   ( quietly,
     attempted,
+    readFileText,
     asUtf8,
     byteOrderMark,
     lineWidth,
@@ -35,6 +36,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import System.Directory (doesFileExist)
 
 -- | 'show' a value and take the result as 'Text'.
 tshow :: (Show a) => a -> Text
@@ -46,6 +48,14 @@ quietly fallback action =
   try action >>= \case
     Left (_ :: SomeException) -> pure fallback
     Right a -> pure a
+
+-- | Read a file, if it is there and is text.
+readFileText :: FilePath -> IO (Maybe Text)
+readFileText path = quietly Nothing $ do
+  there <- doesFileExist path
+  if there
+    then Just . T.decodeUtf8Lenient <$> BS.readFile path
+    else pure Nothing
 
 -- | Run an action and return its result or the exception it threw rendered
 -- as 'Text'.

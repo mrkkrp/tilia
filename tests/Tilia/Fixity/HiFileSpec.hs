@@ -19,6 +19,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+import Tilia.Cabal.Plan (BuildPlan)
 import Tilia.Fixity (Fixities, Namespace (..), OpName (..))
 import Tilia.Fixity.HiFile
   ( HiExport (..),
@@ -29,7 +30,6 @@ import Tilia.Fixity.HiFile
   )
 import Tilia.Fixity.Interface (Interface (..), fromHiFile, parseInterface)
 import Tilia.Fixity.PackageDb (readInstalledPackages)
-import Tilia.Fixity.Plan (BuildPlan)
 import Tilia.Process (readProgramOutput)
 import Tilia.TestUtils (fingerprint)
 import Tilia.Utils (inParallel)
