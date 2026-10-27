@@ -291,16 +291,8 @@ widenToDoc l@(L ann ie) = case itemDoc ie of
 -- | One item of an import or export list.
 ieItem :: Ctx -> Maybe Span -> Bool -> IE GhcPs -> Doc
 ieItem ctx here withComma = \case
-  IEVar warning n doc ->
-    exportWarning warning
-      <> at ctx n (wrappedName ctx)
-      <> comma'
-      <> itemDocumentation doc
-  IEThingAbs warning n doc ->
-    exportWarning warning
-      <> at ctx n (wrappedName ctx)
-      <> comma'
-      <> itemDocumentation doc
+  IEVar warning n doc -> plain warning n doc
+  IEThingAbs warning n doc -> plain warning n doc
   IEThingAll (warning, (_, dots, _)) n doc ->
     exportWarning warning
       <> at ctx n (wrappedName ctx)
@@ -339,6 +331,11 @@ ieItem ctx here withComma = \case
     Just written -> sepBy (verbatimBreak AtIndent TrimWhitespace) (fmap txt (NE.toList written))
     Nothing -> txt (docSectionName n)
   where
+    plain warning n doc =
+      exportWarning warning
+        <> at ctx n (wrappedName ctx)
+        <> comma'
+        <> itemDocumentation doc
     comma' = includeWhen withComma comma
     exportWarning =
       foldMap (\w -> at ctx w warningTxt <> breakOrSpace)
