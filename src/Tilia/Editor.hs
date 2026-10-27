@@ -18,7 +18,7 @@ import Tilia.Cabal.Target
     componentsOfTarget,
   )
 import Tilia.Format
-  ( FormatError,
+  ( FormatError (NoProject),
     PlanSource (..),
     Session,
     newSession,
@@ -53,25 +53,23 @@ editorSession
   downloading
   checkAst
   checkIdempotence
-  debugFixity = do
-    planSource <- case givenPlan of
-      Just plan -> pure (GivenPlan plan)
-      Nothing -> PlanFromCabal <$> components
-    newSession
-      file
-      planSource
-      caching
-      downloading
-      checkAst
-      checkIdempotence
-      debugFixity
-    where
-      components =
-        findProjectRoot file >>= \case
-          Nothing -> pure []
-          Just root ->
-            either (const []) (mapMaybe componentInPlan)
+  debugFixity =
+    findProjectRoot file >>= \case
+      Nothing -> pure (Left (NoProject file))
+      Just root -> do
+        planSource <- case givenPlan of
+          Just plan -> pure (GivenPlan plan)
+          Nothing ->
+            PlanFromCabal . either (const []) (mapMaybe componentInPlan)
               <$> componentsOfTarget root Everything
+        newSession
+          root
+          planSource
+          caching
+          downloading
+          checkAst
+          checkIdempotence
+          debugFixity
 
 -- | Format given text on the assumption it comes from the specified
 -- 'FilePath'.
