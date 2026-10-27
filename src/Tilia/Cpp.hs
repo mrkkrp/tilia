@@ -444,8 +444,8 @@ inFragments formatter reached forest source (baseDoc, baseFound) =
           (fragmentsOf body forest)
       pure (body, ps)
 
--- | The outermost conditional around a @LANGUAGE@ or @OPTIONS@ pragma that
--- changes how the rest of the module is parsed, if there is one.
+-- | The outermost conditional around a @LANGUAGE@ pragma that changes how
+-- the rest of the module is parsed, if there is one.
 --
 -- Formatting a fragment on its own takes the rest of the module to be
 -- parsed alike in every configuration.
@@ -473,8 +473,7 @@ splitOnPragma parser forest source =
        in any pragma (take (to - from + 1) (drop (from - 1) written))
     pragma l =
       let u = T.toUpper l
-       in "{-#" `T.isInfixOf` u
-            && ("LANGUAGE" `T.isInfixOf` u || "OPTIONS" `T.isInfixOf` u)
+       in "{-#" `T.isInfixOf` u && "LANGUAGE" `T.isInfixOf` u
 
 -- | Vary the conditionals together, one group at a time.
 together ::
