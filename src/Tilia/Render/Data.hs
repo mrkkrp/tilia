@@ -311,13 +311,6 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       RecCon l -> spanOf l
       InfixCon x y -> spansOf (fmap cdf_type [x, y])
 
--- | A context standing to the left of a @=>@, with the arrow and the break
--- after it.
-leftContext :: Ctx -> LHsContext GhcPs -> Doc
-leftContext ctx = \case
-  L _ [] -> mempty
-  ctxt -> context ctx ctxt <> joinedBy "=>"
-
 -- | One @deriving@ clause, with the strategy it was written with.
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
 derivingClause ctx HsDerivingClause{..} =
