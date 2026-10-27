@@ -11,6 +11,7 @@ module Tilia.Fixity
     Fixity (..),
     defaultFixity,
     spellFixity,
+    readPrecedence,
 
     -- * Module declarations
     declaredFixities,
@@ -83,6 +84,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Read qualified as T
 import GHC.Generics (Generic)
 import GHC.Hs hiding (Fixity, OpName)
 import GHC.Types.Fixity qualified as GHC
@@ -123,6 +125,13 @@ instance NFData Fixity
 -- | What an operator with no declaration in scope means: @infixl 9@.
 defaultFixity :: Fixity
 defaultFixity = Fixity LeftAssoc 9
+
+-- | Read a precedence, which can be -1: GHC gives @->@ one, below anything
+-- the report allows anyone to write.
+readPrecedence :: Text -> Maybe Int
+readPrecedence t = case T.signed T.decimal t of
+  Right (p, rest) | T.null rest -> Just p
+  _ -> Nothing
 
 -- | A fixity, written the way it would be declared.
 spellFixity :: Fixity -> Text

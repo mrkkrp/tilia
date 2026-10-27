@@ -40,7 +40,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Text.Read qualified as T
 import Data.Time (UTCTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
@@ -494,9 +493,6 @@ parseFixity = \case
       "l" -> Just LeftAssoc
       "r" -> Just RightAssoc
       "n" -> Just NoAssoc
-      _ -> Nothing
-    readPrecedence t = case T.signed T.decimal t of
-      Right (p, rest) | T.null rest -> Just p
       _ -> Nothing
 
 -- | Render a namespace as 'Text'.
