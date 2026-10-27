@@ -224,8 +224,6 @@ attach :: Placement -> Doc -> Doc
 attach Hanging body = space <> body
 attach Normal body = breakOrSpace <> indent body
 
--- | 'Hanging' if the span was a single line in the input, 'Normal'
-
 ----------------------------------------------------------------------------
 -- Indentation
 

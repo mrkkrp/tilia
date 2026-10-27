@@ -108,8 +108,8 @@ summarizeComments loose every =
       summaryHaddocks = Set.fromList [commentSpan c | c <- every, holdsOff c]
     }
 
--- | Place comments into a document is the result of merging different
--- configurations.
+-- | Put the conditionals, comments, opaque directives and macro lines back
+-- into the document the configurations were merged into.
 restoreUnprinted ::
   -- | The module as written.
   Text ->
@@ -383,7 +383,7 @@ regionsIn = \case
   DFence s d -> (s, d) : regionsIn d
   d -> foldChildren regionsIn d
 
--- | The smallest span covering every region a document records.
+-- | The smallest span covering the outermost regions a document records.
 regionOf :: Doc -> Maybe Span
 regionOf = \case
   DLocated s _ -> Just s

@@ -1121,7 +1121,7 @@ scopeFor resolver implicitPrelude configurations = do
 -- | Everything a resolver consults, and the way back into it.
 --
 -- None of it changes from one module to the next, which is why
--- 'newResolverVia' builds it once and hands it over whole. What comes back
+-- 'newResolverWith' builds it once and hands it over whole. What comes back
 -- out of that is the 'Resolver'; this is what is behind it.
 data Workings = Workings
   { -- | Which readings to try, in the order given.
@@ -1140,7 +1140,7 @@ data Workings = Workings
     -- | A module's interface, read at most once a run.
     wkInterfaceOf :: Text -> IO (Maybe Interface),
     -- | How to reach another module. Tied back on itself by
-    -- 'newResolverVia', so that the memo it keeps covers the recursive
+    -- 'newResolverWith', so that the memo it keeps covers the recursive
     -- calls too.
     wkReach :: Set Text -> Text -> IO Established,
     -- | What each configuration of a module says, given its text, worked
@@ -1248,7 +1248,7 @@ buildModuleIndex ::
   [InstalledPackage] ->
   -- | Every package that might have a tarball, and where it would be.
   [(PlanPackage, FilePath)] ->
-  -- | For each module, the package that exposes it (as a cache key) and
+  -- | For each module, the package that holds it (as a cache key) and
   -- the tarball holding its source.
   IO (Map Text (Text, FilePath))
 buildModuleIndex cache installed tarballs =
@@ -1351,7 +1351,7 @@ fromCabalFile ::
   FilePath ->
   -- | The package it belongs to, consulted for the hash to verify against.
   PlanPackage ->
-  -- | The modules it exposes, or 'Nothing' if the tarball is absent, fails
+  -- | The modules it holds, or 'Nothing' if the tarball is absent, fails
   -- verification, or holds no @.cabal@ file.
   IO (Maybe [Text])
 fromCabalFile cache key tarball p =

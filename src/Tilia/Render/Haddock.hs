@@ -134,9 +134,6 @@ writtenAsBlock ctx doc =
   maybe False isBlockForm (writtenHaddock ctx (spanOfSrcSpan (getLoc doc)))
 
 -- | The anchor of a named documentation chunk.
---
--- Unlike a Haddock this carries no text of its own, so there is nothing to
--- reuse and nothing to report a position for.
 docSectionName :: String -> Text
 docSectionName n = "-- $" <> T.pack n
 

@@ -129,7 +129,8 @@ data CppError
   = -- | A conditional that does not make sense: the line and the keyword of
     -- the directive that gives it away, and what is wrong with it.
     MalformedConditional Int Text Malformation
-  | -- | More configurations than 'configurationBudget' allows.
+  | -- | Configurations that would format the module's lines more times over
+    -- than 'Tilia.Cpp.configurationBudget' allows.
     TooManyConfigurations
   | -- | A configuration the parser rejected, and which one it was.
     ConfigurationNotParsed [([Guard], Int)] ParseError

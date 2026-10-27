@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Package-level cache.
+-- | Answers remembered on disk between runs.
 module Tilia.Fixity.Cache
   ( Cache,
     PlanToken (..),
@@ -107,13 +107,13 @@ recalled recall remember work =
       traverse_ remember found
       pure found
 
--- | The modules a package exposes, if that was worked out before.
+-- | The modules a package holds, if that was worked out before.
 cachedModules :: Cache -> Text -> IO (Maybe [Text])
 cachedModules cache package =
   readIfPresent (at cache ["modules", package]) $
     filter (not . T.null) . T.lines
 
--- | Remember what a package exposes.
+-- | Remember which modules a package holds.
 storeModules :: Cache -> Text -> [Text] -> IO ()
 storeModules cache package =
   writeAtomically (at cache ["modules", package]) . T.unlines
