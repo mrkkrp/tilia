@@ -19,6 +19,7 @@ module Tilia.Cabal.Package
     benchmarkBranches,
     addedSources,
     sourceExtensions,
+    isDeclaredModule,
     joined,
     setupScript,
   )
@@ -174,14 +175,23 @@ claiming file components =
     covered = not . null . covering
     named c = any (declares c) (covering c)
     declares c d =
-      let path = under d
-       in Set.member path (componentEntries c)
-            || ( takeExtension path `elem` sourceExtensions
-                   && Set.member (dropExtension path) (componentModules c)
-               )
+      isDeclaredModule (componentModules c) (componentEntries c) (under d)
     under d = joinPath (drop (length (splitDirectories d)) (splitDirectories file))
     nearness = maximum . fmap length . covering
     covering c = [d | d <- componentDirs c, d `covers` file]
+
+-- | Is a file, named relative to a source directory, one of the modules or
+-- entry points declared there?
+isDeclaredModule ::
+  -- | The modules, without their extensions.
+  Set FilePath ->
+  -- | The entry points.
+  Set FilePath ->
+  FilePath ->
+  Bool
+isDeclaredModule modules entries path =
+  takeExtension path `elem` sourceExtensions
+    && (Set.member path entries || Set.member (dropExtension path) modules)
 
 -- | Whether a file is somewhere under a directory.
 covers :: FilePath -> FilePath -> Bool

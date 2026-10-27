@@ -40,11 +40,9 @@ import Distribution.PackageDescription
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import System.Directory (doesFileExist, listDirectory)
 import System.FilePath
-  ( dropExtension,
-    dropTrailingPathSeparator,
+  ( dropTrailingPathSeparator,
     normalise,
     takeDirectory,
-    takeExtension,
     (</>),
   )
 import Tilia.Cabal.Package
@@ -54,11 +52,11 @@ import Tilia.Cabal.Package
     benchmarkBranches,
     describePackageProblem,
     executableBranches,
+    isDeclaredModule,
     joined,
     libraryBranches,
     readPackageDescription,
     setupScript,
-    sourceExtensions,
     suiteBranches,
   )
 import Tilia.Cabal.Plan (PlanComponent (..))
@@ -146,11 +144,7 @@ instance Semigroup Wanted where
 
 -- | Is a directory entry one of the files wanted there?
 admits :: Wanted -> FilePath -> Bool
-admits Wanted{..} entry =
-  takeExtension entry `elem` sourceExtensions
-    && ( Set.member entry wantedEntries
-           || Set.member (dropExtension entry) wantedModules
-       )
+admits Wanted{..} = isDeclaredModule wantedModules wantedEntries
 
 -- | Why a run could not work out what to format.
 data TargetProblem
