@@ -81,8 +81,7 @@ fromHiFile modName HiFile{..}
                 ],
             interfaceReexports =
               [ (m, op)
-              | names <- exports,
-                (Just m, _, op) <- names,
+              | (Just m, _, op) <- concatMap mentioned hiExports,
                 m /= hiModule
               ],
             interfaceMembers = Map.map (Set.map snd) members,
@@ -94,7 +93,6 @@ fromHiFile modName HiFile{..}
                   }
           }
   where
-    exports = concatMap resolved hiExports
     exported = concatMap exportedNames hiExports
     exportedHere =
       Set.fromList [(namespace, op) | (_, namespace, op) <- exported]
@@ -109,11 +107,9 @@ fromHiFile modName HiFile{..}
     exportedNames = \case
       Avail n -> maybeToList (known n)
       AvailTC _ ns -> mapMaybe known ns
-    resolved = \case
-      Avail n -> maybe [] (pure . pure) (known n)
-      AvailTC p ns ->
-        let kids = mapMaybe known ns
-         in maybe (fmap pure kids) (\named -> [named : kids]) (known p)
+    mentioned = \case
+      Avail n -> maybeToList (known n)
+      AvailTC p ns -> maybeToList (known p) <> mapMaybe known ns
     known = \case
       HiName m namespace op -> Just (Just m, namespace, op)
       BuiltInSyntax namespace op -> Just (Nothing, namespace, op)
