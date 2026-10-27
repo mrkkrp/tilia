@@ -92,7 +92,7 @@ data FormatError
     NoProject FilePath
   | -- | A project, but no build plan we could read or produce, and why.
     NoBuildPlan FilePath Text
-  | -- | We failed to read .cabal file.
+  | -- | The extensions in force in the file could not be settled, and why.
     NoPackage FilePath PackageProblem
   | -- | The file is not Haskell we can parse.
     NotParsed ParseError

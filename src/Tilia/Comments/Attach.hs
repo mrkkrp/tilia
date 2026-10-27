@@ -190,11 +190,8 @@ walk margin = go
          in (DVariant a' b', p')
       d -> (d, p)
 
--- | Hold the last comment off a Haddock about to be written under it.
---
--- Only a comment written as @--@ lines needs holding off: the lexer would
--- read it and the Haddock under it as one comment. A @{- … -}@ ends at its
--- own bracket and may sit against whatever follows.
+-- | Hold the last comment, if written as @--@ lines, off a Haddock about to
+-- be written under it.
 heldOffFrom :: Doc -> [Comment] -> [Comment]
 heldOffFrom d cs = case unsnoc cs of
   Just (earlier, c)

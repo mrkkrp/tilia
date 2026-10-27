@@ -106,7 +106,7 @@ data Ctx = Ctx
 
 -- | The backward edges of the rendering knot.
 data Knot = Knot
-  { -- | Expressions, needed by types, patterns and bodies.
+  { -- | Expressions, needed by patterns and bodies.
     knotExpr :: Ctx -> Site -> LHsExpr GhcPs -> Doc,
     -- | Commands, needed by bodies.
     knotCmd :: Ctx -> Site -> LHsCmd GhcPs -> Doc,

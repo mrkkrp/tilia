@@ -722,8 +722,8 @@ mergeOf written c =
 -- | Every region a document records provenance for, with what was printed
 -- there.
 --
--- The outermost wins where a span appears twice, which is the one 'walk'
--- would have given a comment to.
+-- The outermost wins where a span appears twice, which is the one
+-- 'Tilia.Comments.Attach.attachComments' gives a comment to.
 regions :: Doc -> Map Span Doc
 regions = Map.fromListWith (\_ outer -> outer) . go
   where

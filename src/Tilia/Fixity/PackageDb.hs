@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Querying the compiler on which package exposes a module and where its
+-- | Querying the compiler on which package holds a module and where its
 -- compiled interfaces are.
 module Tilia.Fixity.PackageDb
   ( InstalledPackage (..),

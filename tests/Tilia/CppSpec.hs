@@ -242,7 +242,7 @@ spec = do
       (said (linearLeaves atDeclarations), said (leaves atDeclarations))
         `shouldSatisfy` uncurry (==)
 
-  describe "directives the prototype cannot read" $ do
+  describe "directives it cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
       formatCpp unbalanced `shouldBe` Left "the #ifdef at line 3 is never closed"
 

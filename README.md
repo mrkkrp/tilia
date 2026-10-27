@@ -45,6 +45,7 @@ For example, in the case of Tilia itself the valid choices are:
 * `lib:tilia` or `tilia:lib:tilia`
 * `exe:tilia` or `tilia:exe:tilia`
 * `test:tests` or `tilia:test:tests`, or just `tests`
+* `bench:bench` or `tilia:bench:bench`, or just `bench`
 
 It may be surprising that we talk about components rather than individual
 files. Well, formatting a Haskell module, fortunately or unfortunately,

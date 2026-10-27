@@ -899,10 +899,8 @@ data Example = Example
 --
 -- Fetching happens once: an unpacked corpus is left in place and found
 -- again, and a download interrupted half way leaves nothing behind to be
--- mistaken for a complete one. 'Left' is for the machine that cannot reach
--- the network rather than for a defect, and callers are expected to say so
--- and carry on rather than fail. A vendored corpus is already here and can
--- never fail this way.
+-- mistaken for a complete one. 'Left' says why a corpus that is not here
+-- could not be fetched; a vendored corpus is always here.
 obtain :: Corpus -> IO (Either Text [Example])
 obtain corpus = case corpusSource corpus of
   Vendored dir -> Right <$> examplesIn corpus dir

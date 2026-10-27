@@ -56,7 +56,7 @@ inlineSpec = \case
   Opaque _ -> txt "OPAQUE"
   NoUserInlinePrag -> mempty
 
--- | The overlap pragma of an instance, and the separator after it.
+-- | The overlap pragma of an instance.
 overlapMode :: Ctx -> Maybe (LocatedP OverlapMode) -> Maybe Doc
 overlapMode ctx mode = do
   m <- mode

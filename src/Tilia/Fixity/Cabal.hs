@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Reading a package's exposed modules out of its @.cabal@ file.
+-- | Reading a package's modules out of its @.cabal@ file.
 module Tilia.Fixity.Cabal
   ( packageModules,
     cabalFileInArchive,
@@ -29,7 +29,7 @@ import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Pragma (lookupExtension)
 import Tilia.Utils (quietly)
 
--- | The modules a package exposes, read from the @.cabal@ file in its
+-- | The modules a package holds, read from the @.cabal@ file in its
 -- source tarball.
 --
 -- 'Nothing' if the tarball cannot be read or holds no @.cabal@ file.
