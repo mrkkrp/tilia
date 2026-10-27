@@ -22,7 +22,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Read qualified as T
 import GHC.Generics (Generic)
 import Tilia.Fixity
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
@@ -209,13 +208,6 @@ fixityEntry entry = case T.words entry of
     p <- readPrecedence precedence
     pure (OpName op, Fixity d p)
   _ -> Nothing
-  where
-    -- Not one digit: GHC gives @->@ a precedence of -1, below anything the
-    -- report allows anyone to write, and drops it into a fixities line like
-    -- any other.
-    readPrecedence t = case T.signed T.decimal t of
-      Right (p, rest) | T.null rest -> Just p
-      _ -> Nothing
 
 -- | Split an exports section into its entries, keeping the members an entry
 -- wears in braces with the name they belong to.
