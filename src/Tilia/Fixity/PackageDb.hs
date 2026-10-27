@@ -22,7 +22,7 @@ import Data.Text qualified as T
 import System.Directory (doesDirectoryExist, findExecutable)
 import System.FilePath ((</>))
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly)
+import Tilia.Utils (fieldWords, quietly)
 
 -- | An installed package.
 data InstalledPackage = InstalledPackage
@@ -130,7 +130,7 @@ rooted fields path = case Map.lookup "pkgroot" fields of
 
 -- | The modules an @exposed-modules@ field names that the package holds.
 moduleNames :: Text -> [Text]
-moduleNames = go . moduleTokens
+moduleNames = go . fieldWords
   where
     go = \case
       (_ : "from" : _ : rest) -> go rest
@@ -144,17 +144,13 @@ moduleNames = go . moduleTokens
 -- | The modules an @exposed-modules@ field names that another package
 -- holds, each with its name there.
 reexportedModules :: Text -> [(Text, Text)]
-reexportedModules = go . moduleTokens
+reexportedModules = go . fieldWords
   where
     go = \case
       (m : "from" : original : rest) ->
         (m, T.takeWhileEnd (/= ':') original) : go rest
       (_ : rest) -> go rest
       [] -> []
-
--- | The words of a field that lists modules.
-moduleTokens :: Text -> [Text]
-moduleTokens = filter (not . T.null) . concatMap (T.split (== ',')) . T.words
 
 -- | Split a record into its fields.
 parseFields :: Text -> Map.Map Text Text

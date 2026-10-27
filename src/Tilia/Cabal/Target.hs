@@ -62,7 +62,7 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
 import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
-import Tilia.Utils (quietly)
+import Tilia.Utils (fieldWords, quietly)
 
 -- | Which components a run was asked for.
 data Target
@@ -295,11 +295,7 @@ packagesInCabalProjectContents contents = case readFields contents of
             [T.unwords [T.decodeUtf8Lenient value | FieldLine _ value <- ls]]
         | otherwise -> []
       Section _ _ inner -> packagesIn inner
-    entries =
-      filter (not . T.null)
-        . fmap T.strip
-        . concatMap (T.split (== ','))
-        . T.words
+    entries = fieldWords
 
 -- | Turn one entry of a @packages@ field into the @.cabal@ files it names.
 packageToCabalFile :: FilePath -> Text -> IO [FilePath]

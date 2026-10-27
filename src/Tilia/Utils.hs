@@ -7,6 +7,7 @@ module Tilia.Utils
   ( quietly,
     attempted,
     readFileText,
+    fieldWords,
     asUtf8,
     byteOrderMark,
     lineWidth,
@@ -56,6 +57,10 @@ readFileText path = quietly Nothing $ do
   if there
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
     else pure Nothing
+
+-- | The words of a field's value, which whitespace and commas separate.
+fieldWords :: Text -> [Text]
+fieldWords = filter (not . T.null) . concatMap (T.split (== ',')) . T.words
 
 -- | Run an action and return its result or the exception it threw rendered
 -- as 'Text'.
