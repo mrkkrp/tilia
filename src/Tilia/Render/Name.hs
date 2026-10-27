@@ -78,7 +78,7 @@ adorn ctx here x = go
         NameBackquotes{} -> backticks . itsOwn nann_name
         _ -> itsOwn nann_name
       _ -> id
-    itsOwn = atSpan ctx . annSpan
+    itsOwn = atSpan ctx . spanOf
     inParens d = txt "(" <> d <> txt ")"
     spaceOutHash d
       | extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums,

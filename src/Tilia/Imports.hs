@@ -24,7 +24,7 @@ import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
 import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
 import Tilia.Span (endPoint, isSingleLine, startPoint)
-import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan, tokenSpan)
+import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 
 -- | Sort and fold together a module's imports.
 normalizeImports ::
@@ -323,7 +323,7 @@ wider written (L ann kept) (L other folded) =
       | onOneLine open close && not (onOneLine open' close') =
           (warning, (open', dots, comma, close'))
       | otherwise = (warning, (open, dots, comma, close))
-    onOneLine open close = all isSingleLine (tokenSpan open <> tokenSpan close)
+    onOneLine open close = all isSingleLine (spanOf open <> spanOf close)
 
 -- | An entry with the names in its own brackets sorted and deduplicated.
 sortSubnames :: IE GhcPs -> IE GhcPs

@@ -87,7 +87,7 @@ exprBody ctx site here = \case
       <> indent
         ( atSpan
             ctx
-            (tokenSpan at' <> spanOf (hswc_body a))
+            (spanOf at' <> spanOf (hswc_body a))
             (txt "@" <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a)))
         )
   OpApp _ x op y -> exprChain ctx site x op y
@@ -311,7 +311,7 @@ fieldBind ctx label HsFieldBind{..} =
     <> includeUnless
       hfbPun
       ( space
-          <> keywordAt ctx (tokenSpan =<< hfbAnn) "="
+          <> keywordAt ctx (spanOf =<< hfbAnn) "="
           <> attach placement (hsExpr ctx hfbRHS)
       )
   where
@@ -471,7 +471,7 @@ stmtBody ctx site mkBody = \case
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
-      <> nest 1 (space <> keywordAt ctx (uniTokenSpan arrow) "<-")
+      <> nest 1 (space <> keywordAt ctx (spanOf arrow) "<-")
       <> layoutFrom
         ctx
         (fmap endOf (spanOf p) <> spanOf f)
@@ -595,11 +595,11 @@ caseOf ::
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
-  keywordAt ctx (tokenSpan hsCaseAnnCase) "case"
+  keywordAt ctx (spanOf hsCaseAnnCase) "case"
     <> space
     <> hsExpr ctx scrutinee
     <> space
-    <> indent (keywordAt ctx (tokenSpan hsCaseAnnOf) "of")
+    <> indent (keywordAt ctx (spanOf hsCaseAnnOf) "of")
     <> breakOrSpace
     <> bracedForSite site alternatives
   where
@@ -675,17 +675,17 @@ letIn ::
   Doc
 letIn ctx bodyOf nested (letToken, inToken) binds body =
   align $
-    written (tokenSpan letToken) (txt "let")
+    written (spanOf letToken) (txt "let")
       <> space
       <> align
         ( localBinds ctx NoBrace binds
-            <> foldMap (emptyAnchor . startOf) (tokenSpan inToken)
+            <> foldMap (emptyAnchor . startOf) (spanOf inToken)
         )
-      <> written (tokenSpan inToken) (separator <> txt "in")
+      <> written (spanOf inToken) (separator <> txt "in")
       <> (if chained then breakOrSpace else space)
       <> align (printBody (bodyOf body))
   where
-    chained = nested && not (sameLine (tokenSpan inToken) (spanOf body))
+    chained = nested && not (sameLine (spanOf inToken) (spanOf body))
     separator = if chained then space else variant space (hardBreak <> txt " ")
     written s d = if chained then fenceWithin ctx s d else d
 
@@ -1096,7 +1096,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         <> align (commaSep (fmap (align . hsStmt ctx) guards))
         <> space
         <> indent (txt separator)
-    headSpan = (<>) <$> (tokenSpan =<< ga_vbar) <*> separatorSpan
+    headSpan = (<>) <$> (spanOf =<< ga_vbar) <*> separatorSpan
     bound = bodyIn mkBody bracing body
     separator = case style of
       EqualsSign -> "="
@@ -1107,7 +1107,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         not (remarkBefore && remarkAfter) =
           bodyPlacement bound
       | otherwise = Normal
-    separatorSpan = either annSpan annSpan ga_sep
+    separatorSpan = either spanOf spanOf ga_sep
     remarkBefore = lineCommentWrittenBetween ctx (spansOf guards) separatorSpan
     remarkAfter =
       lineCommentWrittenBetween ctx separatorSpan (nextLine <$> separatorSpan)
