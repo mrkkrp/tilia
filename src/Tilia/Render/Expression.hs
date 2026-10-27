@@ -311,7 +311,7 @@ fieldBind ctx label HsFieldBind{..} =
     <> includeUnless
       hfbPun
       ( space
-          <> maybe id located (tokenSpan =<< hfbAnn) (txt "=")
+          <> keywordAt ctx (tokenSpan =<< hfbAnn) "="
           <> attach placement (hsExpr ctx hfbRHS)
       )
   where
@@ -474,7 +474,7 @@ stmtBody ctx site mkBody = \case
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
-      <> nest 1 (space <> maybe id located (uniTokenSpan arrow) (txt "<-"))
+      <> nest 1 (space <> keywordAt ctx (uniTokenSpan arrow) "<-")
       <> layoutFrom
         ctx
         (fmap endOf (spanOf p) <> spanOf f)
@@ -598,11 +598,11 @@ caseOf ::
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
-  maybe id located (tokenSpan hsCaseAnnCase) (txt "case")
+  keywordAt ctx (tokenSpan hsCaseAnnCase) "case"
     <> space
     <> hsExpr ctx scrutinee
     <> space
-    <> indent (maybe id located (tokenSpan hsCaseAnnOf) (txt "of"))
+    <> indent (keywordAt ctx (tokenSpan hsCaseAnnOf) "of")
     <> breakOrSpace
     <> bracedForSite site alternatives
   where
@@ -1094,7 +1094,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
   _ ->
     maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
-      maybe id fence headSpan guardHead
+      fenceWithin ctx headSpan guardHead
         <> nest
           (if parentPlacement == Normal then 1 else 0)
           (attach placement (printBody bound))
