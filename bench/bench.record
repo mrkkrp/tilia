@@ -113,9 +113,9 @@ resolve      471337424     797933560  free-5.2
 resolve     2974846416    5182117488  lens-5.3.6
 resolve      210141448     366863261  megaparsec-9.8.1
 resolve      225721488     389080556  mtl-2.3.2
-resolve       64340216     129586204  optics-0.4.2.1
+resolve       64290384     128807227  optics-0.4.2.1
 resolve       77403992     142766080  pandoc-types-1.23.1.2
 resolve      133192544     239792968  semigroupoids-6.0.2
-resolve      213501288     392709000  servant-0.20.3.0
+resolve      213434872     390492262  servant-0.20.3.0
 resolve     1159785776    1998726806  text-2.1.4
 resolve     2408709680    4079031003  vector-0.13.2.0

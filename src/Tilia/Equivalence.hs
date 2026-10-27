@@ -68,6 +68,7 @@ import Tilia.Comments
   )
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
+import Tilia.Pragma (languageNames)
 import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOf, spansOf)
@@ -561,9 +562,5 @@ pragmasOf = Set.fromList . concatMap entries . mapMaybe commentPragma
   where
     entries p
       | pragmaName p == "LANGUAGE" =
-          [ ("LANGUAGE", extension)
-          | e <- T.splitOn "," (pragmaBody p),
-            let extension = T.strip e,
-            not (T.null extension)
-          ]
+          [("LANGUAGE", extension) | extension <- languageNames (pragmaBody p)]
       | otherwise = [(pragmaName p, pragmaBody p)]

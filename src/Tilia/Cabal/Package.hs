@@ -83,7 +83,7 @@ import System.FilePath
     (</>),
   )
 import Tilia.Cabal.Project (cabalFilesIn)
-import Tilia.Pragma (lookupExtension)
+import Tilia.Pragma (applyExtensionName, lookupEdition)
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (attempted, quietly)
 
@@ -511,13 +511,11 @@ extensionsInForce bi =
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
     apply acc = \case
-      Cabal.EnableExtension e
-        | Just on <- named e, on `notElem` acc -> acc <> [on]
-      Cabal.DisableExtension e
-        | Just off <- named e -> filter (/= off) acc
+      Cabal.EnableExtension e -> applyExtensionName acc (named e)
+      Cabal.DisableExtension e -> applyExtensionName acc ("No" <> named e)
       _ -> acc
-    named = lookupExtension . T.pack . show
+    named = T.pack . show
 
 -- | GHC's name for a language edition, when it has one.
 ghcLanguage :: Cabal.Language -> Maybe GHC.Language
-ghcLanguage l = lookup (show l) [(show e, e) | e <- [minBound .. maxBound]]
+ghcLanguage = lookupEdition . T.pack . show

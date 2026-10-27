@@ -26,7 +26,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
-import Tilia.Pragma (lookupExtension)
+import Tilia.Pragma (applyExtensionName, lookupEdition)
 import Tilia.Utils (fieldWords, quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
@@ -85,27 +85,17 @@ sourceDirs contents = Data.List.nub (named <> ["."])
 -- | The extensions a package puts in force, read from its @.cabal@ file.
 declaredExtensions :: Text -> [Extension]
 declaredExtensions contents =
-  foldl apply baseline named
+  foldl applyExtensionName baseline named
   where
     ls = T.lines contents
-    baseline = case mapMaybe languageNamed (fieldsNamed "default-language" ls) of
-      [] -> GHC.languageExtensions (Just GHC.Haskell98)
-      editions ->
-        Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
+    baseline =
+      case mapMaybe lookupEdition (fieldsNamed "default-language" ls) of
+        [] -> GHC.languageExtensions (Just GHC.Haskell98)
+        editions ->
+          Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
     named =
       concatMap fieldWords $
         fieldsNamed "extensions" ls <> fieldsNamed "default-extensions" ls
-    apply acc written = case T.strip written of
-      name
-        | Just off <- T.stripPrefix "No" name,
-          Just extension <- lookupExtension off ->
-            filter (/= extension) acc
-        | Just extension <- lookupExtension name,
-          extension `notElem` acc ->
-            acc <> [extension]
-        | otherwise -> acc
-    languageNamed written =
-      lookup (T.unpack (T.strip written)) [(show e, e) | e <- [minBound .. maxBound]]
 
 -- | The values of every field with the given name, wherever it appears and
 -- however deeply it is nested.
