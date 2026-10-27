@@ -219,6 +219,7 @@ test-suite tests
     Tilia.RenderSpec
     Tilia.RunSpec
     Tilia.TestConfig
+    Tilia.TestUtils
     Tilia.WithProjectPlan
 
   default-language: GHC2021
@@ -265,6 +266,7 @@ benchmark bench
     Tilia.BootFixities
     Tilia.Corpus
     Tilia.TestConfig
+    Tilia.TestUtils
 
   c-sources: bench/cbits/counter.c
   default-language: GHC2021

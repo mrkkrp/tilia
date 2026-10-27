@@ -11,13 +11,13 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import System.Directory (getModificationTime, listDirectory, setModificationTime)
-import System.Environment (setEnv, unsetEnv)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Fixity
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
+import Tilia.TestUtils (withEnvironment)
 
 spec :: Spec
 spec = do
@@ -26,9 +26,9 @@ spec = do
   describe "a cache not to be used" $
     it "remembers nothing, and nothing is made on disk for it" $
       withIsolatedDirectory $ \dir -> do
-        setEnv "XDG_CACHE_HOME" dir
-        cache <- openCache (Don't #useCache) (PlanToken "plan")
-        unsetEnv "XDG_CACHE_HOME"
+        cache <-
+          withEnvironment [("XDG_CACHE_HOME", dir)] $
+            openCache (Don't #useCache) (PlanToken "plan")
         storeModules cache "thing-1.0" ["A"]
         cachedModules cache "thing-1.0" `shouldReturn` Nothing
         listDirectory dir `shouldReturn` []
@@ -464,8 +464,5 @@ withIsolatedDirectory = withSystemTempDirectory "tilia-cache"
 
 -- | Open a cache in a given directory, under a given token.
 open :: FilePath -> PlanToken -> IO Cache
-open dir token = do
-  setEnv "XDG_CACHE_HOME" dir
-  cache <- openCache (Do #useCache) token
-  unsetEnv "XDG_CACHE_HOME"
-  pure cache
+open dir token =
+  withEnvironment [("XDG_CACHE_HOME", dir)] (openCache (Do #useCache) token)
