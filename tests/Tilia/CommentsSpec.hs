@@ -196,7 +196,7 @@ spec = do
 -- Helpers
 
 render :: Doc -> Text
-render = printDoc defaultRenderOptions
+render = printDoc
 
 one :: Text -> Comment
 one src = case commentsIn src of

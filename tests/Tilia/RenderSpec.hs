@@ -6,7 +6,7 @@ module Tilia.RenderSpec (spec) where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Doc (printDoc)
 import Tilia.Render
 import Tilia.TestUtils (parsed)
 
@@ -37,7 +37,7 @@ spec =
 format :: [Text] -> [Text]
 format =
   T.lines
-    . printDoc defaultRenderOptions
+    . printDoc
     . renderModule defaultRenderConfig
     . parsed
     . T.unlines

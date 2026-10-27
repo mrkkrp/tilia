@@ -19,7 +19,7 @@ import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cpp (CppError, everyBranch, formatWithCpp)
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Doc (printDoc)
 import Tilia.Fixity
   ( Direction (..),
     Established (..),
@@ -88,7 +88,6 @@ printExample ::
   Text
 printExample package source parsed =
   printDoc
-    defaultRenderOptions
     (renderModule (exampleRenderConfig package source (pure parsed)) parsed)
 
 -- | Format a corpus example that uses the preprocessor.

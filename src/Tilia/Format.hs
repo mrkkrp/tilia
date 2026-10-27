@@ -56,7 +56,7 @@ import Tilia.Cpp
     withoutRuledOut,
   )
 import Tilia.Cpp.Macros (Macros)
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Doc (printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
 import Tilia.Fixity
   ( OpName,
@@ -343,7 +343,7 @@ formatSource session path source = runExceptT $ do
               maybe (orElse NotParsed (parseModule config path text)) pure already
             render <- renderConfigFor extensions (pure parsed)
             pure
-              ( printDoc defaultRenderOptions (renderModule render parsed),
+              ( printDoc (renderModule render parsed),
                 Just parsed
               )
   let inForce@(_, cpp) = extensionsAndCpp source

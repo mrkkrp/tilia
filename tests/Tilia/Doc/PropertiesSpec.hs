@@ -87,4 +87,4 @@ squash :: Text -> Text
 squash = T.filter (not . isSpace)
 
 out :: Doc -> Text
-out = printDoc defaultRenderOptions
+out = printDoc
