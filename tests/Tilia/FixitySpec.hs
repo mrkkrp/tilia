@@ -20,7 +20,7 @@ import Tilia.Cpp (blankCpp, branchLeaves)
 import Tilia.Fixity
 import Tilia.Parser
 import Tilia.Span (spanStartColumn, spanStartLine)
-import Tilia.TestUtils (parsed)
+import Tilia.TestUtils (parsed, unreadOnly)
 
 spec :: Spec
 spec = do
@@ -882,12 +882,6 @@ conditionalImports =
 -- | What is known in a world made of 'exportsOf' alone.
 knowingExports :: Text -> Established
 knowingExports = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
-
--- | The one import blamed for an operator, unread on its own account and so
--- with nothing below it. What every answer here was before a chain could be
--- reported at all.
-unreadOnly :: Text -> NonEmpty ModuleChain
-unreadOnly m = ModuleChain (m :| []) :| []
 
 -- | A module that uses an operator nothing in scope declares, alongside an
 -- import that could not be read.
