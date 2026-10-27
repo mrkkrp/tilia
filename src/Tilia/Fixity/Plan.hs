@@ -60,7 +60,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions)
-import Tilia.Utils (byteOrderMark, inParallel, quietly, readFileText)
+import Tilia.Utils (byteOrderMark, inParallel, quietly, readFileText, sha256Of)
 
 ----------------------------------------------------------------------------
 -- Resolving
@@ -405,8 +405,7 @@ interfaceIndex installed =
 
 -- | A name for some text, short enough to file something under.
 digestOf :: Text -> Text
-digestOf =
-  T.take 24 . T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
+digestOf = T.take 24 . sha256Of
 
 -- | Present a fixity map as an 'Interface'.
 asInterface :: Fixities -> Interface
