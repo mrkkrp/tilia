@@ -901,16 +901,22 @@ data Example = Example
 -- again, and a download interrupted half way leaves nothing behind to be
 -- mistaken for a complete one. 'Left' says why a corpus that is not here
 -- could not be fetched; a vendored corpus is always here.
+--
+-- The archive of a 'Fetched' corpus is deleted once unpacked; Hackage
+-- releases keep theirs, which the fixity benchmarks read.
 obtain :: Corpus -> IO (Either Text [Example])
 obtain corpus = case corpusSource corpus of
   Vendored dir -> Right <$> examplesIn corpus dir
   Fetched url root -> do
     home <- corpusCache
     let unpacked = home </> corpusName corpus
+        archive = unpacked <> ".tar.gz"
     createDirectoryIfMissing True home
-    fetch url (home </> corpusName corpus <> ".tar.gz") unpacked >>= \case
+    fetch url archive unpacked >>= \case
       Left problem -> pure (Left problem)
-      Right () -> Right <$> examplesIn corpus (unpacked </> root)
+      Right () -> do
+        removePathForcibly archive
+        Right <$> examplesIn corpus (unpacked </> root)
   HackageReleases releases -> do
     home <- corpusCache
     let root = home </> corpusName corpus
