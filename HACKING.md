@@ -145,8 +145,8 @@ builds the release binaries, runs weeder, the self-format checks and the
 benchmarks, and provides the default development shell. When it changes,
 which happens when the oldest version is dropped, update `GHC_VERSION` in
 `.github/workflows/release.yaml` to match, as well as the `restore-keys` of
-the `format` job and the compiler and `restore-keys` of the `bench` job in
-`ci.yaml`, and record the benchmarks again with the new base compiler.
+the `format` job and the compiler of the `bench` job in `ci.yaml`, and
+record the benchmarks again with the new base compiler.
 
 ## Switching `ghc-lib-parser`
 

@@ -60,10 +60,18 @@ jobs:
             cabal-${{ matrix.ghc }}-
       - uses: actions/cache@v6
         with:
-          path: ~/.cache/tilia
+          path: |
+            ~/.cache/tilia/*
+            !~/.cache/tilia/corpus
           key: tilia-${{ matrix.ghc }}-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
             tilia-${{ matrix.ghc }}-
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/tilia/corpus
+          key: corpus-${{ hashFiles('tests/Tilia/Corpus.hs') }}
+          restore-keys: |
+            corpus-
       - name: Build
         run: |
           nix build -L --keep-going .#${{ matrix.ghc }}.ci
@@ -87,11 +95,11 @@ jobs:
           authToken: '${{ secrets.CACHIX_TIILA_AUTH_TOKEN }}'
       - uses: actions/cache@v6
         with:
-          path: ~/.cache/tilia
-          key: tilia-bench-${{ hashFiles('tests/Tilia/Corpus.hs') }}
+          path: ~/.cache/tilia/corpus
+          key: bench-corpus-${{ hashFiles('tests/Tilia/Corpus.hs') }}
           restore-keys: |
-            tilia-bench-
-            tilia-ghc9103-
+            bench-corpus-
+            corpus-
       - name: Benchmark
         run: |
           bench="$(nix build -L --no-link --print-out-paths .#ghc9103.bench-exe)"
@@ -122,7 +130,9 @@ jobs:
             cabal-ghc9103-
       - uses: actions/cache@v6
         with:
-          path: ~/.cache/tilia
+          path: |
+            ~/.cache/tilia/*
+            !~/.cache/tilia/corpus
           key: tilia-format-${{ hashFiles('corpora/hackage/hackage.manifest', 'cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
             tilia-format-
