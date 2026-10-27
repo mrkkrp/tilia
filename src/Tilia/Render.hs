@@ -38,7 +38,7 @@ import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls, declsKeepingGroups)
-import Tilia.Render.Expression (hsCmd, hsExprIn, untypedSplice)
+import Tilia.Render.Expression (hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
@@ -225,7 +225,6 @@ knot :: Knot
 knot =
   Knot
     { knotExpr = hsExprIn,
-      knotCmd = hsCmd,
       knotSplice = untypedSplice,
       knotSig = sigDecl,
       knotDecls = decls,

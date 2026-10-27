@@ -97,7 +97,6 @@ library
     Tilia.Pragma
     Tilia.Process
     Tilia.Render
-    Tilia.Render.Body
     Tilia.Render.Class
     Tilia.Render.Context
     Tilia.Render.Data
