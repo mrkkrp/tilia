@@ -6,22 +6,12 @@ module Tilia.Span.Ghc
     spanOfSrcSpan,
     spanOf,
     spansOf,
-    tokenSpan,
-    uniTokenSpan,
-    annSpan,
     bracketsSpan,
   )
 where
 
 import Data.Maybe (mapMaybe)
-import GHC.Parser.Annotation
-  ( AnnListBrackets (..),
-    EpToken,
-    EpUniToken (..),
-    HasLoc,
-    getEpTokenSrcSpan,
-    getHasLoc,
-  )
+import GHC.Parser.Annotation (AnnListBrackets (..), HasLoc, getHasLoc)
 import GHC.Types.SrcLoc (GenLocated)
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Span (Span, mkSpan)
@@ -37,32 +27,18 @@ spanOfReal s =
 spanOfSrcSpan :: GHC.SrcSpan -> Maybe Span
 spanOfSrcSpan = fmap spanOfReal . GHC.srcSpanToRealSrcSpan
 
--- | The span of a located thing.
-spanOf :: (HasLoc l) => GenLocated l a -> Maybe Span
+-- | Where something the compiler located was written: a node, a token or
+-- an annotation.
+spanOf :: (HasLoc l) => l -> Maybe Span
 spanOf = spanOfSrcSpan . getHasLoc
-
--- | Where a keyword or a piece of punctuation was written.
-tokenSpan :: EpToken sym -> Maybe Span
-tokenSpan = spanOfSrcSpan . getEpTokenSrcSpan
-
--- | Where a keyword or a piece of punctuation that has a Unicode spelling
--- was written.
-uniTokenSpan :: EpUniToken tok utok -> Maybe Span
-uniTokenSpan = \case
-  EpUniTok l _ -> annSpan l
-  NoEpUniTok -> Nothing
-
--- | Where an annotation says something was written.
-annSpan :: (HasLoc l) => l -> Maybe Span
-annSpan = spanOfSrcSpan . getHasLoc
 
 -- | Where a list's brackets were written, from the opening one to the
 -- closing one.
 bracketsSpan :: AnnListBrackets -> Maybe Span
 bracketsSpan = \case
-  ListParens open close -> tokenSpan open <> tokenSpan close
-  ListBraces open close -> tokenSpan open <> tokenSpan close
-  ListSquare open close -> tokenSpan open <> tokenSpan close
+  ListParens open close -> spanOf open <> spanOf close
+  ListBraces open close -> spanOf open <> spanOf close
+  ListSquare open close -> spanOf open <> spanOf close
   _ -> Nothing
 
 -- | The span covering every located thing in the list.

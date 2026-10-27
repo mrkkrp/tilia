@@ -55,7 +55,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
   txt "class" <> layoutFrom ctx wholeHeadSpan head' <> body
   where
     headSpan = spanOf tyCon <> spansOf hsq_explicit
-    whereSpan = tokenSpan (acd_where anns)
+    whereSpan = spanOf (acd_where anns)
     wholeHeadSpan = foldMap spanOf ctxt <> headSpan <> spansOf fdeps
 
     head' =
@@ -126,7 +126,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
   txt "instance" <> layoutFrom ctx headSpan head' <> body
   where
     headSpan = foldMap spanOf warning <> spanOf cid_poly_ty
-    whereSpan = tokenSpan (acid_where anns)
+    whereSpan = spanOf (acid_where anns)
 
     head' =
       foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning

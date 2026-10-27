@@ -235,7 +235,7 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
                 <> foldMap warning hsmodDeprecMessage
                 <> foldMap exports' hsmodExports
             )
-          <> keywordAt ctx (tokenSpan (am_where (anns hsmodAnn))) "where"
+          <> keywordAt ctx (spanOf (am_where (anns hsmodAnn))) "where"
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
     warning w = at ctx w warningTxt <> breakOrSpace
@@ -297,7 +297,7 @@ ieItem ctx here withComma = \case
       <> at ctx n (wrappedName ctx)
       <> space
       <> txt "("
-      <> keywordAt ctx (tokenSpan dots) ".."
+      <> keywordAt ctx (spanOf dots) ".."
       <> txt ")"
       <> comma'
       <> itemDocumentation doc
@@ -308,7 +308,7 @@ ieItem ctx here withComma = \case
           <> layoutWithin
             ctx
             here
-            (tokenSpan open <> tokenSpan close <|> here)
+            (spanOf open <> spanOf close <|> here)
             ( breakOrSpace
                 <> indent (parens (insideBrackets here (commaSep (align <$> withWildcard))))
             )
@@ -321,7 +321,7 @@ ieItem ctx here withComma = \case
         NoIEWildcard -> rendered
         IEWildcard n' ->
           let (before, after) = splitAt n' rendered
-           in before <> [keywordAt ctx (tokenSpan dots) ".."] <> after
+           in before <> [keywordAt ctx (spanOf dots) ".."] <> after
   IEModuleContents (warning, _) m ->
     exportWarning warning <> at ctx m (moduleHeadName ctx) <> comma'
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
@@ -362,12 +362,12 @@ isDocEntry = \case
 -- and its import list, each a node of its own past the keyword's column.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
 importDecl ctx ImportDecl{..} =
-  keywordAt ctx (tokenSpan (importDeclAnnImport annotation)) "import"
+  keywordAt ctx (spanOf (importDeclAnnImport annotation)) "import"
     <> indent
       ( space
           <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")
           <> space
-          <> includeWhen ideclSafe (keywordAt ctx (tokenSpan =<< importDeclAnnSafe annotation) "safe")
+          <> includeWhen ideclSafe (keywordAt ctx (spanOf =<< importDeclAnnSafe annotation) "safe")
           <> space
           <> levelBefore
           <> space
@@ -384,7 +384,7 @@ importDecl ctx ImportDecl{..} =
       ( \a ->
           indent
             ( space
-                <> keywordAt ctx (tokenSpan =<< importDeclAnnAs annotation) "as"
+                <> keywordAt ctx (spanOf =<< importDeclAnnAs annotation) "as"
                 <> space
                 <> at ctx a outputable
             )
@@ -393,7 +393,7 @@ importDecl ctx ImportDecl{..} =
     <> foldMap (indent . (space <>)) importList
   where
     annotation = anns (ideclAnn ideclExt)
-    qualified = keywordAt ctx (tokenSpan =<< importDeclAnnQualified annotation) "qualified"
+    qualified = keywordAt ctx (spanOf =<< importDeclAnnQualified annotation) "qualified"
     qualifiedLast = extensionOn ctx ImportQualifiedPost
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
@@ -408,7 +408,7 @@ importDecl ctx ImportDecl{..} =
     importList = flip fmap ideclImportList $ \(interpretation, L listLoc xs) ->
       let hidden = case interpretation of
             Exactly -> mempty
-            EverythingBut -> keywordAt ctx (tokenSpan (fst (al_rest (anns listLoc)))) "hiding"
+            EverythingBut -> keywordAt ctx (spanOf (fst (al_rest (anns listLoc)))) "hiding"
           listSpan = spanOfSrcSpan (locA listLoc)
           parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
        in layoutWithin ctx listSpan parensSpan $
