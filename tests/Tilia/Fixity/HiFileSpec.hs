@@ -11,16 +11,13 @@ module Tilia.Fixity.HiFileSpec (spec) where
 
 import Control.Applicative ((<|>))
 import Control.Exception (evaluate)
-import Data.Bits (xor)
 import Data.ByteString qualified as BS
-import Data.Char (ord)
 import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Word (Word64)
 import Test.Hspec
 import Tilia.Fixity (Fixities, Namespace (..), OpName (..))
 import Tilia.Fixity.HiFile
@@ -34,6 +31,7 @@ import Tilia.Fixity.Interface (Interface (..), fromHiFile, parseInterface)
 import Tilia.Fixity.PackageDb (readInstalledPackages)
 import Tilia.Fixity.Plan (BuildPlan)
 import Tilia.Process (readProgramOutput)
+import Tilia.TestUtils (fingerprint)
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan
   ( Dependency (..),
@@ -102,12 +100,10 @@ passesOver = any (elem Unneeded . names) . hiExports
 -- | Whether a module is in the fixed eighth of the rest, which are checked
 -- against @ghc@ all the same.
 --
--- Chosen by an FNV-1a hash of the name, so that it is the same modules on
+-- Chosen by a 'fingerprint' of the name, so that it is the same modules on
 -- every run and machine.
 sampled :: Text -> Bool
-sampled m = T.foldl' step 14695981039346656037 m `mod` 8 == (0 :: Word64)
-  where
-    step h c = (h `xor` fromIntegral (ord c)) * 1099511628211
+sampled m = fingerprint (T.unpack m) `mod` 8 == 0
 
 -- | Where a direct reading and the text disagree about what fixities depend
 -- on, beyond what the text cannot tell.
