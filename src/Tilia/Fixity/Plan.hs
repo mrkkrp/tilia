@@ -349,7 +349,12 @@ resolveModule
 
       answered established
         | settlesEverything established = established
-        | Set.member modName wkGenerated = settledAs Map.empty established
+        | Set.member modName wkGenerated =
+            established
+              { establishedFixities = Map.empty,
+                establishedUnsettled = Map.empty,
+                establishedUntold = Set.empty
+              }
         | otherwise = established
       throughCache key =
         recalled
@@ -877,15 +882,6 @@ settledOnly established
               (\name _ -> null (unsettledThrough established name))
               (establishedFixities established)
         }
-
--- | An answer whose fixities come from elsewhere, and settle every name.
-settledAs :: Fixities -> Established -> Established
-settledAs fixities established =
-  established
-    { establishedFixities = fixities,
-      establishedUnsettled = Map.empty,
-      establishedUntold = Set.empty
-    }
 
 -- | A set, unless it is empty.
 inhabited :: Set a -> Maybe (Set a)
