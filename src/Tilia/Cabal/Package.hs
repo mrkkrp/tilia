@@ -27,7 +27,7 @@ import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Data.ByteString qualified as BS
 import Data.Generics.Schemes (listify)
 import Data.IORef
-import Data.List (isSuffixOf, sortOn)
+import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -68,7 +68,7 @@ import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
-import System.Directory (canonicalizePath, doesDirectoryExist, listDirectory)
+import System.Directory (canonicalizePath, doesDirectoryExist)
 import System.FilePath
   ( dropExtension,
     equalFilePath,
@@ -79,6 +79,7 @@ import System.FilePath
     takeExtension,
     (</>),
   )
+import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Pragma (lookupExtension)
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (attempted, quietly)
@@ -209,9 +210,8 @@ findCabalFile ref = climb []
       case Map.lookup directory known of
         Just answer -> settle passed answer
         Nothing -> do
-          entries <- quietly [] (listDirectory directory)
-          case filter (".cabal" `isSuffixOf`) entries of
-            (named : _) -> settle (directory : passed) (Just (directory </> named))
+          cabalFilesIn directory >>= \case
+            (found : _) -> settle (directory : passed) (Just found)
             [] ->
               let parent = takeDirectory directory
                in if parent == directory
