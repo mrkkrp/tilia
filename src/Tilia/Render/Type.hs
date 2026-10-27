@@ -159,12 +159,11 @@ typeChain ctx x op y =
 renderChain :: Ctx -> OpChain (LHsType GhcPs) (LocatedN RdrName) -> Doc
 renderChain ctx = \case
   Operand t -> hsType ctx t
-  chain@(Chain (firstOne :| rest) operators) ->
+  chain@(Chain operands@(firstOne :| _) operators) ->
     layoutFrom ctx (chainSpan spanOf chain) $
-      renderChain ctx firstOne
-        <> mconcat (zipWith3 piece (firstOne : rest) operators rest)
+      renderChain ctx firstOne <> foldMap piece (links operands operators)
   where
-    piece previous op operand =
+    piece (previous, op, operand, _) =
       attachOperator
         Normal
         (chainSpan spanOf previous)
