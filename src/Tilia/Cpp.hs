@@ -99,10 +99,8 @@ formatWithCpp parser render path source = do
     evalState
       ( runExceptT
           ( formatAllConfigs
-              parser
-              known
-              path
-              (reading parser known path (noAnswers source) source)
+              formatter
+              (reading formatter (noAnswers source) source)
           )
       )
       (configurationBudget * linesHeld source)
@@ -111,6 +109,12 @@ formatWithCpp parser render path source = do
       <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
+    formatter =
+      Formatter
+        { formatterParser = parser,
+          formatterRender = known,
+          formatterPath = path
+        }
     known =
       render
         { rcImportBarriers = maybe [] (importBarriers parser source) groups,
@@ -184,6 +188,16 @@ attempt formatting =
     TooManyConfigurations -> refuse TooManyConfigurations
     _ -> pure Nothing
 
+-- | What every configuration of a module is parsed and printed with.
+data Formatter = Formatter
+  { -- | What to parse a configuration with.
+    formatterParser :: ParserConfig,
+    -- | What to print it with.
+    formatterRender :: RenderConfig,
+    -- | The file this is, for the positions in a parse error.
+    formatterPath :: FilePath
+  }
+
 -- | A configuration, with what its conditionals come to worked out once
 -- for everything that asks.
 data Reading = Reading
@@ -205,18 +219,14 @@ data Reading = Reading
 
 -- | Read a configuration.
 reading ::
-  -- | What to parse a configuration with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print each configuration with.
+  Formatter ->
   -- | How this configuration was reached.
   Reached ->
   -- | Input text.
   Text ->
   Reading
-reading parser render path reached source =
+reading formatter reached source =
   Reading
     { readingReached = reached,
       readingSource = source,
@@ -224,10 +234,11 @@ reading parser render path reached source =
       readingApart = do
         apart <- withForest (`variations` source)
         let baseline = without (vaBaselineDropped apart) reached
-        pure (apart, reading parser render path baseline (vaBaseline apart)),
-      readingPragma = withForest (\f -> splitOnPragma parser f source),
+        pure (apart, reading formatter baseline (vaBaseline apart)),
+      readingPragma =
+        withForest (\f -> splitOnPragma (formatterParser formatter) f source),
       readingFormatted =
-        formatSingleConfig parser render path reached (withoutOpaque source)
+        formatSingleConfig formatter reached (withoutOpaque source)
     }
   where
     forest = readConditionals source
@@ -252,16 +263,12 @@ aheadOf readings x = foldr par x (mapMaybe firstFormatted readings)
 -- | Format every configuration of a module, and merge them into one
 -- document, with what they found besides their code.
 formatAllConfigs ::
-  -- | What to parse a configuration with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print each configuration with.
+  Formatter ->
   -- | The configuration.
   Reading ->
   Spending (Doc, CommentSummary)
-formatAllConfigs parser render path r = do
+formatAllConfigs formatter r = do
   forest <- except (readingForest r)
   case readingApart r of
     Nothing -> do
@@ -275,10 +282,10 @@ formatAllConfigs parser render path r = do
       base <-
         if isNothing pragma || affordable
           then
-            attempt (formatAllConfigs parser render path baseline)
+            attempt (formatAllConfigs formatter baseline)
           else pure Nothing
       fragmented <- case (pragma, base) of
-        (Nothing, Just b) -> join <$> attempt (inFragments parser render path reached forest source b)
+        (Nothing, Just b) -> join <$> attempt (inFragments formatter reached forest source b)
         _ -> pure Nothing
       linear <- case (fragmented, base) of
         (Nothing, Just b) | affordable -> oneAtATime apart b
@@ -286,13 +293,13 @@ formatAllConfigs parser render path r = do
       case fragmented <|> linear of
         Just found -> pure found
         Nothing -> case maybeToList pragma <> forest of
-          g : _ -> together parser render path reached (configurationsOn g forest source)
+          g : _ -> together formatter reached (configurationsOn g forest source)
           [] -> error "Tilia: a module that varies has a conditional to split on"
   where
     reached = readingReached r
     source = readingSource r
     oneAtATime apart base = do
-      varied <- attempt (separately parser render path reached apart base)
+      varied <- attempt (separately formatter reached apart base)
       pure $ do
         (merged, found) <- varied
         d <- combine Broken (fst base) (zip (fmap cfgWholes (vaGroups apart)) merged)
@@ -369,12 +376,8 @@ variations forest source
 -- | Vary each conditional on its own, holding the others at their first
 -- branch.
 separately ::
-  -- | What to parse a configuration with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print each configuration with.
+  Formatter ->
   -- | How this configuration was reached.
   Reached ->
   -- | The conditionals to vary, and the baseline to hold them against.
@@ -382,10 +385,10 @@ separately ::
   -- | What the baseline was formatted to.
   (Doc, CommentSummary) ->
   Spending ([Doc], CommentSummary)
-separately parser render path reached v (baseDoc, baseFound) = do
+separately formatter reached v (baseDoc, baseFound) = do
   groups <-
     aheadOf (catMaybes (concat readings)) . for readings . traverse $
-      maybe (pure (baseDoc, mempty)) (formatAllConfigs parser render path)
+      maybe (pure (baseDoc, mempty)) (formatAllConfigs formatter)
   let merged =
         zipWith
           (mergeOf (reachedLines reached))
@@ -396,7 +399,7 @@ separately parser render path reached v (baseDoc, baseFound) = do
     readings =
       [ [ if t == vaBaseline v
             then Nothing
-            else Just (reading parser render path (answering c i reached) t)
+            else Just (reading formatter (answering c i reached) t)
         | (i, t) <- zip [0 ..] (cfgTexts c)
         ]
       | c <- vaGroups v
@@ -407,12 +410,8 @@ separately parser render path reached v (baseDoc, baseFound) = do
 --
 -- 'Nothing' where the module cannot be taken apart like that.
 inFragments ::
-  -- | What to parse a configuration with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print each configuration with.
+  Formatter ->
   -- | How this configuration was reached.
   Reached ->
   -- | The outermost conditionals.
@@ -422,17 +421,17 @@ inFragments ::
   -- | What the baseline was formatted to.
   (Doc, CommentSummary) ->
   Spending (Maybe (Doc, CommentSummary))
-inFragments parser render path reached forest source (baseDoc, baseFound) =
+inFragments formatter reached forest source (baseDoc, baseFound) =
   case parts of
     Nothing -> pure Nothing
     Just (body, ps) -> do
       let readings =
-            [ reading parser render path (without gone reached) t
+            [ reading formatter (without gone reached) t
             | (_, (t, gone)) <- ps
             ]
       formatted <-
         aheadOf readings $
-          traverse (formatAllConfigs parser render path) readings
+          traverse (formatAllConfigs formatter) readings
       pure $ do
         doc <- reassembled body (zip (fmap fst ps) (fmap fst formatted))
         pure (doc, baseFound <> foldMap snd formatted)
@@ -479,18 +478,14 @@ splitOnPragma parser forest source =
 
 -- | Vary the conditionals together, one group at a time.
 together ::
-  -- | What to parse a configuration with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print each configuration with.
+  Formatter ->
   -- | How this configuration was reached.
   Reached ->
   -- | The group to split on, and the branch texts to split it into.
   Configurations ->
   Spending (Doc, CommentSummary)
-together parser render path reached c = do
+together formatter reached c = do
   (found, blind) <-
     formatted differentlyRead `catchE` \case
       ConfigurationNotParsed answers _
@@ -500,9 +495,10 @@ together parser render path reached c = do
       e -> refuse e
   if blind then fst <$> formatted False else pure found
   where
-    readingOf = reading parser render path
+    readingOf = reading formatter
     differentlyRead =
       or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
+    parser = formatterParser formatter
     texts = cfgTexts c
     formatted settle = do
       let (settledBy, answers) =
@@ -512,7 +508,7 @@ together parser render path reached c = do
         if null (unconditionalErrors t)
           then
             Just . (,) i
-              <$> formatAllConfigs parser render path (readingOf r t)
+              <$> formatAllConfigs formatter (readingOf r t)
           else pure Nothing
       docs <-
         except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
@@ -583,22 +579,23 @@ errorBranch (Varied ranges) source reference = foldl step (Just reference) range
 -- | Format one configuration's code with the ordinary printer, and gather
 -- what else it holds.
 formatSingleConfig ::
-  -- | What to parse it with.
-  ParserConfig ->
-  -- | What to print it with.
-  RenderConfig ->
-  -- | The file this is, for the positions in a parse error.
-  FilePath ->
+  -- | What to parse and print it with.
+  Formatter ->
   -- | How this configuration was reached.
   Reached ->
   -- | The configuration itself, with no directives left in it.
   Text ->
   Either CppError (Doc, CommentSummary)
-formatSingleConfig parser render path reached text =
-  case parseConfiguration parser path (reachedLines reached) text of
+formatSingleConfig formatter reached text =
+  case parseConfiguration
+    (formatterParser formatter)
+    (formatterPath formatter)
+    (reachedLines reached)
+    text of
     Left e -> Left (ConfigurationNotParsed (reachedAnswers reached) e)
     Right parsed ->
-      let (document, loose) = renderConfiguration render parsed
+      let (document, loose) =
+            renderConfiguration (formatterRender formatter) parsed
        in Right (document, summarizeComments loose (comments (pmSource parsed)))
 
 -- | How a configuration was reached, and what to call it.
