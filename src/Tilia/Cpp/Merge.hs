@@ -22,7 +22,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives (Guard (..), Varied (..), untouched)
-import Tilia.Cpp.Place (regionOf)
+import Tilia.Cpp.Place (foldRegions, regionOf)
 import Tilia.Doc (printDoc)
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Doc.Internal
@@ -891,10 +891,7 @@ partsOf layout = walk [[]] False
 
 -- | Where the regions a document holds were written.
 writtenAt :: Doc -> Set Span
-writtenAt = \case
-  DLocated s d -> Set.insert s (writtenAt d)
-  DFence s d -> Set.insert s (writtenAt d)
-  d -> foldChildren writtenAt d
+writtenAt = foldRegions (\s _ -> Set.insert s)
 
 -- | Does this document print nothing but space and what ends a line?
 blank :: Doc -> Bool
