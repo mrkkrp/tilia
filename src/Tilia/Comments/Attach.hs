@@ -162,7 +162,7 @@ walk margin = go
       DLocated s d ->
         let (mine, p') = claimPlaced s p
             (d', p'') = go p' d
-            write = foldMap (uncurry (writtenAs margin (isEmptyAnchor s)))
+            write = foldMap (uncurry (writtenAs margin (zeroWidth s)))
             before' =
               (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
             after' =
@@ -224,11 +224,6 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DBreak -> ([], layout == Broken)
       DSoftBreak -> ([], layout == Broken)
       _ -> ([], False)
-
--- | Is this region an 'emptyAnchor' rather than one covering something
--- written?
-isEmptyAnchor :: Span -> Bool
-isEmptyAnchor s = startPoint s == endPoint s
 
 -- | Render one 'Comment' where it was placed.
 writtenAs ::

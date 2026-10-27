@@ -159,7 +159,7 @@ placeComments regions leads fences comments =
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
         candidate r =
           endPoint r <= startPoint here
-            && startPoint r /= endPoint r
+            && not (zeroWidth r)
             && not (fencedOff r)
 
         writtenAgainst = maybe False (`Set.member` regionEndPoints) stopsAt
@@ -202,7 +202,7 @@ placeComments regions leads fences comments =
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
             lineEnd = maximum (fmap endPoint onThatLine)
             linedUp r =
-              startPoint r /= endPoint r
+              not (zeroWidth r)
                 && endPoint r == lineEnd
                 && (startsUnderIt r || holdsTheLine r)
                 && not (fencedOff r)

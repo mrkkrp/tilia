@@ -40,7 +40,7 @@ import Data.Text qualified as T
 import GHC.Parser.Annotation qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Source.Lines (Lines, blankAt, directiveOnLine, lineAt, lineTexts)
-import Tilia.Span (Span (..), endPoint, startPoint)
+import Tilia.Span (Span (..), covers)
 import Tilia.Span.Ghc (spanOfReal)
 
 -- | One comment.
@@ -442,9 +442,7 @@ triggerOn inside = case T.uncons inside of
 
 -- | The comments written inside a region.
 commentsWithin :: Span -> [Comment] -> [Comment]
-commentsWithin s = filter (within . commentSpan)
-  where
-    within c = startPoint s <= startPoint c && endPoint c <= endPoint s
+commentsWithin s = filter (covers s . commentSpan)
 
 -- | A compiler pragma, which is written as a block comment but is not one.
 --
