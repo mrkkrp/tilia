@@ -14,10 +14,16 @@ import Tilia.Cpp
 import Tilia.Cpp.Directives (implied)
 import Tilia.Doc.Internal (Doc (..), foldChildren)
 import Tilia.Equivalence (syntaxDifference)
-import Tilia.Parser (defaultParserConfig, parseModule, pmModule)
+import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig, renderModule)
 import Tilia.Span (Span)
-import Tilia.TestUtils (configurations, countLeaves, leaves, linearLeaves)
+import Tilia.TestUtils
+  ( configurations,
+    countLeaves,
+    defaultParserConfig,
+    leaves,
+    linearLeaves,
+  )
 
 -- | Format a module which uses the C preprocessor, configured with nothing.
 formatCpp :: Text -> Either Text Text

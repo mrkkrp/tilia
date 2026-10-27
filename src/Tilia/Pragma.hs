@@ -31,17 +31,8 @@ effectiveExtensions ::
   -- | The module's source, read here for its @LANGUAGE@ pragmas alone.
   Text ->
   [Extension]
-effectiveExtensions package
-  | null package = pragmasOver onUnlessRefused
-  | otherwise = pragmasOver package
-
--- | The extensions that are on until something says otherwise.
-onUnlessRefused :: [Extension]
-onUnlessRefused = [ImplicitPrelude]
-
--- | Apply a module's @LANGUAGE@ pragmas to a starting set.
-pragmasOver :: [Extension] -> Text -> [Extension]
-pragmasOver initial = foldl' apply initial . concatMap pragmaNames . pragmaBodies
+effectiveExtensions package =
+  foldl' apply package . concatMap pragmaNames . pragmaBodies
   where
     apply acc name = case T.stripPrefix "No" name >>= lookupExtension of
       Just off -> filter (/= off) acc

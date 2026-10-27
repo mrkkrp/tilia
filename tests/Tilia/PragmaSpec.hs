@@ -34,30 +34,35 @@ spec = do
         ]
         (\source -> movesPositions source `shouldBe` False)
   describe "the extensions in force" $ do
-    it "starts from what is on by default" $
-      effectiveExtensions [] "module M where\n" `shouldBe` [ImplicitPrelude]
     it "keeps what the package puts in force" $
       effectiveExtensions [ImplicitPrelude, GADTs] "module M where\n"
         `shouldBe` [ImplicitPrelude, GADTs]
-    it "leaves the Prelude off where the package's own set does" $
-      effectiveExtensions [GADTs] "module M where\n" `shouldBe` [GADTs]
     it "reads one extension" $
       effectiveExtensions [] "{-# LANGUAGE BangPatterns #-}\nmodule M where\n"
-        `shouldBe` [ImplicitPrelude, BangPatterns]
+        `shouldBe` [BangPatterns]
     it "reads several from one pragma" $
-      effectiveExtensions [] "{-# LANGUAGE GADTs, RankNTypes #-}\nmodule M where\n"
-        `shouldBe` [ImplicitPrelude, GADTs, RankNTypes]
+      effectiveExtensions
+        []
+        "{-# LANGUAGE GADTs, RankNTypes #-}\nmodule M where\n"
+        `shouldBe` [GADTs, RankNTypes]
     it "reads several pragmas" $
-      effectiveExtensions [] "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE MagicHash #-}\n"
-        `shouldBe` [ImplicitPrelude, GADTs, MagicHash]
+      effectiveExtensions
+        []
+        "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE MagicHash #-}\n"
+        `shouldBe` [GADTs, MagicHash]
     it "ignores other pragmas" $
-      effectiveExtensions [] "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [ImplicitPrelude, GADTs]
+      effectiveExtensions
+        []
+        "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE GADTs #-}\n"
+        `shouldBe` [GADTs]
     it "ignores an unknown extension rather than failing" $
       effectiveExtensions [] "{-# LANGUAGE GADTs, NotARealExtension #-}\n"
-        `shouldBe` [ImplicitPrelude, GADTs]
+        `shouldBe` [GADTs]
     it "treats a No-prefix as turning one off" $
-      effectiveExtensions [] "{-# LANGUAGE NoImplicitPrelude #-}\n" `shouldBe` []
+      effectiveExtensions
+        [ImplicitPrelude]
+        "{-# LANGUAGE NoImplicitPrelude #-}\n"
+        `shouldBe` []
     it "lets a module refuse what its package put in force" $
       effectiveExtensions [ImplicitPrelude, GADTs] "{-# LANGUAGE NoGADTs #-}\n"
         `shouldBe` [ImplicitPrelude]
@@ -65,8 +70,10 @@ spec = do
       effectiveExtensions [GADTs] "{-# LANGUAGE ImplicitPrelude #-}\n"
         `shouldBe` [GADTs, ImplicitPrelude]
     it "does not repeat an extension named twice" $
-      effectiveExtensions [] "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [ImplicitPrelude, GADTs]
+      effectiveExtensions
+        []
+        "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE GADTs #-}\n"
+        `shouldBe` [GADTs]
 
   describe "lookupExtension" $ do
     it "knows an extension by the name one writes" $

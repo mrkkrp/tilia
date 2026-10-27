@@ -40,7 +40,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 import Tilia.Gathered (gathered)
 import Tilia.Parser
-import Tilia.TestUtils (routedResolver)
+import Tilia.TestUtils (defaultParserConfig, routedResolver)
 import Tilia.WithProjectPlan
   ( Dependency (..),
     compilerShipped,

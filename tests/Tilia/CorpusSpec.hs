@@ -28,13 +28,18 @@ import Tilia.Parser
   ( ParseError (..),
     ParsedModule (..),
     parseModule,
-    parserConfigFor,
   )
-import Tilia.Pragma (effectiveExtensions, movesPositions)
+import Tilia.Pragma (movesPositions)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig (formatCppExample, printExample)
-import Tilia.TestUtils (answeredLeaves, answeredLinearLeaves, countLeaves)
+import Tilia.TestUtils
+  ( answeredLeaves,
+    answeredLinearLeaves,
+    countLeaves,
+    effectiveExtensionsFor,
+    parserConfigFor,
+  )
 
 spec :: Spec
 spec = do
@@ -296,7 +301,7 @@ guarded result =
 
 -- | Everything that can be established about one example without doing any
 -- more input or output.
-checkPure :: Palette -> FilePath -> [Extension] -> Text -> Maybe Text -> Result
+checkPure :: Palette -> FilePath -> Maybe [Extension] -> Text -> Maybe Text -> Result
 checkPure palette path package source expected
   | movesPositions source =
       Result Declined "a pragma that moves positions, which we do not rewrite" noDigest
@@ -353,7 +358,7 @@ checkPure palette path package source expected
   where
     told formatted outcome why = Result outcome why (digestOf formatted)
     config = parserConfigFor package
-    inForce = effectiveExtensions package source
+    inForce = effectiveExtensionsFor package source
     parse = either (const Nothing) Just . parseModule config path
     render = printExample package source
 
@@ -362,7 +367,7 @@ checkPure palette path package source expected
 
 -- | Everything that can be established about an example with conditionals in
 -- it.
-checkCpp :: Palette -> FilePath -> [Extension] -> Text -> Maybe Text -> Result
+checkCpp :: Palette -> FilePath -> Maybe [Extension] -> Text -> Maybe Text -> Result
 checkCpp palette path package source expected = case formatCppExample package path source of
   Left why -> Result Declined (describeCppError why) noDigest
   Right formatted -> case (countLeaves source, countLeaves formatted) of

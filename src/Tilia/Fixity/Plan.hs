@@ -175,34 +175,38 @@ newResolverWith routes cache installed tarballs packageReader plan = do
             memoized flights answersRead mempty modName $
               resolveModule workings visiting modName
       summariesOf modName text =
-        memoized flights summariesRead Nothing modName $ do
-          extensions <- extensionsOf modName
-          let summarized =
-                evaluate . force $
-                  configurationsOf
-                    (macrosOf plan)
-                    (Just extensions)
-                    modName
-                    text
-              stamp =
-                digestOf $
-                  T.intercalate "\n" [T.pack (show extensions), macrosRead, text]
-          case digestOf . T.pack <$> Map.lookup modName local of
-            Nothing -> summarized
-            Just key ->
-              join
-                <$> recalled
-                  (cachedSummaries cache key stamp)
-                  (storeSummaries cache key stamp)
-                  (Just <$> summarized)
+        memoized flights summariesRead Nothing modName $
+          extensionsOf modName >>= \case
+            Nothing -> pure Nothing
+            Just extensions -> do
+              let summarized =
+                    evaluate . force $
+                      configurationsOf
+                        (macrosOf plan)
+                        extensions
+                        modName
+                        text
+                  stamp =
+                    digestOf $
+                      T.intercalate
+                        "\n"
+                        [T.pack (show extensions), macrosRead, text]
+              case digestOf . T.pack <$> Map.lookup modName local of
+                Nothing -> summarized
+                Just key ->
+                  join
+                    <$> recalled
+                      (cachedSummaries cache key stamp)
+                      (storeSummaries cache key stamp)
+                      (Just <$> summarized)
       macrosRead = T.pack (show (macrosOf plan))
       extensionsOf modName
         | Just path <- Map.lookup modName local =
-            either (const []) id <$> packageReader path
+            either (const Nothing) Just <$> packageReader path
         | Just (package, tarball) <- Map.lookup modName index =
-            memoized flights extensionsRead [] package $
-              foldMap declaredExtensions . (archiveCabal =<<) <$> archiveOf tarball
-        | otherwise = pure []
+            memoized flights extensionsRead Nothing package $
+              fmap declaredExtensions . (archiveCabal =<<) <$> archiveOf tarball
+        | otherwise = pure Nothing
       archiveOf tarball =
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
@@ -903,7 +907,7 @@ configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
   -- | What extensions the module's package puts in force.
-  Maybe [Extension] ->
+  [Extension] ->
   -- | The module's name, for the parser to put in its errors.
   Text ->
   -- | Its text.
@@ -914,11 +918,9 @@ configurationsOf macros extensions modName text =
     =<< whatParsed (branchLeaves (withoutRuledOut macros text))
   where
     parsed leaf =
-      summarize (hasImplicitPrelude (fromMaybe [] extensions) leaf) . pmModule
-        <$> whatParsed (parseModule (configOf leaf) named leaf)
+      summarize (hasImplicitPrelude extensions leaf) . pmModule
+        <$> whatParsed (parseModule (ParserConfig extensions) named leaf)
     whatParsed = either (const Nothing) Just
-    configOf leaf = maybe defaultParserConfig (configFor leaf) extensions
-    configFor leaf exts = parserConfigFor (effectiveExtensions exts leaf)
     named = T.unpack modName
 
 -- | Does this module see the Prelude without importing it?

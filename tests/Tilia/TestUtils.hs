@@ -5,6 +5,9 @@
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
+    parserConfigFor,
+    defaultParserConfig,
+    effectiveExtensionsFor,
     parsed,
     commentsIn,
     unreadOnly,
@@ -28,10 +31,12 @@ import Data.Choice (pattern Do)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
+import GHC.Driver.Session qualified as GHC
+import GHC.LanguageExtensions.Type (Extension (..))
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
@@ -55,10 +60,11 @@ import Tilia.Fixity (ModuleChain (..))
 import Tilia.Fixity.Plan (Resolver, Route, newResolverVia)
 import Tilia.Parser
   ( ParsedModule (..),
-    defaultParserConfig,
+    ParserConfig (..),
     describeParseError,
     parseModule,
   )
+import Tilia.Pragma (effectiveExtensions)
 import Tilia.Source (comments)
 
 -- | Run something with the given variables set, and the environment as it
@@ -72,6 +78,26 @@ withEnvironment vars act = bracket set restore (const act)
       setEnv key value
       pure (key, was)
     restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
+
+-- | What to parse a module with, given what its package puts in force, or
+-- 'Nothing' for a module of no package, which is read as GHC2021.
+parserConfigFor :: Maybe [Extension] -> ParserConfig
+parserConfigFor =
+  ParserConfig . fromMaybe (GHC.languageExtensions (Just GHC.GHC2021))
+
+-- | What to parse a module of no package with.
+defaultParserConfig :: ParserConfig
+defaultParserConfig = parserConfigFor Nothing
+
+-- | The extensions in force in a module, given what its package puts in
+-- force, or 'Nothing' for a module of no package, which starts from
+-- @ImplicitPrelude@ alone.
+--
+-- That is less than 'parserConfigFor' reads such a module with, so that
+-- what is printed, @import qualified@ for one, reads the same under every
+-- edition.
+effectiveExtensionsFor :: Maybe [Extension] -> Text -> [Extension]
+effectiveExtensionsFor = effectiveExtensions . fromMaybe [ImplicitPrelude]
 
 -- | Parse a module, or stop the test saying why it does not parse.
 parsed :: Text -> ParsedModule
