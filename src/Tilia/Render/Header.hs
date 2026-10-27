@@ -41,8 +41,6 @@ data HeaderPragma = HeaderPragma
     hpSpan :: Span,
     -- | How many preprocessor directives the header has above it.
     hpRun :: Int,
-    -- | Where it sorts.
-    hpOrder :: PragmaOrder,
     -- | @LANGUAGE@, @OPTIONS_GHC@ or @OPTIONS_HADDOCK@.
     hpName :: Text,
     -- | One extension, or the whole of an options string.
@@ -108,22 +106,22 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
       HeaderPragma
         { hpSpan = commentSpan c,
           hpRun = directivesAbove (spanStartLine (commentSpan c)),
-          hpOrder = orderOf p,
           hpName = pragmaName p,
           hpBody = pragmaBody p
         }
     headerPragma c = do
       p <- commentPragma c
-      _ <- lookupOrder (pragmaName p)
+      _ <- pragmaOrder (pragmaName p) (pragmaBody p)
       if inHeader headerEnd (commentSpan c) then Just p else Nothing
-    orderOf p = case pragmaName p of
-      "LANGUAGE" -> LanguageOrder (classifyExtension (pragmaBody p))
-      other -> maybe OptionsGhcOrder id (lookupOrder other)
-    lookupOrder = \case
-      "LANGUAGE" -> Just (LanguageOrder Enabling)
-      "OPTIONS_GHC" -> Just OptionsGhcOrder
-      "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
-      _ -> Nothing
+
+-- | Where a pragma sorts, given its name and its body, or 'Nothing' for one
+-- the header does not hoist.
+pragmaOrder :: Text -> Text -> Maybe PragmaOrder
+pragmaOrder named body = case named of
+  "LANGUAGE" -> Just (LanguageOrder (classifyExtension body))
+  "OPTIONS_GHC" -> Just OptionsGhcOrder
+  "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
+  _ -> Nothing
 
 -- | Was this written above everything the compiler reads as code?
 inHeader :: Maybe Span -> Span -> Bool
@@ -153,13 +151,14 @@ takeStackHeader headerEnd = \case
 pragmaBlock :: [HeaderPragma] -> Doc
 pragmaBlock = foldMap render . dedupe . sortOn order . concatMap split
   where
-    order p = (hpRun p, hpOrder p, extension p)
+    order p = (hpRun p, orderOf p, extension p)
     extension p = if hpName p == "LANGUAGE" then hpBody p else ""
-    key p = (hpRun p, hpOrder p, hpBody p)
+    key p = (hpRun p, orderOf p, hpBody p)
+    orderOf p = pragmaOrder (hpName p) (hpBody p)
     dedupe = fmap NE.head . NE.groupBy ((==) `on` key)
     split p
       | hpName p == "LANGUAGE" =
-          [ p{hpBody = body, hpOrder = LanguageOrder (classifyExtension body)}
+          [ p{hpBody = body}
           | body <- fmap T.strip (T.splitOn "," (hpBody p))
           ]
       | otherwise = [p]
