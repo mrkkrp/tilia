@@ -89,6 +89,7 @@ library
     Tilia.Gathered
     Tilia.Ignore
     Tilia.Imports
+    Tilia.Memo
     Tilia.Newline
     Tilia.Palette
     Tilia.Parser

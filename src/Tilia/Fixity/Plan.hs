@@ -21,22 +21,10 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Applicative ((<|>))
-import Control.Concurrent
-  ( MVar,
-    ThreadId,
-    getNumCapabilities,
-    modifyMVar,
-    modifyMVar_,
-    myThreadId,
-    newEmptyMVar,
-    newMVar,
-    readMVar,
-    tryPutMVar,
-    tryReadMVar,
-  )
+import Control.Concurrent (getNumCapabilities)
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (NFData, force)
-import Control.Exception (bracket_, evaluate, onException)
+import Control.Exception (bracket_, evaluate)
 import Control.Monad (filterM, join)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
@@ -44,7 +32,6 @@ import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Foldable (toList)
-import Data.IORef
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -56,7 +43,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Unique (Unique, newUnique)
 import GHC.Generics (Generic)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
@@ -81,6 +67,7 @@ import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (primopFixities)
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
+import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (effectiveExtensions)
 import Tilia.Utils (byteOrderMark, inParallel, quietly, readFileText)
@@ -159,7 +146,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
   local <- localModules plan
-  flights <- newMVar (Flights Map.empty Map.empty)
+  flights <- newFlights
   answersRead <- newMemo
   extensionsRead <- newMemo
   summariesRead <- newMemo
@@ -230,90 +217,6 @@ newResolverWith routes cache installed tarballs packageReader plan = do
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty}
-
--- | Answers filed under the names they are about, each worked out once.
-data Memo v = Memo Unique (IORef (Map Text (MVar v)))
-
--- | An empty 'Memo'.
-newMemo :: IO (Memo v)
-newMemo = Memo <$> newUnique <*> newIORef Map.empty
-
--- | Which thread is working out which answer, and which answer each waiting
--- thread waits for, across all of a resolver's tables.
-data Flights = Flights
-  { flightOwners :: Map (Unique, Text) ThreadId,
-    flightWaits :: Map ThreadId (Unique, Text)
-  }
-
--- | Look an answer up in a table, working it out and filing it the first
--- time.
-memoized ::
-  -- | Who is working out what.
-  MVar Flights ->
-  -- | Where the answers are filed.
-  Memo v ->
-  -- | The answer for a thread that cannot wait.
-  v ->
-  -- | What the answer is about.
-  Text ->
-  -- | Work that is being memoized.
-  IO v ->
-  IO v
-memoized flights (Memo table answers) standIn key work =
-  Map.lookup key <$> readIORef answers >>= \case
-    Just slot -> tryReadMVar slot >>= maybe (waitFor slot) pure
-    Nothing -> do
-      me <- myThreadId
-      claimed <- modifyMVar flights $ \fl -> do
-        filed <- readIORef answers
-        case Map.lookup key filed of
-          Just slot -> pure (fl, Left slot)
-          Nothing -> do
-            slot <- newEmptyMVar
-            writeIORef answers (Map.insert key slot filed)
-            pure
-              ( fl{flightOwners = Map.insert (table, key) me (flightOwners fl)},
-                Right slot
-              )
-      case claimed of
-        Left slot -> waitFor slot
-        Right slot -> do
-          answer <- work `onException` file slot standIn
-          answer <$ file slot answer
-  where
-    file slot answer = modifyMVar_ flights $ \fl -> do
-      _ <- tryPutMVar slot answer
-      pure fl{flightOwners = Map.delete (table, key) (flightOwners fl)}
-    waitFor slot = do
-      me <- myThreadId
-      settled <- modifyMVar flights $ \fl ->
-        tryReadMVar slot >>= \case
-          Just answer -> pure (fl, Just answer)
-          Nothing
-            | waitedOnBy fl me (table, key) -> pure (fl, Just standIn)
-            | otherwise ->
-                pure
-                  ( fl{flightWaits = Map.insert me (table, key) (flightWaits fl)},
-                    Nothing
-                  )
-      case settled of
-        Just answer -> pure answer
-        Nothing -> do
-          answer <- readMVar slot
-          modifyMVar_ flights $ \fl ->
-            pure fl{flightWaits = Map.delete me (flightWaits fl)}
-          pure answer
-
--- | Is this answer being worked out by the given thread, or by one that
--- waits for it, directly or through others?
-waitedOnBy :: Flights -> ThreadId -> (Unique, Text) -> Bool
-waitedOnBy fl me = go
-  where
-    go key = case Map.lookup key (flightOwners fl) of
-      Nothing -> False
-      Just owner
-        | owner == me -> True
-        | otherwise -> maybe False go (Map.lookup owner (flightWaits fl))
 
 -- | Work out what a module can see, using a resolver to reach its imports.
 --
