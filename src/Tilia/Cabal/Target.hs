@@ -22,7 +22,6 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
 import Data.List (isPrefixOf, isSuffixOf, sort)
-import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -31,7 +30,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
-import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Fields.Parser (readFields)
 import Distribution.PackageDescription
   ( GenericPackageDescription (..),
@@ -39,8 +37,6 @@ import Distribution.PackageDescription
     unPackageName,
     unUnqualComponentName,
   )
-import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
-import Distribution.Parsec (showPError)
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import System.Directory (doesFileExist, listDirectory)
 import System.FilePath
@@ -53,11 +49,14 @@ import System.FilePath
   )
 import Tilia.Cabal.Package
   ( ComponentSection (..),
+    PackageProblem,
     addedSources,
     benchmarkBranches,
+    describePackageProblem,
     executableBranches,
     joined,
     libraryBranches,
+    readPackageDescription,
     setupScript,
     sourceExtensions,
     suiteBranches,
@@ -65,7 +64,7 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
 import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
-import Tilia.Utils (attempted, quietly)
+import Tilia.Utils (quietly)
 
 -- | Which components a run was asked for.
 data Target
@@ -157,8 +156,8 @@ admits Wanted{..} entry =
 data TargetProblem
   = -- | A @cabal.project@ naming packages, none of which could be found.
     NoPackages FilePath
-  | -- | A @.cabal@ file that would not parse, and what the parser said.
-    Unparseable FilePath [Text]
+  | -- | A @.cabal@ file that could not be read or parsed, and why.
+    UnreadablePackage PackageProblem
   | -- | A target naming no component the project holds.
     NoSuchTarget Text [Text]
   deriving (Eq, Show)
@@ -168,8 +167,7 @@ describeTargetProblem :: TargetProblem -> Text
 describeTargetProblem = \case
   NoPackages file ->
     T.pack file <> " names no packages that exist"
-  Unparseable file complaints ->
-    T.pack file <> " does not parse:" <> foldMap ("\n  " <>) complaints
+  UnreadablePackage problem -> describePackageProblem problem
   NoSuchTarget asked available ->
     "no component matches "
       <> asked
@@ -351,30 +349,24 @@ globMatching pattern name = case break (== '*') pattern of
 -- | Every component one @.cabal@ file declares.
 componentsInCabalFile :: FilePath -> IO (Either TargetProblem [Component])
 componentsInCabalFile cabalFile =
-  attempted (BS.readFile cabalFile) >>= \case
-    Left why -> pure (Left (Unparseable cabalFile [why]))
-    Right bytes ->
-      case snd (runParseResult (parseGenericPackageDescription bytes)) of
-        Left (_, complaints) ->
-          pure (Left (Unparseable cabalFile (fmap said (NE.toList complaints))))
-          where
-            said = T.pack . showPError cabalFile
-        Right described -> do
-          let root = takeDirectory cabalFile
-              declared = declaredComponents root described
-          hasSetup <- quietly False (doesFileExist (root </> setupScript))
-          pure . Right $
-            declared
-              <> [ Component
-                     { componentPackage = packageOf described,
-                       componentKind = Setup,
-                       componentName = "setup",
-                       componentRoot = root,
-                       componentSources =
-                         Map.singleton "." (Wanted Set.empty (Set.singleton setupScript))
-                     }
-                 | hasSetup
-                 ]
+  readPackageDescription cabalFile >>= \case
+    Left problem -> pure (Left (UnreadablePackage problem))
+    Right described -> do
+      let root = takeDirectory cabalFile
+          declared = declaredComponents root described
+      hasSetup <- quietly False (doesFileExist (root </> setupScript))
+      pure . Right $
+        declared
+          <> [ Component
+                 { componentPackage = packageOf described,
+                   componentKind = Setup,
+                   componentName = "setup",
+                   componentRoot = root,
+                   componentSources =
+                     Map.singleton "." (Wanted Set.empty (Set.singleton setupScript))
+                 }
+             | hasSetup
+             ]
 
 -- | The name of a package.
 packageOf :: GenericPackageDescription -> Text
