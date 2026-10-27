@@ -88,7 +88,7 @@ docBody ctx style doc@(L l str) =
       | blockForm -> (writtenAt rebuiltBlock, False)
       | otherwise -> (writtenAt rebuilt, False)
   where
-    writtenAt = maybe id fence (spanOfSrcSpan l)
+    writtenAt = fenceWithin ctx (spanOfSrcSpan l)
     emptyBlock = txt (blockOpener style) <> space <> txt "-}"
     rebuilt =
       sepBy hardBreak (zipWith line' (True : repeat False) written')
