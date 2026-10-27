@@ -13,9 +13,10 @@ module Tilia.Fixity.Debug
 where
 
 import Data.Choice (Choice)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -24,6 +25,7 @@ import Tilia.Fixity
     Established (..),
     Fixity (..),
     Import (..),
+    ModuleChain (..),
     OpName (..),
     Provenance (..),
     Resolution (..),
@@ -37,6 +39,7 @@ import Tilia.Fixity
     reachUnqualified,
     spellDisagreement,
     spellFixity,
+    spellModuleChain,
     spellUnreadIn,
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
@@ -191,9 +194,13 @@ aboutFile palette notes =
             | null (noteUnsettled i) -> operators n
             | otherwise -> operators n <> ", not settling every name" <> through (noteUnsettled i)
 
-    through ways = case filter (not . null) ways of
+    through ways = case mapMaybe nonEmpty ways of
       [] -> ""
-      below -> ", through " <> T.intercalate " or " (fmap (T.intercalate " → " . fmap named) below)
+      below ->
+        ", through "
+          <> T.intercalate
+            " or "
+            (fmap (spellModuleChain palette . ModuleChain) below)
 
     qualification i = case (noteQualified i, noteAlias i) of
       (True, Just alias) -> " qualified as " <> named alias
