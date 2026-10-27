@@ -18,6 +18,7 @@ module Tilia.Render.Class
 where
 
 import Data.Choice (fromBool, pattern Do)
+import Data.Foldable (fold)
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (isNothing)
@@ -249,12 +250,11 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             (isNothing resultSig && isNothing fdInjectivityAnn)
             space
           <> indent
-            ( sequence_' resultSig
+            ( fold resultSig
                 <> space
                 <> foldMap (at_ ctx (injectivityAnn ctx)) fdInjectivityAnn
             )
 
-    sequence_' = maybe mempty id
     resultSig = familyResultSig ctx fdResultSig
 
     equations = case closedEqns of

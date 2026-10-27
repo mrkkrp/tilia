@@ -119,10 +119,7 @@ splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
 chainSpan :: (a -> Maybe Span) -> OpChain a op -> Maybe Span
 chainSpan spanOfOperand = \case
   Operand x -> spanOfOperand x
-  Chain xs _ -> foldr1 join' (chainSpan spanOfOperand <$> xs)
-  where
-    join' (Just a) (Just b) = Just (a <> b)
-    join' a b = maybe b Just a
+  Chain xs _ -> foldMap (chainSpan spanOfOperand) xs
 
 -- | The rightmost operand of a chain.
 lastOperand :: OpChain a op -> a
