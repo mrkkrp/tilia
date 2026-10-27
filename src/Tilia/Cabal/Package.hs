@@ -8,6 +8,7 @@
 module Tilia.Cabal.Package
   ( PackageProblem (..),
     describePackageProblem,
+    readPackageDescription,
     PackageReader,
     newPackageReader,
     ComponentSection (..),
@@ -237,18 +238,26 @@ componentsOf compiler ref cabalFile = do
       pure answer
   where
     settle =
-      attempted (BS.readFile cabalFile) >>= \case
-        Left why -> pure (Left (PackageUnreadable cabalFile why))
-        Right bytes ->
-          case snd (runParseResult (parseGenericPackageDescription bytes)) of
-            Left (_, complaints) ->
-              pure (Left (PackageMalformed cabalFile (fmap said (NE.toList complaints))))
-            Right description -> do
-              valueOf <- conditionValues compiler description
-              Right
-                <$> traverse
-                  (componentBranch (takeDirectory cabalFile))
-                  (sectionsInForce valueOf description)
+      readPackageDescription cabalFile >>= \case
+        Left problem -> pure (Left problem)
+        Right description -> do
+          valueOf <- conditionValues compiler description
+          Right
+            <$> traverse
+              (componentBranch (takeDirectory cabalFile))
+              (sectionsInForce valueOf description)
+
+-- | Read and parse a @.cabal@ file, or say why it cannot be.
+readPackageDescription :: FilePath -> IO (Either PackageProblem GenericPackageDescription)
+readPackageDescription cabalFile =
+  attempted (BS.readFile cabalFile) >>= \case
+    Left why -> pure (Left (PackageUnreadable cabalFile why))
+    Right bytes ->
+      pure $ case snd (runParseResult (parseGenericPackageDescription bytes)) of
+        Left (_, complaints) ->
+          Left (PackageMalformed cabalFile (fmap said (NE.toList complaints)))
+        Right description -> Right description
+  where
     said = T.pack . showPError cabalFile
 
 -- | The value a build of a package on this platform gives each variable its
