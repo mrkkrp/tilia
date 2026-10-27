@@ -22,13 +22,11 @@ import Data.Text.Encoding (decodeUtf8')
 import Data.Traversable (for)
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Corpus (Example (..))
-import Tilia.Cpp (everyBranch, formatWithCpp, usesCpp)
-import Tilia.Doc (defaultRenderOptions, printDoc)
+import Tilia.Cpp (usesCpp)
 import Tilia.Format (rewritten)
 import Tilia.Parser (parseModule, parserConfigFor)
 import Tilia.Pragma (effectiveExtensions)
-import Tilia.Render (defaultRenderConfig, renderModule)
-import Tilia.TestConfig (exampleRenderConfig)
+import Tilia.TestConfig (formatCppExample, printExample)
 
 -- | What part of a run a benchmark measures.
 data Stage
@@ -229,19 +227,9 @@ subjectOf package isChecked name source =
 formatted :: [Extension] -> FilePath -> Text -> Maybe Text
 formatted package path source
   | usesCpp (effectiveExtensions package source) source =
-      either (const Nothing) Just (formatWithCpp parser configured path source)
-  | otherwise = case parseModule parser path source of
-      Left _ -> Nothing
-      Right p ->
-        Just
-          ( printDoc
-              defaultRenderOptions
-              (renderModule (exampleRenderConfig package source (pure p)) p)
-          )
-  where
-    parser = parserConfigFor package
-    configured =
-      maybe
-        defaultRenderConfig
-        (exampleRenderConfig package source)
-        (everyBranch parser path source)
+      either (const Nothing) Just (formatCppExample package path source)
+  | otherwise =
+      either
+        (const Nothing)
+        (Just . printExample package source)
+        (parseModule (parserConfigFor package) path source)

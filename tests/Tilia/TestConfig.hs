@@ -3,9 +3,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
--- | The settings every corpus example is formatted with.
+-- | How every corpus example is formatted.
 module Tilia.TestConfig
-  ( exampleRenderConfig,
+  ( printExample,
+    formatCppExample,
   )
 where
 
@@ -17,6 +18,8 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension)
 import Tilia.BootFixities (bootFixities)
+import Tilia.Cpp (CppError, everyBranch, formatWithCpp)
+import Tilia.Doc (defaultRenderOptions, printDoc)
 import Tilia.Fixity
   ( Direction (..),
     Established (..),
@@ -32,9 +35,9 @@ import Tilia.Fixity
     resolveScope,
     unreadable,
   )
-import Tilia.Parser (ParsedModule (..))
+import Tilia.Parser (ParsedModule (..), parserConfigFor)
 import Tilia.Pragma (effectiveExtensions)
-import Tilia.Render (RenderConfig (..), defaultRenderConfig)
+import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 
 -- | How to format one corpus example.
 exampleRenderConfig ::
@@ -74,6 +77,36 @@ exampleRenderConfig package source parsed =
                   ]
               )
         }
+
+-- | Print a corpus example that does not use the preprocessor.
+printExample ::
+  -- | What the package around it puts in force, if it is a module of one.
+  [Extension] ->
+  Text ->
+  -- | It, parsed.
+  ParsedModule ->
+  Text
+printExample package source parsed =
+  printDoc
+    defaultRenderOptions
+    (renderModule (exampleRenderConfig package source (pure parsed)) parsed)
+
+-- | Format a corpus example that uses the preprocessor.
+formatCppExample ::
+  -- | What the package around it puts in force, if it is a module of one.
+  [Extension] ->
+  FilePath ->
+  Text ->
+  Either CppError Text
+formatCppExample package path source =
+  formatWithCpp parser configured path source
+  where
+    parser = parserConfigFor package
+    configured =
+      maybe
+        defaultRenderConfig
+        (exampleRenderConfig package source)
+        (everyBranch parser path source)
 
 -- | What a module in scope exports, as far as the corpus is concerned.
 exportsOf :: Text -> Maybe Fixities
