@@ -25,7 +25,7 @@ where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
-import Control.Exception (SomeException, try)
+import Control.Exception (try)
 import Control.Monad (forM)
 import Data.ByteString.Lazy qualified as BL
 import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
@@ -49,7 +49,8 @@ import System.Directory
   )
 import System.Environment (lookupEnv)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
-import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
+import Tilia.Utils (quietly)
 
 ----------------------------------------------------------------------------
 -- Corpora
@@ -1022,7 +1023,7 @@ unpackTo archive dest = do
       case Tar.entryContent entry of
         Tar.NormalFile content _
           | Just path <- beneathTop (Tar.entryPath entry),
-            any (`isSuffixOf` path) (".cabal" : haskellExtensions) -> do
+            any (`isSuffixOf` path) (".cabal" : sourceExtensions) -> do
               createDirectoryIfMissing True (takeDirectory (staging </> path))
               BL.writeFile (staging </> path) content
         _ -> pure ()
@@ -1074,9 +1075,9 @@ examplesIn corpus root = do
       | suffix `isSuffixOf` name = Just (take (length name - length suffix) name)
       | otherwise = Nothing
     stemOf f =
-      fromMaybe f (listToMaybe (mapMaybe (`withoutSuffix` f) haskellExtensions))
+      fromMaybe f (listToMaybe (mapMaybe (`withoutSuffix` f) sourceExtensions))
     extensionOf f =
-      fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) haskellExtensions))
+      fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
 
 -- | What each of a corpus's examples has in force before its own pragmas.
 packageReaderFor :: Corpus -> IO (FilePath -> IO [Extension])
@@ -1086,24 +1087,11 @@ packageReaderFor corpus
       reader <- newPackageReader Nothing
       pure (fmap (either (const []) id) . reader)
 
--- | The extensions an example may be written with.
-haskellExtensions :: [String]
-haskellExtensions = [".hs", ".hs-boot", ".hsig"]
-
 haskellFilesIn :: FilePath -> IO [FilePath]
 haskellFilesIn dir = do
   isDir <- doesDirectoryExist dir
   if not isDir
-    then pure [dir | any (`isSuffixOf` dir) haskellExtensions]
+    then pure [dir | any (`isSuffixOf` dir) sourceExtensions]
     else do
       entries <- quietly [] (listDirectory dir)
       concat <$> traverse (haskellFilesIn . (dir </>)) entries
-
-----------------------------------------------------------------------------
--- Helpers
-
-quietly :: a -> IO a -> IO a
-quietly fallback action =
-  try action >>= \case
-    Left (_ :: SomeException) -> pure fallback
-    Right a -> pure a
