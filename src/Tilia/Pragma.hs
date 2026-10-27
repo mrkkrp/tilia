@@ -5,6 +5,9 @@ module Tilia.Pragma
   ( movesPositions,
     effectiveExtensions,
     lookupExtension,
+    lookupEdition,
+    applyExtensionName,
+    languageNames,
   )
 where
 
@@ -32,18 +35,32 @@ effectiveExtensions ::
   Text ->
   [Extension]
 effectiveExtensions package =
-  foldl' apply package . concatMap pragmaNames . pragmaBodies
+  foldl' applyExtensionName package . concatMap pragmaNames . pragmaBodies
   where
-    apply acc name = case T.stripPrefix "No" name >>= lookupExtension of
-      Just off -> filter (/= off) acc
-      Nothing -> case lookupExtension name of
-        Just on | on `notElem` acc -> acc <> [on]
-        _ -> acc
     pragmaNames body =
       let (keyword, names) = T.break (== ' ') body
        in if T.toUpper keyword == "LANGUAGE"
-            then filter (not . T.null) (fmap T.strip (T.splitOn "," names))
+            then languageNames names
             else []
+
+-- | Turn on the extension a name spells, or off where the name puts @No@ in
+-- front of one, leaving the set as it is for a name that spells neither.
+applyExtensionName :: [Extension] -> Text -> [Extension]
+applyExtensionName acc name =
+  case T.stripPrefix "No" name >>= lookupExtension of
+    Just off -> filter (/= off) acc
+    Nothing -> case lookupExtension name of
+      Just on | on `notElem` acc -> acc <> [on]
+      _ -> acc
+
+-- | The extensions a @LANGUAGE@ pragma names, as written.
+languageNames :: Text -> [Text]
+languageNames = filter (not . T.null) . fmap T.strip . T.splitOn ","
+
+-- | Parse the name of an edition of the language, such as @GHC2021@.
+lookupEdition :: Text -> Maybe GHC.Language
+lookupEdition name =
+  lookup name [(T.pack (show e), e) | e <- [minBound .. maxBound]]
 
 -- | Parse an extension name.
 lookupExtension :: Text -> Maybe Extension

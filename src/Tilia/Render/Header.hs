@@ -15,16 +15,17 @@ import Control.Applicative ((<|>))
 import Data.Function (on)
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (isJust)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Driver.Flags (Language)
 import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Comments (Comment (..), Pragma (..), commentPragma)
 import Tilia.Doc.Combinators
+import Tilia.Pragma (languageNames, lookupEdition)
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls)
 import Tilia.Render.Haddock
@@ -159,7 +160,7 @@ pragmaBlock = foldMap render . dedupe . sortOn order . concatMap split
     split p
       | hpName p == "LANGUAGE" =
           [ p{hpBody = body}
-          | body <- fmap T.strip (T.splitOn "," (hpBody p))
+          | body <- languageNames (hpBody p)
           ]
       | otherwise = [p]
 
@@ -184,9 +185,7 @@ classifyExtension t
 -- | Does this name a whole edition of the language rather than one
 -- extension of it?
 namesAnEdition :: Text -> Bool
-namesAnEdition t = any spelledTheSame [minBound .. maxBound]
-  where
-    spelledTheSame edition = t == T.pack (show (edition :: Language))
+namesAnEdition = isJust . lookupEdition
 
 -- | A whole module.
 hsModule ::
