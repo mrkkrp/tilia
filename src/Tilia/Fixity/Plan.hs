@@ -29,7 +29,6 @@ import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Foldable (toList)
-import Data.List (isSuffixOf)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -43,10 +42,11 @@ import Data.Text.Encoding qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
-import System.Directory (doesFileExist, listDirectory)
+import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import Tilia.Cabal.Package (PackageReader, newPackageReader)
 import Tilia.Cabal.Plan
+import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
@@ -608,11 +608,10 @@ localModules plan =
       CheckedOut dir -> [dir]
       _ -> []
     forPackage dir = quietly Map.empty $ do
-      entries <- listDirectory dir
-      case filter (".cabal" `isSuffixOf`) entries of
+      cabalFilesIn dir >>= \case
         [] -> pure Map.empty
         (cabalFile : _) -> do
-          contents <- readFileText (dir </> cabalFile)
+          contents <- readFileText cabalFile
           case contents of
             Nothing -> pure Map.empty
             Just text ->

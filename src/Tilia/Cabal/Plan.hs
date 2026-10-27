@@ -54,7 +54,6 @@ import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Base16 qualified as B16
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList, traverse_)
-import Data.List (isSuffixOf)
 import Data.List qualified
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -93,6 +92,7 @@ import System.Process
     std_out,
     waitForProcess,
   )
+import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
@@ -501,10 +501,11 @@ filesNewerThanPlan plan projectDir solved = quietly [] $ do
   written <- getModificationTime (planPathFor projectDir)
   let planTime = maybe written (max written) solved
   atRoot <- quietly [] (listDirectory projectDir)
+  atRootPackage <- cabalFilesIn projectDir
   inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
   let candidates =
         [projectDir </> f | f <- atRoot, f `elem` projectFiles]
-          <> [projectDir </> f | f <- atRoot, ".cabal" `isSuffixOf` f]
+          <> atRootPackage
           <> inPackages
   newer <- traverse (isNewerThan planTime) candidates
   pure [f | Just f <- newer]
@@ -513,9 +514,6 @@ filesNewerThanPlan plan projectDir solved = quietly [] $ do
       ["cabal.project", "cabal.project.local", "cabal.project.freeze"]
     localDirs p =
       Data.List.nub [dir | LocalPackage dir <- fmap ppSource (bpPackages p)]
-    cabalFilesIn dir = quietly [] $ do
-      entries <- listDirectory dir
-      pure [dir </> f | f <- entries, ".cabal" `isSuffixOf` f]
     isNewerThan planTime path = quietly Nothing $ do
       t <- getModificationTime path
       pure (if t > planTime then Just path else Nothing)

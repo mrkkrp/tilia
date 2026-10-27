@@ -63,7 +63,7 @@ import Tilia.Cabal.Package
     suiteBranches,
   )
 import Tilia.Cabal.Plan (PlanComponent (..))
-import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), markerFile)
+import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
 import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
 import Tilia.Utils (attempted, quietly)
 
@@ -347,13 +347,6 @@ globMatching pattern name = case break (== '*') pattern of
   (before, _ : after) ->
     before `isPrefixOf` name
       && after `isSuffixOf` drop (length before) name
-
--- | The @.cabal@ files sitting directly in a directory.
-cabalFilesIn :: FilePath -> IO [FilePath]
-cabalFilesIn directory = quietly [] $ do
-  entries <- listDirectory directory
-  let named = sort (filter (".cabal" `isSuffixOf`) entries)
-  filterM doesFileExist (fmap (directory </>) named)
 
 -- | Every component one @.cabal@ file declares.
 componentsInCabalFile :: FilePath -> IO (Either TargetProblem [Component])

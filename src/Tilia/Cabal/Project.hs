@@ -7,17 +7,20 @@ module Tilia.Cabal.Project
     Marker (..),
     markerFile,
     findProjectRoot,
+    cabalFilesIn,
   )
 where
 
-import Data.List (isSuffixOf)
+import Control.Monad (filterM)
+import Data.List (isSuffixOf, sort)
 import Data.Maybe (listToMaybe)
 import System.Directory
   ( canonicalizePath,
     doesDirectoryExist,
+    doesFileExist,
     listDirectory,
   )
-import System.FilePath (takeDirectory)
+import System.FilePath (takeDirectory, takeFileName, (</>))
 import Tilia.Utils (quietly)
 
 -- | A project, and what marked it out.
@@ -61,9 +64,15 @@ findProjectRoot start = quietly Nothing $ do
 
     markersIn directory = quietly ([], []) $ do
       entries <- listDirectory directory
+      packages <- cabalFilesIn directory
       pure
         ( [ProjectRoot directory ProjectFile | "cabal.project" `elem` entries],
-          [ ProjectRoot directory (PackageFile named)
-          | named <- take 1 (filter (".cabal" `isSuffixOf`) entries)
-          ]
+          [ProjectRoot directory (PackageFile (takeFileName p)) | p <- take 1 packages]
         )
+
+-- | The @.cabal@ files sitting directly in a directory, in order.
+cabalFilesIn :: FilePath -> IO [FilePath]
+cabalFilesIn directory = quietly [] $ do
+  entries <- listDirectory directory
+  let named = sort (filter (".cabal" `isSuffixOf`) entries)
+  filterM doesFileExist (fmap (directory </>) named)
