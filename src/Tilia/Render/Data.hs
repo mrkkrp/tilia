@@ -195,11 +195,7 @@ conDecl ctx _ ConDeclGADT{..} =
         <> indent (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
 
     signature =
-      outerBndrs ctx (unLoc con_outer_bndrs)
-        <> ( case unLoc con_outer_bndrs of
-               HsOuterImplicit{} -> mempty
-               HsOuterExplicit{} -> breakOrSpace
-           )
+      outerBndrs ctx breakOrSpace (unLoc con_outer_bndrs)
         <> foldMap (\tele -> forallTelescope ctx tele <> breakOrSpace) con_inner_bndrs
         <> foldMap
           (\qs -> context ctx qs <> joinedBy "=>")
