@@ -973,9 +973,8 @@ corpusCache =
 -- partial file under the real name would be taken for a complete download
 -- on the next run and never fetched again.
 --
--- 'Left' is for the machine that cannot reach the network rather than for a
--- defect, and callers are expected to say so and carry on. Only the fetch
--- is caught: a file that cannot be written is a fault worth hearing about.
+-- 'Left' says why the fetch failed. Only the fetch is caught: a file that
+-- cannot be written is a fault worth hearing about.
 download :: (Url 'Https, Option 'Https) -> FilePath -> IO (Either Text ())
 download (url, query) dest =
   try get >>= \case
