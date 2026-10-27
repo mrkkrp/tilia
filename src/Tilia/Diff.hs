@@ -34,7 +34,7 @@ diff ::
   -- | After.
   Text ->
   Text
-diff palette = unified palette (Just roomFor) []
+diff palette = unified palette []
 
 -- | The whole of a unified diff of one file against its formatted self,
 -- headed the way @git diff@ heads one.
@@ -50,7 +50,6 @@ diffInFull ::
 diffInFull palette path =
   unified
     palette
-    Nothing
     [paint palette Place ("diff --git " <> before <> " " <> after)]
     (before, after)
   where
@@ -60,11 +59,9 @@ diffInFull palette path =
 -- | One line of the comparison, with the number it has on each side.
 data Line = Line !Mark !Int !Int !Text
 
--- | A unified diff, with whatever heading and limit the caller wants.
+-- | A unified diff, with whatever heading the caller wants.
 unified ::
   Palette ->
-  -- | How many lines are worth printing, where there is a limit at all.
-  Maybe Int ->
   -- | Whatever goes above the two file names.
   [Text] ->
   -- | What to call the two sides.
@@ -74,27 +71,19 @@ unified ::
   -- | After.
   Text ->
   Text
-unified palette limit above (beforeName, afterName) before after
+unified palette above (beforeName, afterName) before after
   | null hunks,
     before /= after =
       "(the two differ only in how they end their lines)"
   | null hunks =
       "(the two are identical as text, so the difference is in something\
       \ the text does not show)"
-  | otherwise = T.intercalate "\n" (above <> heading <> shown)
+  | otherwise = T.intercalate "\n" (above <> heading <> body)
   where
     heading =
       [ paint palette (Header Gone) ("--- " <> beforeName),
         paint palette (Header New) ("+++ " <> afterName)
       ]
-
-    shown = case limit of
-      Just room | length body > room -> take room body <> [omitted room]
-      _ -> body
-      where
-        omitted room =
-          paint palette Meta $
-            "… and " <> T.pack (show (length body - room)) <> " more lines"
 
     body = concatMap render hunks
 
@@ -134,10 +123,6 @@ unified palette limit above (beforeName, afterName) before after
 -- | How many unchanged lines to show either side of a change.
 margin :: Int
 margin = 3
-
--- | How many lines of diff are worth printing before it stops being read.
-roomFor :: Int
-roomFor = 60
 
 -- | Join hunks that have grown into one another.
 merge :: [(Int, Int)] -> [(Int, Int)]

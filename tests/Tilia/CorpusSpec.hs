@@ -21,9 +21,9 @@ import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
 import Tilia.Corpus.Manifest
 import Tilia.Cpp (describeCppError, usesCpp)
-import Tilia.Diff (diff)
+import Tilia.Diff qualified as Diff
 import Tilia.Equivalence (commentDifference, syntaxDifference)
-import Tilia.Palette (Palette (Plain), paletteFor)
+import Tilia.Palette (Color (Meta), Palette (Plain), paint, paletteFor)
 import Tilia.Parser
   ( ParseError (..),
     ParsedModule (..),
@@ -263,6 +263,20 @@ check palette example = do
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)
 readUtf8 path = either (const Nothing) Just . decodeUtf8' <$> BS.readFile path
+
+-- | A unified diff, cut short after 60 lines, past which it stops being
+-- read.
+diff :: Palette -> (Text, Text) -> Text -> Text -> Text
+diff palette names before after
+  | length body > room = T.intercalate "\n" (heading <> take room body <> [omitted])
+  | otherwise = whole
+  where
+    whole = Diff.diff palette names before after
+    (heading, body) = splitAt 2 (T.lines whole)
+    room = 60
+    omitted =
+      paint palette Meta $
+        "… and " <> T.pack (show (length body - room)) <> " more lines"
 
 -- | Run a check, turning a crash into a failure rather than into a dead test
 -- run.
