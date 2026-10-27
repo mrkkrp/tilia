@@ -10,6 +10,7 @@ module Tilia.Utils
     fieldWords,
     asUtf8,
     byteOrderMark,
+    sha256Of,
     lineWidth,
     indent,
     wrapTo,
@@ -30,7 +31,9 @@ import Control.Concurrent
   )
 import Control.Exception (SomeException, displayException, try)
 import Control.Monad (replicateM)
+import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
+import Data.ByteString.Base16 qualified as B16
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -80,6 +83,10 @@ asUtf8 bytes = case T.decodeUtf8' bytes of
 -- and the rest of it.
 byteOrderMark :: Text -> (Text, Text)
 byteOrderMark t = T.splitAt (if "\xFEFF" `T.isPrefixOf` t then 1 else 0) t
+
+-- | The SHA-256 of a text's UTF-8 encoding, in hexadecimal.
+sha256Of :: Text -> Text
+sha256Of = T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
 
 -- | The line width for the terminal output of this program.
 lineWidth :: Int

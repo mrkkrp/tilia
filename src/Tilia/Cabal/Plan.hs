@@ -40,7 +40,6 @@ module Tilia.Cabal.Plan
 where
 
 import Control.Monad (filterM, join, void)
-import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson
   ( FromJSON (..),
     Value,
@@ -51,7 +50,6 @@ import Data.Aeson
     (.:?),
   )
 import Data.Aeson.Types (parseMaybe)
-import Data.ByteString.Base16 qualified as B16
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList, traverse_)
 import Data.List qualified
@@ -97,7 +95,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly, readFileText)
+import Tilia.Utils (quietly, readFileText, sha256Of)
 
 ----------------------------------------------------------------------------
 -- The plan
@@ -184,10 +182,7 @@ tokenForEnvAndBuildPlan :: Text -> BuildPlan -> PlanToken
 tokenForEnvAndBuildPlan environment plan =
   PlanToken
     . T.take 16
-    . T.decodeUtf8Lenient
-    . B16.encode
-    . SHA256.hash
-    . T.encodeUtf8
+    . sha256Of
     $ T.intercalate
       "\n"
       ( environment
