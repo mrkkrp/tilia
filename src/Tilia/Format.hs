@@ -249,18 +249,19 @@ newSession ::
 newSession start planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   project <- need (NoProject start) =<< liftIO (findProjectRoot start)
   let root = prPath project
-  (plan, resolver) <- case planSource of
+  (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
-      (,) plan <$> liftIO (newResolverVia caching [FromInterface, FromSource] plan)
+      pure (plan, [FromInterface, FromSource])
     GivenPlan path -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
       routes <-
         if isTrue downloading
           then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
-      (,) plan <$> liftIO (newResolverVia caching routes plan)
-  askPackage <- liftIO (newPackageReader (plannedCompiler plan))
+      pure (plan, routes)
+  packageReader <- liftIO (newPackageReader (plannedCompiler plan))
+  resolver <- liftIO (newResolverVia caching routes packageReader plan)
   notes <-
     if isTrue debugFixity
       then Just <$> liftIO (newIORef Map.empty)
@@ -270,7 +271,7 @@ newSession start planSource caching downloading checkAst checkIdempotence debugF
       { sessionRoot = project,
         sessionResolver = resolver,
         sessionMacros = macrosOf plan,
-        sessionPackage = askPackage,
+        sessionPackage = packageReader,
         sessionCheckAst = checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = notes

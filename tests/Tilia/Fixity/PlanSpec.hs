@@ -61,7 +61,7 @@ import Tilia.Fixity.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Fixity.Plan qualified as Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
-import Tilia.TestUtils (parsed, unreadOnly, withEnvironment)
+import Tilia.TestUtils (parsed, routedResolver, unreadOnly, withEnvironment)
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
@@ -671,7 +671,7 @@ givenPlans = describe "a plan trusted as up to date" $ do
       readGivenPlan project planFile >>= \case
         Left why -> expectationFailure (T.unpack why)
         Right plan -> do
-          resolver <- newResolverVia (Do #useCache) [FromInterface] plan
+          resolver <- routedResolver [FromInterface] plan
           fixities <- fixitiesOf resolver "Ops"
           (Map.lookup (InTerms, OpName "<+>") =<< fixities)
             `shouldBe` Just (Fixity LeftAssoc 6)
@@ -697,7 +697,7 @@ givenPlans = describe "a plan trusted as up to date" $ do
           ( readGivenPlan project planFile >>= \case
               Left why -> expectationFailure (T.unpack why)
               Right plan -> do
-                resolver <- newResolverVia (Do #useCache) [FromInterface] plan
+                resolver <- routedResolver [FromInterface] plan
                 traverse_ (fixitiesOf resolver) ["Ops", "Nowhere.At.All"]
           )
         `shouldReturn` []
@@ -976,7 +976,7 @@ askedAtOnce = describe "modules asked about from several threads at once" $
   it "answers for every module of a ring that hands itself on" $
     withFakePlan [("src/" <> T.unpack (ringModule i) <> ".hs", ringSource i) | i <- [0 .. ringSize - 1]] $ \plan ->
       forM_ [1 :: Int .. 50] $ \_ -> do
-        resolver <- newResolverVia (Do #useCache) [FromInterface] plan
+        resolver <- routedResolver [FromInterface] plan
         answers <-
           timeout 30000000 $
             inParallel (fixitiesOf resolver . ringModule) [0 .. ringSize - 1]

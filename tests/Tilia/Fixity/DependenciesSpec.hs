@@ -17,7 +17,7 @@ module Tilia.Fixity.DependenciesSpec (spec) where
 
 import Control.Monad (filterM)
 import Data.ByteString qualified as BS
-import Data.Choice (pattern Do, pattern Don't, pattern Is)
+import Data.Choice (pattern Don't, pattern Is)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
 import Data.Map.Strict qualified as Map
@@ -39,6 +39,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 import Tilia.Gathered (gathered)
 import Tilia.Parser
+import Tilia.TestUtils (routedResolver)
 import Tilia.WithProjectPlan
   ( Dependency (..),
     compilerShipped,
@@ -53,8 +54,8 @@ spec = withProjectPlan withPlan
 withPlan :: BuildPlan -> Spec
 withPlan plan = do
   installed <- runIO readInstalledPackages
-  fromSource <- runIO (fixitiesThrough <$> newResolverVia (Do #useCache) [FromSource] plan)
-  fromInterface <- runIO (fixitiesThrough <$> newResolverVia (Do #useCache) [FromInterface] plan)
+  fromSource <- runIO (fixitiesThrough <$> routedResolver [FromSource] plan)
+  fromInterface <- runIO (fixitiesThrough <$> routedResolver [FromInterface] plan)
   resolver <- runIO (newResolver plan)
   let resolve = fixitiesThrough resolver
   own <- runIO ownModules

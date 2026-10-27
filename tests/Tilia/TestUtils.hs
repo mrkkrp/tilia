@@ -1,3 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE PatternSynonyms #-}
+
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
@@ -5,6 +9,7 @@ module Tilia.TestUtils
     commentsIn,
     unreadOnly,
     fingerprint,
+    routedResolver,
 
     -- * Configurations, enumerated
     configurations,
@@ -19,6 +24,7 @@ where
 import Control.Exception (bracket)
 import Data.Bits (xor)
 import Data.Char (ord)
+import Data.Choice (pattern Do)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as Map
@@ -27,6 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
 import System.Environment (lookupEnv, setEnv, unsetEnv)
+import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Comments (Comment)
 import Tilia.Cpp.Directives
   ( Assignment,
@@ -44,6 +51,7 @@ import Tilia.Cpp.Directives
     unconditionalErrors,
   )
 import Tilia.Fixity (ModuleChain (..))
+import Tilia.Fixity.Plan (BuildPlan, Resolver, Route, newResolverVia, plannedCompiler)
 import Tilia.Parser
   ( ParsedModule (..),
     defaultParserConfig,
@@ -85,6 +93,13 @@ fingerprint :: String -> Word64
 fingerprint = foldl' step 14695981039346656037
   where
     step h c = (h `xor` fromIntegral (ord c)) * 1099511628211
+
+-- | A 'Resolver' that reads modules by the routes given and remembers what
+-- it reads.
+routedResolver :: [Route] -> BuildPlan -> IO Resolver
+routedResolver routes plan = do
+  packageReader <- newPackageReader (plannedCompiler plan)
+  newResolverVia (Do #useCache) routes packageReader plan
 
 -- | Split a module on its first outermost conditional, and on every other
 -- one written behind the same directives, wherever in the module it sits.

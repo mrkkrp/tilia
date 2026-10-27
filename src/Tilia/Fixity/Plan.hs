@@ -130,7 +130,7 @@ import System.Process
     std_out,
     waitForProcess,
   )
-import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cabal.Package (PackageReader, newPackageReader)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
@@ -892,7 +892,9 @@ newResolver ::
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolver = newResolverVia (Do #useCache) [FromInterface, FromSource]
+newResolver plan = do
+  packageReader <- newPackageReader (plannedCompiler plan)
+  newResolverVia (Do #useCache) [FromInterface, FromSource] packageReader plan
 
 -- | 'newResolver', restricted to the routes given.
 newResolverVia ::
@@ -900,17 +902,19 @@ newResolverVia ::
   Choice "useCache" ->
   -- | Which readings to try, in order.
   [Route] ->
+  -- | What the package of each of the project's own modules puts in force.
+  PackageReader ->
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolverVia caching routes plan = do
+newResolverVia caching routes packageReader plan = do
   cache <- openCache caching =<< tokenForBuildPlan plan
   tarballs <-
     if FromSource `elem` routes
       then plannedTarballs cache plan
       else pure []
   installed <- getInstalledPackages cache
-  newResolverWith routes cache installed tarballs plan
+  newResolverWith routes cache installed tarballs packageReader plan
 
 -- | 'newResolverVia', given what it would find out from the machine.
 newResolverWith ::
@@ -923,16 +927,17 @@ newResolverWith ::
   -- | Every planned package that might have a tarball, and where it would
   -- be.
   [(PlanPackage, FilePath)] ->
+  -- | What the package of each of the project's own modules puts in force.
+  PackageReader ->
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolverWith routes cache installed tarballs plan = do
+newResolverWith routes cache installed tarballs packageReader plan = do
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
   local <- localModules plan
   flights <- newMVar (Flights Map.empty Map.empty)
   answersRead <- newMemo
-  askPackage <- newPackageReader (plannedCompiler plan)
   extensionsRead <- newMemo
   summariesRead <- newMemo
   archivesRead <- newMemo
@@ -993,7 +998,7 @@ newResolverWith routes cache installed tarballs plan = do
       macrosRead = T.pack (show (macrosOf plan))
       extensionsOf modName
         | Just path <- Map.lookup modName local =
-            either (const []) id <$> askPackage path
+            either (const []) id <$> packageReader path
         | Just (package, tarball) <- Map.lookup modName index =
             memoized flights extensionsRead [] package $
               foldMap declaredExtensions . (archiveCabal =<<) <$> archiveOf tarball
