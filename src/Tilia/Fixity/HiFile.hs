@@ -12,7 +12,8 @@ module Tilia.Fixity.HiFile
   )
 where
 
-import Data.Array (Array, bounds, listArray, (!))
+import Control.Monad (unless)
+import Data.Array (Array, bounds, inRange, listArray, (!))
 import Data.Bits (shiftL, testBit, (.&.), (.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -87,7 +88,7 @@ data Tables = Tables
 hiFile :: Get HiFile
 hiFile = do
   magic <- word32be
-  unless' (magic == 0x1face64) (failure ("not a 64-bit interface file: " <> T.pack (show magic)))
+  unless (magic == 0x1face64) (failure ("not a 64-bit interface file: " <> T.pack (show magic)))
   version <- string
   series <- case take 3 version of
     "910" -> pure Series910
@@ -95,11 +96,11 @@ hiFile = do
     "914" -> pure Series914
     _ -> failure ("unsupported interface version " <> T.pack version)
   _way <- string
-  unless' (series == Series914) fingerprint
+  unless (series == Series914) fingerprint
   _extFields <- pointer series
   stringsAt <- pointer series
   namesAt <- pointer series
-  unless' (series == Series910) (() <$ pointer series)
+  unless (series == Series910) (() <$ pointer series)
   strings <- lookingAt stringsAt dictionary
   names <- lookingAt namesAt symbolTable
   let tables = Tables strings names (keyedNames series)
@@ -180,10 +181,6 @@ fastString :: Array Int ByteString -> Int -> Get Text
 fastString strings i
   | inRange (bounds strings) i = pure (T.decodeUtf8Lenient (strings ! i))
   | otherwise = failure "string index out of range"
-
--- | Whether an index is within bounds.
-inRange :: (Int, Int) -> Int -> Bool
-inRange (lo, hi) i = lo <= i && i <= hi
 
 -- | A unit, which must be a real one: instantiated units come of Backpack.
 unit :: Get ()
@@ -302,10 +299,6 @@ listOf :: Get a -> Get [a]
 listOf get = do
   n <- sleb
   mapM (const get) [1 .. n]
-
--- | Run an action unless the condition holds.
-unless' :: Bool -> Get () -> Get ()
-unless' condition action = if condition then pure () else action
 
 -- | Reading from a position in a byte string.
 newtype Get a = Get{runGet :: ByteString -> Int -> Either Text (a, Int)}
