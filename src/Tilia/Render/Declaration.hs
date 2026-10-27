@@ -1,5 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Declarations: dispatching to the right printer, and grouping.
@@ -9,6 +12,7 @@ module Tilia.Render.Declaration
   )
 where
 
+import Data.Choice (pattern Don't)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NE
@@ -277,7 +281,7 @@ tyClDecl ctx style = \case
   DataDecl{..} ->
     dataDecl
       ctx
-      Associated
+      (Don't #instanceWord)
       tcdLName
       (hsq_explicit tcdTyVars)
       spanOf

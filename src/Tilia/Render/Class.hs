@@ -202,7 +202,7 @@ dataFamInstDecl :: Ctx -> FamilyStyle -> DataFamInstDecl GhcPs -> Doc
 dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
   dataDecl
     ctx
-    style
+    (fromBool (style == Free))
     feqn_tycon
     feqn_pats
     typeArgSpan

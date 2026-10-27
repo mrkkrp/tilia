@@ -38,8 +38,9 @@ import Tilia.Span.Ghc
 dataDecl ::
   -- | The context.
   Ctx ->
-  -- | The family style.
-  FamilyStyle ->
+  -- | Whether @instance@ follows the keyword, as it does in a family
+  -- instance that stands on its own.
+  Choice "instanceWord" ->
   -- | The type constructor.
   LocatedN RdrName ->
   -- | What it is applied to.
@@ -55,17 +56,16 @@ dataDecl ::
   Doc ->
   HsDataDefn GhcPs ->
   Doc
-dataDecl ctx style tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
-  txt (keyword <> instanceWord) <> header <> constructors <> derivings
+dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
+  txt (keyword <> if isTrue instanceWord then " instance" else "")
+    <> header
+    <> constructors
+    <> derivings
   where
     keyword = case dd_cons of
       NewTypeCon _ -> "newtype"
       DataTypeCons False _ -> "data"
       DataTypeCons True _ -> "type data"
-
-    instanceWord = case style of
-      Associated -> ""
-      Free -> " instance"
 
     headSpan = spanOf tyCon <> foldMap tyVarSpan tyVars
     wholeHeadSpan =
