@@ -22,6 +22,8 @@ module Tilia.Comments
     triggerEscaped,
     opensHaddock,
     opensSectionHeading,
+    afterOpener,
+    triggerOn,
     commentsWithin,
     Pragma (..),
     commentPragma,
@@ -388,13 +390,9 @@ asOrdinary ls c
 -- the point of escaping—so anything wanting to know whether a comment
 -- started life as a Haddock has to ask this.
 triggerEscaped :: Comment -> Bool
-triggerEscaped c = case openerWidth headLine of
-  Nothing -> False
-  Just n -> case T.uncons (T.dropWhile (== ' ') (T.drop n headLine)) of
-    Just ('\\', rest) -> triggered rest
-    _ -> False
-  where
-    headLine = NE.head (commentBody c)
+triggerEscaped c = case T.uncons =<< afterOpener (NE.head (commentBody c)) of
+  Just ('\\', rest) -> triggered rest
+  _ -> False
 
 -- | Does this text begin with one of the characters that opens a Haddock?
 triggered :: Text -> Bool
@@ -415,14 +413,16 @@ opensSectionHeading = maybe False (T.isSuffixOf "*" . fst) . splitTrigger
 splitTrigger :: Text -> Maybe (Text, Text)
 splitTrigger l = do
   n <- openerWidth l
-  let (opener, afterOpener) = T.splitAt n l
-      (gap, rest) = T.span (== ' ') afterOpener
-  (trigger, body) <- case T.uncons rest of
-    Just ('|', b) -> Just ("|", b)
-    Just ('^', b) -> Just ("^", b)
-    Just ('*', _) -> Just (T.span (== '*') rest)
-    _ -> Nothing
-  pure (opener <> gap <> trigger, body)
+  let (opener, rest) = T.splitAt n l
+      (gap, inside) = T.span (== ' ') rest
+  trigger <- triggerOn inside
+  pure (opener <> gap <> trigger, T.drop (T.length trigger) inside)
+
+-- | What follows the @--@ or @{-@ that opens a comment, and the spaces after
+-- it, if the line opens one.
+afterOpener :: Text -> Maybe Text
+afterOpener l = (\n -> T.dropWhile (== ' ') (T.drop n l)) <$> openerWidth l
+{-# INLINE afterOpener #-}
 
 -- | How many characters open a comment, if it opens one.
 openerWidth :: Text -> Maybe Int
@@ -430,6 +430,15 @@ openerWidth l
   | "--" `T.isPrefixOf` l = Just 2
   | "{-" `T.isPrefixOf` l = Just 2
   | otherwise = Nothing
+
+-- | The trigger at the start of what follows a comment's opener: @|@, @^@,
+-- or a run of @*@.
+triggerOn :: Text -> Maybe Text
+triggerOn inside = case T.uncons inside of
+  Just ('|', _) -> Just "|"
+  Just ('^', _) -> Just "^"
+  Just ('*', _) -> Just (T.takeWhile (== '*') inside)
+  _ -> Nothing
 
 -- | The comments written inside a region.
 commentsWithin :: Span -> [Comment] -> [Comment]

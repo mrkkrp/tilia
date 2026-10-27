@@ -14,7 +14,6 @@ module Tilia.Render.Haddock
   )
 where
 
-import Control.Applicative ((<|>))
 import Data.Char (isSpace)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
@@ -26,6 +25,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
+import Tilia.Comments (afterOpener, triggerOn)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
@@ -168,24 +168,6 @@ triggerFor = \case
   Caret -> "^"
   Section n -> T.replicate n "*"
   Chunk n -> "$" <> T.pack n
-
--- | What follows the @--@ or @{-@ that opens a comment, with the spaces
--- after it removed.
-afterOpener :: Text -> Maybe Text
-afterOpener firstLine = T.stripStart <$> opened (T.stripStart firstLine)
-  where
-    opened t = T.stripPrefix "--" t <|> T.stripPrefix "{-" t
-
--- | The trigger an opened comment carries, for the triggers that are a run
--- of one character.
-triggerOn :: Text -> Maybe Text
-triggerOn inside = do
-  (c, rest) <- T.uncons inside
-  case c of
-    '|' -> Just "|"
-    '^' -> Just "^"
-    '*' -> Just (T.cons c (T.takeWhile (== '*') rest))
-    _ -> Nothing
 
 -- | Was the reused text a block comment?
 isBlockForm :: NonEmpty Text -> Bool
