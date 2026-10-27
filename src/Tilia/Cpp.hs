@@ -484,16 +484,17 @@ together ::
   -- | The group to split on, and the branch texts to split it into.
   Configurations ->
   Spending (Doc, CommentSummary)
-together formatter reached c = do
-  (found, blind) <-
-    formatted differentlyRead `catchE` \case
-      ConfigurationNotParsed answers _
-        | not differentlyRead,
-          isNothing (implied answers) ->
-            formatted True
-      e -> refuse e
-  if blind then fst <$> formatted False else pure found
+together formatter reached c
+  | differentlyRead = settledOr (fst <$> formatted False)
+  | otherwise =
+      (fst <$> formatted False) `catchE` \case
+        e@(ConfigurationNotParsed answers _)
+          | isNothing (implied answers) -> settledOr (refuse e)
+        e -> refuse e
   where
+    settledOr unsettled = do
+      (found, blind) <- formatted True
+      if blind then unsettled else pure found
     readingOf = reading formatter
     differentlyRead =
       or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
