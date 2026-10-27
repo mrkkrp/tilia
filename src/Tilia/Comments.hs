@@ -37,7 +37,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Parser.Annotation qualified as GHC
+import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Source.Lines (Lines, blankAt, directiveOnLine, lineAt, lineTexts)
 import Tilia.Span (Span (..), covers)
@@ -98,22 +98,21 @@ data Above
 commentsOf ::
   -- | The module's lines, which every comment is read against.
   Lines ->
-  -- | The module's comments, in source order.
-  [GHC.LEpaComment] ->
+  -- | The module's comment tokens, in source order, each where the lexer
+  -- found it.
+  [(GHC.RealSrcSpan, GHC.Token)] ->
   [Comment]
-commentsOf ls = fmap (uncurry (mkComment ls)) . mapMaybe located
-  where
-    located (GHC.L anchor (GHC.EpaComment tok _)) = case anchor of
-      GHC.EpaSpan (GHC.RealSrcSpan s _) -> Just (s, tok)
-      _ -> Nothing
+commentsOf ls = mapMaybe (uncurry (mkComment ls))
 
--- | Build a comment from a token and the span it occupied.
-mkComment :: Lines -> GHC.RealSrcSpan -> GHC.EpaCommentTok -> Comment
-mkComment ls spn tok = case tok of
-  GHC.EpaLineComment t -> commentAt ls s LineComment (T.pack t)
-  GHC.EpaBlockComment t -> commentAt ls s BlockComment (T.pack t)
-  GHC.EpaDocComment _ -> commentAt ls s DocComment (sliceSpan (lineTexts ls) s)
-  GHC.EpaDocOptions t -> commentAt ls s LineComment (T.pack t)
+-- | Build a comment from a token and the span it occupied, where the token
+-- is a comment.
+mkComment :: Lines -> GHC.RealSrcSpan -> GHC.Token -> Maybe Comment
+mkComment ls spn = \case
+  GHC.ITlineComment t _ -> Just (commentAt ls s LineComment (T.pack t))
+  GHC.ITblockComment t _ -> Just (commentAt ls s BlockComment (T.pack t))
+  GHC.ITdocComment _ _ -> Just (commentAt ls s DocComment (sliceSpan (lineTexts ls) s))
+  GHC.ITdocOptions t _ -> Just (commentAt ls s LineComment (T.pack t))
+  _ -> Nothing
   where
     s = spanOfReal spn
 
