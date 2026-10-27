@@ -11,14 +11,12 @@
 -- everything.
 module Main (main) where
 
-import Data.Bits (xor)
-import Data.Char (ord)
 import Data.List (intercalate, isPrefixOf)
-import Data.Word (Word64)
 import Spec qualified
 import System.Environment (lookupEnv)
 import Test.Hspec.Runner (Config (..), Path, defaultConfig, hspecWith)
 import Text.Read (readMaybe)
+import Tilia.TestUtils (fingerprint)
 
 main :: IO ()
 main =
@@ -58,13 +56,6 @@ taking i n path = leansOnCompiler path || share path == i - 1
 -- is rather than by where it happens to fall in the order.
 spell :: Path -> String
 spell (groups, requirement) = intercalate "/" (groups <> [requirement])
-
--- | FNV-1a, so that a test lands in the same share on every machine and
--- every run, and adding one test does not move the others.
-fingerprint :: String -> Word64
-fingerprint = foldl' step 14695981039346656037
-  where
-    step h c = (h `xor` fromIntegral (ord c)) * 1099511628211
 
 -- | Is this test one whose answer the compiler can change?
 leansOnCompiler :: Path -> Bool

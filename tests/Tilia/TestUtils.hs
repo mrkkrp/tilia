@@ -4,14 +4,18 @@ module Tilia.TestUtils
     parsed,
     commentsIn,
     unreadOnly,
+    fingerprint,
   )
 where
 
 import Control.Exception (bracket)
+import Data.Bits (xor)
+import Data.Char (ord)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Word (Word64)
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import Tilia.Comments (Comment)
 import Tilia.Fixity (ModuleChain (..))
@@ -49,3 +53,10 @@ commentsIn = comments . pmSource . parsed
 -- with nothing below it.
 unreadOnly :: Text -> NonEmpty ModuleChain
 unreadOnly m = ModuleChain (m :| []) :| []
+
+-- | FNV-1a, a hash of a string that is the same on every machine and every
+-- run.
+fingerprint :: String -> Word64
+fingerprint = foldl' step 14695981039346656037
+  where
+    step h c = (h `xor` fromIntegral (ord c)) * 1099511628211
