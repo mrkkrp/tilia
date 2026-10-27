@@ -17,7 +17,7 @@ import Data.Version (showVersion)
 import GHC.IO.Encoding (TextEncoding (textEncodingName))
 import Options.Applicative
 import Paths_tilia (version)
-import System.Directory (makeRelativeToCurrentDirectory)
+import System.Directory (getCurrentDirectory, makeRelativeToCurrentDirectory)
 import System.Exit (ExitCode (..))
 import System.Exit qualified
 import System.IO
@@ -43,7 +43,7 @@ import Tilia.Cabal.Target
 import Tilia.Editor (editorSession, formatBuffer)
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
-  ( FormatError (Unreadable),
+  ( FormatError (NoProject, Unreadable),
     PlanSource (..),
     Session,
     describeFormatError,
@@ -106,7 +106,7 @@ formatComponents palette opts@Opts{..} target = do
       =<< filesOfComponents root components
   session <-
     newSession
-      "."
+      root
       ( case optBuildPlan of
           Nothing -> PlanFromCabal (mapMaybe componentInPlan components)
           Just givenPlan -> GivenPlan givenPlan
@@ -217,8 +217,7 @@ printReport report = do
 componentsFor :: Palette -> Target -> IO (ProjectRoot, [Component])
 componentsFor palette target =
   findProjectRoot "." >>= \case
-    Nothing ->
-      die 2 palette "no cabal.project or .cabal file at or above the working directory"
+    Nothing -> dieFormatting palette . NoProject =<< getCurrentDirectory
     Just root ->
       componentsOfTarget root target >>= \case
         Left problem ->

@@ -37,7 +37,7 @@ import Tilia.Cabal.Package
     describePackageProblem,
     newPackageReader,
   )
-import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
+import Tilia.Cabal.Project (ProjectRoot (..))
 import Tilia.Cpp
   ( CppError (..),
     correspondingBranches,
@@ -230,8 +230,8 @@ data PlanSource
 
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
-  -- | Where to start looking for the project.
-  FilePath ->
+  -- | The project.
+  ProjectRoot ->
   -- | Where the build plan comes from.
   PlanSource ->
   -- | Whether to read from and write to the cache.
@@ -246,8 +246,7 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession start planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
-  project <- need (NoProject start) =<< liftIO (findProjectRoot start)
+newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
@@ -276,9 +275,6 @@ newSession start planSource caching downloading checkAst checkIdempotence debugF
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = notes
       }
-  where
-    need :: FormatError -> Maybe a -> ExceptT FormatError IO a
-    need e = maybe (throwE e) pure
 
 -- | What the run made of every file's operators, by file.
 --
