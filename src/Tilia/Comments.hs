@@ -16,6 +16,7 @@ module Tilia.Comments
     holdsOff,
     continuesHaddock,
     carriedOnFrom,
+    carriesOn,
     widenTrigger,
     asOrdinary,
     triggerEscaped,
@@ -254,6 +255,21 @@ singleLine :: Comment -> Bool
 singleLine c = case commentBody c of
   (_ :| []) -> True
   _ -> False
+
+-- | Does a comment under a remark carry it on, rather than go with the code
+-- after it: is it no further left than the remark, or does that code begin
+-- further left than the comment?
+carriesOn ::
+  -- | The column the remark begins at.
+  Int ->
+  -- | The comment.
+  Span ->
+  -- | Where the code after it begins, if any follows.
+  Maybe Span ->
+  Bool
+carriesOn remark comment after =
+  remark <= spanStartColumn comment
+    || all (\r -> spanStartColumn r < spanStartColumn comment) after
 
 -- | The line whose trailing comment a comment with the line to itself
 -- carries on, by being lined up under that line or that comment, or under
