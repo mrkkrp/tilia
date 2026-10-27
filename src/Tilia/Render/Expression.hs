@@ -358,7 +358,7 @@ fixityOf ctx o =
 renderExprChain :: Ctx -> Site -> OpChain (LHsExpr GhcPs) (LHsExpr GhcPs) -> Doc
 renderExprChain ctx site = \case
   Operand e -> hsExprIn ctx site e
-  chain@(Chain operands@(firstOne :| rest) operators) ->
+  chain@(Chain operands@(firstOne :| _) operators) ->
     layoutFrom ctx (chainSpan spanOf chain) $
       if trailing
         then laidOut MayBrace
@@ -371,13 +371,11 @@ renderExprChain ctx site = \case
         chainPlacement exprHangs (chainSpan spanOf firstOne) (NE.last operands)
       laidOut bracing =
         renderExprChain ctx (withBracing bracing site) firstOne
-          <> pieces bracing firstOne operators rest
-      pieces bracing previous (o : os) (operand : more) =
-        let isLast = null more
-            operandSite =
+          <> foldr (piece bracing) mempty (links operands operators)
+      piece bracing (previous, o, operand, isLast) rest' =
+        let operandSite =
               withBracing (if isLast then siteBracing site else bracing) plainSite
             rendered = renderExprChain ctx operandSite operand
-            rest' = pieces bracing operand os more
          in if trailing
               then
                 space
@@ -394,7 +392,6 @@ renderExprChain ctx site = \case
                   (hsExpr ctx o)
                   rendered
                   <> rest'
-      pieces _ _ _ _ = mempty
       tailPlacement isLast before o operand
         | isLast,
           not (maybe True isSingleLine (chainSpan spanOf operand)),
@@ -820,7 +817,7 @@ cmdChain ctx site l op r =
       _ -> Nothing
     render = \case
       Operand c -> at ctx c (cmdTop ctx site)
-      chain@(Chain operands@(firstOne :| rest) operators) ->
+      chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
           mayBraceWhenFlat (if placement == Hanging then MayBrace else NoBrace) laidOut
         where
@@ -830,23 +827,16 @@ cmdChain ctx site l op r =
               (chainSpan spanOf firstOne)
               (NE.last operands)
           laidOut bracing =
-            renderIn bracing firstOne <> pieces bracing firstOne operators rest
-          pieces bracing previous (o : os) (operand : more) =
+            renderIn bracing firstOne
+              <> foldMap (piece bracing) (links operands operators)
+          piece bracing (previous, o, operand, isLast) =
             attachOperator
               placement
               (chainSpan spanOf previous)
               (spanOf o)
               (chainSpan spanOf operand)
               (hsExpr ctx o)
-              ( renderIn
-                  ( if null more
-                      then siteBracing site
-                      else bracing
-                  )
-                  operand
-              )
-              <> pieces bracing operand os more
-          pieces _ _ _ _ = mempty
+              (renderIn (if isLast then siteBracing site else bracing) operand)
           renderIn bracing = \case
             Operand c -> at ctx c (cmdTop ctx (withBracing bracing site))
             inner -> render inner

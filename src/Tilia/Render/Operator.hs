@@ -7,11 +7,13 @@ module Tilia.Render.Operator
     flattenAround,
     associate,
     chainSpan,
+    links,
     lastOperand,
     isSeparator,
   )
 where
 
+import Data.List (tails, zip4)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isNothing, mapMaybe)
@@ -114,6 +116,12 @@ splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
           let (groups, splitters) = go (y :| []) [] rest
            in (NE.cons (NE.reverse current, reverse currentOps) groups, op : splitters)
       | otherwise = go (NE.cons y current) (op : currentOps) rest
+
+-- | Each operator of a chain level with the operands either side of it,
+-- and whether the one after it is the last.
+links :: NonEmpty (OpChain a op) -> [op] -> [(OpChain a op, op, OpChain a op, Bool)]
+links (firstOne :| rest) operators =
+  zip4 (firstOne : rest) operators rest (fmap null (drop 1 (tails rest)))
 
 -- | The region of the input a chain came from.
 chainSpan :: (a -> Maybe Span) -> OpChain a op -> Maybe Span
