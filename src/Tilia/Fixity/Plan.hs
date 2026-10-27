@@ -164,7 +164,9 @@ newResolverWith routes cache installed tarballs packageReader plan = do
             wkModuleInArchive = moduleInArchive,
             wkGenerated = generatedModules plan,
             wkReexported =
-              Map.fromList [pair | i <- installed, pair <- ipReexports i]
+              Map.fromListWith
+                (\_ first' -> first')
+                [pair | i <- installed, pair <- ipReexports i]
           }
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
