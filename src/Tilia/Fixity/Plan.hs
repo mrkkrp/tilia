@@ -44,7 +44,7 @@ import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import Tilia.Cabal.Package (PackageReader, newPackageReader)
+import Tilia.Cabal.Package (PackageReader, declaredModules, newPackageReader, readPackageDescription)
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
@@ -52,12 +52,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, readArchive, writtenForHsc)
 import Tilia.Fixity.ByHand (hscFixities)
-import Tilia.Fixity.Cabal
-  ( containedModules,
-    declaredExtensions,
-    packageModules,
-    sourceDirs,
-  )
+import Tilia.Fixity.Cabal (declaredExtensions, packageModules)
 import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (primopFixities)
 import Tilia.Fixity.Interface
@@ -610,24 +605,15 @@ localModules plan =
     forPackage dir = quietly Map.empty $ do
       cabalFilesIn dir >>= \case
         [] -> pure Map.empty
-        (cabalFile : _) -> do
-          contents <- readFileText cabalFile
-          case contents of
-            Nothing -> pure Map.empty
-            Just text ->
-              Map.fromList . concat
-                <$> traverse (locate dir (sourceDirs text)) (containedModules text)
-    locate dir dirs m = do
-      found <-
-        filterM
-          doesFileExist
-          [ dir </> T.unpack d </> modulePath m ending
-          | d <- dirs,
-            ending <- moduleEndings
-          ]
+        (cabalFile : _) ->
+          readPackageDescription cabalFile >>= \case
+            Left _ -> pure Map.empty
+            Right described ->
+              Map.fromListWith (\_ first' -> first') . concat
+                <$> traverse (locate dir) (declaredModules described)
+    locate dir (m, unwritten) = do
+      found <- filterM doesFileExist [dir </> unwritten <> e | e <- moduleEndings]
       pure [(m, path) | path <- take 1 found]
-
-    modulePath m ending = T.unpack (T.replace "." "/" m) <> ending
 
 -- | What a module exports, out of what it declares and what its imports
 -- bring in.

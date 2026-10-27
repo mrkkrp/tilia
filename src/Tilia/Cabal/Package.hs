@@ -9,6 +9,7 @@ module Tilia.Cabal.Package
   ( PackageProblem (..),
     describePackageProblem,
     readPackageDescription,
+    declaredModules,
     PackageReader,
     newPackageReader,
     ComponentSection (..),
@@ -333,13 +334,28 @@ sectionsInForce valueOf described =
         <> ownSection
         <> ComponentSection (builtSettings valueOf) [] []
   )
-    <$> concat
-      [ foldMap libraryBranches (condLibrary described),
-        concatMap (libraryBranches . snd) (condSubLibraries described),
-        concatMap (executableBranches . snd) (condExecutables described),
-        concatMap (suiteBranches . snd) (condTestSuites described),
-        concatMap (benchmarkBranches . snd) (condBenchmarks described)
-      ]
+    <$> packageBranches described
+
+-- | Every branch of every component of a package, in the order declared.
+packageBranches :: GenericPackageDescription -> [BranchSections]
+packageBranches described =
+  concat
+    [ foldMap libraryBranches (condLibrary described),
+      concatMap (libraryBranches . snd) (condSubLibraries described),
+      concatMap (executableBranches . snd) (condExecutables described),
+      concatMap (suiteBranches . snd) (condTestSuites described),
+      concatMap (benchmarkBranches . snd) (condBenchmarks described)
+    ]
+
+-- | Every module any branch of a package declares, with where it would be
+-- written relative to the package, without an extension.
+declaredModules :: GenericPackageDescription -> [(Text, FilePath)]
+declaredModules described =
+  [ (T.intercalate "." (fmap T.pack (splitDirectories sub <> [name])), joined d (joined sub name))
+  | branch <- packageBranches described,
+    (d, section) <- addedSources branch,
+    (sub, name) <- sectionModules section
+  ]
 
 -- | What one branch of a component declares.
 data ComponentSection = ComponentSection
