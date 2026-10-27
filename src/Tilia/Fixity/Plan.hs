@@ -139,7 +139,6 @@ newResolverWith routes cache installed tarballs packageReader plan = do
   flights <- newFlights
   answersRead <- newMemo
   extensionsRead <- newMemo
-  summariesRead <- newMemo
   archivesRead <- newMemo
   interfacesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
@@ -175,30 +174,23 @@ newResolverWith routes cache installed tarballs packageReader plan = do
             memoized flights answersRead mempty modName $
               resolveModule workings visiting modName
       summariesOf modName text =
-        memoized flights summariesRead Nothing modName $
-          extensionsOf modName >>= \case
-            Nothing -> pure Nothing
-            Just extensions -> do
-              let summarized =
-                    evaluate . force $
-                      configurationsOf
-                        (macrosOf plan)
-                        extensions
-                        modName
-                        text
-                  stamp =
-                    digestOf $
-                      T.intercalate
-                        "\n"
-                        [T.pack (show extensions), macrosRead, text]
-              case digestOf . T.pack <$> Map.lookup modName local of
-                Nothing -> summarized
-                Just key ->
-                  join
-                    <$> recalled
-                      (cachedSummaries cache key stamp)
-                      (storeSummaries cache key stamp)
-                      (Just <$> summarized)
+        extensionsOf modName >>= \case
+          Nothing -> pure Nothing
+          Just extensions -> do
+            let summarized =
+                  evaluate . force $
+                    configurationsOf (macrosOf plan) extensions modName text
+                stamp =
+                  digestOf . T.intercalate "\n" $
+                    [T.pack (show extensions), macrosRead, text]
+            case digestOf . T.pack <$> Map.lookup modName local of
+              Nothing -> summarized
+              Just key ->
+                join
+                  <$> recalled
+                    (cachedSummaries cache key stamp)
+                    (storeSummaries cache key stamp)
+                    (Just <$> summarized)
       macrosRead = T.pack (show (macrosOf plan))
       extensionsOf modName
         | Just path <- Map.lookup modName local =
