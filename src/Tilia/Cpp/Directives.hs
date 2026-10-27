@@ -76,10 +76,7 @@ usesCpp extensions source =
 
 -- | Blank out the directive lines, keeping every branch.
 blankCpp :: Text -> Text
-blankCpp source =
-  blanking
-    ([(dLine d, dLastLine d) | d <- directives source] <> [(n, n) | (n, _) <- macroLines source])
-    source
+blankCpp = withoutDirectives directives
 
 -- | Blank out every branch the macros rule out, and the conditionals that
 -- ask about them.
@@ -114,9 +111,16 @@ branchFor holds = go 0 . gsGuards
 -- | A module with the opaque directives and the lines using its macros
 -- blanked out.
 withoutOpaque :: Text -> Text
-withoutOpaque source =
+withoutOpaque = withoutDirectives opaqueDirectives
+
+-- | A module with the directives a scan finds and the lines using its
+-- macros blanked out.
+withoutDirectives :: (Text -> [Directive]) -> Text -> Text
+withoutDirectives scan source =
   blanking
-    ([(dLine d, dLastLine d) | d <- opaqueDirectives source] <> [(n, n) | (n, _) <- macroLines source])
+    ( [(dLine d, dLastLine d) | d <- scan source]
+        <> [(n, n) | (n, _) <- macroLines source]
+    )
     source
 
 -- | Why a module using the preprocessor could not be formatted.
