@@ -8,6 +8,7 @@ module Tilia.Fixity.Archive
     readArchive,
     InArchive (..),
     moduleIn,
+    pathOfModule,
     moduleEndings,
     writtenForHsc,
   )
@@ -67,12 +68,17 @@ moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
       inArchive ending . T.decodeUtf8Lenient . snd
         <$> listToMaybe (under sfx matching <> matching)
       where
-        sfx = "/" <> T.unpack (T.replace "." "/" modName) <> ending
+        sfx = "/" <> pathOfModule modName <> ending
         matching = [f | f <- archiveFiles archive, sfx `isSuffixOf` fst f]
     under sfx matching = [f | d <- dirs, f <- matching, inDir sfx d (fst f)]
     inDir sfx d path
       | d == "." = takeWhile (/= '/') path <> sfx == path
       | otherwise = ("/" <> T.unpack d <> sfx) `isSuffixOf` path
+
+-- | Where a module's file is under the directory that holds it, without an
+-- extension.
+pathOfModule :: Text -> FilePath
+pathOfModule = T.unpack . T.replace "." "/"
 
 -- | The endings a package may write a module under, in the order they are
 -- tried.

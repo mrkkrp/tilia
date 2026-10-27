@@ -50,7 +50,7 @@ import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
-import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, readArchive, writtenForHsc)
+import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, pathOfModule, readArchive, writtenForHsc)
 import Tilia.Fixity.ByHand (hscFixities)
 import Tilia.Fixity.Cabal (declaredExtensions, packageModules)
 import Tilia.Fixity.Cache
@@ -392,7 +392,7 @@ interfaceIndex :: [InstalledPackage] -> Map Text (Text, FilePath)
 interfaceIndex installed =
   Map.fromListWith
     (\_ first' -> first')
-    [ (m, (key, dir </> T.unpack (T.replace "." "/" m) <> ".hi"))
+    [ (m, (key, dir </> pathOfModule m <> ".hi"))
     | i <- installed,
       dir <- ipImportDirs i,
       -- Bound out here so that the directory is hashed once rather than
