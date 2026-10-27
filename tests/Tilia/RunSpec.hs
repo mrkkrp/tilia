@@ -30,7 +30,7 @@ import Tilia.Fixity
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
 import Tilia.Palette (Color (Bad), Palette (..))
 import Tilia.Run
-import Tilia.Utils (lineWidth, visibleLength, wrapTo)
+import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo)
 
 spec :: Spec
 spec = do
@@ -60,10 +60,6 @@ spec = do
     it "counts a rewrite as a difference and nothing else" $
       fmap differs [Changed "a" "b", Unchanged, decline, failure]
         `shouldBe` [True, False, False, False]
-
-    it "keeps refusals and failures apart" $ do
-      fmap declined [decline, failure, Unchanged] `shouldBe` [True, False, False]
-      fmap failed [decline, failure, Unchanged] `shouldBe` [False, True, False]
 
   describe "the status a run leaves behind" $ do
     it "has none to give when nothing failed" $

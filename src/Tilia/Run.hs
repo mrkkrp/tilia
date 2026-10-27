@@ -5,8 +5,6 @@
 module Tilia.Run
   ( -- * Outcomes
     Outcome (..),
-    declined,
-    failed,
     differs,
     failIfDeclined,
     exitCodeOf,
@@ -17,7 +15,6 @@ module Tilia.Run
     readAsUtf8,
     formattingOutcome,
     writeBack,
-    inParallel,
 
     -- * Report
     Report (..),
