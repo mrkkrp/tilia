@@ -34,7 +34,6 @@ import GHC.Hs (HsModule (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
-import GHC.Parser.Annotation (LEpaComment)
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
@@ -186,12 +185,12 @@ importLayout config source =
 -- | Lex every comment, in source order, and the line each quasi-quotation
 -- written over several lines ends on, by the line it begins on, from the
 -- state a parse starts in.
-lexed :: GHC.PState -> ([LEpaComment], IntMap Int)
+lexed :: GHC.PState -> ([(GHC.RealSrcSpan, GHC.Token)], IntMap Int)
 lexed s =
   case GHC.lexTokenStream (GHC.options s) (GHC.buffer s) loc of
     GHC.PFailed _ -> error "Tilia: a module that parses cannot fail to lex"
     GHC.POk _ tokens ->
-      ( [ GHC.commentToAnnotation (GHC.L l t)
+      ( [ (l, t)
         | GHC.L (GHC.RealSrcSpan l _) t <- tokens,
           isComment t
         ],

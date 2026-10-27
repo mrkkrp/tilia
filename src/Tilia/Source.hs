@@ -27,7 +27,8 @@ where
 
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
-import GHC.Parser.Annotation (LEpaComment)
+import GHC.Parser.Lexer qualified as GHC
+import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Comments (Comment, commentsOf)
 import Tilia.Source.Lines
 
@@ -56,8 +57,9 @@ sourceLines = srcLines
 sourceOf ::
   -- | The lines of the module, as this configuration has them.
   Lines ->
-  -- | Every comment of the module, in source order.
-  [LEpaComment] ->
+  -- | Every comment token of the module, in source order, each where the
+  -- lexer found it.
+  [(GHC.RealSrcSpan, GHC.Token)] ->
   -- | The line each quasi-quotation written over several lines ends on, by
   -- the line it begins on.
   IntMap Int ->
