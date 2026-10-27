@@ -545,13 +545,9 @@ statements ctx site mkBody es =
         keepBlanks
           (separatedByBlank ctx)
           [(spanOf stmt, item place stmt) | (place, stmt) <- places xs]
-    item place stmt = case place of
-      Last -> rendered (siteBracing site)
-      Only -> rendered (siteBracing site)
-      _ -> mayBraceWhenFlat (siteBracing site) rendered
-      where
-        rendered bracing =
-          at_ ctx (stmtBody ctx (blockSite bracing) mkBody) stmt
+    item place stmt =
+      blockItem place (siteBracing site) $ \bracing ->
+        at_ ctx (stmtBody ctx (blockSite bracing) mkBody) stmt
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
@@ -709,13 +705,9 @@ localBinds ctx bracing = \case
         sortBy
           (leftmost_smallest `on` getLocA)
           (fmap (fmap Left) binds <> fmap (fmap Right) sigs)
-      rendered place item = case place of
-        Last -> render NoBrace
-        Only -> render NoBrace
-        _ -> mayBraceWhenFlat NoBrace render
-        where
-          render b =
-            at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
+      rendered place item =
+        blockItem place NoBrace $ \b ->
+          at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
     anchored ann (items bracing (fmap (at_ ctx implicitBind) xs))
@@ -911,12 +903,7 @@ matchGroup ctx bracing mkBody style MG{..}
       LambdaCaseStyle -> ifEmpty
       _ -> NoBrace
     ifEmpty = if null (unLoc mg_alts) then MayBrace else bracing
-    rendered (place, m) = case place of
-      Last -> written bracing
-      Only -> written bracing
-      _ -> mayBraceWhenFlat bracing written
-      where
-        written b = at_ ctx (renderMatch b) m
+    rendered (place, m) = blockItem place bracing (\b -> at_ ctx (renderMatch b) m)
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1248,6 +1235,14 @@ quotation ctx here = \case
     isAbstract = \case
       ClosedTypeFamily Nothing -> True
       _ -> False
+
+-- | An item of a block: the last one keeps the block's bracing, and any
+-- other may brace itself when the block is flat.
+blockItem :: Place -> Bracing -> (Bracing -> Doc) -> Doc
+blockItem place bracing render = case place of
+  Last -> render bracing
+  Only -> render bracing
+  _ -> mayBraceWhenFlat bracing render
 
 -- | Let a block brace itself when the surrounding layout is flat.
 mayBraceWhenFlat :: Bracing -> (Bracing -> Doc) -> Doc
