@@ -21,6 +21,7 @@ extra-source-files:
   corpora/hackage/hackage.manifest
   corpora/hackage/hackage.report
   corpora/vendored/**/*.hs
+  corpora/vendored/**/*.hsig
 
 extra-doc-files:
   CHANGELOG.md
