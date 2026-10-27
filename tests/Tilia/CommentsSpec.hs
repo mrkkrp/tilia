@@ -13,8 +13,8 @@ import Tilia.Comments.Attach
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Parser
-import Tilia.Source (comments)
 import Tilia.Span
+import Tilia.TestUtils (commentsIn, parsed)
 
 spec :: Spec
 spec = do
@@ -206,12 +206,6 @@ one src = case commentsIn src of
 countOf :: Text -> Text -> Int
 countOf needle = length . T.breakOnAll needle
 
-commentsIn :: Text -> [Comment]
-commentsIn src =
-  case parseModule defaultParserConfig "test.hs" src of
-    Left _ -> error "the test input did not parse"
-    Right pm -> comments (pmSource pm)
-
 bodies :: Text -> [[Text]]
 bodies = fmap (NE.toList . commentBody) . commentsIn
 
@@ -226,6 +220,4 @@ followeds :: Text -> [Bool]
 followeds = fmap commentFollowed . commentsIn
 
 headerLine :: Text -> Maybe Int
-headerLine src = case parseModule defaultParserConfig "test.hs" src of
-  Left _ -> error "the test input did not parse"
-  Right pm -> spanStartLine <$> pmHeaderEnd pm
+headerLine = fmap spanStartLine . pmHeaderEnd . parsed
