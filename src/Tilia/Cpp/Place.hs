@@ -8,6 +8,8 @@ module Tilia.Cpp.Place
     summarizeComments,
     restoreUnprinted,
     regionOf,
+    regionsIn,
+    foldRegions,
   )
 where
 
@@ -378,10 +380,18 @@ farRight = maxBound `div` 2
 
 -- | Every region a document records, and what it holds.
 regionsIn :: Doc -> [(Span, Doc)]
-regionsIn = \case
-  DLocated s d -> (s, d) : regionsIn d
-  DFence s d -> (s, d) : regionsIn d
-  d -> foldChildren regionsIn d
+regionsIn = foldRegions (\s d inside -> (s, d) : inside)
+
+-- | Fold the regions a document records, giving each its span, what it
+-- holds, and what the fold made of the regions inside it.
+foldRegions :: (Monoid m) => (Span -> Doc -> m -> m) -> Doc -> m
+foldRegions f = go
+  where
+    go = \case
+      DLocated s d -> f s d (go d)
+      DFence s d -> f s d (go d)
+      d -> foldChildren go d
+{-# INLINE foldRegions #-}
 
 -- | The smallest span covering the outermost regions a document records.
 regionOf :: Doc -> Maybe Span

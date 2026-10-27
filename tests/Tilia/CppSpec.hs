@@ -12,7 +12,8 @@ import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Cpp
 import Tilia.Cpp.Directives (implied)
-import Tilia.Doc.Internal (Doc (..), foldChildren)
+import Tilia.Cpp.Place (regionsIn)
+import Tilia.Doc.Internal (Doc)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig, renderModule)
@@ -746,9 +747,4 @@ documentOf source = case parseModule defaultParserConfig "<cpp>" source of
 -- The outermost wins where a span appears twice, which is the one
 -- 'Tilia.Comments.Attach.attachComments' gives a comment to.
 regions :: Doc -> Map Span Doc
-regions = Map.fromListWith (\_ outer -> outer) . go
-  where
-    go = \case
-      DLocated s d -> (s, d) : go d
-      DVariant a _ -> go a
-      d -> foldChildren go d
+regions = Map.fromListWith (\_ outer -> outer) . regionsIn
