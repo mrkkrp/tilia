@@ -4,6 +4,7 @@
 module Tilia.PragmaSpec (spec) where
 
 import Data.Text (Text)
+import GHC.Driver.Session (glasgowExtsFlags)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
 import Tilia.Pragma
@@ -50,11 +51,46 @@ spec = do
         []
         "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE MagicHash #-}\n"
         `shouldBe` [GADTs, MagicHash]
-    it "ignores other pragmas" $
+    it "ignores flags that turn on no extension" $
       effectiveExtensions
         []
         "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE GADTs #-}\n"
         `shouldBe` [GADTs]
+    it "reads the -X flags of OPTIONS_GHC" $
+      effectiveExtensions
+        [GADTs]
+        "{-# OPTIONS_GHC -Wall -XLambdaCase -XNoGADTs #-}\nmodule M where\n"
+        `shouldBe` [LambdaCase]
+    it "reads the flags of OPTIONS" $
+      effectiveExtensions [] "{-# OPTIONS -XLambdaCase #-}\n"
+        `shouldBe` [LambdaCase]
+    it "reads -cpp as turning on CPP" $
+      effectiveExtensions [] "{-# OPTIONS_GHC -cpp #-}\n"
+        `shouldBe` [Cpp]
+    it "reads the old -f spellings of extensions" $
+      effectiveExtensions
+        [ImplicitPrelude]
+        "{-# OPTIONS_GHC -fbang-patterns -fno-implicit-prelude #-}\n"
+        `shouldBe` [BangPatterns]
+    it "reads -fglasgow-exts as turning on what it stands for" $
+      effectiveExtensions [] "{-# OPTIONS_GHC -fglasgow-exts #-}\n"
+        `shouldBe` glasgowExtsFlags
+    it "reads -fno-glasgow-exts as turning it off again" $
+      effectiveExtensions
+        [ImplicitPrelude]
+        "{-# OPTIONS_GHC -fglasgow-exts -fno-glasgow-exts #-}\n"
+        `shouldBe` [ImplicitPrelude]
+    it "reads the pragmas in the order they are written" $
+      effectiveExtensions
+        []
+        ( "{-# LANGUAGE GADTs #-}\n"
+            <> "{-# OPTIONS_GHC -XNoGADTs -XMagicHash #-}\n"
+            <> "{-# LANGUAGE NoMagicHash #-}\n"
+        )
+        `shouldBe` []
+    it "ignores the options of other compilers" $
+      effectiveExtensions [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
+        `shouldBe` []
     it "ignores an unknown extension rather than failing" $
       effectiveExtensions [] "{-# LANGUAGE GADTs, NotARealExtension #-}\n"
         `shouldBe` [GADTs]

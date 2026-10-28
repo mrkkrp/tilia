@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Pragma-related helpers.
@@ -13,6 +14,7 @@ where
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Driver.Session qualified as GHC
@@ -31,27 +33,51 @@ effectiveExtensions ::
   -- @default-language@ and @default-extensions@ already resolved into a
   -- set.
   [Extension] ->
-  -- | The module's source, read here for its @LANGUAGE@ pragmas alone.
+  -- | The module's source, read here for its @LANGUAGE@, @OPTIONS_GHC@ and
+  -- @OPTIONS@ pragmas alone.
   Text ->
   [Extension]
 effectiveExtensions package =
-  foldl' applyExtensionName package . concatMap pragmaNames . pragmaBodies
+  foldl' switch package . concatMap pragmaSwitches . pragmaBodies
   where
-    pragmaNames body =
-      let (keyword, names) = T.break (== ' ') body
-       in if T.toUpper keyword == "LANGUAGE"
-            then languageNames names
-            else []
+    pragmaSwitches body =
+      let (keyword, rest) = T.break (== ' ') body
+       in case T.toUpper keyword of
+            "LANGUAGE" -> mapMaybe nameSwitch (languageNames rest)
+            "OPTIONS_GHC" -> concatMap flagSwitches (T.words rest)
+            "OPTIONS" -> concatMap flagSwitches (T.words rest)
+            _ -> []
 
 -- | Turn on the extension a name spells, or off where the name puts @No@ in
 -- front of one, leaving the set as it is for a name that spells neither.
 applyExtensionName :: [Extension] -> Text -> [Extension]
-applyExtensionName acc name =
-  case T.stripPrefix "No" name >>= lookupExtension of
-    Just off -> filter (/= off) acc
-    Nothing -> case lookupExtension name of
-      Just on | on `notElem` acc -> acc <> [on]
-      _ -> acc
+applyExtensionName acc = maybe acc (switch acc) . nameSwitch
+
+-- | The extension a name turns on, or off where it puts @No@ in front of one.
+nameSwitch :: Text -> Maybe (GHC.OnOff Extension)
+nameSwitch name = case T.stripPrefix "No" name >>= lookupExtension of
+  Just off -> Just (GHC.Off off)
+  Nothing -> GHC.On <$> lookupExtension name
+
+-- | What a flag of an @OPTIONS_GHC@ or @OPTIONS@ pragma turns on and off.
+flagSwitches :: Text -> [GHC.OnOff Extension]
+flagSwitches flag
+  | Just name <- T.stripPrefix "-X" flag = maybeToList (nameSwitch name)
+  | flag == "-cpp" = [GHC.On Cpp]
+  | flag == "-fglasgow-exts" = GHC.On <$> GHC.glasgowExtsFlags
+  | flag == "-fno-glasgow-exts" = GHC.Off <$> GHC.glasgowExtsFlags
+  | Just name <- T.stripPrefix "-fno-" flag = GHC.Off <$> oldFlag name
+  | Just name <- T.stripPrefix "-f" flag = GHC.On <$> oldFlag name
+  | otherwise = []
+  where
+    oldFlag name = maybeToList (Map.lookup name extensionsByOldFlag)
+
+-- | Turn an extension on or off.
+switch :: [Extension] -> GHC.OnOff Extension -> [Extension]
+switch acc = \case
+  GHC.On on | on `notElem` acc -> acc <> [on]
+  GHC.On _ -> acc
+  GHC.Off off -> filter (/= off) acc
 
 -- | The extensions a @LANGUAGE@ pragma names, as written.
 languageNames :: Text -> [Text]
@@ -69,9 +95,17 @@ lookupExtension name = Map.lookup name extensionsByName
 -- | Every extension this compiler knows, by the name one writes in a
 -- pragma.
 extensionsByName :: Map Text Extension
-extensionsByName =
-  Map.fromList
-    [(T.pack (GHC.flagSpecName f), GHC.flagSpecFlag f) | f <- GHC.xFlags]
+extensionsByName = byFlagName GHC.xFlags
+
+-- | Every extension an old @-f@ flag such as @-fbang-patterns@ turns on, by
+-- the flag without its @-f@.
+extensionsByOldFlag :: Map Text Extension
+extensionsByOldFlag = byFlagName GHC.fLangFlags
+
+-- | Extensions by the names of the flags that turn them on.
+byFlagName :: [GHC.FlagSpec Extension] -> Map Text Extension
+byFlagName flags =
+  Map.fromList [(T.pack (GHC.flagSpecName f), GHC.flagSpecFlag f) | f <- flags]
 
 -- | What every @{-# … #-}@ in a module has between its braces, each on one
 -- line.

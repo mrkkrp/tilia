@@ -5,6 +5,11 @@
   `forall a. () => C a`, rather than being dropped, as it was already kept
   in a signature and in a GADT constructor.
   [Issue 299](https://github.com/mrkkrp/tilia/issues/299).
+* Extensions turned on or off with flags in an `OPTIONS_GHC` pragma, or in
+  the older `OPTIONS` pragma, such as `-cpp`, `-XLambdaCase`,
+  `-fglasgow-exts` and `-fbang-patterns`, are taken into account, so a
+  module that needs them is parsed as GHC parses it.
+  [Issue 280](https://github.com/mrkkrp/tilia/issues/280).
 
 ## Tilia 0.1.2.0
 
