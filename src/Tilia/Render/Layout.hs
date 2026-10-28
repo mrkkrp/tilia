@@ -9,8 +9,8 @@ module Tilia.Render.Layout
     items,
     itemsSepBy,
     keepBlanks,
-    Place (..),
-    places,
+    Position (..),
+    positioned,
   )
 where
 
@@ -59,7 +59,7 @@ keepBlanks blank xs = zipWith gap (Nothing : fmap fst xs) xs
     gap previous (here, d) = includeWhen (blank previous here) hardBreak <> d
 
 -- | Where an item sits among its siblings.
-data Place
+data Position
   = Only
   | First
   | Middle
@@ -67,10 +67,10 @@ data Place
   deriving (Eq, Show)
 
 -- | Label each item of a list with its position.
-places :: [a] -> [(Place, a)]
-places [] = []
-places [x] = [(Only, x)]
-places (x : xs) = (First, x) : go xs
+positioned :: [a] -> [(Position, a)]
+positioned [] = []
+positioned [x] = [(Only, x)]
+positioned (x : xs) = (First, x) : go xs
   where
     go [] = []
     go [y] = [(Last, y)]

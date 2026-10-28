@@ -538,9 +538,11 @@ statements ctx site mkBody es =
       items (siteBracing site) $
         keepBlanks
           (separatedByBlank ctx)
-          [(spanOf stmt, item place stmt) | (place, stmt) <- places xs]
-    item place stmt =
-      blockItem place (siteBracing site) $ \bracing ->
+          [ (spanOf stmt, item position stmt)
+          | (position, stmt) <- positioned xs
+          ]
+    item position stmt =
+      blockItem position (siteBracing site) $ \bracing ->
         at_ ctx (stmtBody ctx (blockSite bracing) mkBody) stmt
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
@@ -693,14 +695,16 @@ localBinds ctx bracing = \case
     anchored ann . align . items bracing $
       keepBlanks
         (separatedByBlank ctx)
-        [(spanOf item, rendered place item) | (place, item) <- places sorted]
+        [ (spanOf item, rendered position item)
+        | (position, item) <- positioned sorted
+        ]
     where
       sorted =
         sortBy
           (leftmost_smallest `on` getLocA)
           (fmap (fmap Left) binds <> fmap (fmap Right) sigs)
-      rendered place item =
-        blockItem place NoBrace $ \b ->
+      rendered position item =
+        blockItem position NoBrace $ \b ->
           at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
@@ -883,14 +887,15 @@ matchGroup ::
   Doc
 matchGroup ctx bracing mkBody style MG{..}
   | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
-  | otherwise = items blockBracing (fmap rendered (places (unLoc mg_alts)))
+  | otherwise = items blockBracing (fmap rendered (positioned (unLoc mg_alts)))
   where
     blockBracing = case style of
       CaseStyle -> ifEmpty
       LambdaCaseStyle -> ifEmpty
       _ -> NoBrace
     ifEmpty = if null (unLoc mg_alts) then MayBrace else bracing
-    rendered (place, m) = blockItem place bracing (\b -> at_ ctx (renderMatch b) m)
+    rendered (position, m) =
+      blockItem position bracing (\b -> at_ ctx (renderMatch b) m)
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1225,8 +1230,8 @@ quotation ctx here = \case
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.
-blockItem :: Place -> Bracing -> (Bracing -> Doc) -> Doc
-blockItem place bracing render = case place of
+blockItem :: Position -> Bracing -> (Bracing -> Doc) -> Doc
+blockItem position bracing render = case position of
   Last -> render bracing
   Only -> render bracing
   _ -> mayBraceWhenFlat bracing render

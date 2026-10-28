@@ -256,12 +256,16 @@ importExportItems :: Ctx -> [LIE GhcPs] -> Doc
 importExportItems ctx xs = variant (laidOut False) (laidOut True)
   where
     laidOut broken' =
-      sepBy breakOrSpace (zipWith (item broken') (Nothing : fmap Just xs) (places xs))
-    item broken' previous (place, x) =
-      gapAbove place (unLoc <$> previous) (unLoc x)
-        <> align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) (comma' broken' place)))
-    gapAbove place previous here
-      | place == First || place == Only = mempty
+      sepBy
+        breakOrSpace
+        (zipWith (item broken') (Nothing : fmap Just xs) (positioned xs))
+    item broken' previous (position, x) =
+      gapAbove position (unLoc <$> previous) (unLoc x)
+        <> align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
+      where
+        withComma = comma' broken' position
+    gapAbove position previous here
+      | position == First || position == Only = mempty
       | isSection here = hardBreak
       | isPipe here, maybe False runsOn previous = hardBreak
       | otherwise = mempty
@@ -275,9 +279,9 @@ importExportItems ctx xs = variant (laidOut False) (laidOut True)
       IEDoc{} -> True
       IEDocNamed{} -> True
       _ -> False
-    comma' broken' place
+    comma' broken' position
       | broken' = True
-      | otherwise = place == First || place == Middle
+      | otherwise = position == First || position == Middle
 
 -- | Widen an item's span to take in the documentation printed with it, so
 -- that a documented item is laid out as one thing.
