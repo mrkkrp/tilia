@@ -30,12 +30,11 @@ import Tilia.Fixity
     Provenance (..),
     Resolution (..),
     Scope (..),
+    disagreement,
     lookupFixity,
     moduleImports,
     operatorSpelling,
     operatorsUsed,
-    reachAmbiguous,
-    reachIn,
     reachUnqualified,
     spellDisagreement,
     spellFixity,
@@ -153,8 +152,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
       OperatorNote
         { noteSpelling = operatorSpelling qualifier op,
           noteResolution = lookupFixity scope namespace qualifier op,
-          noteDisagreement =
-            Map.lookup (qualifier, op) (reachAmbiguous (reachIn namespace scope))
+          noteDisagreement = disagreement scope namespace qualifier op
         }
 
 -- | Set out all the 'FixityNotes' per file.
