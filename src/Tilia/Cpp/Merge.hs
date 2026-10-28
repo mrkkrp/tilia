@@ -257,7 +257,7 @@ merge written conditionals guards varied settledOthers = go Broken
         byLines
           | not (any continuing ss),
             not (null (foldr1 Set.intersection (foldMap writtenAt <$> ss))),
-            (ls, cuts) <- unzip (fmap (linesOf layout) ss),
+            (ls, cuts) <- unzip (fmap (printedLines layout) ss),
             or cuts =
               [factored whole layout ls]
           | otherwise = []
@@ -776,8 +776,8 @@ choiceAt written edge = go Flat False
 -- | The lines a run of documents prints and the space between them, each in
 -- the wrappers it is printed in, and whether that cuts an element of the
 -- run.
-linesOf :: Layout -> [Doc] -> ([Doc], Bool)
-linesOf layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
+printedLines :: Layout -> [Doc] -> ([Doc], Bool)
+printedLines layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
   where
     (ps, _, cut) = partsOf layout Within xs
 
