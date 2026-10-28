@@ -822,7 +822,7 @@ plain = \case
       d -> getAny (foldChildren (Any . bare) d)
 
 -- | Where a part of a run of documents begins.
-data Place
+data PartStart
   = -- | On a line, after what the line already holds.
     Within
   | -- | Between two lines.
@@ -835,7 +835,7 @@ partsOf ::
   -- | The layout the run is printed in.
   Layout ->
   -- | Where the run begins.
-  Place ->
+  PartStart ->
   -- | The run.
   [Doc] ->
   -- | The parts in order, the first of them what the run adds to the part
@@ -843,7 +843,7 @@ partsOf ::
   -- run ends, which is where what follows it begins; and whether an element
   -- of the run holds what is printed on more than one line, so that the cut
   -- went through it.
-  ([[Doc]], Place, Bool)
+  ([[Doc]], PartStart, Bool)
 partsOf layout = walk [[]] False
   where
     walk ls cut place = \case
