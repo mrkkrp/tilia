@@ -1,4 +1,4 @@
-## Unreleased
+## Tilia 0.1.2.0
 
 * A comment written beside the `..` of an item of an import or export list,
   as in `T ({- c -} ..)`, stays inside its parentheses rather than moving to
