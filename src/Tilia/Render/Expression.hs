@@ -91,7 +91,10 @@ exprBody ctx site here = \case
             (txt "@" <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a)))
         )
   OpApp _ x op y -> exprChain ctx site x op y
-  NegApp _ e _ -> txt "-" <> negationGap ctx e <> hsExpr ctx e
+  NegApp _ e _ ->
+    txt "-"
+      <> includeWhen (isLiteral e) (negativeLiteralGap ctx)
+      <> hsExpr ctx e
   HsPar _ e ->
     layoutWithin ctx here (spanOf e) $
       parensWith (closingFor site) (insideBrackets here (apart (hsExpr ctx e)))
@@ -217,16 +220,12 @@ type BodyOf body b = Site -> LocatedA body -> b
 bodyIn :: BodyOf body b -> Bracing -> LocatedA body -> b
 bodyIn mkBody bracing = mkBody (withBracing bracing plainSite)
 
--- | @-@ in front of a literal needs a space when @NegativeLiterals@ is on,
--- since @- 1@ and @-1@ then parse differently.
-negationGap :: Ctx -> LHsExpr GhcPs -> Doc
-negationGap ctx e =
-  includeWhen (extensionOn ctx NegativeLiterals && isLiteral) space
-  where
-    isLiteral = case unLoc e of
-      HsLit{} -> True
-      HsOverLit{} -> True
-      _ -> False
+-- | Is this expression a literal?
+isLiteral :: LHsExpr GhcPs -> Bool
+isLiteral e = case unLoc e of
+  HsLit{} -> True
+  HsOverLit{} -> True
+  _ -> False
 
 -- | A function applied to arguments.
 application :: Ctx -> Site -> LHsExpr GhcPs -> LHsExpr GhcPs -> Doc

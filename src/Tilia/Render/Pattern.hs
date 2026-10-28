@@ -20,7 +20,6 @@ import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust)
 import GHC.Hs
-import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.Basic (Arity, Boxity (..), ConTag)
 import GHC.Types.Name.Reader (RdrName)
 import GHC.Types.SrcLoc (GenLocated (..))
@@ -98,7 +97,7 @@ patBody ctx bracing inAsPat closing here = \case
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   LitPat _ lit -> outputable lit
   NPat _ v (isJust -> negated) _ ->
-    includeWhen negated (txt "-" <> negativeGap ctx)
+    includeWhen negated (txt "-" <> negativeLiteralGap ctx)
       <> at ctx v (outputable . ol_val)
   NPlusKPat _ n k _ _ _ ->
     align $
@@ -176,8 +175,3 @@ boxityBrackets :: Boxity -> ClosingIndent -> Doc -> Doc
 boxityBrackets = \case
   Boxed -> parensWith
   Unboxed -> unboxedWith
-
--- | With @NegativeLiterals@ on, @- 1@ and @-1@ are different expressions, so
--- the minus of a negated literal has to keep its distance.
-negativeGap :: Ctx -> Doc
-negativeGap ctx = includeWhen (extensionOn ctx NegativeLiterals) space

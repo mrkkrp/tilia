@@ -14,6 +14,7 @@ module Tilia.Render.Context
 
     -- * Extensions
     extensionOn,
+    negativeLiteralGap,
 
     -- * Fixities
     operatorFixity,
@@ -50,7 +51,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs hiding (Fixity)
-import GHC.LanguageExtensions.Type (Extension)
+import GHC.LanguageExtensions.Type (Extension (NegativeLiterals))
 import GHC.Types.Name.Occurrence (occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..))
@@ -172,6 +173,11 @@ closingFor site = if siteInBlock site then Indented else Outdented
 -- | Is the extension on?
 extensionOn :: Ctx -> Extension -> Bool
 extensionOn ctx e = Set.member e (ctxExtensions ctx)
+
+-- | With @NegativeLiterals@ on, @- 1@ and @-1@ are different, so the minus
+-- in front of a literal has to keep its distance.
+negativeLiteralGap :: Ctx -> Doc
+negativeLiteralGap ctx = includeWhen (extensionOn ctx NegativeLiterals) space
 
 ----------------------------------------------------------------------------
 -- Fixities
