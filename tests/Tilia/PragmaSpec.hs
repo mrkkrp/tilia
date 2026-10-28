@@ -44,18 +44,18 @@ spec = do
     it "reads several from one pragma" $
       effectiveExtensions
         []
-        "{-# LANGUAGE GADTs, RankNTypes #-}\nmodule M where\n"
-        `shouldBe` [GADTs, RankNTypes]
+        "{-# LANGUAGE LambdaCase, MagicHash #-}\nmodule M where\n"
+        `shouldBe` [LambdaCase, MagicHash]
     it "reads several pragmas" $
       effectiveExtensions
         []
-        "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE MagicHash #-}\n"
-        `shouldBe` [GADTs, MagicHash]
+        "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE MagicHash #-}\n"
+        `shouldBe` [LambdaCase, MagicHash]
     it "ignores flags that turn on no extension" $
       effectiveExtensions
         []
-        "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [GADTs]
+        "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE LambdaCase #-}\n"
+        `shouldBe` [LambdaCase]
     it "reads the -X flags of OPTIONS_GHC" $
       effectiveExtensions
         [GADTs]
@@ -74,17 +74,17 @@ spec = do
         `shouldBe` [BangPatterns]
     it "reads -fglasgow-exts as turning on what it stands for" $
       effectiveExtensions [] "{-# OPTIONS_GHC -fglasgow-exts #-}\n"
-        `shouldBe` glasgowExtsFlags
-    it "reads -fno-glasgow-exts as turning it off again" $
+        `shouldSatisfy` \es -> all (`elem` es) glasgowExtsFlags
+    it "reads -fno-glasgow-exts as turning that off again" $
       effectiveExtensions
-        [ImplicitPrelude]
+        []
         "{-# OPTIONS_GHC -fglasgow-exts -fno-glasgow-exts #-}\n"
-        `shouldBe` [ImplicitPrelude]
+        `shouldSatisfy` not . any (`elem` glasgowExtsFlags)
     it "reads the pragmas in the order they are written" $
       effectiveExtensions
         []
-        ( "{-# LANGUAGE GADTs #-}\n"
-            <> "{-# OPTIONS_GHC -XNoGADTs -XMagicHash #-}\n"
+        ( "{-# LANGUAGE LambdaCase #-}\n"
+            <> "{-# OPTIONS_GHC -XNoLambdaCase -XMagicHash #-}\n"
             <> "{-# LANGUAGE NoMagicHash #-}\n"
         )
         `shouldBe` []
@@ -92,8 +92,8 @@ spec = do
       effectiveExtensions [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
         `shouldBe` []
     it "ignores an unknown extension rather than failing" $
-      effectiveExtensions [] "{-# LANGUAGE GADTs, NotARealExtension #-}\n"
-        `shouldBe` [GADTs]
+      effectiveExtensions [] "{-# LANGUAGE LambdaCase, NotARealExtension #-}\n"
+        `shouldBe` [LambdaCase]
     it "treats a No-prefix as turning one off" $
       effectiveExtensions
         [ImplicitPrelude]
@@ -108,8 +108,22 @@ spec = do
     it "does not repeat an extension named twice" $
       effectiveExtensions
         []
-        "{-# LANGUAGE GADTs #-}\n{-# LANGUAGE GADTs #-}\n"
-        `shouldBe` [GADTs]
+        "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\n"
+        `shouldBe` [LambdaCase]
+    it "turns on what an extension implies, as GHC does" $
+      effectiveExtensions [] "{-# LANGUAGE RankNTypes #-}\n"
+        `shouldBe` [RankNTypes, ExplicitForAll]
+    it "turns off what an extension implies is off" $
+      effectiveExtensions
+        [ImplicitPrelude]
+        "{-# LANGUAGE RebindableSyntax #-}\n"
+        `shouldBe` [RebindableSyntax]
+    it "leaves on what an extension turned off had implied" $
+      effectiveExtensions [] "{-# LANGUAGE RankNTypes, NoRankNTypes #-}\n"
+        `shouldBe` [ExplicitForAll]
+    it "lets a later name turn off what an earlier one implied" $
+      effectiveExtensions [] "{-# LANGUAGE RankNTypes, NoExplicitForAll #-}\n"
+        `shouldBe` [RankNTypes]
 
   describe "lookupExtension" $ do
     it "knows an extension by the name one writes" $

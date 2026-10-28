@@ -72,12 +72,23 @@ flagSwitches flag
   where
     oldFlag name = maybeToList (Map.lookup name extensionsByOldFlag)
 
--- | Turn an extension on or off.
+-- | Turn an extension on, and then what it implies, or turn it off alone, as
+-- GHC does.
 switch :: [Extension] -> GHC.OnOff Extension -> [Extension]
 switch acc = \case
-  GHC.On on | on `notElem` acc -> acc <> [on]
-  GHC.On _ -> acc
+  GHC.On on ->
+    foldl'
+      switch
+      (if on `elem` acc then acc else acc <> [on])
+      (Map.findWithDefault [] on impliedBy)
   GHC.Off off -> filter (/= off) acc
+
+-- | What GHC turns on or off besides when it turns an extension on.
+impliedBy :: Map Extension [GHC.OnOff Extension]
+impliedBy =
+  Map.fromListWith
+    (flip (<>))
+    [(from, [implied]) | (from, implied) <- GHC.impliedXFlags]
 
 -- | The extensions a @LANGUAGE@ pragma names, as written.
 languageNames :: Text -> [Text]

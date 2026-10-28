@@ -14,6 +14,11 @@
   pragmas, keeping the order the two are written in among each other, rather
   than being left where it was written.
   [PR 319](https://github.com/mrkkrp/tilia/pull/319).
+* An extension that turns another off, as `RebindableSyntax` turns off
+  `ImplicitPrelude`, does so where it is turned on, as with GHC, so under
+  `RebindableSyntax` the Prelude is not taken to be imported, and an import
+  of it sorts among the others, as under `NoImplicitPrelude`.
+  [PR 319](https://github.com/mrkkrp/tilia/pull/319).
 
 ## Tilia 0.1.2.0
 
