@@ -20,7 +20,9 @@ import Tilia.Render (defaultRenderConfig, renderModule)
 import Tilia.Source (directiveOnLine)
 import Tilia.Span (Span)
 import Tilia.TestUtils
-  ( configurations,
+  ( answeredLeaves,
+    answeredLinearLeaves,
+    configurations,
     countLeaves,
     defaultParserConfig,
     leaves,
@@ -252,6 +254,14 @@ spec = do
     it "agrees with enumerating them where a module has one conditional" $
       (said (linearLeaves atDeclarations), said (leaves atDeclarations))
         `shouldSatisfy` uncurry (==)
+
+    it "leaves out a configuration that aborts with #error" $
+      said
+        ( (\every -> all (`elem` every))
+            <$> answeredLeaves abortingBranches
+            <*> answeredLinearLeaves abortingBranches
+        )
+        `shouldBe` Right True
 
   describe "directives it cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
@@ -651,6 +661,28 @@ abortingAlternative =
       "  + 2",
       "#if A",
       "g = 1",
+      "#endif"
+    ]
+
+-- | Branches that abort with @#error@, the first of one conditional and the
+-- last of another.
+abortingBranches :: Text
+abortingBranches =
+  T.unlines
+    [ "module M where",
+      "",
+      "#if !defined(__GLASGOW_HASKELL__)",
+      "#error \"Only GHC is supported.\"",
+      "#endif",
+      "",
+      "wordSize :: Int",
+      "wordSize =",
+      "#if WORD_SIZE_IN_BITS == 64",
+      "  64",
+      "#elif WORD_SIZE_IN_BITS == 32",
+      "  32",
+      "#else",
+      "#error \"Unsupported word size.\"",
       "#endif"
     ]
 
