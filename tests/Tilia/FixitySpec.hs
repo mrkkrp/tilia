@@ -143,6 +143,10 @@ spec = do
       fmap snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\nf a b = a :> b\n")
         `shouldBe` [Ambiguous termsDisagreeing]
 
+    it "declines a type that writes a constructor they disagree about" $
+      fmap snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\ntype T = Int :> Int\n")
+        `shouldBe` [Ambiguous termsDisagreeing]
+
   describe "what a module says it exports" $ do
     it "has nothing to say about a module with no export list" $
       exportsOfSource "module M where\nf = 1\n" `shouldBe` Nothing

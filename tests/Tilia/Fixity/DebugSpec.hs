@@ -17,6 +17,7 @@ import Tilia.Fixity
   ( Direction (..),
     Established (..),
     Fixity (..),
+    Namespace (..),
     OpName (..),
     inBothNamespaces,
     resolveScope,
@@ -89,6 +90,20 @@ spec = do
         ]
         "import Left\nimport Right\nf a b = a <+> b\n"
         >>= (`mentions` "the imports disagree about it: infixl 6 in Left but infixr 5 in Right")
+
+    it "says when they disagree about a constructor written among types" $ do
+      let offers = [("Left", infixl' 6), ("Right", Fixity RightAssoc 5)]
+          answerOf m =
+            mempty
+              { establishedFixities =
+                  Map.fromList
+                    [((InTerms, OpName ":>"), f) | Just f <- [lookup m offers]]
+              }
+      notesAgainst answerOf "import Left\nimport Right\ntype T = Int :> Int\n"
+        >>= ( `mentions`
+                "the imports disagree about it: \
+                \infixl 6 in Left but infixr 5 in Right"
+            )
 
     it "gives an operator one line however often it is written" $ do
       told <- notesFor [("Prelude", Just [])] "f a b c = a <?> b <?> c <?> a\n"
@@ -173,20 +188,26 @@ notesThrough ::
   [(Text, Maybe [(Text, Fixity)])] ->
   Text ->
   IO [Text]
-notesThrough chains world source =
-  renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure module')
+notesThrough chains world = notesAgainst answerOf
   where
-    scope = resolveScope (Is #implicitPrelude) answerOf (pure hsModule)
     answerOf m = case exportsOf m of
       Just fixities -> mempty{establishedFixities = fixities}
       Nothing -> mempty{establishedUntold = Set.singleton (fromMaybe [] (lookup m chains))}
-    hsModule = pmModule module'
-    module' = parsed ("module M where\n" <> source)
     exportsOf m = do
       declared <- lookup m world
       inBothNamespaces . Map.fromList . fmap (\(op, fixity) -> (OpName op, fixity))
         <$> declared
+
+-- | The account given of a module, against what reading each module it
+-- imports established.
+notesAgainst :: (Text -> Established) -> Text -> IO [Text]
+notesAgainst answerOf source =
+  renderFixityNotes Plain . Map.singleton "M.hs"
+    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure module')
+  where
+    scope = resolveScope (Is #implicitPrelude) answerOf (pure hsModule)
+    hsModule = pmModule module'
+    module' = parsed ("module M where\n" <> source)
 
 infixl' :: Int -> Fixity
 infixl' = Fixity LeftAssoc

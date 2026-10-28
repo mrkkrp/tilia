@@ -51,6 +51,7 @@ module Tilia.Fixity
     Unknown (..),
     operatorsUsed,
     unknownOperators,
+    disagreement,
     capturedUses,
     operatorSpelling,
     spellUnreadIn,
@@ -958,14 +959,27 @@ unknownOperators :: Scope -> NonEmpty Gathered -> [((Maybe Text, OpName), Unknow
 unknownOperators scope found =
   Map.toList (Map.fromList (mapMaybe unsettled (concatMap operatorsUsed found)))
   where
-    unsettled (namespace, (qualifier, op)) =
-      case fixityInScope scope namespace qualifier op of
-        Just (answering, _) ->
-          ((qualifier, op),) . Ambiguous
-            <$> Map.lookup (qualifier, op) (reachAmbiguous (reachIn answering scope))
-        Nothing -> case nonEmpty (unreadThatMightDeclare scope namespace qualifier op) of
-          Just missing -> Just ((qualifier, op), NotRead missing)
-          Nothing -> Nothing
+    unsettled (namespace, use@(qualifier, op)) =
+      (use,) <$> case lookupFixity scope namespace qualifier op of
+        Resolved _ _ -> Ambiguous <$> disagreement scope namespace qualifier op
+        Unresolved missing -> Just (NotRead missing)
+
+-- | What the imports in scope bring a use in with, where they disagree, in
+-- the namespace that answers for it.
+disagreement ::
+  -- | The scope.
+  Scope ->
+  -- | The namespace the operator is written in.
+  Namespace ->
+  -- | The qualifier written at the use site, if any.
+  Maybe Text ->
+  -- | Operator being resolved.
+  OpName ->
+  -- | The module each import names and the fixity it brings.
+  Maybe (NonEmpty (Text, Fixity))
+disagreement scope namespace qualifier op = do
+  (answering, _) <- fixityInScope scope namespace qualifier op
+  Map.lookup (qualifier, op) (reachAmbiguous (reachIn answering scope))
 
 -- | An operator as a use site writes it, qualifier and all.
 operatorSpelling :: Maybe Text -> OpName -> Text

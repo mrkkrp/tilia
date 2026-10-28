@@ -56,6 +56,10 @@
   written, rather than taking the name and the comment together for a name
   and putting the comment before the `#-}` of a pragma of its own, which GHC
   could not read. [Issue 324](https://github.com/mrkkrp/tilia/issues/324).
+* `--debug-fixity` says that the imports disagree about a constructor
+  written among types, as a promoted constructor is, where a run declines
+  the module over it, rather than showing its fixity settled.
+  [Issue 304](https://github.com/mrkkrp/tilia/issues/304).
 
 ## Tilia 0.1.2.0
 
