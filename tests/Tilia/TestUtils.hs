@@ -187,8 +187,7 @@ answeredLeaves =
   fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
   where
     go answers source = case configurations source of
-      Nothing | not (null (unconditionalErrors source)) -> Right []
-      Nothing -> (\t -> [(answers, t)]) <$> resolved source
+      Nothing -> answeredLeaf answers source
       Just c ->
         concat
           <$> traverse
@@ -202,21 +201,29 @@ answeredLinearLeaves =
   fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
   where
     go answers source = case configurations source of
-      Nothing -> (\t -> [(answers, t)]) <$> resolved source
+      Nothing -> answeredLeaf answers source
       Just c -> case zip [0 ..] (cfgTexts c) of
         [] -> Right []
         (i, first) : rest ->
           (<>)
             <$> go (Map.insert (cfgGuards c) i answers) first
-            <*> traverse (held answers (cfgGuards c)) rest
+            <*> (concat <$> traverse (held answers (cfgGuards c)) rest)
       where
         held before gs (i, t) = answeredBaseline (Map.insert gs i before) t
 
 -- | The configuration in which every question still to be asked takes its
--- first branch, and the answers that gives.
-answeredBaseline :: Assignment -> Text -> Either CppError (Assignment, Text)
+-- first branch, and the answers that give it, unless it aborts with
+-- @#error@.
+answeredBaseline :: Assignment -> Text -> Either CppError [(Assignment, Text)]
 answeredBaseline answers source = case configurations source of
-  Nothing -> (answers,) <$> resolved source
+  Nothing -> answeredLeaf answers source
   Just c -> case cfgTexts c of
-    [] -> Right (answers, source)
+    [] -> Right [(answers, source)]
     t : _ -> answeredBaseline (Map.insert (cfgGuards c) 0 answers) t
+
+-- | A module with every conditional answered, and the answers that reach
+-- it, unless it aborts with @#error@.
+answeredLeaf :: Assignment -> Text -> Either CppError [(Assignment, Text)]
+answeredLeaf answers source
+  | null (unconditionalErrors source) = (\t -> [(answers, t)]) <$> resolved source
+  | otherwise = Right []
