@@ -1,3 +1,11 @@
+## Unreleased
+
+* An empty context comes out as written in a class or a data declaration,
+  as in `class () => C a`, and before a constructor, as in
+  `forall a. () => C a`, rather than being dropped, as it was already kept
+  in a signature and in a GADT constructor.
+  [Issue 299](https://github.com/mrkkrp/tilia/issues/299).
+
 ## Tilia 0.1.2.0
 
 * A comment written beside the `..` of an item of an import or export list,

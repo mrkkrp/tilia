@@ -269,11 +269,9 @@ context ctx = at_ ctx (contextOf loneVariable (hsType ctx) . fmap unbracket)
       _ -> t
 
 -- | A context standing to the left of a @=>@, with the arrow and the break
--- after it, or nothing where the context is empty.
+-- after it.
 leftContext :: Ctx -> LHsContext GhcPs -> Doc
-leftContext ctx ctxt
-  | null (unLoc ctxt) = mempty
-  | otherwise = context ctx ctxt <> joinedBy "=>"
+leftContext ctx ctxt = context ctx ctxt <> joinedBy "=>"
 
 -- | A context over anything that can stand as a constraint.
 contextOf ::
