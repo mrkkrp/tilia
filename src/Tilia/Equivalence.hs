@@ -31,7 +31,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (FastString, fsLit)
 import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Decls (DerivClauseTys (..), DocDecl (..), HsDecl (..), LHsDecl)
@@ -568,7 +567,7 @@ pragmaFlags p = case pragmaName p of
       either (const [pragmaBody p]) (fmap (T.pack . unLoc)) $
         toArgs (mkRealSrcLoc (fsLit "") 1 1) (T.unpack (pragmaBody p))
 
--- | How what GHC puts in force after a module's header changed, if it did.
+-- | How what the flags of a module's header settle changed, if it did.
 inForceDifference :: InForce -> InForce -> Maybe Text
 inForceDifference before after
   | inForceEdition before /= inForceEdition after =
@@ -585,15 +584,19 @@ inForceDifference before after
             <> " to "
             <> tshow (inForceSafety after)
         )
-  | null on && null off = Nothing
+  | null switched = Nothing
   | otherwise =
-      Just ("changed the extensions in force" <> turned "on" on <> turned "off" off)
+      Just
+        ( "changed how the header switches "
+            <> T.intercalate ", " (fmap tshow switched)
+        )
   where
-    on = EnumSet.toList (inForceExtensions after `EnumSet.difference` inForceExtensions before)
-    off = EnumSet.toList (inForceExtensions before `EnumSet.difference` inForceExtensions after)
+    switched =
+      [ e
+      | e <- Map.keys (inForceSwitches before <> inForceSwitches after),
+        Map.lookup e (inForceSwitches before) /= Map.lookup e (inForceSwitches after)
+      ]
     edition = maybe "the default" tshow . inForceEdition
-    turned _ [] = ""
-    turned how es = ", turning " <> how <> " " <> T.intercalate ", " (fmap tshow es)
 
 -- | A comment's lines, as they are compared.
 bodyKey :: Comment -> NonEmpty Text
