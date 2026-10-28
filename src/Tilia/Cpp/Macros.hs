@@ -226,10 +226,7 @@ tokensOf = go . T.stripStart
     firstThat f = foldr (\x acc -> maybe acc Just (f x)) Nothing
     readDigits = T.foldl' (\n c -> n * 10 + toInteger (fromEnum c - fromEnum '0')) 0
 
--- | An expression, and what is left of the tokens after it.
-type Reading = Maybe (Expr, [Token])
-
-orExpr :: [Token] -> Reading
+orExpr :: [Token] -> Maybe (Expr, [Token])
 orExpr ts = do
   (left, rest) <- andExpr ts
   more left rest
@@ -240,7 +237,7 @@ orExpr ts = do
         more (Or left right) rest'
       rest -> Just (left, rest)
 
-andExpr :: [Token] -> Reading
+andExpr :: [Token] -> Maybe (Expr, [Token])
 andExpr ts = do
   (left, rest) <- compared ts
   more left rest
@@ -251,7 +248,7 @@ andExpr ts = do
         more (And left right) rest'
       rest -> Just (left, rest)
 
-compared :: [Token] -> Reading
+compared :: [Token] -> Maybe (Expr, [Token])
 compared ts = do
   (left, rest) <- unary ts
   case rest of
@@ -284,7 +281,7 @@ reaching op (Macro n) (Literal m) = case op of
     exactly = And (Reaches n [m]) (Not (Reaches n [m + 1]))
 reaching _ _ _ = Nothing
 
-unary :: [Token] -> Reading
+unary :: [Token] -> Maybe (Expr, [Token])
 unary = \case
   Punct "!" : rest -> do
     (e, rest') <- unary rest
