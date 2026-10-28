@@ -25,7 +25,7 @@ import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Comments (Comment (..), Pragma (..), commentPragma)
 import Tilia.Doc.Combinators
-import Tilia.Pragma (languageNames, lookupEdition)
+import Tilia.Pragma (languageNames, lookupEdition, sameInForce)
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls)
 import Tilia.Render.Haddock
@@ -51,9 +51,10 @@ data HeaderPragma = HeaderPragma
 
 -- | Where a pragma sorts among the others.
 --
--- The derived ordering is the whole of the policy: language pragmas first,
--- then @OPTIONS_GHC@ and @OPTIONS@, then @OPTIONS_HADDOCK@; and within the
--- language pragmas, by the class of extension.
+-- The derived ordering is the policy wherever it leaves the same extensions
+-- in force: language pragmas first, then @OPTIONS_GHC@ and @OPTIONS@, then
+-- @OPTIONS_HADDOCK@; and within the language pragmas, by the class of
+-- extension, the editions in the order they are written.
 data PragmaOrder
   = LanguageOrder ExtensionClass
   | OptionsGhcOrder
@@ -148,13 +149,27 @@ takeStackHeader headerEnd = \case
     reproduce c =
       sepBy (verbatimBreak AtMargin TrimWhitespace) (fmap txt (NE.toList (commentBody c)))
 
--- | The pragmas of a header, one per line, sorted, with the options in the
--- order they were written, which is the order GHC reads their flags in.
+-- | The pragmas of a header, one per line, with the options in the order
+-- they were written, which is the order GHC reads their flags in.
+--
+-- The pragmas between two directives are sorted unless that would leave other
+-- extensions in force, in which case they keep the order they were written in.
 pragmaBlock :: [HeaderPragma] -> Doc
-pragmaBlock = foldMap render . dedupe . sortOn order . concatMap split
+pragmaBlock =
+  foldMap render
+    . dedupe
+    . concatMap (sorted . NE.toList)
+    . NE.groupBy ((==) `on` hpRun)
+    . concatMap split
   where
-    order p = (hpRun p, orderOf p, extension p)
-    extension p = if hpName p == "LANGUAGE" then hpBody p else ""
+    sorted run =
+      let candidate = sortOn order run
+       in if sameInForce (named candidate) (named run) then candidate else run
+    named = fmap (\p -> (hpName p, hpBody p))
+    order p = (orderOf p, extension p)
+    extension p
+      | hpName p == "LANGUAGE", not (namesAnEdition (hpBody p)) = hpBody p
+      | otherwise = ""
     key p = (hpRun p, orderOf p, hpBody p)
     orderOf p = pragmaOrder (hpName p) (hpBody p)
     dedupe = fmap NE.head . NE.groupBy ((==) `on` key)

@@ -9,12 +9,14 @@ module Tilia.Pragma
     lookupEdition,
     applyExtensionName,
     languageNames,
+    sameInForce,
   )
 where
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe, maybeToList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Driver.Session qualified as GHC
@@ -42,11 +44,26 @@ effectiveExtensions package =
   where
     pragmaSwitches body =
       let (keyword, rest) = T.break (== ' ') body
-       in case T.toUpper keyword of
-            "LANGUAGE" -> mapMaybe nameSwitch (languageNames rest)
-            "OPTIONS_GHC" -> concatMap flagSwitches (T.words rest)
-            "OPTIONS" -> concatMap flagSwitches (T.words rest)
-            _ -> []
+       in switchesOf (T.toUpper keyword) rest
+
+-- | Do two orders of the same pragmas, each given by its name and body,
+-- leave the same extensions on?
+--
+-- Where none of them turns an extension off, every order turns on the same.
+sameInForce :: [(Text, Text)] -> [(Text, Text)] -> Bool
+sameInForce a b = not (turnsOff a) || inForce a == inForce b
+  where
+    turnsOff = foldl' (switchWith (const id) (\_ _ -> True)) False . switches
+    inForce = foldl' (switchWith Set.insert Set.delete) Set.empty . switches
+    switches = concatMap (uncurry switchesOf)
+
+-- | What a pragma of this name and body turns on and off.
+switchesOf :: Text -> Text -> [GHC.OnOff Extension]
+switchesOf name body = case name of
+  "LANGUAGE" -> mapMaybe nameSwitch (languageNames body)
+  "OPTIONS_GHC" -> concatMap flagSwitches (T.words body)
+  "OPTIONS" -> concatMap flagSwitches (T.words body)
+  _ -> []
 
 -- | Turn on the extension a name spells, or off where the name puts @No@ in
 -- front of one, leaving the set as it is for a name that spells neither.
@@ -72,16 +89,29 @@ flagSwitches flag
   where
     oldFlag name = maybeToList (Map.lookup name extensionsByOldFlag)
 
+-- | Turn an extension on or off in a list kept in the order extensions were
+-- turned on in.
+switch :: [Extension] -> GHC.OnOff Extension -> [Extension]
+switch = switchWith turnOn (filter . (/=))
+  where
+    turnOn e acc = if e `elem` acc then acc else acc <> [e]
+
 -- | Turn an extension on, and then what it implies, or turn it off alone, as
 -- GHC does.
-switch :: [Extension] -> GHC.OnOff Extension -> [Extension]
-switch acc = \case
-  GHC.On on ->
-    foldl'
-      switch
-      (if on `elem` acc then acc else acc <> [on])
-      (Map.findWithDefault [] on impliedBy)
-  GHC.Off off -> filter (/= off) acc
+switchWith ::
+  -- | How to turn one extension on.
+  (Extension -> a -> a) ->
+  -- | How to turn one extension off.
+  (Extension -> a -> a) ->
+  -- | What is on so far.
+  a ->
+  -- | What to turn on or off.
+  GHC.OnOff Extension ->
+  a
+switchWith on off acc = \case
+  GHC.On e ->
+    foldl' (switchWith on off) (on e acc) (Map.findWithDefault [] e impliedBy)
+  GHC.Off e -> off e acc
 
 -- | What GHC turns on or off besides when it turns an extension on.
 impliedBy :: Map Extension [GHC.OnOff Extension]

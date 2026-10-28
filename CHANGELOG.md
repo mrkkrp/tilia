@@ -19,6 +19,12 @@
   `RebindableSyntax` the Prelude is not taken to be imported, and an import
   of it sorts among the others, as under `NoImplicitPrelude`.
   [PR 319](https://github.com/mrkkrp/tilia/pull/319).
+* The pragmas of a header keep the order they are written in where sorting
+  them would leave other extensions in force, as with `NoMonoLocalBinds`
+  written above `TypeFamilies`, which turns `MonoLocalBinds` back on, or
+  with an option turning off an extension a later `LANGUAGE` pragma turns
+  on; and editions, of which GHC takes the last, keep their order among
+  each other. [PR 319](https://github.com/mrkkrp/tilia/pull/319).
 
 ## Tilia 0.1.2.0
 
