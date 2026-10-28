@@ -39,7 +39,7 @@ data Color
   | -- | A line a change adds.
     New
   | -- | A line a change leaves alone.
-    Unchanged
+    Kept
   | -- | Something that went well.
     Good
   | -- | Something that did not, without being wrong.
@@ -64,7 +64,7 @@ paint Colors color t = code color <> t <> "\ESC[0m"
       Meta -> "\ESC[36m"
       Gone -> "\ESC[31m"
       New -> "\ESC[32m"
-      Unchanged -> "\ESC[39m"
+      Kept -> "\ESC[39m"
       Good -> "\ESC[32m"
       Middling -> "\ESC[33m"
       Bad -> "\ESC[31m"
