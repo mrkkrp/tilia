@@ -42,7 +42,7 @@ data HeaderPragma = HeaderPragma
     hpSpan :: Span,
     -- | How many preprocessor directives the header has above it.
     hpRun :: Int,
-    -- | @LANGUAGE@, @OPTIONS_GHC@ or @OPTIONS_HADDOCK@.
+    -- | @LANGUAGE@, @OPTIONS_GHC@, @OPTIONS@ or @OPTIONS_HADDOCK@.
     hpName :: Text,
     -- | One extension, or the whole of an options string.
     hpBody :: Text
@@ -52,8 +52,8 @@ data HeaderPragma = HeaderPragma
 -- | Where a pragma sorts among the others.
 --
 -- The derived ordering is the whole of the policy: language pragmas first,
--- then @OPTIONS_GHC@, then @OPTIONS_HADDOCK@; and within the language
--- pragmas, by the class of extension.
+-- then @OPTIONS_GHC@ and @OPTIONS@, then @OPTIONS_HADDOCK@; and within the
+-- language pragmas, by the class of extension.
 data PragmaOrder
   = LanguageOrder ExtensionClass
   | OptionsGhcOrder
@@ -121,6 +121,7 @@ pragmaOrder :: Text -> Text -> Maybe PragmaOrder
 pragmaOrder named body = case named of
   "LANGUAGE" -> Just (LanguageOrder (classifyExtension body))
   "OPTIONS_GHC" -> Just OptionsGhcOrder
+  "OPTIONS" -> Just OptionsGhcOrder
   "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
   _ -> Nothing
 

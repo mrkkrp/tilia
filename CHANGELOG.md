@@ -10,6 +10,10 @@
   `-fglasgow-exts` and `-fbang-patterns`, are taken into account, so a
   module that needs them is parsed as GHC parses it.
   [Issue 280](https://github.com/mrkkrp/tilia/issues/280).
+* An `OPTIONS` pragma in the header is sorted with the `OPTIONS_GHC`
+  pragmas, keeping the order the two are written in among each other, rather
+  than being left where it was written.
+  [PR 319](https://github.com/mrkkrp/tilia/pull/319).
 
 ## Tilia 0.1.2.0
 
