@@ -24,7 +24,7 @@ module Tilia.Cabal.Plan
     -- * Readiness
     Readiness (..),
     PlanComponent (..),
-    spellComponent,
+    spellPlanComponent,
     plannedComponents,
     planPathFor,
     checkReadiness,
@@ -415,8 +415,8 @@ data PlanComponent = PlanComponent
   deriving (Eq, Ord, Show)
 
 -- | A component as it would be written on the command line.
-spellComponent :: PlanComponent -> Text
-spellComponent c = pcPackage c <> ":" <> pcName c
+spellPlanComponent :: PlanComponent -> Text
+spellPlanComponent c = pcPackage c <> ":" <> pcName c
 
 -- | The components of the project's own packages that a plan covers.
 plannedComponents :: BuildPlan -> [PlanComponent]
@@ -462,7 +462,7 @@ checkReadiness caching wanted projectDir =
       solved <- cachedSolveTime =<< openCache caching =<< tokenForBuildPlan plan
       newer <- filesNewerThanPlan plan projectDir solved
       let covered = plannedComponents plan
-          missing = [spellComponent c | c <- wanted, c `notElem` covered]
+          missing = [spellPlanComponent c | c <- wanted, c `notElem` covered]
       case (newer, missing) of
         (_ : _, _) -> pure (PlanStale newer)
         ([], _ : _) -> pure (PlanNarrow missing)
