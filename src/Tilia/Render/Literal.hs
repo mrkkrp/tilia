@@ -18,7 +18,7 @@ import Data.Text qualified as T
 import GHC.Data.FastString (FastString, unpackFS)
 import GHC.Parser.CharClass (is_space)
 import Tilia.Doc.Combinators
-import Tilia.Render.Layout (Place (..), places)
+import Tilia.Render.Layout (Position (..), positioned)
 
 -- | A string literal, from the text the author wrote.
 stringLiteral :: FastString -> Doc
@@ -39,8 +39,8 @@ renderLiteral literal =
           (fmap txt (litParts literal))
     onOneLine = txt (joinParts (litParts literal))
     acrossLines =
-      sepBy breakOrSpace (fmap continued (places (litParts literal)))
-    continued (place, s) = case place of
+      sepBy breakOrSpace (fmap continued (positioned (litParts literal)))
+    continued (position, s) = case position of
       Only -> txt s
       First -> txt s <> txt "\\"
       Middle -> txt "\\" <> txt s <> txt "\\"
