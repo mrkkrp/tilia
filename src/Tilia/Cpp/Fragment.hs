@@ -121,7 +121,7 @@ fragmentsOf body forest =
   [ Fragment gs (any above gs) (runAt (lo - 1)) (runAt hi)
   | (gs, (lo, hi)) <-
       clustered . sortOn (fst . snd) $
-        [(g, reach (bodyRuns body) (gsWhole g)) | g <- forest]
+        [(g, runsTouched (bodyRuns body) (gsWhole g)) | g <- forest]
   ]
   where
     above = (<= bodyHeadEnd body) . fst . gsWhole
@@ -131,8 +131,8 @@ fragmentsOf body forest =
 
 -- | The runs a conditional's lines touch, or where it falls between two of
 -- them.
-reach :: [Run] -> (Int, Int) -> (Int, Int)
-reach runs (a, b) =
+runsTouched :: [Run] -> (Int, Int) -> (Int, Int)
+runsTouched runs (a, b) =
   case [i | (i, r) <- zip [0 ..] runs, runFrom r <= b, a <= runTo r] of
     [] -> let p = length (takeWhile ((< a) . runTo) runs) in (p, p)
     is -> (minimum is, maximum is + 1)

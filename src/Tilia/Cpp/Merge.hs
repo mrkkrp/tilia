@@ -464,8 +464,8 @@ agreeOn :: Varied -> Layout -> Doc -> Doc -> Bool
 agreeOn varied layout x y = case (x, y) of
   (DLocated s x', DLocated t y') ->
     s == t
-      && ( untouched varied (reach s x')
-             && untouched varied (reach t y')
+      && ( untouched varied (spanWithHaddock s x')
+             && untouched varied (spanWithHaddock t y')
              && not (zeroWidth s)
              || inside x' y'
          )
@@ -497,8 +497,8 @@ beginsWithChoice d = case filter (not . onlySpacing) (spineAt Flat d) of
 -- | A region's span, stretched over the span it prints first, which the
 -- Haddock of a constructor, a field or an argument is, written above or
 -- below it.
-reach :: Span -> Doc -> Span
-reach s d = maybe s (<> s) (firstMarked d)
+spanWithHaddock :: Span -> Doc -> Span
+spanWithHaddock s d = maybe s (<> s) (firstMarked d)
   where
     firstMarked = \case
       DLocated h x -> firstMarked x <|> Just h
