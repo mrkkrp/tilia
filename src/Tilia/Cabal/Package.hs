@@ -136,7 +136,7 @@ newPackageReader planned = do
     findCabalFile covering from >>= \case
       Nothing -> pure (Left NoPackageFile)
       Just cabalFile ->
-        componentsOf compiler described cabalFile >>= \case
+        componentBranchesOf compiler described cabalFile >>= \case
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
@@ -234,12 +234,12 @@ findCabalFile ref = climb []
       pure answer
 
 -- | What a @.cabal@ file amounts to.
-componentsOf ::
+componentBranchesOf ::
   IO (Maybe Version) ->
   IORef (Map FilePath (Either PackageProblem [ComponentBranch])) ->
   FilePath ->
   IO (Either PackageProblem [ComponentBranch])
-componentsOf compiler ref cabalFile = do
+componentBranchesOf compiler ref cabalFile = do
   known <- readIORef ref
   case Map.lookup cabalFile known of
     Just answer -> pure answer
