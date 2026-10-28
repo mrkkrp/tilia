@@ -1974,7 +1974,7 @@ formatted       1165cbb859cc  fay-0.24.2.0/src/Fay/Types/ModulePath.hs
 formatted       ed80698a7cd1  fay-0.24.2.0/src/Fay/Types/Printer.hs
 formatted       6593766b1d2e  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names.hs
 formatted       c40577bbbe78  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/Annotated.hs
-formatted       6aa37d203cec  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/Exports.hs
+formatted       68be18f2fa38  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/Exports.hs
 formatted       633d0ead4b0e  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/GetBound.hs
 formatted       6f5ea387dca8  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/GlobalSymbolTable.hs
 formatted       13662130820d  fay-0.24.2.0/src/haskell-names/Language/Haskell/Names/GlobalSymbolTable.hs-boot
