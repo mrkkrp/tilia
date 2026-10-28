@@ -172,25 +172,31 @@ spec = do
       differsBecause
         "{-# LANGUAGE NoLambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
         "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE NoLambdaCase #-}\nmodule M where\n"
-        "turning off LambdaCase"
+        "switches LambdaCase"
 
     it "notices an extension turned off past one implying it" $
       differsBecause
         "{-# LANGUAGE NoMonoLocalBinds #-}\n{-# LANGUAGE TypeFamilies #-}\nmodule M where\n"
         "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE NoMonoLocalBinds #-}\nmodule M where\n"
-        "turning off MonoLocalBinds"
+        "switches MonoLocalBinds"
 
     it "notices the Prelude turned back on past RebindableSyntax" $
       differsBecause
         "{-# LANGUAGE ImplicitPrelude #-}\n{-# LANGUAGE RebindableSyntax #-}\nmodule M where\n"
         "{-# LANGUAGE RebindableSyntax #-}\n{-# LANGUAGE ImplicitPrelude #-}\nmodule M where\n"
-        "turning on ImplicitPrelude"
+        "switches ImplicitPrelude"
 
     it "notices an option turning off what a language pragma turns on" $
       differsBecause
         "{-# OPTIONS_GHC -XNoLambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
         "{-# LANGUAGE LambdaCase #-}\n{-# OPTIONS_GHC -XNoLambdaCase #-}\nmodule M where\n"
-        "turning off LambdaCase"
+        "switches LambdaCase"
+
+    it "notices a pragma moved into the header, though GHC's defaults have it" $
+      differsBecause
+        "module M where\n{-# LANGUAGE MultiParamTypeClasses #-}\n"
+        "{-# LANGUAGE MultiParamTypeClasses #-}\nmodule M where\n"
+        "MultiParamTypeClasses"
 
     it "notices another edition named last" $
       differsBecause

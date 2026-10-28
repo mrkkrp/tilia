@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-missing-fields #-}
 
 -- | What GHC's own reader of flags makes of the flags of a header.
@@ -13,7 +14,6 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Data.EnumSet (EnumSet)
 import GHC.Driver.CmdLine (Flag (..), processArgs)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
@@ -25,26 +25,30 @@ import GHC.Types.SrcLoc (noLoc)
 import GHC.Unit.Types (stringToUnitId)
 import GHC.Utils.Fingerprint (fingerprint0)
 
--- | What GHC puts in force, from its defaults, after the flags of a header.
+-- | What the flags of a header settle, whatever was in force before them.
 data InForce = InForce
-  { -- | The extensions on.
-    inForceExtensions :: EnumSet Extension,
+  { -- | Whether the flags, with what they imply, last turn each extension
+    -- they switch on or off.
+    inForceSwitches :: Map Extension Bool,
     -- | The edition named last, if one is.
     inForceEdition :: Maybe GHC.Language,
     -- | The Safe Haskell mode.
     inForceSafety :: SafeHaskellMode
   }
 
--- | What GHC's flag reader puts in force after these flags, read in order.
+-- | What GHC's flag reader makes of these flags, read in order.
 inForceAfter :: [Text] -> InForce
 inForceAfter flags =
   InForce
-    { inForceExtensions = GHC.extensionFlags dflags,
+    { inForceSwitches = Map.fromList (fmap switched (reverse (GHC.extensions dflags))),
       inForceEdition = GHC.language dflags,
       inForceSafety = GHC.safeHaskell dflags
     }
   where
     dflags = snd (GHC.runCmdLineP reading defaults)
+    switched = \case
+      GHC.On e -> (e, True)
+      GHC.Off e -> (e, False)
     reading = processArgs named (fmap noLoc args) (\_ -> pure [])
     named = mapMaybe ((`Map.lookup` switchingFlags) . drop 1) args
     args = fmap T.unpack flags
