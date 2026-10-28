@@ -102,7 +102,7 @@ unified palette above (beforeName, afterName) before after
           [] -> "0,0"
 
     line (Line mark _ _ text) = case mark of
-      Context -> paint palette Unchanged (" " <> text)
+      Context -> paint palette Kept (" " <> text)
       Removed -> paint palette Gone ("-" <> text)
       Added -> paint palette New ("+" <> text)
 
