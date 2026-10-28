@@ -58,7 +58,13 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy)
 import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
-import Tilia.Source (directiveOnLine)
+import Tilia.Source.Lines
+  ( conditionalKeywords,
+    continuesGroup,
+    directiveOnLine,
+    opaqueKeywords,
+    opensGroup,
+  )
 import Tilia.Span
   ( Span,
     mkSpan,
@@ -458,8 +464,7 @@ directives = go . zip [1 ..] . T.lines
     go = \case
       [] -> []
       (n, l) : ls
-        | Just (keyword, body) <- directiveOnLine l,
-          keyword `elem` directiveKeywords ->
+        | Just (keyword, body) <- directiveOnLine l ->
             let (continued, rest) = continuation l ls
              in Directive
                   { dLine = n,
@@ -523,30 +528,9 @@ data Open = Open
 scanConditionals :: Text -> Maybe [GroupSpec]
 scanConditionals = either (const Nothing) Just . readConditionals
 
--- | The directives that ask a question, and so split a module in two.
-conditionalKeywords :: [Text]
-conditionalKeywords = opensGroup <> continuesGroup <> ["endif"]
-
--- | The keywords that open a group or continue one.
-opensGroup, continuesGroup :: [Text]
-opensGroup = ["if", "ifdef", "ifndef"]
-continuesGroup = ["elif", "elifdef", "elifndef", "else"]
-
 -- | Does this line begin with a preprocessor directive?
 isDirective :: Text -> Bool
-isDirective l = case directiveOnLine l of
-  Just (keyword, _) -> keyword `elem` directiveKeywords
-  Nothing -> False
-
--- | Every directive the C preprocessor takes, whether or not this module
--- can do anything with the ones it names.
-directiveKeywords :: [Text]
-directiveKeywords = conditionalKeywords <> opaqueKeywords
-
--- | The unconditional directives that do not split the source code.
-opaqueKeywords :: [Text]
-opaqueKeywords =
-  ["define", "undef", "include", "line", "error", "warning", "pragma"]
+isDirective = isJust . directiveOnLine
 
 -- | One conditional group, read off the directives that make it up.
 data GroupSpec = GroupSpec

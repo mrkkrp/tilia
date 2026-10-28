@@ -13,6 +13,10 @@ module Tilia.Source.Lines
     blankAt,
     directivePresentOnLine,
     directiveOnLine,
+    conditionalKeywords,
+    opensGroup,
+    continuesGroup,
+    opaqueKeywords,
   )
 where
 
@@ -82,8 +86,27 @@ directivePresentOnLine n ls = isJust (directiveOnLine =<< lineAt n ls)
 directiveOnLine :: Text -> Maybe (Text, Text)
 directiveOnLine l = case T.uncons (T.stripStart l) of
   Just ('#', rest)
-    | not (T.null keyword) -> Just (keyword, body)
+    | keyword `elem` directiveKeywords -> Just (keyword, body)
     where
       body = T.stripStart rest
       keyword = T.takeWhile isAsciiLower body
   _ -> Nothing
+
+-- | Every directive the C preprocessor takes, whether or not this module
+-- can do anything with the ones it names.
+directiveKeywords :: [Text]
+directiveKeywords = conditionalKeywords <> opaqueKeywords
+
+-- | The directives that ask a question, and so split a module in two.
+conditionalKeywords :: [Text]
+conditionalKeywords = opensGroup <> continuesGroup <> ["endif"]
+
+-- | The keywords that open a group or continue one.
+opensGroup, continuesGroup :: [Text]
+opensGroup = ["if", "ifdef", "ifndef"]
+continuesGroup = ["elif", "elifdef", "elifndef", "else"]
+
+-- | The unconditional directives that do not split the source code.
+opaqueKeywords :: [Text]
+opaqueKeywords =
+  ["define", "undef", "include", "line", "error", "warning", "pragma"]
