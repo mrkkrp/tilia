@@ -125,11 +125,13 @@ spec = do
     it "is not fooled by an ordinary block comment" $
       (commentPragma <$> commentsIn "module M where\n{- not a pragma -}\nx = 1\n")
         `shouldBe` [Nothing]
-    it "reports the header boundary" $
+    it "reports the header boundary at the module line" $
       headerLine "{-# LANGUAGE CPP #-}\nmodule M where\nimport Data.List\nx = 1\n"
-        `shouldBe` Just 3
-    it "reports no boundary for a module with only a header" $
-      headerLine "{-# LANGUAGE CPP #-}\nmodule M where\n" `shouldBe` Nothing
+        `shouldBe` Just 2
+    it "reports it where a module without a module line begins" $
+      headerLine "{-# LANGUAGE CPP #-}\nimport Data.List\nx = 1\n" `shouldBe` Just 2
+    it "reports no boundary for a module of pragmas alone" $
+      headerLine "{-# LANGUAGE CPP #-}\n" `shouldBe` Nothing
 
   describe "what is deliberately not normalized" $ do
     it "keeps blank lines inside a comment" $

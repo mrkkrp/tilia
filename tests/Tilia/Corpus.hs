@@ -364,7 +364,14 @@ ormoluSkip =
     "declaration" </> "splice" </> "quasiquote.hs",
     "declaration" </> "value" </> "function" </> "quasi-quotes.hs",
     "declaration" </> "value" </> "function" </> "operator-comments-0.hs",
-    "declaration" </> "signature" </> "fixity" </> "infix.hs"
+    "declaration" </> "signature" </> "fixity" </> "infix.hs",
+    "declaration" </> "class" </> "associated-data2.hs",
+    "declaration" </> "class" </> "associated-types2.hs",
+    "declaration" </> "class" </> "dependency-super-classes.hs",
+    "declaration" </> "class" </> "functional-dependencies.hs",
+    "declaration" </> "class" </> "multi-parameters2.hs",
+    "declaration" </> "data" </> "gadt" </> "multiline.hs",
+    "declaration" </> "data" </> "gadt" </> "simple.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

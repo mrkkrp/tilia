@@ -13,6 +13,7 @@ module Tilia.Pragma
   )
 where
 
+import Data.Char (isSpace)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe, maybeToList)
@@ -35,12 +36,12 @@ effectiveExtensions ::
   -- @default-language@ and @default-extensions@ already resolved into a
   -- set.
   [Extension] ->
-  -- | The module's source, read here for its @LANGUAGE@, @OPTIONS_GHC@ and
-  -- @OPTIONS@ pragmas alone.
+  -- | The module's source, read here for the @LANGUAGE@, @OPTIONS_GHC@ and
+  -- @OPTIONS@ pragmas of its header alone.
   Text ->
   [Extension]
 effectiveExtensions package =
-  foldl' switch package . concatMap pragmaSwitches . pragmaBodies
+  foldl' switch package . concatMap pragmaSwitches . headerPragmaBodies
   where
     pragmaSwitches body =
       let (keyword, rest) = T.break (== ' ') body
@@ -151,23 +152,50 @@ byFlagName flags =
 -- | What every @{-# … #-}@ in a module has between its braces, each on one
 -- line.
 pragmaBodies :: Text -> [Text]
-pragmaBodies = go
+pragmaBodies = scanPragmas past
   where
-    go = step . T.dropWhile (\c -> c /= '{' && c /= '-' && c /= '"')
+    past go t = case T.stripPrefix "\"" t of
+      Just after -> go (skipString after)
+      Nothing -> go (T.dropWhile (\c -> c /= '{' && c /= '-' && c /= '"') (T.drop 1 t))
 
-    step t
+    skipString = inString . T.dropWhile (\c -> c /= '"' && c /= '\\')
+
+    inString t
+      | T.null t = t
+      | Just after <- T.stripPrefix "\\" t = skipString (T.drop 1 after)
+      | Just after <- T.stripPrefix "\"" t = after
+      | otherwise = skipString (T.drop 1 t)
+
+-- | What the @{-# … #-}@ of a module's header have between their braces, each
+-- on one line: those above the first thing that is neither a comment, a
+-- directive nor a pragma, which are all GHC reads.
+headerPragmaBodies :: Text -> [Text]
+headerPragmaBodies = scanPragmas past
+  where
+    past go t = case T.uncons t of
+      Just (c, _)
+        | isSpace c -> go (T.stripStart t)
+        | c == '#' -> go (T.dropWhile (/= '\n') t)
+      _ -> []
+
+-- | The bodies of the pragmas of a module, each on one line, carrying on past
+-- what is neither a comment nor a pragma as the given function does.
+scanPragmas :: ((Text -> [Text]) -> Text -> [Text]) -> Text -> [Text]
+scanPragmas past = go
+  where
+    go t
       | T.null t = []
       | Just body <- T.stripPrefix "{-#" t = case T.breakOn "#-}" body of
           (_, after) | T.null after -> []
           (inner, after) -> T.unwords (T.words inner) : go (T.drop 3 after)
       | Just after <- T.stripPrefix "{-" t = go (skipBlock (1 :: Int) after)
       | opensLineComment t = go (T.dropWhile (/= '\n') t)
-      | Just after <- T.stripPrefix "\"" t = go (skipString after)
-      | otherwise = go (T.drop 1 t)
+      | otherwise = past go t
 
     opensLineComment t = case T.stripPrefix "--" t of
       Nothing -> False
-      Just rest -> maybe True (not . symbolic . fst) (T.uncons rest)
+      Just rest ->
+        maybe True (not . symbolic . fst) (T.uncons (T.dropWhile (== '-') rest))
 
     symbolic c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
 
@@ -179,11 +207,3 @@ pragmaBodies = go
       | Just after <- T.stripPrefix "{-" t = skipBlock (n + 1) after
       | Just after <- T.stripPrefix "-}" t = skipBlock (n - 1) after
       | otherwise = skipBlock n (T.drop 1 t)
-
-    skipString = inString . T.dropWhile (\c -> c /= '"' && c /= '\\')
-
-    inString t
-      | T.null t = t
-      | Just after <- T.stripPrefix "\\" t = skipString (T.drop 1 after)
-      | Just after <- T.stripPrefix "\"" t = after
-      | otherwise = skipString (T.drop 1 t)

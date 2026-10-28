@@ -28,6 +28,10 @@
 * An options pragma written twice in a row is kept twice rather than
   written once, since a flag such as `-fplugin-opt` counts each time it is
   given. [PR 322](https://github.com/mrkkrp/tilia/pull/322).
+* A pragma written below the `module` line, which GHC does not read, stays
+  where it is written rather than being moved above the line, where it
+  takes effect, and the module is parsed without what it names, as GHC
+  parses it. [Issue 288](https://github.com/mrkkrp/tilia/issues/288).
 
 ## Tilia 0.1.2.0
 

@@ -88,6 +88,14 @@ spec = do
             <> "{-# LANGUAGE NoMagicHash #-}\n"
         )
         `shouldBe` []
+    it "ignores a pragma below the module line, which GHC does not read" $
+      effectiveExtensions [] "module M where\n{-# LANGUAGE LambdaCase #-}\n"
+        `shouldBe` []
+    it "reads the pragmas between the directives of a header" $
+      effectiveExtensions
+        []
+        "{-# LANGUAGE CPP #-}\n#if 1\n{-# LANGUAGE LambdaCase #-}\n#endif\nmodule M where\n"
+        `shouldBe` [Cpp, LambdaCase]
     it "ignores the options of other compilers" $
       effectiveExtensions [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
         `shouldBe` []

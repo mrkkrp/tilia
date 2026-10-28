@@ -20,7 +20,7 @@ import Data.Foldable (toList)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (isSuffixOf, nub, sortOn)
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -28,7 +28,7 @@ import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
 import GHC.Driver.Session qualified as GHC
-import GHC.Hs (HsModule (..))
+import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
@@ -59,8 +59,8 @@ data ParsedModule = ParsedModule
     -- The lexer skips a @#!@ line, which puts it in no annotation and no
     -- node, so nothing downstream could put it back.
     pmPrologue :: [Text],
-    -- | Where the file header stops and the module proper begins, if the
-    -- module has anything after its header.
+    -- | Where the file header stops: at the @module@ line, or where a
+    -- module without one begins, if it has anything but a header.
     --
     -- GHC reads pragmas from the header and nowhere else, so this is the
     -- line that decides whether a @{-# … #-}@ is a pragma at all. One
@@ -290,8 +290,12 @@ prologueOf ls = case span isShebang ls of
 -- | The start of the first thing that is not part of the header.
 headerEndOf :: HsModule GhcPs -> Maybe Span
 headerEndOf hsModule =
-  listToMaybe . sortOn startPoint $
-    mapMaybe spanOf (hsmodImports hsModule) <> mapMaybe spanOf (hsmodDecls hsModule)
+  listToMaybe . sortOn startPoint . catMaybes $
+    [spanOf (am_mod moduleAnns), spanOf (am_sig moduleAnns)]
+      <> fmap spanOf (hsmodImports hsModule)
+      <> fmap spanOf (hsmodDecls hsModule)
+  where
+    moduleAnns = anns (hsmodAnn (hsmodExt hsModule))
 
 -- | Why a module did not parse.
 data ParseError = ParseError
