@@ -75,7 +75,6 @@ library
     Tilia.Equivalence
     Tilia.Fixity
     Tilia.Fixity.Archive
-    Tilia.Fixity.ByHand
     Tilia.Fixity.Cabal
     Tilia.Fixity.Cache
     Tilia.Fixity.Debug

@@ -51,7 +51,6 @@ import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, pathOfModule, readArchive, writtenForHsc)
-import Tilia.Fixity.ByHand (hscFixities)
 import Tilia.Fixity.Cabal (declaredExtensions, packageModules)
 import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (primopFixities)
@@ -303,7 +302,7 @@ resolveModule
   modName
     | Just path <- Map.lookup modName wkLocal,
       writtenForHsc path =
-        pure (hscDeclares modName)
+        pure mempty
     | Just path <- Map.lookup modName wkLocal =
         readFileText path >>= \case
           Nothing -> pure unreadable
@@ -522,7 +521,7 @@ fromSource moduleInArchive summariesOf reach tarball modName =
       fmap Just $
         moduleInArchive tarball modName >>= \case
           Nothing -> pure unreadable
-          Just ForHsc -> pure (hscDeclares modName)
+          Just ForHsc -> pure mempty
           Just (Haskell source) ->
             fromSummaries reach modName =<< summariesOf modName source
 
@@ -916,11 +915,3 @@ configurationsOf macros extensions modName text =
 hasImplicitPrelude :: [Extension] -> Text -> Choice "implicitPrelude"
 hasImplicitPrelude extensions source =
   fromBool (ImplicitPrelude `elem` effectiveExtensions extensions source)
-
--- | What an @.hsc@ module declares, which is nothing unless it is named.
-hscDeclares :: Text -> Established
-hscDeclares modName =
-  mempty
-    { establishedFixities =
-        maybe Map.empty inBothNamespaces (Map.lookup modName hscFixities)
-    }
