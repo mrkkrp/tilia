@@ -2378,12 +2378,12 @@ formatted       bd368a5862fd  haxl-2.5.1.1/Haxl/Core/Util.hs
 formatted       4d201ce15d28  haxl-2.5.1.1/Haxl/DataSource/ConcurrentIO.hs
 formatted       cf38b55569d1  haxl-2.5.1.1/Haxl/Prelude.hs
 formatted       0bf115c25c25  haxl-2.5.1.1/Setup.hs
-formatted       5897e1a72e86  haxl-2.5.1.1/tests/AdoTests.hs
+formatted       b30d01a22e96  haxl-2.5.1.1/tests/AdoTests.hs
 formatted       7392cb2bf8df  haxl-2.5.1.1/tests/AllTests.hs
 formatted       29963bfcd43e  haxl-2.5.1.1/tests/BadDataSource.hs
-formatted       9869a85f8734  haxl-2.5.1.1/tests/BatchTests.hs
+formatted       3930b8064973  haxl-2.5.1.1/tests/BatchTests.hs
 formatted       a75656cc58b4  haxl-2.5.1.1/tests/Bench.hs
-formatted       6b4d75212e14  haxl-2.5.1.1/tests/CoreTests.hs
+formatted       c77a8f206311  haxl-2.5.1.1/tests/CoreTests.hs
 formatted       46378c08a2d4  haxl-2.5.1.1/tests/DataCacheTest.hs
 formatted       8120f9ee1106  haxl-2.5.1.1/tests/DataSourceDispatchTests.hs
 formatted       04f8f254da6b  haxl-2.5.1.1/tests/ExampleDataSource.hs
@@ -2400,7 +2400,7 @@ formatted       c757b6a749ba  haxl-2.5.1.1/tests/ProfileTests.hs
 formatted       478999c2d1bd  haxl-2.5.1.1/tests/SleepDataSource.hs
 formatted       23f293b1253d  haxl-2.5.1.1/tests/StatsTests.hs
 formatted       0deec7d41cb2  haxl-2.5.1.1/tests/TestBadDataSource.hs
-formatted       6270eac19e14  haxl-2.5.1.1/tests/TestExampleDataSource.hs
+formatted       8c99d9ddfade  haxl-2.5.1.1/tests/TestExampleDataSource.hs
 formatted       33f33c2b6767  haxl-2.5.1.1/tests/TestMain.hs
 formatted       c0a01d1bb863  haxl-2.5.1.1/tests/TestTypes.hs
 formatted       0cdf14515138  haxl-2.5.1.1/tests/TestUtils.hs
@@ -4638,7 +4638,7 @@ formatted       37dbae049e0b  text-2.1.4/tests/Tests/Properties/Text.hs
 formatted       13a8cbedafd1  text-2.1.4/tests/Tests/Properties/Transcoding.hs
 formatted       139bbe092e98  text-2.1.4/tests/Tests/Properties/Validate.hs
 formatted       75f4b0d7a5f3  text-2.1.4/tests/Tests/QuickCheckUtils.hs
-formatted       c6e25a3408e0  text-2.1.4/tests/Tests/RebindableSyntaxTest.hs
+formatted       360188e62bc0  text-2.1.4/tests/Tests/RebindableSyntaxTest.hs
 formatted       939e997260ba  text-2.1.4/tests/Tests/Regressions.hs
 formatted       b7037d3f07cc  text-2.1.4/tests/Tests/ShareEmpty.hs
 formatted       f4e9f36f6be9  text-2.1.4/tests/Tests/SlowFunctions.hs
