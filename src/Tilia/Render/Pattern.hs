@@ -12,6 +12,7 @@ module Tilia.Render.Pattern
     hsPatClosing,
     fieldOcc,
     unboxedSum,
+    boxityBrackets,
   )
 where
 
@@ -81,7 +82,7 @@ patBody ctx bracing inAsPat closing here = \case
   ListPat _ ps ->
     bracketsWith closing (insideBrackets here (commaSep (fmap recur ps)))
   TuplePat _ ps boxity ->
-    tupleBrackets
+    boxityBrackets
       boxity
       closing
       (insideBrackets here (commaSep (fmap (align . recur) ps)))
@@ -170,9 +171,9 @@ unboxedSum closing tag arity d =
     before = replicate (tag - 1) space
     after = replicate (arity - tag) space
 
--- | The brackets a tuple pattern is written with.
-tupleBrackets :: Boxity -> ClosingIndent -> Doc -> Doc
-tupleBrackets = \case
+-- | The brackets a tuple is written with.
+boxityBrackets :: Boxity -> ClosingIndent -> Doc -> Doc
+boxityBrackets = \case
   Boxed -> parensWith
   Unboxed -> unboxedWith
 

@@ -270,9 +270,7 @@ tuple ctx here closing boxity args
   | any isMissing args = flat (brackets' (sepBy comma (fmap arg args)))
   | otherwise = brackets' (insideBrackets here (commaSep (fmap arg args)))
   where
-    brackets' = case boxity of
-      Boxed -> parensWith closing
-      Unboxed -> unboxedWith closing
+    brackets' = boxityBrackets boxity closing
     isMissing = \case
       Missing _ -> True
       _ -> False
