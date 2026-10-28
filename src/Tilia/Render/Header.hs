@@ -150,7 +150,9 @@ takeStackHeader headerEnd = \case
       sepBy (verbatimBreak AtMargin TrimWhitespace) (fmap txt (NE.toList (commentBody c)))
 
 -- | The pragmas of a header, one per line, with the options in the order
--- they were written, which is the order GHC reads their flags in.
+-- they were written, which is the order GHC reads their flags in, and every
+-- one of them kept, since a flag such as @-fplugin-opt@ counts each time it
+-- is given.
 --
 -- The pragmas between two directives are sorted unless that would leave other
 -- extensions in force, in which case they keep the order they were written in.
@@ -172,7 +174,8 @@ pragmaBlock =
       | otherwise = ""
     key p = (hpRun p, orderOf p, hpBody p)
     orderOf p = pragmaOrder (hpName p) (hpBody p)
-    dedupe = fmap NE.head . NE.groupBy ((==) `on` key)
+    dedupe = fmap NE.head . NE.groupBy repeated
+    repeated a b = hpName a == "LANGUAGE" && key a == key b
     split p
       | hpName p == "LANGUAGE" =
           [ p{hpBody = body}
