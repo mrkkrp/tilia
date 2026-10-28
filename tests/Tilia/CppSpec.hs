@@ -17,6 +17,7 @@ import Tilia.Doc.Internal (Doc)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig, renderModule)
+import Tilia.Source (directiveOnLine)
 import Tilia.Span (Span)
 import Tilia.TestUtils
   ( configurations,
@@ -274,6 +275,13 @@ spec = do
     it "refuses a branch that a conditional around it asking the same question rules out" $
       formatCpp ruledOut
         `shouldBe` Left "the branch at line 6 is ruled out by a conditional around it that asks the same question"
+
+  describe "telling a directive line from code" $ do
+    it "reads the keyword and everything after the hash" $
+      directiveOnLine "  # if FOO" `shouldBe` Just ("if", "if FOO")
+
+    it "does not take a label at the start of a line for a directive" $
+      directiveOnLine "    #field" `shouldBe` Nothing
 
 ----------------------------------------------------------------------------
 -- The modules the question is asked of
