@@ -31,7 +31,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Data.FastString (FastString)
+import GHC.Data.EnumSet qualified as EnumSet
+import GHC.Data.FastString (FastString, fsLit)
 import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Decls (DerivClauseTys (..), DocDecl (..), HsDecl (..), LHsDecl)
 import GHC.Hs.Doc (LHsDoc, WithHsDocIdentifiers (..))
@@ -50,9 +51,10 @@ import GHC.Hs.ImpExp
     isImportDeclQualified,
   )
 import GHC.Hs.Type (HsType (..), LHsContext, LHsSigType)
+import GHC.Parser.Header (toArgs)
 import GHC.Types.Name (Name)
 import GHC.Types.Name.Occurrence (OccName)
-import GHC.Types.SrcLoc (unLoc)
+import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 import GHC.Unit.Types (Unit)
 import Language.Haskell.Syntax.Extension (XRec)
 import Language.Haskell.Syntax.Module.Name (ModuleName)
@@ -69,8 +71,9 @@ import Tilia.Comments
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Pragma (languageNames)
+import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
-import Tilia.Span (Span (..))
+import Tilia.Span (Span (..), startPoint)
 import Tilia.Span.Ghc (spanOf, spansOf)
 import Tilia.Utils (tshow)
 
@@ -440,6 +443,10 @@ typeNameOf = dataTypeName . dataTypeOf
 -- legitimately rewrite one—a @-- ^ x@ that moves in front of what it
 -- documents has to become @-- | x@—so the text is not expected to survive,
 -- but the comment is.
+--
+-- The pragmas of the header are also read as GHC reads them: the flags of
+-- the options have to come out in the same order, and what GHC's own flag
+-- reader puts in force after all of them has to stay the same.
 commentDifference ::
   -- | The module as written.
   ParsedModule ->
@@ -449,6 +456,23 @@ commentDifference ::
 commentDifference parsedBefore parsedAfter
   | not (Set.null lost) = Just ("lost the pragma " <> pragmaList lost)
   | not (Set.null gained) = Just ("invented the pragma " <> pragmaList gained)
+  | optionsBefore /= optionsAfter =
+      Just
+        ( "changed the flags of the options pragmas from "
+            <> flagList optionsBefore
+            <> " to "
+            <> flagList optionsAfter
+        )
+  | haddockBefore /= haddockAfter =
+      Just
+        ( "changed the OPTIONS_HADDOCK pragmas from "
+            <> flagList haddockBefore
+            <> " to "
+            <> flagList haddockAfter
+        )
+  | flagsBefore /= flagsAfter,
+    Just why <- inForceDifference (inForceAfter flagsBefore) (inForceAfter flagsAfter) =
+      Just why
   | docsBefore /= docsAfter =
       Just $
         "the module's "
@@ -477,6 +501,15 @@ commentDifference parsedBefore parsedAfter
       Just lastLine -> (<= lastLine) . spanStartLine . commentSpan
 
     lost = pragmasOf before `Set.difference` pragmasOf after
+    headerBefore = headerPragmas parsedBefore
+    headerAfter = headerPragmas parsedAfter
+    flagsBefore = concatMap pragmaFlags headerBefore
+    flagsAfter = concatMap pragmaFlags headerAfter
+    optionsBefore = filter (not . T.isPrefixOf "-X") flagsBefore
+    optionsAfter = filter (not . T.isPrefixOf "-X") flagsAfter
+    haddockBefore = [pragmaBody p | p <- headerBefore, pragmaName p == "OPTIONS_HADDOCK"]
+    haddockAfter = [pragmaBody p | p <- headerAfter, pragmaName p == "OPTIONS_HADDOCK"]
+    flagList flags = "`" <> T.unwords flags <> "`"
     gained = pragmasOf after `Set.difference` pragmasOf before
     docsBefore = length (documentation before)
     docsAfter = length (documentation after)
@@ -513,6 +546,54 @@ commentDifference parsedBefore parsedAfter
       T.intercalate ", "
         . fmap (\(n, b) -> "{-# " <> n <> " " <> b <> " #-}")
         . Set.toList
+
+-- | The pragmas of a module's header, which are all the pragmas GHC reads,
+-- in the order they are written.
+headerPragmas :: ParsedModule -> [Pragma]
+headerPragmas m =
+  mapMaybe commentPragma (takeWhile inHeader (comments (pmSource m)))
+  where
+    inHeader c =
+      maybe True ((startPoint (commentSpan c) <) . startPoint) (pmHeaderEnd m)
+
+-- | The flags GHC reads off a pragma of a module's header.
+pragmaFlags :: Pragma -> [Text]
+pragmaFlags p = case pragmaName p of
+  "LANGUAGE" -> ["-X" <> name | name <- languageNames (pragmaBody p)]
+  "OPTIONS_GHC" -> arguments
+  "OPTIONS" -> arguments
+  _ -> []
+  where
+    arguments =
+      either (const [pragmaBody p]) (fmap (T.pack . unLoc)) $
+        toArgs (mkRealSrcLoc (fsLit "") 1 1) (T.unpack (pragmaBody p))
+
+-- | How what GHC puts in force after a module's header changed, if it did.
+inForceDifference :: InForce -> InForce -> Maybe Text
+inForceDifference before after
+  | inForceEdition before /= inForceEdition after =
+      Just
+        ( "changed the edition in force from "
+            <> edition before
+            <> " to "
+            <> edition after
+        )
+  | inForceSafety before /= inForceSafety after =
+      Just
+        ( "changed the Safe Haskell mode from "
+            <> tshow (inForceSafety before)
+            <> " to "
+            <> tshow (inForceSafety after)
+        )
+  | null on && null off = Nothing
+  | otherwise =
+      Just ("changed the extensions in force" <> turned "on" on <> turned "off" off)
+  where
+    on = EnumSet.toList (inForceExtensions after `EnumSet.difference` inForceExtensions before)
+    off = EnumSet.toList (inForceExtensions before `EnumSet.difference` inForceExtensions after)
+    edition = maybe "the default" tshow . inForceEdition
+    turned _ [] = ""
+    turned how es = ", turning " <> how <> " " <> T.intercalate ", " (fmap tshow es)
 
 -- | A comment's lines, as they are compared.
 bodyKey :: Comment -> NonEmpty Text

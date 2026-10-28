@@ -94,6 +94,7 @@ library
     Tilia.Palette
     Tilia.Parser
     Tilia.Pragma
+    Tilia.Pragma.Ghc
     Tilia.Process
     Tilia.Render
     Tilia.Render.Class

@@ -32,6 +32,11 @@
   where it is written rather than being moved above the line, where it
   takes effect, and the module is parsed without what it names, as GHC
   parses it. [Issue 288](https://github.com/mrkkrp/tilia/issues/288).
+* `--check-ast` reads the pragmas of the header as GHC reads them, and
+  reports a module whose formatting would change the order of the flags of
+  its options, its `OPTIONS_HADDOCK` pragmas, or the extensions, the
+  edition or the Safe Haskell mode that GHC's own flag reader puts in force
+  after them. [PR 322](https://github.com/mrkkrp/tilia/pull/322).
 
 ## Tilia 0.1.2.0
 

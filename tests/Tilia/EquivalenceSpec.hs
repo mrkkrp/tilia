@@ -137,6 +137,71 @@ spec = do
       "module M where\nimport Data.Maybe\nimport Data.Char () -- not needed, just\n                    -- re-exported\n"
         `losesTheCommentsOf` "module M where\n\nimport Data.Char () -- not needed, just\nimport Data.Maybe\n"
 
+  describe "what the header puts in force" $ do
+    it "does not mind language pragmas sorted where that changes nothing" $
+      "{-# LANGUAGE NoStarIsType #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\n"
+        `keepsTheCommentsOf` "{-# LANGUAGE TypeOperators #-}\n{-# LANGUAGE NoStarIsType #-}\nmodule M where\n"
+
+    it "does not mind options sorted below the language pragmas" $
+      "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
+        `keepsTheCommentsOf` "{-# LANGUAGE LambdaCase #-}\n{-# OPTIONS_GHC -Wall #-}\nmodule M where\n"
+
+    it "does not mind Haddock's options sorted below GHC's" $
+      "{-# OPTIONS_HADDOCK not-home #-}\n{-# OPTIONS_GHC -Wall #-}\nmodule M where\n"
+        `keepsTheCommentsOf` "{-# OPTIONS_GHC -Wall #-}\n{-# OPTIONS_HADDOCK not-home #-}\nmodule M where\n"
+
+    it "notices Haddock's options coming out in another order" $
+      differsBecause
+        "{-# OPTIONS_HADDOCK hide #-}\n{-# OPTIONS_HADDOCK not-home #-}\nmodule M where\n"
+        "{-# OPTIONS_HADDOCK not-home #-}\n{-# OPTIONS_HADDOCK hide #-}\nmodule M where\n"
+        "changed the OPTIONS_HADDOCK pragmas"
+
+    it "notices the flags of options coming out in another order" $
+      differsBecause
+        "{-# OPTIONS_GHC -Wall #-}\n{-# OPTIONS -Wno-orphans #-}\nmodule M where\n"
+        "{-# OPTIONS -Wno-orphans #-}\n{-# OPTIONS_GHC -Wall #-}\nmodule M where\n"
+        "changed the flags of the options pragmas"
+
+    it "notices an options pragma written twice coming out once" $
+      differsBecause
+        "{-# OPTIONS_GHC -fplugin-opt=P:x #-}\n{-# OPTIONS_GHC -fplugin-opt=P:x #-}\nmodule M where\n"
+        "{-# OPTIONS_GHC -fplugin-opt=P:x #-}\nmodule M where\n"
+        "changed the flags of the options pragmas"
+
+    it "notices an extension turned off by names moved past each other" $
+      differsBecause
+        "{-# LANGUAGE NoLambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
+        "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE NoLambdaCase #-}\nmodule M where\n"
+        "turning off LambdaCase"
+
+    it "notices an extension turned off past one implying it" $
+      differsBecause
+        "{-# LANGUAGE NoMonoLocalBinds #-}\n{-# LANGUAGE TypeFamilies #-}\nmodule M where\n"
+        "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE NoMonoLocalBinds #-}\nmodule M where\n"
+        "turning off MonoLocalBinds"
+
+    it "notices the Prelude turned back on past RebindableSyntax" $
+      differsBecause
+        "{-# LANGUAGE ImplicitPrelude #-}\n{-# LANGUAGE RebindableSyntax #-}\nmodule M where\n"
+        "{-# LANGUAGE RebindableSyntax #-}\n{-# LANGUAGE ImplicitPrelude #-}\nmodule M where\n"
+        "turning on ImplicitPrelude"
+
+    it "notices an option turning off what a language pragma turns on" $
+      differsBecause
+        "{-# OPTIONS_GHC -XNoLambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
+        "{-# LANGUAGE LambdaCase #-}\n{-# OPTIONS_GHC -XNoLambdaCase #-}\nmodule M where\n"
+        "turning off LambdaCase"
+
+    it "notices another edition named last" $
+      differsBecause
+        "{-# LANGUAGE Haskell2010 #-}\n{-# LANGUAGE GHC2021 #-}\nmodule M where\n"
+        "{-# LANGUAGE GHC2021 #-}\n{-# LANGUAGE Haskell2010 #-}\nmodule M where\n"
+        "changed the edition in force"
+
+    it "does not mind a pragma below the header, which GHC does not read" $
+      "module M where\n{-# LANGUAGE NoLambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\nf = 1\n"
+        `keepsTheCommentsOf` "module M where\n{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE NoLambdaCase #-}\nf = 1\n"
+
 ----------------------------------------------------------------------------
 -- Helpers
 
@@ -152,6 +217,12 @@ saysSomethingElseThan went came =
 
 keepsTheCommentsOf :: Text -> Text -> Expectation
 keepsTheCommentsOf went came = difference went came `shouldBe` Nothing
+
+-- | Two modules that differ, for a reason that says the given thing.
+differsBecause :: Text -> Text -> Text -> Expectation
+differsBecause went came reason = case difference went came of
+  Nothing -> expectationFailure "saw no difference"
+  Just why -> why `shouldSatisfy` T.isInfixOf reason
 
 losesTheCommentsOf :: Text -> Text -> Expectation
 losesTheCommentsOf went came =
