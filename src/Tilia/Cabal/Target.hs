@@ -253,7 +253,7 @@ filesOfComponents root components = do
     directories =
       Map.unionsWith
         (<>)
-        [ Map.mapKeys (joined (directoryOf (componentRoot c))) (componentSources c)
+        [ Map.mapKeys (joined (asDirectory (componentRoot c))) (componentSources c)
         | c <- components
         ]
     present (directory, wanted) = do
@@ -264,8 +264,8 @@ filesOfComponents root components = do
 
 -- | A directory spelled so that a path can be appended to it without
 -- further normalisation.
-directoryOf :: FilePath -> FilePath
-directoryOf = dropTrailingPathSeparator . normalise
+asDirectory :: FilePath -> FilePath
+asDirectory = dropTrailingPathSeparator . normalise
 
 -- | The @.cabal@ files the project is made of.
 --
@@ -397,7 +397,7 @@ declaredComponents root described =
           componentSources =
             Map.unionsWith
               (<>)
-              [ sourcesIn (directoryOf d) declared
+              [ sourcesIn (asDirectory d) declared
               | branch <- branches,
                 (d, declared) <- addedSources branch
               ]
