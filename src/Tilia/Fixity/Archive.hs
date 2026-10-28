@@ -90,7 +90,7 @@ data InArchive
   = -- | Haskell, as the package wrote it.
     Haskell Text
   | -- | A module written for @hsc2hs@. Its text is not kept: there is
-    -- nothing to be done with it, and 'hscFixities' answers for it.
+    -- nothing to be done with it, and it is taken to declare nothing.
     ForHsc
 
 -- | What was found under one ending amounts to.

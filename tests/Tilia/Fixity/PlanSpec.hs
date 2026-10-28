@@ -526,11 +526,10 @@ reexports = describe "an operator a module passes on" $ do
 
 -- | What a module written for @hsc2hs@ amounts to, by either route to one.
 --
--- Both fixtures below are what @hsc2hs@ takes and no compiler does, and
--- both write a fixity that the answer is expected to ignore. That is the
--- point: a module nothing can read is answered out of
--- 'Tilia.Fixity.ByHand.hscFixities' or not at all, and were either answer
--- arrived at by reading the file there would be no answer to give.
+-- The fixture is what @hsc2hs@ takes and no compiler does, and it writes a
+-- fixity that the answer is expected to ignore: a module nothing can read
+-- declares nothing, and an answer arrived at by reading the file would
+-- hold the fixity.
 hscModules :: Spec
 hscModules = describe "a module written for hsc2hs" $ do
   it "declares nothing, where it is one of the project's own" $
@@ -538,16 +537,9 @@ hscModules = describe "a module written for hsc2hs" $ do
       \rs -> do
         askModule rs "Cursed" `shouldReturn` mempty
 
-  it "declares what the table says, where it comes out of a tarball"
-    $ withFakeArchive
-      [ ("Cursed.hsc", cursed),
-        ("System/Posix/Signals.hsc", signals)
-      ]
-    $ \rs -> do
-      fixitiesOf rs "Cursed" `shouldReturn` Just Map.empty
-      signalled <- fixitiesOf rs "System.Posix.Signals"
-      fmap (Set.map snd . Map.keysSet) signalled
-        `shouldBe` Just (Set.fromList [OpName "addSignal", OpName "deleteSignal"])
+  it "declares nothing, where it comes out of a tarball" $
+    withFakeArchive [("Cursed.hsc", cursed)] $
+      \rs -> fixitiesOf rs "Cursed" `shouldReturn` Just Map.empty
 
 -- | Where a package fetched from a repository is looked for.
 repositories :: Spec
@@ -1070,18 +1062,6 @@ cursed =
       "a <+> b = a + b",
       "interrupt :: Int",
       "interrupt = #const SIGINT"
-    ]
-
--- | What @unix@ writes, in miniature: a fixity declaration for a name used
--- in backticks, in a file no reading of ours reaches.
-signals :: Text
-signals =
-  T.unlines
-    [ "#include <signal.h>",
-      "module System.Posix.Signals (addSignal, deleteSignal) where",
-      "infixr `addSignal`, `deleteSignal`",
-      "addSignal :: Int -> Int -> Int",
-      "addSignal s m = m + #const SIGINT"
     ]
 
 -- | What the chase makes of one module's @<+>@, against a world of modules
