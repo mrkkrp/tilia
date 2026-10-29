@@ -128,6 +128,11 @@
   among the statements of a `do` block, or between the equations of a
   function, no longer comes out carrying on the line above it.
   [Issue 279](https://github.com/mrkkrp/tilia/issues/279).
+* A file whose formatting throws an exception is reported as failing, with
+  the exception, rather than the exception ending the run with "thread
+  blocked indefinitely in an MVar operation" and leaving every other file
+  unwritten and unreported.
+  [Issue 291](https://github.com/mrkkrp/tilia/issues/291).
 
 ## Tilia 0.1.2.0
 

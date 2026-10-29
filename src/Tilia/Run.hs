@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Running the formatter over a set of files.
 module Tilia.Run
@@ -25,6 +26,14 @@ module Tilia.Run
   )
 where
 
+import Control.Exception
+  ( SomeAsyncException,
+    SomeException,
+    displayException,
+    evaluate,
+    fromException,
+    tryJust,
+  )
 import Data.ByteString qualified as BS
 import Data.List (sortOn)
 import Data.Map.Strict qualified as Map
@@ -34,7 +43,7 @@ import Data.Text.Encoding qualified as T
 import System.FilePath (takeExtension)
 import Tilia.Diff (diffInFull)
 import Tilia.Format
-  ( FormatError (Unreadable),
+  ( FormatError (Threw, Unreadable),
     Session,
     describeFormatError,
     formatErrorExitCode,
@@ -107,7 +116,7 @@ runOver :: Session -> [FilePath] -> IO [(FilePath, Outcome)]
 runOver session = inParallel one
   where
     one path = do
-      !outcome <-
+      outcome <-
         readAsUtf8 path >>= \case
           Left why -> pure (Failed (Unreadable path why))
           Right before -> outcomeOf session path before
@@ -123,11 +132,17 @@ outcomeOf ::
   Text ->
   IO Outcome
 outcomeOf session path before =
-  formatSource session path (setNewlineStyle Lf source) >>= \case
-    Left e -> pure (if refused e then Declined e else Failed e)
-    Right formatted -> pure (formattingOutcome before (mark <> formatted))
+  either (Failed . Threw path) id
+    <$> tryJust thrown (evaluate . outcome =<< formatted)
   where
+    formatted = formatSource session path (setNewlineStyle Lf source)
+    outcome = \case
+      Left e -> if refused e then Declined e else Failed e
+      Right it -> formattingOutcome before (mark <> it)
     (mark, source) = byteOrderMark before
+    thrown (e :: SomeException) = case fromException e of
+      Just (_ :: SomeAsyncException) -> Nothing
+      Nothing -> Just (T.pack (displayException e))
 
 -- | Read a source file as UTF-8.
 readAsUtf8 :: FilePath -> IO (Either Text Text)

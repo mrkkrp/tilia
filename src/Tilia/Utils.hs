@@ -23,14 +23,14 @@ module Tilia.Utils
 where
 
 import Control.Concurrent
-  ( forkIO,
+  ( forkFinally,
     getNumCapabilities,
     newEmptyMVar,
     putMVar,
     takeMVar,
   )
-import Control.Exception (SomeException, displayException, try)
-import Control.Monad (replicateM)
+import Control.Exception (SomeException, displayException, throwIO, try)
+import Control.Monad (replicateM, (>=>))
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
@@ -135,7 +135,8 @@ collected = foldl put []
       (before, (_, vs) : after) -> before <> [(k, vs <> [v])] <> after
       _ -> seen <> [(k, [v])]
 
--- | Run an action over every element at once, as far as the machine allows.
+-- | Run an action over every element at once, as far as the machine allows,
+-- passing on an exception it throws.
 inParallel :: (a -> IO b) -> [a] -> IO [b]
 inParallel act xs = do
   capabilities <- getNumCapabilities
@@ -152,6 +153,6 @@ inParallel act xs = do
               atomicModifyIORef' answers (\m -> (Map.insert i y m, ()))
               worker
   done <- replicateM (max 1 (min capabilities (length xs))) newEmptyMVar
-  for_ done $ \signal -> forkIO (worker >> putMVar signal ())
-  traverse_ takeMVar done
+  for_ done $ \signal -> forkFinally worker (putMVar signal)
+  traverse_ (takeMVar >=> either throwIO pure) done
   Map.elems <$> readIORef answers
