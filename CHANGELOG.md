@@ -51,6 +51,11 @@
   `ImplicitPrelude` and `CUSKs`, after the rest; where sorting them would
   change what is in force, they keep the order they are written in, as
   before. [PR 323](https://github.com/mrkkrp/tilia/pull/323).
+* A `LANGUAGE` pragma holding a comment, as in `, PolyKinds -- for T` on
+  one of its lines, is read past the comment, as GHC reads it, and kept as
+  written, rather than taking the name and the comment together for a name
+  and putting the comment before the `#-}` of a pragma of its own, which GHC
+  could not read. [Issue 324](https://github.com/mrkkrp/tilia/issues/324).
 
 ## Tilia 0.1.2.0
 

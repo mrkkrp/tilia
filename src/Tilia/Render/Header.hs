@@ -14,8 +14,9 @@ where
 import Control.Applicative ((<|>))
 import Data.Function (on)
 import Data.List (sortOn)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, isNothing)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -45,7 +46,10 @@ data HeaderPragma = HeaderPragma
     -- | @LANGUAGE@, @OPTIONS_GHC@, @OPTIONS@ or @OPTIONS_HADDOCK@.
     hpName :: Text,
     -- | One extension, or the whole of an options string.
-    hpBody :: Text
+    hpBody :: Text,
+    -- | The lines it was written on, where it is a language pragma holding a
+    -- comment, which it keeps as written.
+    hpWritten :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Show)
 
@@ -92,7 +96,9 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
         { hpSpan = commentSpan c,
           hpRun = directivesAbove (spanStartLine (commentSpan c)),
           hpName = pragmaName p,
-          hpBody = pragmaBody p
+          hpBody = pragmaBody p,
+          hpWritten =
+            if pragmaCommented p then Just (commentBody c) else Nothing
         }
     headerPragma c = do
       p <- commentPragma c
@@ -162,17 +168,18 @@ pragmaBlock =
     dedupe = fmap NE.head . NE.groupBy repeated
     repeated a b = hpName a == "LANGUAGE" && key a == key b
     split p
-      | hpName p == "LANGUAGE" =
+      | hpName p == "LANGUAGE",
+        isNothing (hpWritten p) =
           [ p{hpBody = body}
           | body <- languageNames (hpBody p)
           ]
       | otherwise = [p]
 
-    render p =
-      located
-        (hpSpan p)
-        (txt "{-# " <> txt (hpName p) <> space <> txt (hpBody p) <> txt " #-}")
-        <> hardBreak
+    render p = located (hpSpan p) (written p) <> hardBreak
+    written p = case hpWritten p of
+      Nothing ->
+        txt "{-# " <> txt (hpName p) <> space <> txt (hpBody p) <> txt " #-}"
+      Just ls -> verbatim (T.intercalate "\n" (NE.toList ls))
 
 -- | Does this name a whole edition of the language rather than one
 -- extension of it?

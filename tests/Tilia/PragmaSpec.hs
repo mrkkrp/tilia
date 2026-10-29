@@ -107,6 +107,11 @@ spec = do
             <> "{-# LANGUAGE NoMagicHash #-}\n"
         )
         `shouldBe` []
+    it "reads the names of a language pragma past the comments in it" $
+      inForceUnder
+        []
+        "{-# LANGUAGE\n    LambdaCase -- for f\n  , {- c -} MagicHash\n  #-}\nmodule M where\n"
+        `shouldBe` [LambdaCase, MagicHash]
     it "ignores a pragma below the module line, which GHC does not read" $
       inForceUnder [] "module M where\n{-# LANGUAGE LambdaCase #-}\n"
         `shouldBe` []

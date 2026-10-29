@@ -39,6 +39,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
+import Tilia.Pragma (withoutSkippedComments)
 import Tilia.Source.Lines (Lines, blankAt, directiveOnLine, lineAt, lineTexts)
 import Tilia.Span (Span (..), covers)
 import Tilia.Span.Ghc (spanOfReal)
@@ -453,26 +454,31 @@ data Pragma = Pragma
   { -- | The name, upper-cased as GHC expects it, e.g. @LANGUAGE@.
     pragmaName :: Text,
     -- | Everything between the name and the closing @#-}@, with the
-    -- surrounding whitespace removed but nothing else touched.
-    pragmaBody :: Text
+    -- surrounding whitespace removed, on one line, and without the comments
+    -- GHC skips in a @LANGUAGE@ pragma.
+    pragmaBody :: Text,
+    -- | Whether it holds such a comment.
+    pragmaCommented :: Bool
   }
   deriving (Eq, Show)
 
 -- | Recognise a pragma.
 commentPragma :: Comment -> Maybe Pragma
 commentPragma c = do
-  inner <- T.stripSuffix "#-}" =<< T.stripPrefix "{-#" oneLine
-  let (name, body) = T.break isSpace (T.stripStart inner)
+  inner <- T.stripSuffix "#-}" =<< T.stripPrefix "{-#" (T.strip written)
+  let uncommented = withoutSkippedComments inner
+      (name, body) = T.break isSpace (T.stripStart uncommented)
   if T.null name
     then Nothing
     else
       Just
         Pragma
           { pragmaName = T.toUpper name,
-            pragmaBody = T.strip body
+            pragmaBody = T.strip (T.unwords (fmap T.strip (T.lines body))),
+            pragmaCommented = uncommented /= inner
           }
   where
-    oneLine = T.unwords (fmap T.strip (NE.toList (commentBody c)))
+    written = T.intercalate "\n" (NE.toList (commentBody c))
 
 -- | How many characters of a line come before the compiler's column.
 --

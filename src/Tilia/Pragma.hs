@@ -13,6 +13,7 @@ module Tilia.Pragma
     flagSwitches,
     optionFlags,
     languageNames,
+    withoutSkippedComments,
     sameInForce,
   )
 where
@@ -238,22 +239,51 @@ scanPragmas past = go
       | T.null t = []
       | Just body <- T.stripPrefix "{-#" t = case T.breakOn "#-}" body of
           (_, after) | T.null after -> []
-          (inner, after) -> T.unwords (T.words inner) : go (T.drop 3 after)
+          (inner, after) ->
+            T.unwords (T.words (withoutSkippedComments inner))
+              : go (T.drop 3 after)
       | Just after <- T.stripPrefix "{-" t = go (skipBlock (1 :: Int) after)
       | opensLineComment t = go (T.dropWhile (/= '\n') t)
       | otherwise = past go t
 
-    opensLineComment t = case T.stripPrefix "--" t of
-      Nothing -> False
-      Just rest ->
-        maybe True (not . symbolic . fst) (T.uncons (T.dropWhile (== '-') rest))
+-- | What a pragma holds between its @{-#@ and its @#-}@, without the
+-- comments GHC skips in it: those of a @LANGUAGE@ pragma, which then comes
+-- out on one line.
+withoutSkippedComments :: Text -> Text
+withoutSkippedComments inner
+  | T.any (\c -> c == '-' || c == '{') inner,
+    T.toUpper keyword == "LANGUAGE" =
+      T.unwords (T.words (withoutComments inner))
+  | otherwise = inner
+  where
+    keyword = T.takeWhile (not . isSpace) (T.stripStart inner)
 
+-- | A text without its comments, each of which leaves a space behind.
+withoutComments :: Text -> Text
+withoutComments t
+  | T.null t = t
+  | Just after <- T.stripPrefix "{-" t =
+      " " <> withoutComments (skipBlock (1 :: Int) after)
+  | opensLineComment t = withoutComments (T.dropWhile (/= '\n') t)
+  | otherwise =
+      let (plain, rest) = T.break (\c -> c == '{' || c == '-') (T.drop 1 t)
+       in T.take 1 t <> plain <> withoutComments rest
+
+-- | Does a line comment begin here?
+opensLineComment :: Text -> Bool
+opensLineComment t = case T.stripPrefix "--" t of
+  Nothing -> False
+  Just rest ->
+    maybe True (not . symbolic . fst) (T.uncons (T.dropWhile (== '-') rest))
+  where
     symbolic c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
 
-    skipBlock 0 t = t
-    skipBlock n t0 = inBlock n (T.dropWhile (\c -> c /= '{' && c /= '-') t0)
-
-    inBlock n t
+-- | What follows the end of a block comment this deep in comments.
+skipBlock :: Int -> Text -> Text
+skipBlock 0 t = t
+skipBlock n t0 = inBlock (T.dropWhile (\c -> c /= '{' && c /= '-') t0)
+  where
+    inBlock t
       | T.null t = t
       | Just after <- T.stripPrefix "{-" t = skipBlock (n + 1) after
       | Just after <- T.stripPrefix "-}" t = skipBlock (n - 1) after
