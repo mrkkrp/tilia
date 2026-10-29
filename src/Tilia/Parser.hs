@@ -19,7 +19,7 @@ where
 import Data.Foldable (toList)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (isSuffixOf, nub, sortOn)
+import Data.List (isSuffixOf, sortOn)
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -27,7 +27,6 @@ import Data.Text.Encoding qualified as T
 import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
-import GHC.Driver.Session qualified as GHC
 import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension)
@@ -223,7 +222,7 @@ isQuasiQuote = \case
 stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
 stateFor config path source =
   GHC.initParserState
-    (parserOpts (inForce config source))
+    (parserOpts (effectiveExtensions (pcDefaults config) source))
     (GHC.stringBufferFromByteString (T.encodeUtf8 source))
     (GHC.mkRealSrcLoc (mkFastString path) 1 1)
 
@@ -231,20 +230,8 @@ stateFor config path source =
 readAlike :: ParserConfig -> Text -> Text -> Bool
 readAlike config a b = bits a == bits b
   where
-    bits = GHC.pExtsBitmap . parserOpts . inForce config
-
--- | The extensions to parse a module with.
-inForce :: ParserConfig -> Text -> [Extension]
-inForce config = withImplied . effectiveExtensions (pcDefaults config)
-
--- | Close a set of extensions under what they imply.
-withImplied :: [Extension] -> [Extension]
-withImplied = settle . nub
-  where
-    settle es =
-      let es' = nub (es <> concatMap implied es)
-       in if length es' == length es then es else settle es'
-    implied e = [to | (from, GHC.On to) <- GHC.impliedXFlags, from == e]
+    bits =
+      GHC.pExtsBitmap . parserOpts . effectiveExtensions (pcDefaults config)
 
 -- | Options to parse with.
 parserOpts :: [Extension] -> GHC.ParserOpts
