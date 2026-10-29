@@ -11,6 +11,8 @@ module Tilia.Source.Lines
     lineTexts,
     lineAt,
     blankAt,
+    offsetOf,
+    columnOf,
     directivePresentOnLine,
     directiveOnLine,
     conditionalKeywords,
@@ -77,6 +79,30 @@ lineAt n ls
 -- | Was this line empty?
 blankAt :: Int -> Lines -> Bool
 blankAt n = maybe False (T.all isSpace) . lineAt n
+
+-- | How many characters of a line come before the compiler's column.
+--
+-- A column is not a character offset. The lexer counts a tab as advancing to
+-- the next multiple of eight, so a line with a tab in it has more columns
+-- than it has characters, and cutting the text at a column would cut in the
+-- wrong place. In a file indented with tabs that is every line.
+offsetOf :: Text -> Int -> Int
+offsetOf line column = T.length (T.take (walk 0 1) line)
+  where
+    walk i c
+      | c >= column = i
+      | i >= T.length line = i + (column - c)
+      | otherwise = walk (i + 1) (afterChar (T.index line i) c)
+
+-- | The compiler's column for the character at this offset.
+columnOf :: Text -> Int -> Int
+columnOf line offset = T.foldl' (flip afterChar) 1 (T.take offset line)
+
+-- | Where the column moves to once this character has been read.
+afterChar :: Char -> Int -> Int
+afterChar ch c
+  | ch == '\t' = ((c - 1) `div` 8 + 1) * 8 + 1
+  | otherwise = c + 1
 
 -- | Does this line hold a preprocessor directive?
 directivePresentOnLine :: Int -> Lines -> Bool

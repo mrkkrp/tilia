@@ -43,7 +43,7 @@ import Tilia.Doc.Internal
     unwrap,
     wrap,
   )
-import Tilia.Source (Lines, lineAt)
+import Tilia.Source (Lines, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 
 -- | A conditional other than the one asked about that answering a question
@@ -769,7 +769,7 @@ choiceAt written edge = go Flat False
       Just s ->
         maybe
           False
-          (T.all isSpace . T.take (spanStartColumn s - 1))
+          (\l -> T.all isSpace (T.take (offsetOf l (spanStartColumn s)) l))
           (lineAt (spanStartLine s) written)
       Nothing -> False
 
