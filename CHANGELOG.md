@@ -92,6 +92,14 @@
   indented with a tab, as it already did where they are indented with
   spaces, rather than coming out in two.
   [Issue 297](https://github.com/mrkkrp/tilia/issues/297).
+* A line that holds nothing but a use of a function-like macro and is
+  indented with a tab is taken to be at the column the tab moves it to, as
+  GHC takes it, rather than at the count of characters before it. One at the
+  column of the code under it is put back as written, rather than the module
+  being declined where the use does not read as code, and one further in is
+  read as code that carries on the line above, rather than put back at the
+  level of the code under it.
+  [PR 333](https://github.com/mrkkrp/tilia/pull/333).
 
 ## Tilia 0.1.2.0
 
