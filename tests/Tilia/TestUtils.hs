@@ -5,6 +5,7 @@
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
+    underAsciiLocale,
     parserConfigFor,
     defaultParserConfig,
     effectiveExtensionsFor,
@@ -36,8 +37,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
 import GHC.Driver.Session qualified as GHC
+import GHC.IO.Encoding (getLocaleEncoding, setLocaleEncoding)
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Environment (lookupEnv, setEnv, unsetEnv)
+import System.IO (mkTextEncoding)
 import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
 import Tilia.Comments (Comment)
@@ -78,6 +81,14 @@ withEnvironment vars act = bracket set restore (const act)
       setEnv key value
       pure (key, was)
     restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
+
+-- | Run something with files opened in ASCII, as under @LANG=C@, and the
+-- locale's encoding as it was afterwards however it turns out.
+underAsciiLocale :: IO a -> IO a
+underAsciiLocale act = do
+  ascii <- mkTextEncoding "ASCII"
+  bracket getLocaleEncoding setLocaleEncoding $ \_ ->
+    setLocaleEncoding ascii >> act
 
 -- | What to parse a module with, given what its package puts in force, or
 -- 'Nothing' for a module of no package, which is read as GHC2021.

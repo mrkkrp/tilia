@@ -17,7 +17,7 @@ import Test.Hspec
 import Tilia.Fixity
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
-import Tilia.TestUtils (withEnvironment)
+import Tilia.TestUtils (underAsciiLocale, withEnvironment)
 
 spec :: Spec
 spec = do
@@ -65,6 +65,14 @@ spec = do
                 ]
         storeEstablished cache "thing-1.0" "Edges" established
         cachedEstablished cache "thing-1.0" "Edges" `shouldReturn` Just established
+
+      it "round-trips a name that is not ASCII under any locale" $ \cache -> do
+        let established =
+              declaring [((InTerms, OpName "∘"), Fixity RightAssoc 9)]
+        underAsciiLocale $ do
+          storeEstablished cache "thing-1.0" "Compose" established
+          cachedEstablished cache "thing-1.0" "Compose"
+            `shouldReturn` Just established
 
       it "remembers that a module declares nothing" $ \cache -> do
         storeEstablished cache "thing-1.0" "Quiet" mempty
