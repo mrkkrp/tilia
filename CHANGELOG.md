@@ -106,6 +106,11 @@
   plan `cabal` solved ask it to solve again, and a sub-library the plan
   leaves out no longer counts as planned where the main library is.
   [Issue 296](https://github.com/mrkkrp/tilia/issues/296).
+* A source directory that two packages name through different paths, as
+  `shared` in one and `../a/shared` in the other, is taken to be one
+  directory, so `check` and `inplace` format each module in it once, rather
+  than once under each path.
+  [Issue 295](https://github.com/mrkkrp/tilia/issues/295).
 
 ## Tilia 0.1.2.0
 

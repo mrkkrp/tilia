@@ -8,7 +8,7 @@ import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
@@ -236,6 +236,25 @@ spec = do
             files <- filesOfComponents root cs
             length cs `shouldBe` 2
             fmap takeFileName files `shouldBe` ["One.hs", "Shared.hs", "Two.hs"]
+
+    it "names a file once when two packages reach its directory differently"
+      $ withProject
+        [ ("cabal.project", "packages: one two\n"),
+          ("one/one.cabal", packageWith "one" ["src", "shared"] ["A", "Common"]),
+          ("one/src/A.hs", "module A where\n"),
+          ("one/shared/Common.hs", "module Common where\n"),
+          ("two/two.cabal", packageWith "two" ["src", "../one/shared"] ["B", "Common"]),
+          ("two/src/B.hs", "module B where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            files
+              `shouldBe` fmap
+                (prPath root </>)
+                ["one/shared/Common.hs", "one/src/A.hs", "two/src/B.hs"]
 
     it "leaves out files no component declares"
       $ withProject
@@ -474,7 +493,8 @@ packageWith name dirs modules =
 -- | Lay out a project in a temporary directory and hand over its root.
 withProject :: [(FilePath, Text)] -> (ProjectRoot -> IO a) -> IO a
 withProject files act =
-  withSystemTempDirectory "tilia-target" $ \directory -> do
+  withSystemTempDirectory "tilia-target" $ \temporary -> do
+    directory <- canonicalizePath temporary
     mapM_ (place directory) files
     act (ProjectRoot directory (marker files))
   where

@@ -38,7 +38,7 @@ import Distribution.PackageDescription
     unUnqualComponentName,
   )
 import Distribution.Types.PackageId (PackageIdentifier (..))
-import System.Directory (doesFileExist, listDirectory)
+import System.Directory (canonicalizePath, doesFileExist, listDirectory)
 import System.FilePath
   ( dropTrailingPathSeparator,
     normalise,
@@ -241,6 +241,14 @@ spellTarget = \case
 -- the ones the project's @.tiliaignore@ files exclude.
 filesOfComponents :: ProjectRoot -> [Component] -> IO [FilePath]
 filesOfComponents root components = do
+  directories <-
+    Map.fromListWith (<>)
+      <$> sequence
+        [ (,wanted) <$> quietly d (canonicalizePath d)
+        | c <- components,
+          (written, wanted) <- Map.toList (componentSources c),
+          let d = joined (componentRoot c) written
+        ]
   candidates <- concat <$> traverse present (Map.toList directories)
   let inProject =
         [ (path, below)
@@ -251,12 +259,6 @@ filesOfComponents root components = do
   let excluded = Set.fromList [path | (path, below) <- inProject, isIgnored ignoreFiles below]
   pure (sort (filter (`Set.notMember` excluded) candidates))
   where
-    directories =
-      Map.unionsWith
-        (<>)
-        [ Map.mapKeys (joined (asDirectory (componentRoot c))) (componentSources c)
-        | c <- components
-        ]
     present (directory, wanted) = do
       entries <- quietly [] (listDirectory directory)
       filterM
