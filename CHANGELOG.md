@@ -46,6 +46,11 @@
   after `RankNTypes`, stays off when the module is parsed, as with GHC,
   rather than being turned back on.
   [PR 323](https://github.com/mrkkrp/tilia/pull/323).
+* The `LANGUAGE` pragmas of a header are sorted by name after the
+  editions, rather than with the names that turn an extension off, and then
+  `ImplicitPrelude` and `CUSKs`, after the rest; where sorting them would
+  change what is in force, they keep the order they are written in, as
+  before. [PR 323](https://github.com/mrkkrp/tilia/pull/323).
 
 ## Tilia 0.1.2.0
 
