@@ -246,6 +246,22 @@ spec = do
       lookupFixity (fullScope definesItsOwn) InTerms Nothing (OpName "clamp")
         `shouldBe` Resolved defaultFixity ReportDefault
 
+    it "passes over every one for a name an as-pattern binds" $
+      lookupFixity
+        (fullScope "module M where\nimport Opaque\nplus@_ = (+)\n")
+        InTerms
+        Nothing
+        (OpName "plus")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "still blames one for a name bound inside the function of a view pattern" $
+      lookupFixity
+        (fullScope "{-# LANGUAGE ViewPatterns #-}\nmodule M where\nimport Opaque\n((\\clamp -> clamp) -> n) = 1\n")
+        InTerms
+        Nothing
+        (OpName "clamp")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
     it "passes over every one for a use under the module's own name" $
       lookupFixity (fullScope definesItsOwn) InTerms (Just "M") (OpName "clamp")
         `shouldBe` Resolved defaultFixity ReportDefault

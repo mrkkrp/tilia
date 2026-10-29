@@ -74,7 +74,6 @@ import Data.Bifunctor (first)
 import Data.Char (isUpper)
 import Data.Choice (Choice, isTrue)
 import Data.Foldable (toList)
-import Data.Generics.Schemes (listify)
 import Data.List (nub, sortOn, tails)
 import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -193,7 +192,7 @@ declaredNamespaces hsModule =
             : [opName (unLoc (fdLName (unLoc f))) | f <- tcdATs]
       _ -> []
     terms = \case
-      ValD _ b -> boundNames b
+      ValD _ b -> fmap opName (collectHsBindBinders CollNoDictBinders b)
       SigD _ sig -> signedNames sig
       ForD _ f -> [opName (unLoc (fd_name f))]
       TyClD _ d@DataDecl{} -> fmap snd (membersOf d)
@@ -273,19 +272,6 @@ declaredNames :: HsModule GhcPs -> Set (Namespace, OpName)
 declaredNames hsModule = Set.map (InTypes,) types <> Set.map (InTerms,) terms
   where
     (types, terms) = declaredNamespaces hsModule
-
--- | The names a binding brings into being.
-boundNames :: HsBind GhcPs -> [OpName]
-boundNames = \case
-  FunBind _ n _ -> [opName (unLoc n)]
-  PatBind _ p _ _ -> [opName n | VarPat _ (L _ n) <- listify isVarPat p]
-  PatSynBind _ (PSB _ n _ _ _) -> [opName (unLoc n)]
-  _ -> []
-  where
-    isVarPat :: Pat GhcPs -> Bool
-    isVarPat = \case
-      VarPat{} -> True
-      _ -> False
 
 -- | The module's own name, if it declares one.
 moduleName :: HsModule GhcPs -> Maybe Text
