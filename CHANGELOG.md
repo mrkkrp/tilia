@@ -87,6 +87,11 @@
   the fixity it has in the namespace it is exported in, as a type or as a
   term, rather than in both.
   [Issue 302](https://github.com/mrkkrp/tilia/issues/302).
+* A conditional that begins among the bindings of a `where` clause and goes
+  on into the declarations after it stays whole where the bindings are
+  indented with a tab, as it already did where they are indented with
+  spaces, rather than coming out in two.
+  [Issue 297](https://github.com/mrkkrp/tilia/issues/297).
 
 ## Tilia 0.1.2.0
 
