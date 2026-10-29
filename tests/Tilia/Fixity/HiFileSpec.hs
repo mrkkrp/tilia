@@ -138,7 +138,7 @@ offered declared m i =
   byOperator (interfaceDeclares i)
     <> Set.unions
       [ byOperator (Map.filterWithKey (\(_, o) _ -> o == op) fixities)
-      | (from, op) <- interfaceReexports i,
+      | (from, _, op) <- interfaceReexports i,
         from /= m,
         Just fixities <- [declared from]
       ]

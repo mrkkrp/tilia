@@ -7,6 +7,7 @@
 -- an interface, not a documented one.
 module Tilia.Fixity.InterfaceSpec (spec) where
 
+import Data.List (nub)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -77,11 +78,9 @@ spec = do
                      ("Data.Aeson.Types.FromJSON", OpName "parseJSON")
                    ]
 
-    it "takes a record field, written after a bar" $
+    it "takes a record field written after a bar, and not its type" $
       passesOn "exports:\n  Data.Aeson.Encoding.Internal.Encoding'|{Data.Aeson.Encoding.Internal.fromEncoding}\n"
-        `shouldBe` [ ("Data.Aeson.Encoding.Internal", OpName "Encoding'"),
-                     ("Data.Aeson.Encoding.Internal", OpName "fromEncoding")
-                   ]
+        `shouldBe` [("Data.Aeson.Encoding.Internal", OpName "fromEncoding")]
 
     it "keeps a type apart from the module holding it" $
       passesOn "exports:\n  Data.Aeson.Types.Internal.Value\n"
@@ -103,8 +102,7 @@ spec = do
 
     it "reads them among the members of a type exported without itself" $
       passesOn "exports:\n  GHC.Internal.Bits.Bits|{GHC.Internal.Bits..&. GHC.Internal.Bits..|. GHC.Internal.Bits.complement}\n"
-        `shouldBe` [ ("GHC.Internal.Bits", OpName "Bits"),
-                     ("GHC.Internal.Bits", OpName ".&."),
+        `shouldBe` [ ("GHC.Internal.Bits", OpName ".&."),
                      ("GHC.Internal.Bits", OpName ".|."),
                      ("GHC.Internal.Bits", OpName "complement")
                    ]
@@ -193,6 +191,15 @@ spec = do
         (fromHiFile "M" (HiFile "M" [AvailTC (inM InTypes "T") [inM InTerms "field"]] []))
         `shouldBe` Right (Just (Set.fromList [(InTerms, OpName "field")]))
 
+    it "passes on the members of a type exported without itself" $
+      fmap
+        interfaceReexports
+        ( fromHiFile
+            "M"
+            (HiFile "M" [AvailTC (inN InTypes ":<:") [inN InTerms "inj"]] [])
+        )
+        `shouldBe` Right [("N", InTerms, OpName "inj")]
+
   describe "a fixity for a name the module does not export" $ do
     it "is left out of a decoded interface" $
       fmap
@@ -212,6 +219,9 @@ spec = do
     it "is left out of what ghc --show-iface prints" $
       declares "exports:\n  <+>\n  parser\nfixities infixl 3 <+>, infixr 2 <~>\n"
         `shouldBe` [(OpName "<+>", Fixity LeftAssoc 3)]
+
+    it "is left out for a type a bar says is exported without itself" $
+      declares "exports:\n  :<:|{inj}\nfixities infixr 4 :<:\n" `shouldBe` []
 
     it "is left out where the module passes on another name spelled the same" $
       declares "exports:\n  GHC.Internal.Base.>>=\nfixities infixr 2 >>=\n"
@@ -234,7 +244,10 @@ spec = do
       fmap (Map.toList . interfaceDeclares) (parseInterface "Data.Aeson" out)
         `shouldBe` Just [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
       fmap interfaceReexports (parseInterface "Data.Aeson" out)
-        `shouldBe` Just [("Data.Aeson.Types.FromJSON", OpName ".:")]
+        `shouldBe` Just
+          [ ("Data.Aeson.Types.FromJSON", InTypes, OpName ".:"),
+            ("Data.Aeson.Types.FromJSON", InTerms, OpName ".:")
+          ]
 
   describe "output it will not read" $ do
     it "refuses what does not name a module at all" $
@@ -264,8 +277,14 @@ declaresIn :: Text -> [((Namespace, OpName), Fixity)]
 declaresIn =
   maybe [] (Map.toList . interfaceDeclares) . parseInterface "M" . (header "M" <>)
 
+-- | What a module of this shape passes on, namespace aside.
 passesOn :: Text -> [(Text, OpName)]
-passesOn = maybe [] interfaceReexports . parseInterface "M" . (header "M" <>)
+passesOn =
+  nub
+    . fmap (\(m, _, op) -> (m, op))
+    . maybe [] interfaceReexports
+    . parseInterface "M"
+    . (header "M" <>)
 
 -- | The members of each exported name, in a settled order.
 members :: Text -> [(OpName, [OpName])]
@@ -277,3 +296,7 @@ members =
 -- | A name the module @M@ declares.
 inM :: Namespace -> Text -> HiName
 inM namespace = HiName "M" namespace . OpName
+
+-- | A name another module, N, declares.
+inN :: Namespace -> Text -> HiName
+inN namespace = HiName "N" namespace . OpName
