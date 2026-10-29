@@ -16,6 +16,8 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Control.DeepSeq (force)
+import Control.Exception (evaluate)
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (isSpace)
 import Data.List (isSuffixOf)
@@ -35,7 +37,8 @@ import Tilia.Utils (fieldWords, quietly)
 packageModules :: FilePath -> IO (Maybe [Text])
 packageModules tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
-  pure (containedModules <$> cabalFileInArchive (Tar.read (GZip.decompress bytes)))
+  evaluate . force $
+    containedModules <$> cabalFileInArchive (Tar.read (GZip.decompress bytes))
 
 -- | The first @.cabal@ file at the top level of an archive.
 --
