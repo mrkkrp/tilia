@@ -25,7 +25,7 @@ module Tilia.Doc.Internal
     TrailingWhitespace (..),
 
     -- * Rendering
-    render,
+    printDoc,
   )
 where
 
@@ -403,8 +403,8 @@ emptyOut =
     }
 
 -- | Turn a document into text.
-render :: Doc -> Text
-render doc = finish (go env doc emptyOut)
+printDoc :: Doc -> Text
+printDoc doc = finish (go env doc emptyOut)
   where
     env =
       Env
