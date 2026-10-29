@@ -11,6 +11,7 @@ module Tilia.Pragma
     lookupEdition,
     nameSwitch,
     flagSwitches,
+    optionFlags,
     languageNames,
     sameInForce,
   )
@@ -24,8 +25,11 @@ import Data.Maybe (mapMaybe, maybeToList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Data.FastString (fsLit)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension (..))
+import GHC.Parser.Header (toArgs)
+import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas.
 movesPositions :: Text -> Bool
@@ -104,9 +108,15 @@ saysOf name body = case name of
   _ -> ([], [])
   where
     options =
-      ( mapMaybe (lookupEdition <=< T.stripPrefix "-X") (T.words body),
-        concatMap flagSwitches (T.words body)
+      ( mapMaybe (lookupEdition <=< T.stripPrefix "-X") (optionFlags body),
+        concatMap flagSwitches (optionFlags body)
       )
+
+-- | The flags of the body of an options pragma, split as GHC splits them.
+optionFlags :: Text -> [Text]
+optionFlags body =
+  either (const (T.words body)) (fmap (T.pack . unLoc)) $
+    toArgs (mkRealSrcLoc (fsLit "") 1 1) (T.unpack body)
 
 -- | The extension a name turns on, or off where it puts @No@ in front of one.
 nameSwitch :: Text -> Maybe (GHC.OnOff Extension)
