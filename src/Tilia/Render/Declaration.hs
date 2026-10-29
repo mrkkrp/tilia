@@ -169,7 +169,7 @@ declKind = \case
   SigD _ sig
     | Just n <- specialisedName sig -> (PragmaDeclaration, [n])
   ValD _ (FunBind _ (L _ n) _) -> (FunctionBody, [n])
-  ValD _ (PatBind _ p _ _) -> (FunctionBody, boundNames p)
+  ValD _ (PatBind _ p _ _) -> (FunctionBody, collectPatBinders CollNoDictBinders p)
   ValD _ (PatSynBind _ (PSB _ (L _ n) _ _ _)) -> (PatternDefinition, [n])
   AnnD _ (HsAnnotation _ (ValueAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
   AnnD _ (HsAnnotation _ (TypeAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
@@ -184,24 +184,6 @@ declKind = \case
   DocD _ (DocCommentNext _) -> (DocumentsNext, [])
   DocD _ (DocCommentPrev _) -> (DocumentsPrevious, [])
   _ -> (Unremarkable, [])
-
--- | The names a pattern binding brings into scope.
-boundNames :: LPat GhcPs -> [RdrName]
-boundNames (L _ p) = case p of
-  VarPat _ (L _ n) -> [n]
-  AsPat _ (L _ n) inner -> n : boundNames inner
-  NPlusKPat _ (L _ n) _ _ _ _ -> [n]
-  LazyPat _ inner -> boundNames inner
-  BangPat _ inner -> boundNames inner
-  ParPat _ inner -> boundNames inner
-  SigPat _ inner _ -> boundNames inner
-  ViewPat _ _ inner -> boundNames inner
-  SumPat _ inner _ _ -> boundNames inner
-  TuplePat _ ps _ -> concatMap boundNames ps
-  ListPat _ ps -> concatMap boundNames ps
-  OrPat _ ps -> concatMap boundNames (NE.toList ps)
-  ConPat _ _ details -> concatMap boundNames (hsConPatArgs details)
-  _ -> []
 
 -- | Should these two declarations be printed with no blank line between
 -- them?
