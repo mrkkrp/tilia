@@ -6,7 +6,7 @@
 module Tilia.Utils
   ( quietly,
     attempted,
-    readFileText,
+    readUtf8File,
     fieldWords,
     asUtf8,
     byteOrderMark,
@@ -53,9 +53,9 @@ quietly fallback action =
     Left (_ :: SomeException) -> pure fallback
     Right a -> pure a
 
--- | Read a file, if it is there and is text.
-readFileText :: FilePath -> IO (Maybe Text)
-readFileText path = quietly Nothing $ do
+-- | Read a file as UTF-8, leniently, if it is there and can be read.
+readUtf8File :: FilePath -> IO (Maybe Text)
+readUtf8File path = quietly Nothing $ do
   there <- doesFileExist path
   if there
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
