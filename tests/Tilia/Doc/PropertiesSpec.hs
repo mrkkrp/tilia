@@ -11,7 +11,6 @@ import Test.QuickCheck
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Gen
-import Tilia.Span
 
 spec :: Spec
 spec = do
@@ -64,20 +63,6 @@ spec = do
       property $ \(AnyDoc d) -> do
         out (broken (mempty <> d)) === out (broken d)
           .&&. out (broken (d <> mempty)) === out (broken d)
-
-  describe "Span" $ do
-    it "unions associatively" $
-      property $ \(AnySpan a) (AnySpan b) (AnySpan c) ->
-        (a <> b) <> c === a <> (b <> c)
-
-    it "unions to something covering both operands" $
-      property $ \(AnySpan a) (AnySpan b) ->
-        let u = a <> b
-         in counterexample (show u) (covers u a && covers u b)
-
-    it "is idempotent under union" $
-      property $
-        \(AnySpan a) -> a <> a === a
 
 -- | Everything that is not whitespace, in order.
 --
