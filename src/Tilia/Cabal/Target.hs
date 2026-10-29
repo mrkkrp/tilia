@@ -306,11 +306,11 @@ packageToCabalFile :: FilePath -> Text -> IO [FilePath]
 packageToCabalFile root entry = do
   paths <-
     packageGlobToCabalFiles
-      root
-      (fmap T.unpack (T.split (== '/') (T.dropWhile (== '.') stripped)))
+      (if "/" `T.isPrefixOf` written then "/" else root)
+      (fmap T.unpack (T.split (== '/') written))
   concat <$> traverse asPackage paths
   where
-    stripped = T.dropWhile (== '/') (T.strip entry)
+    written = T.strip entry
     asPackage path
       | ".cabal" `isSuffixOf` path = do
           there <- quietly False (doesFileExist path)

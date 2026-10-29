@@ -130,6 +130,44 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
+    it "reads a package an entry goes up to"
+      $ withProject
+        [ ("proj/cabal.project", "packages: ../lib\n"),
+          ("lib/lib.cabal", packageWith "lib" ["src"] ["L"]),
+          ("lib/src/L.hs", "module L where\n")
+        ]
+      $ \root -> do
+        let project = ProjectRoot (prPath root </> "proj") ProjectFile
+        componentsOfTarget project Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents project cs
+            fmap takeFileName files `shouldBe` ["L.hs"]
+
+    it "reads a package an absolute entry names"
+      $ withProject
+        [ ("proj/cabal.project", ""),
+          ("lib/lib.cabal", package "lib" "src")
+        ]
+      $ \root -> do
+        T.writeFile
+          (prPath root </> "proj" </> "cabal.project")
+          ("packages: " <> T.pack (prPath root </> "lib") <> "\n")
+        componentsOfTarget (ProjectRoot (prPath root </> "proj") ProjectFile) Everything
+          >>= \case
+            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Right cs -> fmap componentPackage cs `shouldBe` ["lib"]
+
+    it "reads a package in a directory whose name begins with a dot"
+      $ withProject
+        [ ("cabal.project", "packages: .hidden\n"),
+          (".hidden/hidden.cabal", package "hidden" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> fmap componentPackage cs `shouldBe` ["hidden"]
+
     it "expands a glob in the packages field"
       $ withProject
         [ ("cabal.project", "packages: pkgs/*/*.cabal\n"),

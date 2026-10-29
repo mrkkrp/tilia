@@ -139,6 +139,11 @@
   download does not bring in is remembered under the plan, as it already
   was where the plan did not cover a component.
   [Issue 289](https://github.com/mrkkrp/tilia/issues/289).
+* An entry of the `packages` field of a `cabal.project` that begins with
+  dots or a slash, as `../lib`, `/abs/lib` or `.hidden`, is looked for where
+  it points, as `cabal` looks for it, rather than under the project with the
+  dots and the slash taken off, where it was usually not found and passed
+  over. [Issue 294](https://github.com/mrkkrp/tilia/issues/294).
 
 ## Tilia 0.1.2.0
 
