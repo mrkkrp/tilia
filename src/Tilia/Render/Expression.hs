@@ -169,12 +169,7 @@ exprBody ctx site here = \case
         <> joinedBy "::"
         <> indent (hsSigType ctx hswc_body)
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
-  HsTypedBracket (bracketAnn, _) e ->
-    txt opener
-      <> breakOrNothing
-      <> insideBrackets here (hsExpr ctx e)
-      <> breakOrNothing
-      <> txt "||]"
+  HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" (hsExpr ctx e)
     where
       opener = case bracketAnn of
         BracketNoE{} -> "[||"
@@ -1196,24 +1191,19 @@ spliceTH ctx typed e = \case
 -- | A Template Haskell quotation.
 quotation :: Ctx -> Maybe Span -> HsQuote GhcPs -> Doc
 quotation ctx here = \case
-  ExpBr (bracketAnn, _) e -> quoted (flavour bracketAnn) (hsExpr ctx e)
+  ExpBr (bracketAnn, _) e -> quotedAs (flavour bracketAnn) (hsExpr ctx e)
     where
       flavour = \case
         BracketNoE{} -> ""
         BracketHasE{} -> "e"
-  PatBr _ p -> quoted "p" (hsPat ctx p)
+  PatBr _ p -> quotedAs "p" (hsPat ctx p)
   DecBrL _ decls ->
-    quoted "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx Free decls))
+    quotedAs "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx Free decls))
   DecBrG _ _ -> error "Tilia: DecBrG is produced by the renamer"
-  TypBr _ ty -> quoted "t" (starGuard ty (hsType ctx ty))
+  TypBr _ ty -> quotedAs "t" (starGuard ty (hsType ctx ty))
   VarBr _ isSingle n -> txt (if isSingle then "'" else "''") <> name ctx n
   where
-    quoted flavour body =
-      txt "["
-        <> txt flavour
-        <> txt "|"
-        <> breakOrNothing
-        <> indent (insideBrackets here body <> breakOrNothing <> txt "|]")
+    quotedAs flavour = quoted here ("[" <> flavour <> "|") "|]"
     starGuard x body
       | risky = space <> body <> space
       | otherwise = body
@@ -1227,6 +1217,22 @@ quotation ctx here = \case
     isAbstract = \case
       ClosedTypeFamily Nothing -> True
       _ -> False
+
+-- | The body of a quotation between its brackets, indented where it breaks.
+quoted ::
+  -- | Where the quotation is written.
+  Maybe Span ->
+  -- | The opening bracket.
+  Text ->
+  -- | The closing bracket.
+  Text ->
+  -- | The body.
+  Doc ->
+  Doc
+quoted here opener closer body =
+  txt opener
+    <> breakOrNothing
+    <> indent (insideBrackets here body <> breakOrNothing <> txt closer)
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.

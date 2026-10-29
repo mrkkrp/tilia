@@ -10,9 +10,9 @@ expression =
 
 typed =
   [||
-  width * height
-  -- in pixels
-  ||]
+    width * height
+    -- in pixels
+    ||]
 
 declarations =
   [d|

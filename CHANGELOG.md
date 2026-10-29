@@ -71,6 +71,11 @@
   tarball that is not gzip, or is cut short, leaves its package unread, so
   that a module needing its fixities is declined, rather than ending the
   run. [Issue 303](https://github.com/mrkkrp/tilia/issues/303).
+* The body of a typed Template Haskell quote written over several lines, as
+  in `[|| … ||]`, is indented under its opening bracket together with its
+  closing one, as that of an untyped quote is, rather than coming out at
+  the column of the brackets.
+  [Issue 300](https://github.com/mrkkrp/tilia/issues/300).
 
 ## Tilia 0.1.2.0
 
