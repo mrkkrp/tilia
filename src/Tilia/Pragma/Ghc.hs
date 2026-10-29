@@ -25,6 +25,7 @@ import GHC.Types.SafeHaskell (SafeHaskellMode)
 import GHC.Types.SrcLoc (noLoc)
 import GHC.Unit.Types (stringToUnitId)
 import GHC.Utils.Fingerprint (fingerprint0)
+import Tilia.Pragma (flagSwitches)
 
 -- | What the flags of a header settle, whatever was in force before them.
 data InForce = InForce
@@ -62,17 +63,15 @@ readFlags flags = snd (GHC.runCmdLineP reading defaults)
     args = fmap T.unpack flags
 
 -- | The flags of GHC's that can switch an extension, the edition or the Safe
--- Haskell mode, by name: the @-X@ ones and those that spell an extension the
--- old way.
+-- Haskell mode, by name: the @-X@ ones and the rest of those 'flagSwitches'
+-- reads.
 switchingFlags :: Map String (Flag (GHC.CmdLineP GHC.DynFlags))
 switchingFlags =
   Map.fromList
     [(flagName f, f) | f <- GHC.flagsDynamic, switching (flagName f)]
   where
-    switching name = "X" `isPrefixOf` name || name `elem` oldSpellings
-    oldSpellings =
-      ["cpp", "fglasgow-exts", "fno-glasgow-exts"]
-        <> concat [["f" <> n, "fno-" <> n] | n <- GHC.flagSpecName <$> GHC.fLangFlags]
+    switching name =
+      "X" `isPrefixOf` name || not (null (flagSwitches (T.pack ('-' : name))))
 
 -- | What GHC puts in force before it reads any flag.
 defaults :: GHC.DynFlags

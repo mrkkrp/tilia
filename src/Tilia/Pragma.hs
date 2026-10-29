@@ -10,6 +10,7 @@ module Tilia.Pragma
     lookupExtension,
     lookupEdition,
     nameSwitch,
+    flagSwitches,
     languageNames,
     sameInForce,
   )
