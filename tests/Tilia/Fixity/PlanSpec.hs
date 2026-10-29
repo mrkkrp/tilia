@@ -52,7 +52,12 @@ import Tilia.Cabal.Plan hiding (checkReadiness, prepareWith)
 import Tilia.Cabal.Plan qualified as Plan
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
-import Tilia.Fixity.Cache (PlanToken (..), openCache, storePackageCache)
+import Tilia.Fixity.Cache
+  ( PlanToken (..),
+    openCache,
+    storeFutileFetch,
+    storePackageCache,
+  )
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Fixity.PackageDb
   ( Installed (..),
@@ -201,6 +206,49 @@ preparation = describe "preparing a project" $ do
       Plan.prepareWith (Do #useCache) (Don't #download) (obliging steps) undiscoveredFutility [] dir readiness
         `shouldReturn` Right ()
       readIORef steps `shouldReturn` []
+
+  it "does not fetch again what fetching did not bring in" $
+    withTempProject (Just wantingATarball) $ \dir -> do
+      steps <- newIORef []
+      refused <- newIORef []
+      let futility =
+            undiscoveredFutility
+              { fetchWasFutileFor = readIORef refused,
+                rememberFutileFetch = writeIORef refused
+              }
+          missing = SourcesMissing ["tilia-phantom"]
+          again = prepareWith (obliging steps) futility [] dir missing
+      again `shouldReturn` Right ()
+      readIORef refused `shouldReturn` ["tilia-phantom"]
+      again `shouldReturn` Right ()
+      readIORef steps `shouldReturn` [fetching]
+
+  it "does not fetch after a solve what fetching did not bring in" $
+    withTempProject Nothing $ \dir -> do
+      steps <- newIORef []
+      let cabal args = do
+            record steps args
+            when (args == solving) (writePlan dir wantingATarball)
+            pure (Right ())
+          futility =
+            undiscoveredFutility{fetchWasFutileFor = pure ["tilia-phantom"]}
+      prepareWith cabal futility [] dir PlanMissing `shouldReturn` Right ()
+      readIORef steps `shouldReturn` [solving]
+
+  it "takes nothing for futile when told not to download" $
+    withTempProject (Just narrowAndWanting) $ \dir -> do
+      refused <- newIORef []
+      let futility =
+            undiscoveredFutility
+              { solveWasFutile = pure True,
+                rememberFutileFetch = writeIORef refused
+              }
+          narrow = PlanNarrow ["thing:test:tests"]
+          offline = Plan.prepareWith (Do #useCache) (Don't #download)
+      steps <- newIORef []
+      offline (obliging steps) futility [component "test:tests"] dir narrow
+        `shouldReturn` Right ()
+      readIORef refused `shouldReturn` []
 
   it "runs nothing at all when nothing is missing" $ do
     steps <- newIORef []
@@ -625,23 +673,29 @@ packageCache = describe "where the package cache is looked for" $ do
 
   describe "and where it was remembered" $ do
     it "is not asked again where the plan's tarballs are there" $
-      withRemembered True $ \root asked found -> do
+      withRemembered True [] $ \root asked found -> do
         asked `shouldBe` []
         found `shouldBe` [root </> "hackage.haskell.org/thing/1.0/thing-1.0.tar.gz"]
 
     it "is asked again where a tarball of the plan is not there" $
-      withRemembered False $ \_ asked _ ->
+      withRemembered False [] $ \_ asked _ ->
         asked `shouldBe` ["path"]
+
+    it "is not asked again for a tarball fetching did not bring in" $
+      withRemembered False ["thing"] $ \_ asked _ ->
+        asked `shouldBe` []
 
 -- | Find the tarballs of a plan wanting one package from Hackage, where the
 -- package cache was remembered to be a directory of its own, holding the
--- tarball or not, and hand over the directory, the commands the stand-in
--- for @cabal@ was given, and where each tarball was found.
+-- tarball or not, and a fetch was remembered not to bring in the packages
+-- given, and hand over the directory, the commands the stand-in for
+-- @cabal@ was given, and where each tarball was found.
 withRemembered ::
   Bool ->
+  [Text] ->
   (FilePath -> [String] -> [FilePath] -> Expectation) ->
   Expectation
-withRemembered holding act =
+withRemembered holding refused act =
   withSystemTempDirectory "tilia-remembered" $ \root -> do
     let at = root </> "hackage.haskell.org" </> "thing" </> "1.0"
     when holding $ do
@@ -649,6 +703,7 @@ withRemembered holding act =
       T.writeFile (at </> "thing-1.0.tar.gz") "not really a tarball"
     cache <- openCache (Do #useCache) (PlanToken (T.pack (takeBaseName root)))
     storePackageCache cache root
+    storeFutileFetch cache refused
     withTempProject (Just (fromRepository hackage)) $ \dir ->
       readBuildPlan (planPathFor dir) >>= \case
         Left why -> expectationFailure (T.unpack why)

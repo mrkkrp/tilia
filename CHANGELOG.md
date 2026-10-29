@@ -133,6 +133,12 @@
   blocked indefinitely in an MVar operation" and leaving every other file
   unwritten and unreported.
   [Issue 291](https://github.com/mrkkrp/tilia/issues/291).
+* A dependency whose source is still missing after a download is no
+  longer downloaded again on every run, nor is `cabal` asked twice where it
+  keeps sources, which formatting on save paid for each time: what a
+  download does not bring in is remembered under the plan, as it already
+  was where the plan did not cover a component.
+  [Issue 289](https://github.com/mrkkrp/tilia/issues/289).
 
 ## Tilia 0.1.2.0
 
