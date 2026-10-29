@@ -80,6 +80,9 @@ spec = do
     it "reads the flags of OPTIONS" $
       inForceUnder [] "{-# OPTIONS -XLambdaCase #-}\n"
         `shouldBe` [LambdaCase]
+    it "reads the flags of an options pragma as GHC splits them" $
+      inForceUnder [] "{-# OPTIONS_GHC \"-XLambdaCase\" #-}\n"
+        `shouldBe` [LambdaCase]
     it "reads -cpp as turning on CPP" $
       inForceUnder [] "{-# OPTIONS_GHC -cpp #-}\n"
         `shouldBe` [Cpp]

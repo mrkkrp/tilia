@@ -31,7 +31,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Data.FastString (FastString, fsLit)
+import GHC.Data.FastString (FastString)
 import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Decls (DerivClauseTys (..), DocDecl (..), HsDecl (..), LHsDecl)
 import GHC.Hs.Doc (LHsDoc, WithHsDocIdentifiers (..))
@@ -50,10 +50,9 @@ import GHC.Hs.ImpExp
     isImportDeclQualified,
   )
 import GHC.Hs.Type (HsType (..), LHsContext, LHsSigType)
-import GHC.Parser.Header (toArgs)
 import GHC.Types.Name (Name)
 import GHC.Types.Name.Occurrence (OccName)
-import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
+import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Types (Unit)
 import Language.Haskell.Syntax.Extension (XRec)
 import Language.Haskell.Syntax.Module.Name (ModuleName)
@@ -69,7 +68,7 @@ import Tilia.Comments
   )
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
-import Tilia.Pragma (languageNames)
+import Tilia.Pragma (languageNames, optionFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..), startPoint)
@@ -559,13 +558,9 @@ headerPragmas m =
 pragmaFlags :: Pragma -> [Text]
 pragmaFlags p = case pragmaName p of
   "LANGUAGE" -> ["-X" <> name | name <- languageNames (pragmaBody p)]
-  "OPTIONS_GHC" -> arguments
-  "OPTIONS" -> arguments
+  "OPTIONS_GHC" -> optionFlags (pragmaBody p)
+  "OPTIONS" -> optionFlags (pragmaBody p)
   _ -> []
-  where
-    arguments =
-      either (const [pragmaBody p]) (fmap (T.pack . unLoc)) $
-        toArgs (mkRealSrcLoc (fsLit "") 1 1) (T.unpack (pragmaBody p))
 
 -- | How what the flags of a module's header settle changed, if it did.
 inForceDifference :: InForce -> InForce -> Maybe Text
