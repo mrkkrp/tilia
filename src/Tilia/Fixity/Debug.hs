@@ -4,9 +4,7 @@
 
 -- | An account of how a module's fixities were determined.
 module Tilia.Fixity.Debug
-  ( FixityNotes (..),
-    ImportNote (..),
-    OperatorNote (..),
+  ( FixityNotes,
     fixityNotes,
     renderFixityNotes,
   )

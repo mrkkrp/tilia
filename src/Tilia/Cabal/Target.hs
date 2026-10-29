@@ -9,7 +9,7 @@ module Tilia.Cabal.Target
     parseTarget,
     Component (..),
     Wanted (..),
-    TargetProblem (..),
+    TargetProblem,
     describeTargetProblem,
     componentsOfTarget,
     componentInPlan,
