@@ -13,6 +13,7 @@ module Tilia.Cpp.Place
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.List (sortOn, unsnoc)
 import Data.Map.Strict (Map)
@@ -462,61 +463,64 @@ placeAt ::
   Int ->
   -- | What to put there.
   Doc ->
-  -- | How to put it among the lines of something that begins above it, at
-  -- that thing's own indentation.
+  -- | How to put it before code printed further in, which carries on a line
+  -- above.
   (Doc -> Doc) ->
   Doc ->
   Doc
-placeAt present written n body continuing = among [] body
+placeAt present written n body continuing = among []
   where
-    within ctx b d = case d of
-      DNest 0 x -> DNest 0 (within ctx b x)
-      DNest k x -> DNest k (within ctx body x)
-      DAlign x -> DAlign (within ctx body x)
-      DGroup l x -> DGroup l (within ctx b x)
-      DVariant x y -> DVariant (within ctx b x) (within ctx b y)
+    within ctx d = case d of
+      DNest k x -> DNest k (within ctx x)
+      DAlign x -> DAlign (within ctx x)
+      DGroup l x -> DGroup l (within ctx x)
+      DVariant x y -> DVariant (within ctx x) (within ctx y)
       DLocated s x
-        | spanStartLine s > n -> among ctx b d
-        | DCppChoice{} <- x -> DLocated s (within ctx b x)
-        | otherwise -> DLocated s (within ctx (continuing body) x)
-      DFence s x -> DFence s (within ctx b x)
+        | spanStartLine s > n -> among ctx d
+        | otherwise -> DLocated s (within ctx x)
+      DFence s x -> DFence s (within ctx x)
       DCppChoice cs bs e
         | present ctx -> d
         | otherwise -> case alternativeAt n cs of
             Everywhere ->
               DCppChoice
                 cs
-                [(g, among (ctx <> [(cs, k)]) b x) | (k, (g, x)) <- zip [0 ..] bs]
-                (among (ctx <> [(cs, length bs)]) b e)
+                [(g, among (ctx <> [(cs, k)]) x) | (k, (g, x)) <- zip [0 ..] bs]
+                (among (ctx <> [(cs, length bs)]) e)
             Only k
               | k < length bs ->
                   DCppChoice
                     cs
-                    (replaced k (among (ctx <> [(cs, k)]) b (maybe mempty snd (listToMaybe (drop k bs)))) bs)
+                    (replaced k (among (ctx <> [(cs, k)]) (maybe mempty snd (listToMaybe (drop k bs)))) bs)
                     e
-              | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) b e)
+              | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) e)
             Nowhere -> d
-      _ -> among ctx b d
+      _ -> among ctx d
 
-    among ctx b d
+    among ctx d
       | present ctx = d
       | otherwise = case break startsAfter (spine d) of
           (before, after)
             | Just (earlier, holder, spacing) <- lastBounded before,
               maybe False (>= n) (endOf holder) ->
-                mconcat (earlier <> [within ctx b holder] <> spacing <> after)
+                mconcat (earlier <> [within ctx holder] <> spacing <> after)
             | (later, holder : rest) <- break holds after ->
-                mconcat (before <> later <> [within ctx b holder] <> rest)
+                mconcat (before <> later <> [within ctx holder] <> rest)
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
                 if any (`blankAt` ls) [from .. n - 1] || not (all onlySpacing spacing)
-                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, b] <> after)
-                  else mconcat (printed <> [anchor, b] <> spacing <> after)
+                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, putBefore after] <> after)
+                  else mconcat (printed <> [anchor, putBefore (spacing <> after)] <> spacing <> after)
             | next : rest <- after,
               any (not . onlySpacing) (takeWhile unbounded (reverse before)) ->
-                mconcat (before <> [within ctx b next] <> rest)
-            | otherwise -> mconcat (before <> [b] <> after)
+                mconcat (before <> [within ctx next] <> rest)
+            | otherwise -> mconcat (before <> [putBefore after] <> after)
+
+    putBefore following =
+      if maybe False (> 0) (firstNesting (mconcat following))
+        then continuing body
+        else body
 
     holds = \case
       DLocated s _ -> spanStartLine s < n && n <= spanEndLine s
@@ -576,6 +580,17 @@ alternativeAt n cs = case branches of
         from < n,
         n < to
       ]
+
+-- | How many steps further in than itself a document prints its first
+-- text, if it prints any.
+firstNesting :: Doc -> Maybe Int
+firstNesting = \case
+  DText _ -> Just 0
+  DCat a b -> firstNesting a <|> firstNesting b
+  DNest k x -> (+ k) <$> firstNesting x
+  DVariant _ x -> firstNesting x
+  DCppChoice _ bs e -> foldr ((<|>) . firstNesting . snd) (firstNesting e) bs
+  d -> firstNesting . snd =<< unwrap d
 
 -- | The lines a document was printed from, first and last.
 boundsOf :: Doc -> Maybe (Int, Int)
