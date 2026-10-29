@@ -1,4 +1,5 @@
--- | Something that can appear as the body of an enclosing construct.
+-- | The bodies of enclosing constructs, and how each joins what comes
+-- before it.
 module Tilia.Doc.Body
   ( Body (..),
     attachBody,
