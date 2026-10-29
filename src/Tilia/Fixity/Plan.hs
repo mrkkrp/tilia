@@ -458,23 +458,23 @@ fromInterface interfaceOf modName =
       declarers <-
         inParallel
           asked
-          (distinct (fmap fst (interfaceReexports iface)))
+          (distinct [m | (m, _, _) <- interfaceReexports iface])
       let declarer m = join (lookup m declarers)
       pure
         Established
           { establishedFixities =
-              Map.union (interfaceDeclares iface) . Map.unions $
-                [ Map.filterWithKey
-                    (\(_, o) _ -> o == op)
-                    (interfaceDeclares declared)
-                | (m, op) <- interfaceReexports iface,
-                  Just declared <- [declarer m]
+              Map.union (interfaceDeclares iface) . Map.fromList $
+                [ ((namespace, op), fixity)
+                | (m, namespace, op) <- interfaceReexports iface,
+                  Just declared <- [declarer m],
+                  Just fixity <-
+                    [Map.lookup (namespace, op) (interfaceDeclares declared)]
                 ],
             establishedUnsettled =
               Map.fromListWith
                 Set.union
-                [ ([m], Set.fromList [(InTypes, op), (InTerms, op)])
-                | (m, op) <- interfaceReexports iface,
+                [ ([m], Set.singleton (namespace, op))
+                | (m, namespace, op) <- interfaceReexports iface,
                   Nothing <- [declarer m]
                 ],
             establishedUntold = Set.empty,

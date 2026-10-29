@@ -17,7 +17,7 @@ import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing, mapMaybe, maybeToList)
+import Data.Maybe (isNothing, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -33,8 +33,9 @@ data Interface = Interface
   { -- | The fixities the module declares itself for the names it exports,
     -- by the namespace each governs.
     interfaceDeclares :: Fixities,
-    -- | The names it reexports, each with the source module.
-    interfaceReexports :: [(Text, OpName)],
+    -- | The names it reexports, each with the source module and the
+    -- namespace it is exported in.
+    interfaceReexports :: [(Text, Namespace, OpName)],
     -- | The members it exports with each name, which is what @T(..)@ in an
     -- import list stands for.
     interfaceMembers :: Map OpName (Set OpName),
@@ -79,8 +80,8 @@ fromHiFile modName HiFile{..}
                   Set.member (namespace, op) exportedHere
                 ],
             interfaceReexports =
-              [ (m, op)
-              | (Just m, _, op) <- concatMap mentioned hiExports,
+              [ (m, namespace, op)
+              | HiName m namespace op <- concatMap exportedNames hiExports,
                 m /= hiModule
               ],
             interfaceMembers = Map.map (Set.map snd) members,
@@ -92,7 +93,7 @@ fromHiFile modName HiFile{..}
                   }
           }
   where
-    exported = concatMap exportedNames hiExports
+    exported = mapMaybe known (concatMap exportedNames hiExports)
     exportedHere =
       Set.fromList [(namespace, op) | (_, namespace, op) <- exported]
     members =
@@ -104,11 +105,8 @@ fromHiFile modName HiFile{..}
           let kids = filter (/= parent) (mapMaybe known ns)
         ]
     exportedNames = \case
-      Avail n -> maybeToList (known n)
-      AvailTC _ ns -> mapMaybe known ns
-    mentioned = \case
-      Avail n -> maybeToList (known n)
-      AvailTC p ns -> maybeToList (known p) <> mapMaybe known ns
+      Avail n -> [n]
+      AvailTC _ ns -> ns
     known = \case
       HiName m namespace op -> Just (Just m, namespace, op)
       BuiltInSyntax namespace op -> Just (Nothing, namespace, op)
@@ -128,7 +126,11 @@ parseInterface modName out
                     fixities
                     (foldMap ownExports (sectionsNamed "exports:"))
                 ),
-            interfaceReexports = concatMap reexports (sectionsNamed "exports:"),
+            interfaceReexports =
+              [ (m, namespace, op)
+              | (m, op) <- concatMap reexports (sectionsNamed "exports:"),
+                namespace <- [InTypes, InTerms]
+              ],
             interfaceMembers =
               Map.unionsWith Set.union (fmap membersIn (sectionsNamed "exports:")),
             interfaceExports = Nothing
@@ -137,26 +139,27 @@ parseInterface modName out
     holdsModule l = case T.words l of
       ("interface" : m : _) -> m == modName
       _ -> False
-    sectionsNamed name =
-      [ T.replace "|{" "{" body
-      | (heading, body) <- sections out,
-        heading == name
-      ]
+    sectionsNamed name = [body | (heading, body) <- sections out, heading == name]
     fixities = Map.fromList (concatMap declared (sectionsNamed "fixities"))
     declared = mapMaybe fixityEntry . T.splitOn ","
     ownExports section =
       Set.fromList
-        [ OpName name
-        | (parent, kids) <- exportEntries section,
-          name <- parent : kids,
-          isNothing (moduleOf name)
-        ]
-    reexports = concatMap reexportsIn . T.words
+        [OpName name | name <- exportedIn section, isNothing (moduleOf name)]
+    reexports section =
+      [ (m, OpName name)
+      | Just (m, name) <- fmap moduleOf (exportedIn section),
+        not (T.null name)
+      ]
+    exportedIn section =
+      [ name
+      | (parent, parentExported, kids) <- exportEntries section,
+        name <- [parent | parentExported] <> kids
+      ]
     membersIn section =
       Map.fromListWith
         Set.union
         [ (nameOnly parent, Set.fromList (fmap nameOnly kids))
-        | (parent, kids@(_ : _)) <- exportEntries section
+        | (parent, _, kids@(_ : _)) <- exportEntries section
         ]
 
 -- | The names an interface declares as types.
@@ -210,8 +213,10 @@ fixityEntry entry = case T.words entry of
   _ -> Nothing
 
 -- | Split an exports section into its entries, keeping the members an entry
--- wears in braces with the name they belong to.
-exportEntries :: Text -> [(Text, [Text])]
+-- wears in braces with the name they belong to, and whether that name is
+-- exported itself, which a bar before the braces, as in @T|{...}@, says it
+-- is not.
+exportEntries :: Text -> [(Text, Bool, [Text])]
 exportEntries = go
   where
     go text = case T.uncons (T.dropWhile (== ' ') text) of
@@ -222,22 +227,16 @@ exportEntries = go
          in case T.uncons rest of
               Just ('{', inside) ->
                 let (kids, after) = T.break (== '}') inside
-                 in (bare name, T.words kids) : go (T.drop 1 after)
-              _ -> (bare name, []) : go rest
+                    entry = case T.unsnoc (bare name) of
+                      Just (parent, '|') -> (parent, False, T.words kids)
+                      _ -> (bare name, True, T.words kids)
+                 in entry : go (T.drop 1 after)
+              _ -> (bare name, True, []) : go rest
     bare = T.dropWhileEnd (== ',')
 
 -- | An exported name without the module that declared it.
 nameOnly :: Text -> OpName
 nameOnly t = OpName (maybe t snd (moduleOf t))
-
--- | The names an export entry reexports, with the module that declared
--- each.
-reexportsIn :: Text -> [(Text, OpName)]
-reexportsIn = mapMaybe qualified . T.split (`elem` ("{}," :: String))
-  where
-    qualified name = case moduleOf name of
-      Just (m, n) | not (T.null n) -> Just (m, OpName n)
-      _ -> Nothing
 
 -- | Split a name into the module that declared it and the name itself.
 moduleOf :: Text -> Maybe (Text, Text)

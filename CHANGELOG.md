@@ -81,6 +81,12 @@
   it being declined where an import could not be read; a name bound inside
   the function of a view pattern, on the other hand, is not.
   [Issue 301](https://github.com/mrkkrp/tilia/issues/301).
+* A module that re-exports the members of a type without the type, such as
+  the methods of a class named by an operator, is no longer taken to declare
+  the type's fixity, and a name a decoded interface file re-exports takes
+  the fixity it has in the namespace it is exported in, as a type or as a
+  term, rather than in both.
+  [Issue 302](https://github.com/mrkkrp/tilia/issues/302).
 
 ## Tilia 0.1.2.0
 

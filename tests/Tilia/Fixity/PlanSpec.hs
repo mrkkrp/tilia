@@ -1001,6 +1001,16 @@ givenInterfaces = describe "a resolver over the interfaces it is given" $ do
   it "says nothing about a module given an interface of another" $ do
     resolver <- newResolverFrom (\_ -> given "Ops")
     fixitiesOf resolver "Facade" `shouldReturn` Nothing
+
+  it "gives no fixity of a class to a module passing on its methods" $ do
+    resolver <- newResolverFrom given
+    fixitiesOf resolver "Methods" `shouldReturn` Just Map.empty
+
+  it "copies a fixity passed on in the namespace it is passed on in" $ do
+    resolver <- newResolverFrom given
+    fixitiesOf resolver "Terms"
+      `shouldReturn` Just
+        (Map.singleton (InTerms, OpName "+++") (Fixity RightAssoc 5))
   where
     plus = Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)
     given m = pure (Map.lookup m interfaces)
@@ -1019,8 +1029,49 @@ givenInterfaces = describe "a resolver over the interfaces it is given" $ do
                 hiExports = [Avail (HiName "Ops" InTerms (OpName "<+>"))],
                 hiFixities = []
               }
+          ),
+          ( "Classes",
+            HiFile
+              { hiModule = "Classes",
+                hiExports =
+                  [ AvailTC
+                      (inClasses InTypes ":<:")
+                      [inClasses InTypes ":<:", inClasses InTerms "inj"]
+                  ],
+                hiFixities = [(InTypes, OpName ":<:", Fixity RightAssoc 4)]
+              }
+          ),
+          ( "Methods",
+            HiFile
+              { hiModule = "Methods",
+                hiExports =
+                  [AvailTC (inClasses InTypes ":<:") [inClasses InTerms "inj"]],
+                hiFixities = []
+              }
+          ),
+          ( "Both",
+            HiFile
+              { hiModule = "Both",
+                hiExports =
+                  [ Avail (inBoth InTerms "+++"),
+                    AvailTC (inBoth InTypes "+++") [inBoth InTypes "+++"]
+                  ],
+                hiFixities =
+                  [ (InTerms, OpName "+++", Fixity RightAssoc 5),
+                    (InTypes, OpName "+++", Fixity LeftAssoc 6)
+                  ]
+              }
+          ),
+          ( "Terms",
+            HiFile
+              { hiModule = "Terms",
+                hiExports = [Avail (inBoth InTerms "+++")],
+                hiFixities = []
+              }
           )
         ]
+    inClasses namespace = HiName "Classes" namespace . OpName
+    inBoth namespace = HiName "Both" namespace . OpName
 
 -- | A module of the project's own, which an earlier run has read.
 readBefore :: Spec
