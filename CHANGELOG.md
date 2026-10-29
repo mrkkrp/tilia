@@ -76,6 +76,11 @@
   closing one, as that of an untyped quote is, rather than coming out at
   the column of the brackets.
   [Issue 300](https://github.com/mrkkrp/tilia/issues/300).
+* A name an as-pattern binds at the top level, as `plus` in
+  `plus@_ = (+)`, is taken for the module's own, rather than a module using
+  it being declined where an import could not be read; a name bound inside
+  the function of a view pattern, on the other hand, is not.
+  [Issue 301](https://github.com/mrkkrp/tilia/issues/301).
 
 ## Tilia 0.1.2.0
 
