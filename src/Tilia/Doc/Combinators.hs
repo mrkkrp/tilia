@@ -268,18 +268,6 @@ joinedBy t = space <> txt t <> breakOrSpace
 ----------------------------------------------------------------------------
 -- Wrapping
 
--- | Surround with the given opening and closing documents, adding nothing
--- of its own.
-enclose ::
-  -- | Opening bracket.
-  Doc ->
-  -- | Closing bracket.
-  Doc ->
-  -- | Body.
-  Doc ->
-  Doc
-enclose open close body = open <> body <> close
-
 -- | Where the closing bracket of a broken bracket pair goes.
 data ClosingIndent
   = -- | Back out to the level the opening bracket is on.
@@ -398,7 +386,7 @@ unboxedWith closing = spacedBracket closing "(#" "#)"
 
 -- | Surround with backticks.
 backticks :: Doc -> Doc
-backticks = enclose (txt "`") (txt "`")
+backticks d = txt "`" <> d <> txt "`"
 
 ----------------------------------------------------------------------------
 -- Punctuation
