@@ -51,7 +51,7 @@ import Data.Aeson
     (.:?),
   )
 import Data.Aeson.Types (parseMaybe)
-import Data.Choice (Choice, isTrue)
+import Data.Choice (Choice, isFalse)
 import Data.Foldable (toList, traverse_)
 import Data.List qualified
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -593,7 +593,7 @@ prepareWith ::
   IO (Either Text ())
 prepareWith caching downloading cabal futility wanted projectDir = \case
   Ready -> pure (Right ())
-  SourcesMissing _ -> fetch
+  SourcesMissing short -> fetch short
   PlanMissing -> solveThenFetch
   PlanStale _ -> solveThenFetch
   PlanNarrow _ ->
@@ -606,24 +606,22 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
       cabal (args <> wholeProject) >>= \case
         Right () -> pure (Right ())
         Left _ -> cabal args
-    fetch
-      | isTrue downloading = tryWholeProject ["build", ":all", "--only-download"]
-      | otherwise = pure (Right ())
-    fetchWhatIsShort =
-      readBuildPlan (planPathFor projectDir) >>= \case
-        Left _ -> pure (Right ())
-        Right plan -> do
-          short <- fmap ppName <$> sourcesShortOf caching plan
+    fetch short
+      | isFalse downloading = pure (Right ())
+      | otherwise = do
           refused <- fetchWasFutileFor futility
-          if null short || all (`elem` refused) short
+          if all (`elem` refused) short
             then pure (Right ())
             else
-              fetch >>= \case
+              tryWholeProject ["build", ":all", "--only-download"] >>= \case
                 Left err -> pure (Left err)
-                Right () -> do
-                  left <- sourcesShortOf caching plan
-                  rememberFutileFetch futility (fmap ppName left)
-                  pure (Right ())
+                Right () ->
+                  withPlan ((Right () <$) . rememberFutileFetch futility)
+    fetchWhatIsShort = withPlan fetch
+    withPlan use =
+      readBuildPlan (planPathFor projectDir) >>= \case
+        Left _ -> pure (Right ())
+        Right plan -> use . fmap ppName =<< sourcesShortOf caching plan
     solveThenFetch = do
       started <- getCurrentTime
       tryWholeProject ["build", ":all", "--dry-run"] >>= \case
@@ -631,7 +629,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
         Right () -> do
           rememberSolveTime futility started
           checkReadiness caching wanted projectDir >>= \case
-            SourcesMissing _ -> fetch
+            SourcesMissing short -> fetch short
             PlanNarrow _ -> rememberFutileSolve futility >> fetchWhatIsShort
             _ -> pure (Right ())
 
@@ -706,16 +704,18 @@ loadPlan caching downloading wanted projectDir = do
 
 -- | Every planned package whose source could be in the package cache, with
 -- where that would be: under the package cache @cabal@ last named, unless
--- a tarball it downloads is not there, when @cabal@ is asked again.
+-- a tarball it downloads is not there and a fetch has not already failed
+-- to bring it in, when @cabal@ is asked again.
 plannedTarballs :: Cache -> BuildPlan -> IO [(PlanPackage, FilePath)]
 plannedTarballs cache plan =
   cachedPackageCache cache >>= \case
     Just remembered -> do
       tarballs <- under remembered
+      refused <- cachedFutileFetch cache
       absent <-
         filterM
           (fmap not . doesFileExist . snd)
-          (filter (isFetchable . fst) tarballs)
+          [t | t@(p, _) <- tarballs, isFetchable p, ppName p `notElem` refused]
       if null absent then pure tarballs else asked
     Nothing -> asked
   where
