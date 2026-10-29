@@ -3,11 +3,27 @@
 -- | What a module's pragmas say, read off the text.
 module Tilia.PragmaSpec (spec) where
 
+import Data.Map.Strict (Map)
+import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Driver.Session (Language (..), OnOff (..), glasgowExtsFlags, languageExtensions)
+import Data.Text qualified as T
+import GHC.Data.EnumSet qualified as EnumSet
+import GHC.Driver.Session
+  ( Language (..),
+    OnOff (..),
+    extensionFlags,
+    fLangFlags,
+    flagSpecName,
+    glasgowExtsFlags,
+    languageExtensions,
+    xFlags,
+  )
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
+import Test.QuickCheck
 import Tilia.Pragma
+import Tilia.Pragma.Ghc (InForce (..), inForceAfter, readFlags)
 
 spec :: Spec
 spec = do
@@ -156,6 +172,24 @@ spec = do
       inForceUnder [] "{-# LANGUAGE RankNTypes, NoExplicitForAll #-}\n"
         `shouldBe` [RankNTypes]
 
+  modifyMaxSuccess (const 5000) . describe "against GHC's own flag reader" $ do
+    it "leaves on what GHC leaves on" $
+      forAll (listOf1 (pragmaOf headerNames)) $ \pragmas ->
+        let ours =
+              effectiveExtensions
+                (defaultsOf (languageExtensions Nothing) [])
+                (headerOf pragmas)
+            theirs =
+              EnumSet.toList (extensionFlags (readFlags (concatMap flagsOf pragmas)))
+         in counterexample (T.unpack (headerOf pragmas)) $
+              Set.fromList ours === Set.fromList theirs
+    it "takes two orders to be alike where GHC switches alike" $
+      forAll (listOf1 (pragmaOf extensionNames)) $ \pragmas ->
+        forAll (shuffle pragmas) $ \shuffled ->
+          counterexample (T.unpack (headerOf pragmas <> headerOf shuffled)) $
+            sameInForce (fmap namedBody pragmas) (fmap namedBody shuffled)
+              === (ghcSwitches pragmas == ghcSwitches shuffled)
+
   describe "lookupExtension" $ do
     it "knows an extension by the name one writes" $
       lookupExtension "LambdaCase" `shouldBe` Just LambdaCase
@@ -173,3 +207,51 @@ spec = do
 -- these in force and which switches nothing itself.
 inForceUnder :: [Extension] -> Text -> [Extension]
 inForceUnder edition = effectiveExtensions (defaultsOf edition [])
+
+-- | A pragma of a header, as its name and its body, with the flags it hands
+-- GHC.
+type HeaderPragma = (Text, Text, [Text])
+
+-- | A pragma that names one of these, or spells an extension as an old flag.
+pragmaOf :: [Text] -> Gen HeaderPragma
+pragmaOf names = oneof [language, options]
+  where
+    language = do
+      name <- elements names
+      pure ("LANGUAGE", name, ["-X" <> name])
+    options = do
+      flag <- elements oldFlags
+      pure ("OPTIONS_GHC", flag, [flag])
+    oldFlags =
+      ["-cpp", "-fglasgow-exts", "-fno-glasgow-exts"]
+        <> concat
+          [ ["-f" <> name, "-fno-" <> name]
+          | name <- T.pack . flagSpecName <$> fLangFlags
+          ]
+
+-- | Every name of an extension, with @No@ in front and without.
+extensionNames :: [Text]
+extensionNames = names <> fmap ("No" <>) names
+  where
+    names = T.pack . flagSpecName <$> xFlags
+
+-- | Every name a @LANGUAGE@ pragma can hold: the extensions and the editions.
+headerNames :: [Text]
+headerNames =
+  extensionNames <> [T.pack (show l) | l <- [minBound .. maxBound :: Language]]
+
+-- | A module of nothing but a header of these pragmas.
+headerOf :: [HeaderPragma] -> Text
+headerOf pragmas =
+  T.concat ["{-# " <> n <> " " <> b <> " #-}\n" | (n, b, _) <- pragmas]
+    <> "module M where\n"
+
+flagsOf :: HeaderPragma -> [Text]
+flagsOf (_, _, flags) = flags
+
+namedBody :: HeaderPragma -> (Text, Text)
+namedBody (n, b, _) = (n, b)
+
+-- | How GHC takes these pragmas to switch each extension.
+ghcSwitches :: [HeaderPragma] -> Map Extension Bool
+ghcSwitches = inForceSwitches . inForceAfter . concatMap flagsOf
