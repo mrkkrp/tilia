@@ -5,12 +5,7 @@ module Tilia.Doc
   )
 where
 
-import Data.Text (Text)
 import Tilia.Doc.Internal
   ( Doc,
-    render,
+    printDoc,
   )
-
--- | Render a document to source text.
-printDoc :: Doc -> Text
-printDoc = render
