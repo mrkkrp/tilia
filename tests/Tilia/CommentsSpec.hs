@@ -118,7 +118,13 @@ spec = do
   describe "pragmas" $ do
     it "recognises one" $
       (commentPragma <$> commentsIn "{-# LANGUAGE CPP #-}\nmodule M where\nx = 1\n")
-        `shouldBe` [Just (Pragma "LANGUAGE" "CPP")]
+        `shouldBe` [Just (Pragma "LANGUAGE" "CPP" False)]
+    it "reads a language pragma past the comments in it, as GHC does" $
+      (commentPragma <$> commentsIn "{-# LANGUAGE\n    CPP -- for the version\n  , {- c -} LambdaCase\n  #-}\nmodule M where\n")
+        `shouldBe` [Just (Pragma "LANGUAGE" "CPP , LambdaCase" True)]
+    it "leaves a comment's dashes in an options pragma, which GHC reads" $
+      (fmap pragmaBody . commentPragma <$> commentsIn "{-# OPTIONS_GHC -Wall -- no #-}\nmodule M where\n")
+        `shouldBe` [Just "-Wall -- no"]
     it "upper-cases the name" $
       (fmap pragmaName . commentPragma <$> commentsIn "{-# language CPP #-}\nmodule M where\nx = 1\n")
         `shouldBe` [Just "LANGUAGE"]
