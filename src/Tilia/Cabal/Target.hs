@@ -14,6 +14,7 @@ module Tilia.Cabal.Target
     componentsOfTarget,
     componentInPlan,
     filesOfComponents,
+    packageFilesOf,
   )
 where
 

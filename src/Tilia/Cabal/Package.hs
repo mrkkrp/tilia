@@ -28,6 +28,7 @@ where
 
 import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Data.ByteString qualified as BS
+import Data.Either (rights)
 import Data.Generics.Schemes (listify)
 import Data.IORef
 import Data.List (sortOn)
@@ -119,8 +120,11 @@ newPackageReader ::
   -- | The compiler's version, where the build plan names it, which spares
   -- asking the compiler.
   Maybe Version ->
+  -- | The @.cabal@ files of the project, which a module no @.cabal@ file
+  -- above it claims is looked for in.
+  [FilePath] ->
   IO PackageReader
-newPackageReader planned = do
+newPackageReader planned project = do
   covering <- newIORef Map.empty
   described <- newIORef Map.empty
   known <- newMVar (Just <$> planned)
@@ -129,20 +133,25 @@ newPackageReader planned = do
         Nothing -> do
           version <- compilerVersion
           pure (Just version, version)
+      elsewhere file problem = do
+        found <- traverse (componentBranchesOf compiler described) project
+        pure $ case claiming file (concat (rights found)) of
+          Just c -> Right (componentExtensions c)
+          Nothing -> Left problem
   pure $ \path -> quietly (Left NoPackageFile) $ do
     file <- canonicalizePath path
     from <- startingDirectory file
     findCabalFile covering from >>= \case
-      Nothing -> pure (Left NoPackageFile)
+      Nothing -> elsewhere file NoPackageFile
       Just cabalFile ->
         componentBranchesOf compiler described cabalFile >>= \case
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
                 pure (Right (defaultsOf (GHC.languageExtensions Nothing) []))
-            | otherwise -> pure $ case claiming file components of
-                Just c -> Right (componentExtensions c)
-                Nothing -> Left (FileUnclaimed cabalFile)
+            | Just c <- claiming file components ->
+                pure (Right (componentExtensions c))
+            | otherwise -> elsewhere file (FileUnclaimed cabalFile)
 
 -- | Where to start looking for a @.cabal@ file.
 startingDirectory :: FilePath -> IO FilePath

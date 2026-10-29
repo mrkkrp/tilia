@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (createDirectoryIfMissing, removeFile)
-import System.FilePath ((</>))
+import System.FilePath (takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
@@ -117,7 +117,7 @@ spec = do
 
     it "take the compiler's version from the plan where it names one" $
       inPackage conditionalExtensions ["src"] $ \root -> do
-        ask <- newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" []))
+        ask <- newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" [])) []
         library <- ask (root </> "src" </> "M.hs")
         (has StarIsType library, has BangPatterns library)
           `shouldBe` (True, True)
@@ -141,24 +141,58 @@ spec = do
             complaints `shouldSatisfy` not . null
           other -> expectationFailure ("expected a parse failure, got " <> show other)
 
+  describe "a module no package above it claims" $ do
+    it "is claimed by a package of the project that names it"
+      $ inProject
+        [ ("one/one.cabal", reachingOut "../common"),
+          ("common/Common.hs", "module Common where\n")
+        ]
+      $ \root -> do
+        ask <- newPackageReader Nothing [root </> "one" </> "one.cabal"]
+        (has LambdaCase <$> ask (root </> "common" </> "Common.hs"))
+          `shouldReturn` True
+
+    it "is claimed so where the package above it does not name it"
+      $ inProject
+        [ ("one/one.cabal", reachingOut "../two/shared"),
+          ("two/two.cabal", twoComponents),
+          ("two/shared/Common.hs", "module Common where\n")
+        ]
+      $ \root -> do
+        ask <-
+          newPackageReader
+            Nothing
+            [root </> "one" </> "one.cabal", root </> "two" </> "two.cabal"]
+        (has LambdaCase <$> ask (root </> "two" </> "shared" </> "Common.hs"))
+          `shouldReturn` True
+
+    it "is still unclaimed where no package of the project names it"
+      $ inProject
+        [ ("one/one.cabal", reachingOut "../common"),
+          ("other/Other.hs", "module Other where\n")
+        ]
+      $ \root -> do
+        ask <- newPackageReader Nothing [root </> "one" </> "one.cabal"]
+        ask (root </> "other" </> "Other.hs") `shouldReturn` Left NoPackageFile
+
   describe "a reader kept between files" $ do
     it "answers as a fresh one would" $
       inPackage twoComponents ["src", "test"] $ \root -> do
-        ask <- newPackageReader Nothing
+        ask <- newPackageReader Nothing []
         kept <- traverse ask (modules root)
         fresh <- traverse asked (modules root)
         kept `shouldBe` fresh
 
     it "reads a package once, not once per file" $
       inPackage twoComponents ["src"] $ \root -> do
-        ask <- newPackageReader Nothing
+        ask <- newPackageReader Nothing []
         first <- ask (root </> "src" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` first
 
     it "remembers every directory the walk went through" $
       inPackage twoComponents ["src" </> "deep"] $ \root -> do
-        ask <- newPackageReader Nothing
+        ask <- newPackageReader Nothing []
         deep <- ask (root </> "src" </> "deep" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` deep
@@ -345,6 +379,21 @@ sharedTests =
       "  default-extensions: BangPatterns"
     ]
 
+-- | A library with @LambdaCase@ on that declares @Common@, which is in the
+-- source directory given, outside the package.
+reachingOut :: Text -> Text
+reachingOut shared =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: reaching",
+      "version: 0",
+      "library",
+      "  exposed-modules: Common",
+      "  hs-source-dirs: src " <> shared,
+      "  default-language: Haskell2010",
+      "  default-extensions: LambdaCase"
+    ]
+
 conditionalLibrary :: Text
 conditionalLibrary =
   T.unlines
@@ -368,11 +417,23 @@ inPackage contents dirs use =
     mapM_ (createDirectoryIfMissing True . (root </>)) (sort dirs)
     use root
 
+-- | Write files, each at its path relative to a new directory, and hand back
+-- the directory.
+inProject :: [(FilePath, Text)] -> (FilePath -> IO a) -> IO a
+inProject files use =
+  withSystemTempDirectory "tilia-project" $ \root -> do
+    mapM_ (write root) files
+    use root
+  where
+    write root (path, contents) = do
+      createDirectoryIfMissing True (takeDirectory (root </> path))
+      T.writeFile (root </> path) contents
+
 -- | Ask about one file with a reader of its own, which is what a test that
 -- is not about caching wants.
 asked :: FilePath -> IO (Either PackageProblem Defaults)
 asked path = do
-  ask <- newPackageReader Nothing
+  ask <- newPackageReader Nothing []
   ask path
 
 -- | One module in each of the two components.
