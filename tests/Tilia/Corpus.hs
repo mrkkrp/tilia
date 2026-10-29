@@ -371,7 +371,9 @@ ormoluSkip =
     "declaration" </> "class" </> "functional-dependencies.hs",
     "declaration" </> "class" </> "multi-parameters2.hs",
     "declaration" </> "data" </> "gadt" </> "multiline.hs",
-    "declaration" </> "data" </> "gadt" </> "simple.hs"
+    "declaration" </> "data" </> "gadt" </> "simple.hs",
+    "import" </> "no-implicit-prelude-package.hs",
+    "other" </> "pragma-sorting.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable

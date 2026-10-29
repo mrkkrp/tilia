@@ -52,31 +52,14 @@ data HeaderPragma = HeaderPragma
 -- | Where a pragma sorts among the others.
 --
 -- The derived ordering is the policy wherever it leaves the same extensions
--- in force: language pragmas first, then @OPTIONS_GHC@ and @OPTIONS@, then
--- @OPTIONS_HADDOCK@; and within the language pragmas, by the class of
--- extension, the editions in the order they are written.
+-- in force: the editions first, in the order they are written, then the
+-- other language pragmas, by name, then @OPTIONS_GHC@ and @OPTIONS@, then
+-- @OPTIONS_HADDOCK@.
 data PragmaOrder
-  = LanguageOrder ExtensionClass
+  = EditionOrder
+  | LanguageOrder
   | OptionsGhcOrder
   | OptionsHaddockOrder
-  deriving (Eq, Ord, Show)
-
--- | Which group an extension sorts into.
---
--- Sorting the extensions alphabetically outright would change what a module
--- means, because an extension can turn others on and a later one can turn
--- them off again. Sorting only within these groups keeps the relationships
--- that matter: a pack before what it enables, an enabling before a
--- disabling, and the stragglers that have to come last at the end.
-data ExtensionClass
-  = -- | @GHC2021@, @Haskell2010@ and the like.
-    Pack
-  | -- | Anything else.
-    Enabling
-  | -- | An extension written with a @No@ prefix.
-    Disabling
-  | -- | Extensions that only work when nothing follows them.
-    Last'
   deriving (Eq, Ord, Show)
 
 -- | Pick the header pragmas out of a comment stream.
@@ -120,7 +103,9 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
 -- the header does not hoist.
 pragmaOrder :: Text -> Text -> Maybe PragmaOrder
 pragmaOrder named body = case named of
-  "LANGUAGE" -> Just (LanguageOrder (classifyExtension body))
+  "LANGUAGE"
+    | namesAnEdition body -> Just EditionOrder
+    | otherwise -> Just LanguageOrder
   "OPTIONS_GHC" -> Just OptionsGhcOrder
   "OPTIONS" -> Just OptionsGhcOrder
   "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
@@ -170,7 +155,7 @@ pragmaBlock =
     named = fmap (\p -> (hpName p, hpBody p))
     order p = (orderOf p, extension p)
     extension p
-      | hpName p == "LANGUAGE", not (namesAnEdition (hpBody p)) = hpBody p
+      | orderOf p == Just LanguageOrder = hpBody p
       | otherwise = ""
     key p = (hpRun p, orderOf p, hpBody p)
     orderOf p = pragmaOrder (hpName p) (hpBody p)
@@ -188,18 +173,6 @@ pragmaBlock =
         (hpSpan p)
         (txt "{-# " <> txt (hpName p) <> space <> txt (hpBody p) <> txt " #-}")
         <> hardBreak
-
--- | Which group an extension belongs to.
-classifyExtension :: Text -> ExtensionClass
-classifyExtension t
-  | namesAnEdition t = Pack
-  -- @ImplicitPrelude@ and @CUSKs@ are turned off by other extensions, so
-  -- asking for either of them only takes effect at the end.
-  | t == "ImplicitPrelude" = Last'
-  | t == "CUSKs" = Last'
-  | otherwise = case T.uncons (T.drop 2 t) of
-      Just (c, _) | "No" `T.isPrefixOf` t, c `elem` ['A' .. 'Z'] -> Disabling
-      _ -> Enabling
 
 -- | Does this name a whole edition of the language rather than one
 -- extension of it?
