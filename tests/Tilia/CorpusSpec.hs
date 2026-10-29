@@ -15,7 +15,9 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
-import System.FilePath (replaceExtension)
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath (replaceExtension, (</>))
+import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
 import Tilia.Corpus.Manifest
@@ -38,10 +40,21 @@ import Tilia.TestUtils
     countLeaves,
     effectiveExtensionsFor,
     parserConfigFor,
+    withEnvironment,
   )
 
 spec :: Spec
 spec = do
+  describe "obtaining Hackage releases" $
+    it "takes in only the releases listed, whatever else is in the cache" $
+      withSystemTempDirectory "tilia-corpus" $ \cache -> do
+        for_ ["listed-1.0", "unlisted-1.0"] $ \release -> do
+          createDirectoryIfMissing True (cache </> "hackage" </> release)
+          writeFile (cache </> "hackage" </> release </> "M.hs") "module M where\n"
+        obtained <-
+          withEnvironment [("TILIA_CORPUS_DIR", cache)] . obtain $
+            hackagePackages{corpusSource = HackageReleases ["listed-1.0"]}
+        fmap (fmap exampleName) obtained `shouldBe` Right ["listed-1.0/M.hs"]
   corpusSpec vendoredExamples
   corpusSpec ormoluExamples
   corpusSpec ghcTestSuite

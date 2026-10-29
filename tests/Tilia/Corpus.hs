@@ -930,7 +930,7 @@ data Example = Example
 -- releases keep theirs, which the fixity benchmarks read.
 obtain :: Corpus -> IO (Either Text [Example])
 obtain corpus = case corpusSource corpus of
-  Vendored dir -> Right <$> examplesIn corpus dir
+  Vendored dir -> Right <$> examplesIn corpus dir [dir]
   Fetched url root -> do
     home <- corpusCache
     let unpacked = home </> corpusName corpus
@@ -940,14 +940,14 @@ obtain corpus = case corpusSource corpus of
       Left problem -> pure (Left problem)
       Right () -> do
         removePathForcibly archive
-        Right <$> examplesIn corpus (unpacked </> root)
+        Right <$> examplesIn corpus (unpacked </> root) [unpacked </> root]
   HackageReleases releases -> do
     home <- corpusCache
     let root = home </> corpusName corpus
     createDirectoryIfMissing True root
     inTurn root releases >>= \case
       Left problem -> pure (Left problem)
-      Right () -> Right <$> examplesIn corpus root
+      Right () -> Right <$> examplesIn corpus root (fmap (root </>) releases)
   where
     inTurn _ [] = pure (Right ())
     inTurn root (name : rest) =
@@ -1059,10 +1059,11 @@ unpackTo archive dest = do
 ----------------------------------------------------------------------------
 -- Enumerating
 
--- | Every example in an unpacked corpus, in a settled order.
-examplesIn :: Corpus -> FilePath -> IO [Example]
-examplesIn corpus root = do
-  found <- sort <$> haskellFilesIn root
+-- | Every example in these directories of an unpacked corpus, named from
+-- its root, in a settled order.
+examplesIn :: Corpus -> FilePath -> [FilePath] -> IO [Example]
+examplesIn corpus root dirs = do
+  found <- sort . concat <$> traverse haskellFilesIn dirs
   reader <- packageReaderFor corpus
   let present = Set.fromList found
       files = filter (not . skipped) found
