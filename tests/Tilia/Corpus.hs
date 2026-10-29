@@ -637,6 +637,7 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "T25258b.hs",
     "parser" </> "should_fail" </> "T25258c.hs",
     "parser" </> "should_fail" </> "T25530.hs",
+    "parser" </> "should_fail" </> "T26418.hs",
     "parser" </> "should_fail" </> "T3095.hs",
     "parser" </> "should_fail" </> "T3153.hs",
     "parser" </> "should_fail" </> "T3751.hs",

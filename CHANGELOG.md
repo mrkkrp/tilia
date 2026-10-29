@@ -42,6 +42,10 @@
   `default-language` of its component, as with GHC, and what
   `default-extensions` and the module's pragmas switch is switched on top
   of it. [Issue 321](https://github.com/mrkkrp/tilia/issues/321).
+* An extension turned off after one that implies it, as `NoExplicitForAll`
+  after `RankNTypes`, stays off when the module is parsed, as with GHC,
+  rather than being turned back on.
+  [PR 323](https://github.com/mrkkrp/tilia/pull/323).
 
 ## Tilia 0.1.2.0
 
