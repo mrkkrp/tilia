@@ -29,7 +29,6 @@ import Tilia.Fixity
     Provenance (..),
     Reach (..),
     Scope (..),
-    inBothNamespaces,
     operatorsUsed,
     resolveScope,
     unreadable,
@@ -37,7 +36,7 @@ import Tilia.Fixity
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Pragma (Defaults)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
-import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
+import Tilia.TestUtils (effectiveExtensionsFor, inBothNamespaces, parserConfigFor)
 
 -- | How to format one corpus example.
 exampleRenderConfig ::
