@@ -122,6 +122,12 @@
   string after it no longer has the module declined, and one written in the
   code after it is no longer missed.
   [Issue 292](https://github.com/mrkkrp/tilia/issues/292).
+* A line that holds nothing but a use of a function-like macro is put back
+  at the indentation of the code under it, as it is written, rather than a
+  step further in wherever what is around it begins on a line above. One
+  among the statements of a `do` block, or between the equations of a
+  function, no longer comes out carrying on the line above it.
+  [Issue 279](https://github.com/mrkkrp/tilia/issues/279).
 
 ## Tilia 0.1.2.0
 
