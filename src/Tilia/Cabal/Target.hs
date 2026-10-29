@@ -120,7 +120,7 @@ data Component = Component
     componentPackage :: Text,
     -- | Which kind it is.
     componentKind :: Kind,
-    -- | Its name, which for a library is the package's own.
+    -- | Its name, which for the main library is the package's own.
     componentName :: Text,
     -- | The directory its @.cabal@ file sits in.
     componentRoot :: FilePath,
@@ -203,8 +203,9 @@ spellComponent c =
 
 -- | How a build plan names this component, if it has an entry of its own.
 --
--- A plan writes a library as @lib@ and everything else as its kind and
--- name, which is not quite how a target is written: see 'spellComponent'.
+-- A plan writes the main library as @lib@ and everything else, sub-libraries
+-- among them, as its kind and name, which is not quite how a target is
+-- written: see 'spellComponent'.
 -- A setup script has an entry only when the build type is @Custom@, so a
 -- plan is never expected to say anything about it.
 componentInPlan :: Component -> Maybe PlanComponent
@@ -215,7 +216,7 @@ componentInPlan c = case componentKind c of
       PlanComponent
         { pcPackage = componentPackage c,
           pcName = case kind of
-            Lib -> "lib"
+            Lib | componentName c == componentPackage c -> "lib"
             _ -> spellKind kind <> ":" <> componentName c
         }
 

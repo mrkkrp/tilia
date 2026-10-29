@@ -100,6 +100,12 @@
   read as code that carries on the line above, rather than put back at the
   level of the code under it.
   [PR 333](https://github.com/mrkkrp/tilia/pull/333).
+* A sub-library is looked for in the build plan under `lib:` and its name,
+  as the plan writes it, rather than as the main library, so a package
+  whose only library is a named one no longer makes the first run under a
+  plan `cabal` solved ask it to solve again, and a sub-library the plan
+  leaves out no longer counts as planned where the main library is.
+  [Issue 296](https://github.com/mrkkrp/tilia/issues/296).
 
 ## Tilia 0.1.2.0
 

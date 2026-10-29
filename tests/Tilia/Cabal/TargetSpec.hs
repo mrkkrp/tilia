@@ -12,6 +12,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
 
@@ -388,6 +389,14 @@ spec = do
         filesFor (Called "only") `shouldReturn` ["Setup.hs", "A.hs"]
         filesFor (Qualified Nothing Lib "only") `shouldReturn` ["A.hs"]
 
+    it "names each library the way a plan does" $
+      withProject [("both.cabal", withSubLibrary)] $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs ->
+            fmap (fmap pcName . componentInPlan) cs
+              `shouldBe` [Just "lib", Just "lib:inner"]
+
     it "does not offer the setup script as a target"
       $ withProject
         [ ("only.cabal", packageWith "only" ["src"] ["A"]),
@@ -496,6 +505,23 @@ twoComponents =
       "  main-is: Two.hs",
       "  hs-source-dirs: app",
       "  other-modules: Shared",
+      "  default-language: Haskell2010"
+    ]
+
+-- | A package with a main library and a sub-library.
+withSubLibrary :: Text
+withSubLibrary =
+  T.unlines
+    [ "cabal-version: 3.0",
+      "name: both",
+      "version: 0.1.0.0",
+      "",
+      "library",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "",
+      "library inner",
+      "  hs-source-dirs: inner",
       "  default-language: Haskell2010"
     ]
 
