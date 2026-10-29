@@ -209,7 +209,7 @@ fixityBenchmarks dir toResolve held = do
       cache <- cacheUnder (dir </> "cache")
       interfaces <- interfacesOf decoded
       let reading kept modules = do
-            packageReader <- newPackageReader (plannedCompiler plan)
+            packageReader <- newPackageReader (plannedCompiler plan) []
             resolver <- newResolverWith [FromSource] kept [] tarballs packageReader plan
             pure $ do
               answers <- traverse (askModule resolver) modules

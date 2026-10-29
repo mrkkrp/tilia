@@ -111,6 +111,12 @@
   directory, so `check` and `inplace` format each module in it once, rather
   than once under each path.
   [Issue 295](https://github.com/mrkkrp/tilia/issues/295).
+* A module that no `.cabal` file above it names, as one in a directory
+  outside every package that packages of the project share through `..`,
+  takes what a package of the project that names it puts in force, rather
+  than failing for want of a `.cabal` file, and the fixities it declares
+  are known to the modules importing it, rather than their being declined.
+  [Issue 295](https://github.com/mrkkrp/tilia/issues/295).
 
 ## Tilia 0.1.2.0
 

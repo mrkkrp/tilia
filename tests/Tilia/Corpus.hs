@@ -1108,7 +1108,7 @@ packageReaderFor :: Corpus -> IO (FilePath -> IO (Maybe Defaults))
 packageReaderFor corpus
   | not (corpusInPackages corpus) = pure (const (pure Nothing))
   | otherwise = do
-      reader <- newPackageReader Nothing
+      reader <- newPackageReader Nothing []
       pure (fmap (either (const Nothing) Just) . reader)
 
 haskellFilesIn :: FilePath -> IO [FilePath]

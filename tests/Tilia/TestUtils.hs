@@ -136,7 +136,7 @@ fingerprint = foldl' step 14695981039346656037
 -- it reads.
 routedResolver :: [Route] -> BuildPlan -> IO Resolver
 routedResolver routes plan = do
-  packageReader <- newPackageReader (plannedCompiler plan)
+  packageReader <- newPackageReader (plannedCompiler plan) []
   newResolverVia (Do #useCache) routes packageReader plan
 
 -- | Split a module on its first outermost conditional, and on every other

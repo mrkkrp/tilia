@@ -93,7 +93,7 @@ newResolver ::
   BuildPlan ->
   IO Resolver
 newResolver plan = do
-  packageReader <- newPackageReader (plannedCompiler plan)
+  packageReader <- newPackageReader (plannedCompiler plan) []
   newResolverVia (Do #useCache) [FromInterface, FromSource] packageReader plan
 
 -- | 'newResolver', restricted to the routes given.
