@@ -19,7 +19,7 @@ module Tilia.Pragma
 where
 
 import Control.Monad ((<=<))
-import Data.Char (isSpace)
+import Data.Char (isAlphaNum, isSpace)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe, maybeToList)
@@ -206,9 +206,10 @@ byFlagName flags =
 pragmaBodies :: Text -> [Text]
 pragmaBodies = scanPragmas past
   where
-    past go t = case T.stripPrefix "\"" t of
-      Just after -> go (skipString after)
-      Nothing -> go (T.dropWhile (\c -> c /= '{' && c /= '-' && c /= '"') (T.drop 1 t))
+    past go t = case T.uncons t of
+      Just ('"', after) -> go (skipString after)
+      Just ('\'', after) -> go (skipCharacter after)
+      _ -> go (skipCode t)
 
     skipString = inString . T.dropWhile (\c -> c /= '"' && c /= '\\')
 
@@ -217,6 +218,18 @@ pragmaBodies = scanPragmas past
       | Just after <- T.stripPrefix "\\" t = skipString (T.drop 1 after)
       | Just after <- T.stripPrefix "\"" t = after
       | otherwise = skipString (T.drop 1 t)
+
+    skipCharacter t = case T.unpack (T.take 2 t) of
+      ['\\', _] -> T.drop 1 (T.dropWhile (/= '\'') (T.drop 2 t))
+      [c, '\''] | c /= '\'' -> T.drop 2 t
+      _ -> t
+
+    skipCode t =
+      let (plain, rest) = T.break opens (T.drop 1 t)
+          before = maybe (T.head t) snd (T.unsnoc plain)
+       in if "'" `T.isPrefixOf` rest && inName before then skipCode rest else rest
+    opens c = c == '{' || c == '-' || c == '"' || c == '\''
+    inName c = isAlphaNum c || c == '_' || c == '\''
 
 -- | What the @{-# … #-}@ of a module's header have between their braces, each
 -- on one line: those above the first thing that is neither a comment, a

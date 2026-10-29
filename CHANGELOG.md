@@ -117,6 +117,11 @@
   than failing for want of a `.cabal` file, and the fixities it declares
   are known to the modules importing it, rather than their being declined.
   [Issue 295](https://github.com/mrkkrp/tilia/issues/295).
+* A character literal holding a double quote, as in `'"'`, is read as one,
+  rather than as the start of a string, so a `{-# LINE #-}` written in a
+  string after it no longer has the module declined, and one written in the
+  code after it is no longer missed.
+  [Issue 292](https://github.com/mrkkrp/tilia/issues/292).
 
 ## Tilia 0.1.2.0
 

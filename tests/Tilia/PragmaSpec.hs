@@ -36,7 +36,10 @@ spec = do
           ("one written without spaces", "{-#LINE 1 \"Other.hs\"#-}\n"),
           ("one written over several lines", "{-# LINE 1\n      \"Other.hs\" #-}\n"),
           ("one below the header", "module M where\nx = 1\n{-# LINE 9 \"O.hs\" #-}\n"),
-          ("one among pragmas that do not move anything", langThenLine)
+          ("one among pragmas that do not move anything", langThenLine),
+          ( "one after a character literal holding a double quote",
+            "module M where\nq = '\"'\n{-# LINE 9 \"O.hs\" #-}\n"
+          )
         ]
         (\source -> movesPositions source `shouldBe` True)
 
@@ -47,7 +50,17 @@ spec = do
           ("an INLINE pragma", "module M where\n{-# INLINE f #-}\nf = id\n"),
           ("a pragma whose name merely starts with one", "{-# LINEAR 1 #-}\n"),
           ("an unclosed pragma", "{-# LINE 1 \"Other.hs\"\n"),
-          ("the word in a comment", "-- {-* LINE 1 *-}\nmodule M where\n")
+          ("the word in a comment", "-- {-* LINE 1 *-}\nmodule M where\n"),
+          ("one in a string", "module M where\nx = \"{-# LINE 1 #-}\"\n"),
+          ( "one in a string after a character literal holding a double quote",
+            "module M where\nq = '\"'\nx = \"{-# LINE 1 #-}\"\n"
+          ),
+          ( "one in a string after a character literal holding an escaped one",
+            "module M where\nq = '\\\"'\nx = \"{-# LINE 1 #-}\"\n"
+          ),
+          ( "one in a string after a name ending in a prime",
+            "module M where\nx = f'\"'\"\ny = \"{-# LINE 1 #-}\"\n"
+          )
         ]
         (\source -> movesPositions source `shouldBe` False)
   describe "the extensions in force" $ do
