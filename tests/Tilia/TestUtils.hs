@@ -64,7 +64,7 @@ import Tilia.Parser
     describeParseError,
     parseModule,
   )
-import Tilia.Pragma (effectiveExtensions)
+import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
 import Tilia.Source (comments)
 
 -- | Run something with the given variables set, and the environment as it
@@ -81,9 +81,9 @@ withEnvironment vars act = bracket set restore (const act)
 
 -- | What to parse a module with, given what its package puts in force, or
 -- 'Nothing' for a module of no package, which is read as GHC2021.
-parserConfigFor :: Maybe [Extension] -> ParserConfig
+parserConfigFor :: Maybe Defaults -> ParserConfig
 parserConfigFor =
-  ParserConfig . fromMaybe (GHC.languageExtensions (Just GHC.GHC2021))
+  ParserConfig . fromMaybe (defaultsOf (GHC.languageExtensions (Just GHC.GHC2021)) [])
 
 -- | What to parse a module of no package with.
 defaultParserConfig :: ParserConfig
@@ -96,8 +96,8 @@ defaultParserConfig = parserConfigFor Nothing
 -- That is less than 'parserConfigFor' reads such a module with, so that
 -- what is printed, @import qualified@ for one, reads the same under every
 -- edition.
-effectiveExtensionsFor :: Maybe [Extension] -> Text -> [Extension]
-effectiveExtensionsFor = effectiveExtensions . fromMaybe [ImplicitPrelude]
+effectiveExtensionsFor :: Maybe Defaults -> Text -> [Extension]
+effectiveExtensionsFor = effectiveExtensions . fromMaybe (defaultsOf [ImplicitPrelude] [])
 
 -- | Parse a module, or stop the test saying why it does not parse.
 parsed :: Text -> ParsedModule

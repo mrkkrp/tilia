@@ -11,6 +11,7 @@ import Data.Text.Encoding qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
 import Tilia.Fixity.Cabal
+import Tilia.Pragma (effectiveExtensions)
 
 spec :: Spec
 spec = do
@@ -225,7 +226,7 @@ exposed = containedModules
 
 -- | What a @.cabal@ of this shape puts in force.
 extensions :: Text -> [Extension]
-extensions = declaredExtensions
+extensions = (`effectiveExtensions` "") . declaredExtensions
 
 -- | A tar entry at the given path, holding the given text.
 entryFor :: FilePath -> Text -> Tar.Entry

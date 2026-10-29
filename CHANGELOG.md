@@ -37,6 +37,11 @@
   its options, its `OPTIONS_HADDOCK` pragmas, or how GHC's own flag reader
   takes them to switch extensions, the edition or the Safe Haskell mode.
   [PR 322](https://github.com/mrkkrp/tilia/pull/322).
+* An edition of the language a module names in its header, as in
+  `{-# LANGUAGE GHC2024 #-}` or with `-XGHC2024`, takes the place of the
+  `default-language` of its component, as with GHC, and what
+  `default-extensions` and the module's pragmas switch is switched on top
+  of it. [Issue 321](https://github.com/mrkkrp/tilia/issues/321).
 
 ## Tilia 0.1.2.0
 

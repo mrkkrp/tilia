@@ -33,7 +33,6 @@ import Data.Maybe (fromMaybe, listToMaybe, mapMaybe, maybeToList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.LanguageExtensions.Type (Extension)
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
 import System.Directory
@@ -50,6 +49,7 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
+import Tilia.Pragma (Defaults)
 import Tilia.Utils (quietly)
 
 ----------------------------------------------------------------------------
@@ -464,6 +464,7 @@ ghcUnreadable =
     "corelint" </> "T21115.hs",
     "deSugar" </> "should_run" </> "T5742.hs",
     "dependent" </> "should_fail" </> "RenamingStar.hs",
+    "dependent" </> "should_fail" </> "T16326_Fail7.hs",
     "dmdanal" </> "should_compile" </> "T9208.hs",
     "driver" </> "FullGHCVersion.hs",
     "driver" </> "T10869.hs",
@@ -543,6 +544,7 @@ ghcUnreadable =
     "module" </> "T11432.hs",
     "module" </> "T11432a.hs",
     "module" </> "T12026.hs",
+    "module" </> "mod182.hs",
     "module" </> "mod183.hs",
     "module" </> "mod69.hs",
     "module" </> "mod70.hs",
@@ -576,6 +578,7 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "OpaqueParseFail3.hs",
     "parser" </> "should_fail" </> "Or1.hs",
     "parser" </> "should_fail" </> "OrPatInExprErr.hs",
+    "parser" </> "should_fail" </> "ParserNoForallUnicode.hs",
     "parser" </> "should_fail" </> "ParserNoLambdaCase.hs",
     "parser" </> "should_fail" </> "ParserNoMultiWayIf.hs",
     "parser" </> "should_fail" </> "ParserNoTH1.hs",
@@ -602,12 +605,14 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "T1344c.hs",
     "parser" </> "should_fail" </> "T13450.hs",
     "parser" </> "should_fail" </> "T13450TH.hs",
+    "parser" </> "should_fail" </> "T14588.hs",
     "parser" </> "should_fail" </> "T15730.hs",
     "parser" </> "should_fail" </> "T15730b.hs",
     "parser" </> "should_fail" </> "T15849.hs",
     "parser" </> "should_fail" </> "T16270.hs",
     "parser" </> "should_fail" </> "T16270h.hs",
     "parser" </> "should_fail" </> "T16999.hs",
+    "parser" </> "should_fail" </> "T17162.hs",
     "parser" </> "should_fail" </> "T17865.hs",
     "parser" </> "should_fail" </> "T17879a.hs",
     "parser" </> "should_fail" </> "T17879b.hs",
@@ -641,6 +646,7 @@ ghcUnreadable =
     "parser" </> "should_fail" </> "T3811e.hs",
     "parser" </> "should_fail" </> "T3811f.hs",
     "parser" </> "should_fail" </> "T5425.hs",
+    "parser" </> "should_fail" </> "T8258NoGADTs.hs",
     "parser" </> "should_fail" </> "T8431.hs",
     "parser" </> "should_fail" </> "T8501a.hs",
     "parser" </> "should_fail" </> "T8501b.hs",
@@ -773,6 +779,7 @@ ghcUnreadable =
     "rename" </> "should_fail" </> "T9437.hs",
     "rename" </> "should_fail" </> "rnfail016.hs",
     "rename" </> "should_fail" </> "rnfail016a.hs",
+    "rename" </> "should_fail" </> "rnfail052.hs",
     "roles" </> "should_fail" </> "Roles7.hs",
     "rts" </> "T12497.hs",
     "rts" </> "linker" </> "T20494.hs",
@@ -861,8 +868,11 @@ ghcUnreadable =
     "typecheck" </> "should_fail" </> "T14761b.hs",
     "typecheck" </> "should_fail" </> "T2126.hs",
     "typecheck" </> "should_fail" </> "T3102.hs",
+    "typecheck" </> "should_fail" </> "T3155.hs",
     "typecheck" </> "should_fail" </> "T9634.hs",
     "typecheck" </> "should_fail" </> "tcfail089.hs",
+    "typecheck" </> "should_fail" </> "tcfail166.hs",
+    "typecheck" </> "should_fail" </> "tcfail183.hs",
     "typecheck" </> "should_run" </> "T1735.hs",
     "typecheck" </> "should_run" </> "T1735_Help" </> "Main.hs",
     "typecheck" </> "should_run" </> "T4809.hs",
@@ -900,7 +910,7 @@ data Example = Example
     -- @.cabal@ file. 'Nothing' for a corpus whose examples are not modules
     -- of a package, see 'corpusInPackages', and for one whose package could
     -- not be read.
-    exampleExtensions :: Maybe [Extension]
+    exampleExtensions :: Maybe Defaults
   }
   deriving (Eq, Show)
 
@@ -1089,7 +1099,7 @@ examplesIn corpus root = do
       fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
 
 -- | What each of a corpus's examples has in force before its own pragmas.
-packageReaderFor :: Corpus -> IO (FilePath -> IO (Maybe [Extension]))
+packageReaderFor :: Corpus -> IO (FilePath -> IO (Maybe Defaults))
 packageReaderFor corpus
   | not (corpusInPackages corpus) = pure (const (pure Nothing))
   | otherwise = do

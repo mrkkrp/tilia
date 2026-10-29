@@ -16,7 +16,6 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.LanguageExtensions.Type (Extension)
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cpp (CppError, everyBranch, formatWithCpp)
 import Tilia.Doc (printDoc)
@@ -36,13 +35,14 @@ import Tilia.Fixity
     unreadable,
   )
 import Tilia.Parser (ParsedModule (..))
+import Tilia.Pragma (Defaults)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
 
 -- | How to format one corpus example.
 exampleRenderConfig ::
   -- | What the package around it puts in force, if it is a module of one.
-  Maybe [Extension] ->
+  Maybe Defaults ->
   Text ->
   -- | Its configurations, parsed.
   NonEmpty ParsedModule ->
@@ -81,7 +81,7 @@ exampleRenderConfig package source parsed =
 -- | Print a corpus example that does not use the preprocessor.
 printExample ::
   -- | What the package around it puts in force, if it is a module of one.
-  Maybe [Extension] ->
+  Maybe Defaults ->
   Text ->
   -- | It, parsed.
   ParsedModule ->
@@ -93,7 +93,7 @@ printExample package source parsed =
 -- | Format a corpus example that uses the preprocessor.
 formatCppExample ::
   -- | What the package around it puts in force, if it is a module of one.
-  Maybe [Extension] ->
+  Maybe Defaults ->
   FilePath ->
   Text ->
   Either CppError Text

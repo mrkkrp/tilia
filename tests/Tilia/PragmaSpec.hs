@@ -4,7 +4,7 @@
 module Tilia.PragmaSpec (spec) where
 
 import Data.Text (Text)
-import GHC.Driver.Session (glasgowExtsFlags)
+import GHC.Driver.Session (Language (..), OnOff (..), glasgowExtsFlags, languageExtensions)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
 import Tilia.Pragma
@@ -36,52 +36,52 @@ spec = do
         (\source -> movesPositions source `shouldBe` False)
   describe "the extensions in force" $ do
     it "keeps what the package puts in force" $
-      effectiveExtensions [ImplicitPrelude, GADTs] "module M where\n"
+      inForceUnder [ImplicitPrelude, GADTs] "module M where\n"
         `shouldBe` [ImplicitPrelude, GADTs]
     it "reads one extension" $
-      effectiveExtensions [] "{-# LANGUAGE BangPatterns #-}\nmodule M where\n"
+      inForceUnder [] "{-# LANGUAGE BangPatterns #-}\nmodule M where\n"
         `shouldBe` [BangPatterns]
     it "reads several from one pragma" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# LANGUAGE LambdaCase, MagicHash #-}\nmodule M where\n"
         `shouldBe` [LambdaCase, MagicHash]
     it "reads several pragmas" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE MagicHash #-}\n"
         `shouldBe` [LambdaCase, MagicHash]
     it "ignores flags that turn on no extension" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE LambdaCase #-}\n"
         `shouldBe` [LambdaCase]
     it "reads the -X flags of OPTIONS_GHC" $
-      effectiveExtensions
+      inForceUnder
         [GADTs]
         "{-# OPTIONS_GHC -Wall -XLambdaCase -XNoGADTs #-}\nmodule M where\n"
         `shouldBe` [LambdaCase]
     it "reads the flags of OPTIONS" $
-      effectiveExtensions [] "{-# OPTIONS -XLambdaCase #-}\n"
+      inForceUnder [] "{-# OPTIONS -XLambdaCase #-}\n"
         `shouldBe` [LambdaCase]
     it "reads -cpp as turning on CPP" $
-      effectiveExtensions [] "{-# OPTIONS_GHC -cpp #-}\n"
+      inForceUnder [] "{-# OPTIONS_GHC -cpp #-}\n"
         `shouldBe` [Cpp]
     it "reads the old -f spellings of extensions" $
-      effectiveExtensions
+      inForceUnder
         [ImplicitPrelude]
         "{-# OPTIONS_GHC -fbang-patterns -fno-implicit-prelude #-}\n"
         `shouldBe` [BangPatterns]
     it "reads -fglasgow-exts as turning on what it stands for" $
-      effectiveExtensions [] "{-# OPTIONS_GHC -fglasgow-exts #-}\n"
+      inForceUnder [] "{-# OPTIONS_GHC -fglasgow-exts #-}\n"
         `shouldSatisfy` \es -> all (`elem` es) glasgowExtsFlags
     it "reads -fno-glasgow-exts as turning that off again" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# OPTIONS_GHC -fglasgow-exts -fno-glasgow-exts #-}\n"
         `shouldSatisfy` not . any (`elem` glasgowExtsFlags)
     it "reads the pragmas in the order they are written" $
-      effectiveExtensions
+      inForceUnder
         []
         ( "{-# LANGUAGE LambdaCase #-}\n"
             <> "{-# OPTIONS_GHC -XNoLambdaCase -XMagicHash #-}\n"
@@ -89,48 +89,71 @@ spec = do
         )
         `shouldBe` []
     it "ignores a pragma below the module line, which GHC does not read" $
-      effectiveExtensions [] "module M where\n{-# LANGUAGE LambdaCase #-}\n"
+      inForceUnder [] "module M where\n{-# LANGUAGE LambdaCase #-}\n"
         `shouldBe` []
     it "reads the pragmas between the directives of a header" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# LANGUAGE CPP #-}\n#if 1\n{-# LANGUAGE LambdaCase #-}\n#endif\nmodule M where\n"
         `shouldBe` [Cpp, LambdaCase]
+    it "takes an edition the module names in place of the component's" $
+      inForceUnder
+        (languageExtensions (Just Haskell2010))
+        "{-# LANGUAGE GHC2024 #-}\nmodule M where\n"
+        `shouldBe` languageExtensions (Just GHC2024)
+    it "keeps what the component switches on top of the module's edition" $
+      effectiveExtensions
+        (defaultsOf (languageExtensions (Just Haskell2010)) [On OverloadedStrings])
+        "{-# LANGUAGE GHC2021 #-}\nmodule M where\n"
+        `shouldSatisfy` \es -> all (`elem` es) [OverloadedStrings, ImportQualifiedPost]
+    it "switches what the module switches on top of its edition, wherever named" $
+      inForceUnder
+        []
+        "{-# LANGUAGE NoLambdaCase #-}\n{-# LANGUAGE GHC2024 #-}\nmodule M where\n"
+        `shouldSatisfy` notElem LambdaCase
+    it "takes the edition named last" $
+      inForceUnder
+        []
+        "{-# LANGUAGE GHC2024 #-}\n{-# LANGUAGE Haskell2010 #-}\nmodule M where\n"
+        `shouldBe` languageExtensions (Just Haskell2010)
+    it "reads an edition from a -X flag" $
+      inForceUnder [] "{-# OPTIONS_GHC -XGHC2024 #-}\nmodule M where\n"
+        `shouldBe` languageExtensions (Just GHC2024)
     it "ignores the options of other compilers" $
-      effectiveExtensions [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
+      inForceUnder [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
         `shouldBe` []
     it "ignores an unknown extension rather than failing" $
-      effectiveExtensions [] "{-# LANGUAGE LambdaCase, NotARealExtension #-}\n"
+      inForceUnder [] "{-# LANGUAGE LambdaCase, NotARealExtension #-}\n"
         `shouldBe` [LambdaCase]
     it "treats a No-prefix as turning one off" $
-      effectiveExtensions
+      inForceUnder
         [ImplicitPrelude]
         "{-# LANGUAGE NoImplicitPrelude #-}\n"
         `shouldBe` []
     it "lets a module refuse what its package put in force" $
-      effectiveExtensions [ImplicitPrelude, GADTs] "{-# LANGUAGE NoGADTs #-}\n"
+      inForceUnder [ImplicitPrelude, GADTs] "{-# LANGUAGE NoGADTs #-}\n"
         `shouldBe` [ImplicitPrelude]
     it "lets a module take back a Prelude its package turned off" $
-      effectiveExtensions [GADTs] "{-# LANGUAGE ImplicitPrelude #-}\n"
+      inForceUnder [GADTs] "{-# LANGUAGE ImplicitPrelude #-}\n"
         `shouldBe` [GADTs, ImplicitPrelude]
     it "does not repeat an extension named twice" $
-      effectiveExtensions
+      inForceUnder
         []
         "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\n"
         `shouldBe` [LambdaCase]
     it "turns on what an extension implies, as GHC does" $
-      effectiveExtensions [] "{-# LANGUAGE RankNTypes #-}\n"
+      inForceUnder [] "{-# LANGUAGE RankNTypes #-}\n"
         `shouldBe` [RankNTypes, ExplicitForAll]
     it "turns off what an extension implies is off" $
-      effectiveExtensions
+      inForceUnder
         [ImplicitPrelude]
         "{-# LANGUAGE RebindableSyntax #-}\n"
         `shouldBe` [RebindableSyntax]
     it "leaves on what an extension turned off had implied" $
-      effectiveExtensions [] "{-# LANGUAGE RankNTypes, NoRankNTypes #-}\n"
+      inForceUnder [] "{-# LANGUAGE RankNTypes, NoRankNTypes #-}\n"
         `shouldBe` [ExplicitForAll]
     it "lets a later name turn off what an earlier one implied" $
-      effectiveExtensions [] "{-# LANGUAGE RankNTypes, NoExplicitForAll #-}\n"
+      inForceUnder [] "{-# LANGUAGE RankNTypes, NoExplicitForAll #-}\n"
         `shouldBe` [RankNTypes]
 
   describe "lookupExtension" $ do
@@ -145,3 +168,8 @@ spec = do
 
     langThenLine :: Text
     langThenLine = "{-# LANGUAGE LambdaCase #-}\nmodule M where\n{-# LINE 3 \"O.hs\" #-}\n"
+
+-- | The extensions in force in a module of a component whose edition puts
+-- these in force and which switches nothing itself.
+inForceUnder :: [Extension] -> Text -> [Extension]
+inForceUnder edition = effectiveExtensions (defaultsOf edition [])

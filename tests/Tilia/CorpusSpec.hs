@@ -15,7 +15,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
-import GHC.LanguageExtensions.Type (Extension)
 import System.FilePath (replaceExtension)
 import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
@@ -29,7 +28,7 @@ import Tilia.Parser
     ParsedModule (..),
     parseModule,
   )
-import Tilia.Pragma (movesPositions)
+import Tilia.Pragma (Defaults, movesPositions)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig (formatCppExample, printExample)
@@ -301,7 +300,7 @@ guarded result =
 
 -- | Everything that can be established about one example without doing any
 -- more input or output.
-checkPure :: Palette -> FilePath -> Maybe [Extension] -> Text -> Maybe Text -> Result
+checkPure :: Palette -> FilePath -> Maybe Defaults -> Text -> Maybe Text -> Result
 checkPure palette path package source expected
   | movesPositions source =
       Result Declined "a pragma that moves positions, which we do not rewrite" noDigest
@@ -367,7 +366,7 @@ checkPure palette path package source expected
 
 -- | Everything that can be established about an example with conditionals in
 -- it.
-checkCpp :: Palette -> FilePath -> Maybe [Extension] -> Text -> Maybe Text -> Result
+checkCpp :: Palette -> FilePath -> Maybe Defaults -> Text -> Maybe Text -> Result
 checkCpp palette path package source expected = case formatCppExample package path source of
   Left why -> Result Declined (describeCppError why) noDigest
   Right formatted -> case (countLeaves source, countLeaves formatted) of

@@ -34,7 +34,7 @@ import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -69,7 +69,6 @@ import Distribution.Utils.Path (getSymbolicPath)
 #endif
 import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
-import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
 import System.Directory (canonicalizePath, doesDirectoryExist)
 import System.FilePath
@@ -83,7 +82,7 @@ import System.FilePath
     (</>),
   )
 import Tilia.Cabal.Project (cabalFilesIn)
-import Tilia.Pragma (applyExtensionName, lookupEdition)
+import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (attempted, quietly)
 
@@ -113,7 +112,7 @@ describePackageProblem = \case
     T.pack file <> " names no component whose hs-source-dirs holds it"
 
 -- | What we retain from reading a .cabal file.
-type PackageReader = FilePath -> IO (Either PackageProblem [Extension])
+type PackageReader = FilePath -> IO (Either PackageProblem Defaults)
 
 -- | A 'PackageReader' that remembers what it has already worked out.
 newPackageReader ::
@@ -140,7 +139,7 @@ newPackageReader planned = do
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
-                pure (Right (GHC.languageExtensions Nothing))
+                pure (Right (defaultsOf (GHC.languageExtensions Nothing) []))
             | otherwise -> pure $ case claiming file components of
                 Just c -> Right (componentExtensions c)
                 Nothing -> Left (FileUnclaimed cabalFile)
@@ -162,8 +161,8 @@ data ComponentBranch = ComponentBranch
     -- | Its entry points, relative to its source directories in the same
     -- way but with their extensions.
     componentEntries :: Set FilePath,
-    -- | The extensions it puts in force.
-    componentExtensions :: [Extension]
+    -- | What it puts in force.
+    componentExtensions :: Defaults
   }
 
 -- | Which branch holds the file, of those whose directories cover it.
@@ -504,16 +503,18 @@ sourceDirsOf bi = case fmap getSymbolicPath (hsSourceDirs bi) of
   [] -> ["."]
   ds -> ds
 
--- | The extensions a component puts in force, before any module's pragmas.
-extensionsInForce :: BuildInfo -> [Extension]
+-- | What a component puts in force, before any module's pragmas.
+extensionsInForce :: BuildInfo -> Defaults
 extensionsInForce bi =
-  foldl apply (GHC.languageExtensions edition) (usedExtensions bi)
+  defaultsOf
+    (GHC.languageExtensions edition)
+    (mapMaybe switched (usedExtensions bi))
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
-    apply acc = \case
-      Cabal.EnableExtension e -> applyExtensionName acc (named e)
-      Cabal.DisableExtension e -> applyExtensionName acc ("No" <> named e)
-      _ -> acc
+    switched = \case
+      Cabal.EnableExtension e -> nameSwitch (named e)
+      Cabal.DisableExtension e -> nameSwitch ("No" <> named e)
+      _ -> Nothing
     named = T.pack . show
 
 -- | GHC's name for a language edition, when it has one.

@@ -15,6 +15,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
+import Tilia.Pragma (Defaults, effectiveExtensions)
 
 spec :: Spec
 spec = do
@@ -83,7 +84,8 @@ spec = do
     it "are the language edition's" $
       inPackage twoComponents ["src"] $ \root -> do
         library <- asked (root </> "src" </> "M.hs")
-        (length <$> library) `shouldSatisfy` either (const False) (> 40)
+        (length . (`effectiveExtensions` "") <$> library)
+          `shouldSatisfy` either (const False) (> 40)
 
     it "are Haskell98's where it names no edition, as cabal builds it" $
       inPackage namesNoEdition ["src"] $ \root -> do
@@ -368,7 +370,7 @@ inPackage contents dirs use =
 
 -- | Ask about one file with a reader of its own, which is what a test that
 -- is not about caching wants.
-asked :: FilePath -> IO (Either PackageProblem [Extension])
+asked :: FilePath -> IO (Either PackageProblem Defaults)
 asked path = do
   ask <- newPackageReader Nothing
   ask path
@@ -377,13 +379,13 @@ asked path = do
 modules :: FilePath -> [FilePath]
 modules root = [root </> "src" </> "M.hs", root </> "test" </> "S.hs"]
 
-unreadableOrMissing :: Either PackageProblem [Extension] -> Bool
+unreadableOrMissing :: Either PackageProblem Defaults -> Bool
 unreadableOrMissing = either (const True) (const False)
 
-has :: Extension -> Either PackageProblem [Extension] -> Bool
-has e = either (const False) (e `elem`)
+has :: Extension -> Either PackageProblem Defaults -> Bool
+has e = either (const False) ((e `elem`) . (`effectiveExtensions` ""))
 
-unclaimed :: Either PackageProblem [Extension] -> Bool
+unclaimed :: Either PackageProblem Defaults -> Bool
 unclaimed = either isFileUnclaimed (const False)
   where
     isFileUnclaimed = \case
