@@ -7,6 +7,7 @@
 -- | Formatting what an editor holds of a module.
 module Tilia.EditorSpec (spec) where
 
+import Control.Exception (throwIO)
 import Data.ByteString qualified as BS
 import Data.Choice (pattern Don't)
 import Data.Map.Strict qualified as Map
@@ -119,6 +120,11 @@ spec = describe "formatting what an editor holds" $ do
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nf = \\case\n    _ -> 1\n"
           `shouldReturn` CameTo "module Uses where\n\nf = \\case\n  _ -> 1\n"
+
+    it "fails a module whose formatting throws rather than throwing itself" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nimport Boom\nx=a <?> b\n"
+          `shouldReturn` CameFailed 19
 
     it "leaves out the branches the versions it is given rule out" $
       withCompiled $ \buffer ->
@@ -241,7 +247,8 @@ withProject act =
 
 -- | The project of 'withProject', with what compiling it would establish
 -- given instead of a plan: @LambdaCase@ in force, version 0.1.0.0 of the
--- package, and the interfaces of @Ops@ and of an empty @Prelude@.
+-- package, and the interfaces of @Ops@ and of an empty @Prelude@; asking for
+-- that of @Boom@ throws.
 withCompiled :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
 withCompiled act =
   inProject $ \_ project ->
@@ -257,7 +264,9 @@ withCompiled act =
         { compiledExtensions = [ImplicitPrelude, LambdaCase],
           compiledWith = makeVersion [9, 14, 1],
           compiledPackages = Map.singleton "fake" (makeVersion [0, 1, 0, 0]),
-          compiledInterface = pure . (`Map.lookup` interfaces)
+          compiledInterface = \case
+            "Boom" -> throwIO (userError "boom")
+            m -> pure (Map.lookup m interfaces)
         }
     interfaces =
       Map.fromList

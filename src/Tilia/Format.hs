@@ -119,6 +119,8 @@ data FormatError
     NotEquivalent FilePath Text
   | -- | Formatting is not idempotent.
     NotIdempotent FilePath Text
+  | -- | Formatting the file threw an exception, shown.
+    Threw FilePath Text
 
 -- | Say what went wrong.
 describeFormatError :: Palette -> FormatError -> Text
@@ -142,6 +144,8 @@ describeFormatError palette = \case
     "formatting " <> file path <> " changed the program: " <> why
   NotIdempotent path why ->
     "formatting " <> file path <> " is not idempotent: " <> why
+  Threw path why ->
+    "formatting " <> file path <> " threw an exception: " <> why
   UnknownFixity path unknown ->
     "will not format "
       <> file path
@@ -182,6 +186,7 @@ formatErrorExitCode = \case
   Unreadable{} -> 16
   NotEquivalent{} -> 17
   NotIdempotent{} -> 18
+  Threw{} -> 19
   CppUnsupported _ why -> case why of
     MalformedConditional{} -> 9
     TooManyConfigurations -> 10
@@ -202,6 +207,7 @@ refused = \case
   Unreadable{} -> False
   NotEquivalent{} -> False
   NotIdempotent{} -> False
+  Threw{} -> False
   NoProject{} -> False
   NoBuildPlan{} -> False
 

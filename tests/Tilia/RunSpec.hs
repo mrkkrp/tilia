@@ -52,9 +52,10 @@ spec = do
           NoProject "A.hs",
           NoBuildPlan "." "cabal said no",
           NotEquivalent "A.hs" "f = 1 became f = 2",
-          NotIdempotent "A.hs" "line 12 differs"
+          NotIdempotent "A.hs" "line 12 differs",
+          Threw "A.hs" "boom"
         ]
-        `shouldBe` [False, False, False, False, False, False]
+        `shouldBe` [False, False, False, False, False, False, False]
 
   describe "what became of a file" $ do
     it "counts a rewrite as a difference and nothing else" $
@@ -452,6 +453,10 @@ spec = do
 
     it "copes with having nothing to do" $
       inParallel pure ([] :: [Int]) `shouldReturn` []
+
+    it "passes on what one of them throws rather than waiting for it" $
+      inParallel (\n -> if n == 3 then error "boom" else pure n) [1 .. 8 :: Int]
+        `shouldThrow` errorCall "boom"
 
     it "really does run them at once" $ do
       capabilities <- getNumCapabilities
