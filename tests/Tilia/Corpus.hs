@@ -373,7 +373,8 @@ ormoluSkip =
     "declaration" </> "data" </> "gadt" </> "multiline.hs",
     "declaration" </> "data" </> "gadt" </> "simple.hs",
     "import" </> "no-implicit-prelude-package.hs",
-    "other" </> "pragma-sorting.hs"
+    "other" </> "pragma-sorting.hs",
+    "declaration" </> "splice" </> "bracket.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnreadable
