@@ -60,7 +60,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (Defaults, effectiveExtensions)
-import Tilia.Utils (byteOrderMark, inParallel, quietly, readFileText, sha256Of)
+import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of)
 
 ----------------------------------------------------------------------------
 -- Resolving
@@ -329,7 +329,7 @@ resolveModule
       writtenForHsc path =
         pure mempty
     | Just path <- Map.lookup modName wkLocal =
-        readFileText path >>= \case
+        readUtf8File path >>= \case
           Nothing -> pure unreadable
           Just source ->
             fromSummaries (wkReach visiting') modName

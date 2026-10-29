@@ -96,7 +96,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly, readFileText, sha256Of)
+import Tilia.Utils (quietly, readUtf8File, sha256Of)
 
 ----------------------------------------------------------------------------
 -- The plan
@@ -321,7 +321,7 @@ checkedOutIn distDir plan = do
           (ppName p <> "-") `T.isPrefixOf` T.pack e
         ]
     isThePackage p dir = quietly False $ do
-      contents <- readFileText (dir </> T.unpack (ppName p) <> ".cabal")
+      contents <- readUtf8File (dir </> T.unpack (ppName p) <> ".cabal")
       pure (maybe False (describes p) contents)
     describes p text =
       any (names "name:" (ppName p)) (T.lines text)
