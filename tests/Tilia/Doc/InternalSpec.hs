@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | The span algebra and the rendering engine's primitives.
+-- | The rendering engine's primitives.
 module Tilia.Doc.InternalSpec (spec) where
 
 import Data.Text (Text)
@@ -15,18 +15,6 @@ import Tilia.Span
 
 spec :: Spec
 spec = do
-  describe "Span" $ do
-    it "recognises a single-line span" $
-      isSingleLine (mkSpan (3, 1) (3, 40)) `shouldBe` True
-    it "recognises a multi-line span" $
-      isSingleLine (mkSpan (3, 1) (4, 1)) `shouldBe` False
-    it "unions to cover both operands" $
-      mkSpan (1, 5) (1, 9) <> mkSpan (3, 2) (4, 1)
-        `shouldBe` mkSpan (1, 5) (4, 1)
-    it "takes the earlier start column when starts share a line" $
-      mkSpan (1, 9) (1, 20) <> mkSpan (1, 3) (1, 5)
-        `shouldBe` mkSpan (1, 3) (1, 20)
-
   describe "atoms" $ do
     it "renders nothing for an empty document" $
       out mempty `shouldBe` ""

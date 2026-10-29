@@ -220,6 +220,7 @@ test-suite tests
     Tilia.Render.OperatorSpec
     Tilia.RenderSpec
     Tilia.RunSpec
+    Tilia.SpanSpec
     Tilia.TestConfig
     Tilia.TestUtils
     Tilia.WithProjectPlan
