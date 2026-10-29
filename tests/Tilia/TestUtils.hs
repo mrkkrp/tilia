@@ -12,6 +12,7 @@ module Tilia.TestUtils
     parsed,
     commentsIn,
     unreadOnly,
+    inBothNamespaces,
     fingerprint,
     routedResolver,
 
@@ -31,6 +32,7 @@ import Data.Char (ord)
 import Data.Choice (pattern Do)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
@@ -59,7 +61,7 @@ import Tilia.Cpp.Directives
     scanConditionals,
     unconditionalErrors,
   )
-import Tilia.Fixity (ModuleChain (..))
+import Tilia.Fixity (Fixities, Fixity, ModuleChain (..), Namespace (..), OpName)
 import Tilia.Fixity.Plan (Resolver, Route, newResolverVia)
 import Tilia.Parser
   ( ParsedModule (..),
@@ -124,6 +126,15 @@ commentsIn = comments . pmSource . parsed
 -- with nothing below it.
 unreadOnly :: Text -> NonEmpty ModuleChain
 unreadOnly m = ModuleChain (m :| []) :| []
+
+-- | Take fixities that say nothing about namespaces to govern both.
+inBothNamespaces :: Map OpName Fixity -> Fixities
+inBothNamespaces declared =
+  Map.fromList
+    [ ((namespace, op), fixity)
+    | (op, fixity) <- Map.toList declared,
+      namespace <- [InTypes, InTerms]
+    ]
 
 -- | FNV-1a, a hash of a string that is the same on every machine and every
 -- run.

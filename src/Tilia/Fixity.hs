@@ -32,7 +32,6 @@ module Tilia.Fixity
     decides,
     Namespace (..),
     Fixities,
-    inBothNamespaces,
     Certain (..),
     ModuleChain (..),
     spellModuleChain,
@@ -528,15 +527,6 @@ instance NFData Namespace
 
 -- | The fixities a module offers.
 type Fixities = Map (Namespace, OpName) Fixity
-
--- | Take fixities that say nothing about namespaces to govern both.
-inBothNamespaces :: Map OpName Fixity -> Fixities
-inBothNamespaces declared =
-  Map.fromList
-    [ ((namespace, op), fixity)
-    | (op, fixity) <- Map.toList declared,
-      namespace <- [InTypes, InTerms]
-    ]
 
 -- | What a module certainly brings into scope for a module that imports
 -- it whole.

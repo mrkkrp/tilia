@@ -19,13 +19,12 @@ import Tilia.Fixity
     Fixity (..),
     Namespace (..),
     OpName (..),
-    inBothNamespaces,
     resolveScope,
   )
 import Tilia.Fixity.Debug (fixityNotes, renderFixityNotes)
 import Tilia.Palette (Palette (Plain))
 import Tilia.Parser (pmModule)
-import Tilia.TestUtils (parsed)
+import Tilia.TestUtils (inBothNamespaces, parsed)
 import Tilia.Utils (lineWidth, visibleLength)
 
 spec :: Spec

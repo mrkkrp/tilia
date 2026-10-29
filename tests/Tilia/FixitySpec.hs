@@ -20,7 +20,7 @@ import Tilia.Cpp (blankCpp, branchLeaves)
 import Tilia.Fixity
 import Tilia.Parser
 import Tilia.Span (spanStartColumn, spanStartLine)
-import Tilia.TestUtils (parsed, unreadOnly)
+import Tilia.TestUtils (inBothNamespaces, parsed, unreadOnly)
 
 spec :: Spec
 spec = do
