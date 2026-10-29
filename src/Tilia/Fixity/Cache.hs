@@ -29,6 +29,7 @@ module Tilia.Fixity.Cache
 where
 
 import Control.Monad (join)
+import Data.ByteString qualified as BS
 import Data.Choice (Choice, isFalse)
 import Data.Foldable (toList, traverse_)
 import Data.List.NonEmpty (NonEmpty)
@@ -39,14 +40,13 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Time (UTCTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import System.Directory
   ( XdgDirectory (XdgCache),
     createDirectoryIfMissing,
-    doesFileExist,
     getModificationTime,
     getXdgDirectory,
     renameFile,
@@ -54,7 +54,7 @@ import System.Directory
 import System.FilePath (takeDirectory, (</>))
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
-import Tilia.Utils (quietly)
+import Tilia.Utils (quietly, readUtf8File)
 
 -- | Where cached answers are kept together with a token unique to this
 -- build plan and environment, or nowhere, in which case nothing is
@@ -75,7 +75,7 @@ newtype PlanToken = PlanToken Text
 
 -- | Bumped whenever cache format changes.
 formatVersion :: FilePath
-formatVersion = "v2"
+formatVersion = "v3"
 
 -- | Open, creating the directory if need be.
 --
@@ -591,9 +591,7 @@ renderLines = T.unlines . fmap T.unwords
 readIfPresent :: Maybe FilePath -> (Text -> a) -> IO (Maybe a)
 readIfPresent place parse = case place of
   Nothing -> pure Nothing
-  Just path -> quietly Nothing $ do
-    there <- doesFileExist path
-    if there then Just . parse <$> T.readFile path else pure Nothing
+  Just path -> fmap parse <$> readUtf8File path
 
 -- | Write via a temporary file and a rename, making the directory if need
 -- be.
@@ -603,5 +601,5 @@ writeAtomically place contents = case place of
   Just path -> quietly () $ do
     createDirectoryIfMissing True (takeDirectory path)
     let temporary = path <> ".tmp"
-    T.writeFile temporary contents
+    BS.writeFile temporary (T.encodeUtf8 contents)
     renameFile temporary path

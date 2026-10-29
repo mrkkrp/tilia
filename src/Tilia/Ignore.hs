@@ -12,6 +12,7 @@ module Tilia.Ignore
   )
 where
 
+import Data.ByteString qualified as BS
 import Data.Char
   ( isAlpha,
     isAlphaNum,
@@ -32,7 +33,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
+import Data.Text.Encoding qualified as T
 import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath (joinPath, normalise, splitDirectories, (</>))
 import Tilia.Utils (quietly)
@@ -276,7 +277,9 @@ ignoreFilesAbove root paths =
       let file = joinPath (root : directory) </> ".tiliaignore"
       exists <- doesFileExist file
       if exists
-        then (\t -> [(directory, parseIgnoreFile t)]) <$> T.readFile file
+        then do
+          bytes <- BS.readFile file
+          pure [(directory, parseIgnoreFile (T.decodeUtf8Lenient bytes))]
         else pure []
 
 -- | A path's segments relative to the project root, if it is under it.

@@ -60,6 +60,13 @@
   written among types, as a promoted constructor is, where a run declines
   the module over it, rather than showing its fixity settled.
   [Issue 304](https://github.com/mrkkrp/tilia/issues/304).
+* `.tiliaignore` files and the cache are read and written as UTF-8 whatever
+  the locale, so under `LANG=C` a `.tiliaignore` holding a character
+  outside ASCII no longer makes `check` and `inplace` crash, nor
+  `for-editor` format what it ignores, and what the cache holds about an
+  operator or a path with such a character is no longer worked out again on
+  every run. The cache starts anew, so the first run after upgrading works
+  everything out again. [Issue 290](https://github.com/mrkkrp/tilia/issues/290).
 
 ## Tilia 0.1.2.0
 

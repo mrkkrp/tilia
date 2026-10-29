@@ -3,14 +3,17 @@
 -- | Ignore files written the way @.gitignore@ files are.
 module Tilia.IgnoreSpec (spec) where
 
+import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Ignore
+import Tilia.TestUtils (underAsciiLocale)
 
 spec :: Spec
 spec = do
@@ -90,6 +93,14 @@ spec = do
         isIgnoredInProject root (root </> "src" </> "inner" </> "A.hs-boot") `shouldReturn` True
         isIgnoredInProject root (root </> "src" </> "inner" </> ".." </> "Generated.hs") `shouldReturn` True
         isIgnoredInProject root (root </> "src" </> "New.hs") `shouldReturn` False
+
+    it "is ignored by a .tiliaignore that is not ASCII under any locale" $
+      withProject $ \root -> do
+        BS.writeFile (root </> ".tiliaignore") . T.encodeUtf8 $
+          "# generated code — do not format\nsrc/Generated.hs\n"
+        let generated = root </> "src" </> "Generated.hs"
+        underAsciiLocale (isIgnoredInProject root generated)
+          `shouldReturn` True
 
     it "is not ignored when it is outside of the project" $
       withProject $ \root ->
