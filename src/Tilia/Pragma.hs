@@ -67,13 +67,13 @@ effectiveExtensions ::
   Text ->
   [Extension]
 effectiveExtensions defaults source =
-  foldl' switch inForce (concatMap snd said)
+  foldl' switch inForce (concat switches)
   where
-    said = fmap pragmaSays (headerPragmaBodies source)
-    pragmaSays body =
+    (editions, switches) = unzip (fmap ofPragma (headerPragmaBodies source))
+    ofPragma body =
       let (keyword, rest) = T.break (== ' ') body
-       in saysOf (T.toUpper keyword) rest
-    inForce = case concatMap fst said of
+       in editionsAndSwitches (T.toUpper keyword) rest
+    inForce = case concat editions of
       [] -> defaultsInForce defaults
       named ->
         foldl'
@@ -94,12 +94,12 @@ sameInForce a b = not (turnsOff a) || inForce a == inForce b
 
 -- | What a pragma of this name and body turns on and off.
 switchesOf :: Text -> Text -> [GHC.OnOff Extension]
-switchesOf name = snd . saysOf name
+switchesOf name = snd . editionsAndSwitches name
 
 -- | The editions a pragma of this name and body names, and what it turns on
 -- and off.
-saysOf :: Text -> Text -> ([GHC.Language], [GHC.OnOff Extension])
-saysOf name body = case name of
+editionsAndSwitches :: Text -> Text -> ([GHC.Language], [GHC.OnOff Extension])
+editionsAndSwitches name body = case name of
   "LANGUAGE" ->
     let names = languageNames body
      in (mapMaybe lookupEdition names, mapMaybe nameSwitch names)
