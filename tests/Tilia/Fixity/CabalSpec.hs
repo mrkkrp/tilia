@@ -5,10 +5,14 @@ module Tilia.Fixity.CabalSpec (spec) where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as Tar
+import Codec.Compression.GZip qualified as GZip
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
+import System.FilePath ((</>))
+import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Fixity.Cabal
 import Tilia.Pragma (effectiveExtensions)
@@ -45,6 +49,18 @@ spec = do
             ]
         )
         `shouldSatisfy` maybe False (elem "Test.Hspec.Runner" . containedModules)
+
+  describe "a tarball that cannot be read" $ do
+    it "leaves its package unread when it is not gzip" $
+      withTarball "not really a tarball" $ \path ->
+        packageModules path `shouldReturn` Nothing
+
+    it "leaves its package unread when it is cut short in its cabal file" $ do
+      let names = ["M" <> T.pack (show n) | n <- [1 .. 5000 :: Int]]
+          cabal = "library\n  exposed-modules: " <> T.intercalate ", " names
+          whole = GZip.compress (Tar.write [entryFor "big-1.0/big.cabal" cabal])
+      withTarball (BL.take (BL.length whole `div` 2) whole) $ \path ->
+        packageModules path `shouldReturn` Nothing
 
   describe "plain fields" $ do
     it "reads a one-line field" $
@@ -233,6 +249,14 @@ entryFor :: FilePath -> Text -> Tar.Entry
 entryFor path contents = case Tar.toTarPath False path of
   Left why -> error why
   Right tarPath -> Tar.fileEntry tarPath (BL.fromStrict (T.encodeUtf8 contents))
+
+-- | Run something with a tarball holding these bytes.
+withTarball :: BL.ByteString -> (FilePath -> Expectation) -> Expectation
+withTarball bytes act =
+  withSystemTempDirectory "tilia-tarball" $ \dir -> do
+    let path = dir </> "big-1.0.tar.gz"
+    BL.writeFile path bytes
+    act path
 
 -- | An archive of those entries, in order.
 archiveOf :: [(FilePath, Text)] -> Tar.Entries e

@@ -67,6 +67,10 @@
   operator or a path with such a character is no longer worked out again on
   every run. The cache starts anew, so the first run after upgrading works
   everything out again. [Issue 290](https://github.com/mrkkrp/tilia/issues/290).
+* Where the plan gives no hash to check a dependency's tarball against, a
+  tarball that is not gzip, or is cut short, leaves its package unread, so
+  that a module needing its fixities is declined, rather than ending the
+  run. [Issue 303](https://github.com/mrkkrp/tilia/issues/303).
 
 ## Tilia 0.1.2.0
 
