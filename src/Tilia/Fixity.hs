@@ -353,8 +353,7 @@ listedMembers hsModule = case hsmodExports hsModule of
 data Import = Import
   { -- | The module being imported.
     importModule :: Text,
-    -- | Whether unqualified names are brought into scope. An import that is
-    -- @qualified@ brings none.
+    -- | Whether it is @qualified@, bringing no unqualified names in.
     importQualified :: Bool,
     -- | The name qualified uses go through: the alias if there is one,
     -- otherwise the module's own name.
@@ -1008,11 +1007,8 @@ spellDisagreement palette offers =
 ----------------------------------------------------------------------------
 -- Module summaries
 
--- | Summary of a module: raw facts (per CPP configuration) about a module
--- we read from source. This is built for both local modules and dependency
--- modules when they come from tarballs. This is an optimization
--- mechanism—we create a summary once and then share it during a run. For
--- local modules it is also persisted in the cache on disk.
+-- | What one CPP configuration of a module read from source says, whether
+-- the module is the project's own or comes out of a tarball.
 data ModuleSummary = ModuleSummary
   { -- | The name it gives itself, if it gives one.
     summaryName :: Maybe Text,

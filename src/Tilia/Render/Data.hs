@@ -205,10 +205,10 @@ conDecl ctx _ ConDeclGADT{..} =
     argsAndResult = arguments <> resultType
 
     -- GHC keeps a GADT's result type without the brackets it was written
-    -- with, and there is one shape that does not survive losing them. A
-    -- kind signature needs them back: @MkT :: Int -> T :: Star@ reads as a
-    -- second signature on the constructor rather than as a kind on its
-    -- result, and does not parse at all.
+    -- with, and three shapes need them back: a kind signature, as
+    -- @MkT :: Int -> T :: Star@ does not parse, and a @forall@ or a context
+    -- making up the whole signature, which would be read as the
+    -- constructor's own.
     resultType = case unLoc con_res_ty of
       HsKindSig{} -> parens (hsType ctx con_res_ty)
       HsForAllTy{} | standsAlone -> parens (hsType ctx con_res_ty)

@@ -1312,6 +1312,8 @@ cmdHangs = \case
   HsCmdLam{} -> Hanging
   _ -> Normal
 
+-- | Does this command at the top of an arrow form absorb the line break
+-- that introduces it?
 cmdTopHangs :: HsCmdTop GhcPs -> Placement
 cmdTopHangs (HsCmdTop _ c) = cmdHangs (unLoc c)
 

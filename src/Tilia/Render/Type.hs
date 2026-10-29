@@ -193,8 +193,8 @@ tick = \case
   IsPromoted -> txt "'"
   NotPromoted -> mempty
 
--- | The tick on a promoted name, held off it when the name itself begins
--- with one, since @''@ is the spelling of a type-level quote.
+-- | The tick on a promoted name, held off it where the name's second
+-- character is a tick too, as @'B'@ would read as a character literal.
 promotion :: PromotionFlag -> LocatedN RdrName -> Doc
 promotion NotPromoted _ = mempty
 promotion IsPromoted n =

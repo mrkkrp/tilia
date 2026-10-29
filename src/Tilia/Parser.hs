@@ -72,7 +72,8 @@ data ParsedModule = ParsedModule
 parseModule ::
   -- | Parser config.
   ParserConfig ->
-  -- | Path, used only in positions reported back.
+  -- | Path, reported back in positions, whose extension tells a signature
+  -- from a module.
   FilePath ->
   -- | The source.
   Text ->
@@ -83,7 +84,8 @@ parseModule config path source =
 -- | Parse one configuration of a module.
 parseConfiguration ::
   ParserConfig ->
-  -- | Path, used only in positions reported back.
+  -- | Path, reported back in positions, whose extension tells a signature
+  -- from a module.
   FilePath ->
   -- | The lines of the module as written, except for the lines that do not
   -- belong to this configuration.
@@ -137,8 +139,9 @@ parseConfiguration config path written source =
         . GHC.diagnosticMessage GHC.NoDiagnosticOpts
         . GHC.errMsgDiagnostic
 
--- | Return each line a token other than a comment begins on, and whether
--- the leftmost such token on the line begins an item of the top level.
+-- | Return each line a token other than a comment begins on, down to the
+-- first item of the top level after the imports, and whether the leftmost
+-- such token on the line begins an item of the top level.
 -- 'Nothing' if the module has no imports, writes its top level in explicit
 -- braces, or does not lex.
 importLayout ::

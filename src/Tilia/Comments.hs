@@ -95,7 +95,8 @@ data CommentStyle
 
 -- | What was on the line above a comment.
 data Above
-  = -- | The comment begins on the first line of the file.
+  = -- | Nothing: the comment begins on the first line of the file, or the
+    -- line above is not in this configuration.
     TopOfFile
   | -- | An empty line.
     BlankLine
