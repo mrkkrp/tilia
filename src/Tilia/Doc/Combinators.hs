@@ -49,7 +49,6 @@ module Tilia.Doc.Combinators
 
     -- * Wrapping
     ClosingIndent (..),
-    bracket,
     parens,
     parensWith,
     brackets,

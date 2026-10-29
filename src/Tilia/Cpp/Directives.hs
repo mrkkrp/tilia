@@ -9,7 +9,7 @@ module Tilia.Cpp.Directives
     withoutRuledOut,
     withoutOpaque,
     CppError (..),
-    Malformation (..),
+    Malformation,
     describeCppError,
 
     -- * Splitting

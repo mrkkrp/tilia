@@ -25,7 +25,6 @@ module Tilia.Cabal.Plan
     -- * Readiness
     Readiness (..),
     PlanComponent (..),
-    spellPlanComponent,
     plannedComponents,
     planPathFor,
     checkReadiness,
