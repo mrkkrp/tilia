@@ -4,15 +4,18 @@
 -- | Pragma-related helpers.
 module Tilia.Pragma
   ( movesPositions,
+    Defaults,
+    defaultsOf,
     effectiveExtensions,
     lookupExtension,
     lookupEdition,
-    applyExtensionName,
+    nameSwitch,
     languageNames,
     sameInForce,
   )
 where
 
+import Control.Monad ((<=<))
 import Data.Char (isSpace)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -30,22 +33,48 @@ movesPositions = any positional . pragmaBodies
     positional body =
       T.toUpper (T.takeWhile (/= ' ') body) `elem` ["LINE", "COLUMN"]
 
+-- | What a component puts in force before the pragmas of a module: its
+-- @default-language@ and its @default-extensions@.
+data Defaults = Defaults
+  { -- | What it turns on and off on top of its edition, in order, and on top
+    -- of an edition the module names in its place.
+    defaultsSwitches :: [GHC.OnOff Extension],
+    -- | What its edition and those switches put in force, worked out once.
+    defaultsInForce :: [Extension]
+  }
+  deriving (Eq, Show)
+
+-- | What a component puts in force, given the extensions of its edition and
+-- what it switches on top of them, in order.
+defaultsOf :: [Extension] -> [GHC.OnOff Extension] -> Defaults
+defaultsOf edition switches = Defaults switches (foldl' switch edition switches)
+
 -- | The extensions actually in force in a module.
+--
+-- As with GHC, the edition the header names last takes the place of the
+-- component's, wherever it is named, and what the component and then the
+-- header switch is switched on top of it.
 effectiveExtensions ::
-  -- | What the package the module belongs to puts in force, which is its
-  -- @default-language@ and @default-extensions@ already resolved into a
-  -- set.
-  [Extension] ->
+  -- | What the component the module belongs to puts in force.
+  Defaults ->
   -- | The module's source, read here for the @LANGUAGE@, @OPTIONS_GHC@ and
   -- @OPTIONS@ pragmas of its header alone.
   Text ->
   [Extension]
-effectiveExtensions package =
-  foldl' switch package . concatMap pragmaSwitches . headerPragmaBodies
+effectiveExtensions defaults source =
+  foldl' switch inForce (concatMap snd said)
   where
-    pragmaSwitches body =
+    said = fmap pragmaSays (headerPragmaBodies source)
+    pragmaSays body =
       let (keyword, rest) = T.break (== ' ') body
-       in switchesOf (T.toUpper keyword) rest
+       in saysOf (T.toUpper keyword) rest
+    inForce = case concatMap fst said of
+      [] -> defaultsInForce defaults
+      named ->
+        foldl'
+          switch
+          (GHC.languageExtensions (Just (last named)))
+          (defaultsSwitches defaults)
 
 -- | Do two orders of the same pragmas, each given by its name and body,
 -- leave the same extensions on?
@@ -60,16 +89,23 @@ sameInForce a b = not (turnsOff a) || inForce a == inForce b
 
 -- | What a pragma of this name and body turns on and off.
 switchesOf :: Text -> Text -> [GHC.OnOff Extension]
-switchesOf name body = case name of
-  "LANGUAGE" -> mapMaybe nameSwitch (languageNames body)
-  "OPTIONS_GHC" -> concatMap flagSwitches (T.words body)
-  "OPTIONS" -> concatMap flagSwitches (T.words body)
-  _ -> []
+switchesOf name = snd . saysOf name
 
--- | Turn on the extension a name spells, or off where the name puts @No@ in
--- front of one, leaving the set as it is for a name that spells neither.
-applyExtensionName :: [Extension] -> Text -> [Extension]
-applyExtensionName acc = maybe acc (switch acc) . nameSwitch
+-- | The editions a pragma of this name and body names, and what it turns on
+-- and off.
+saysOf :: Text -> Text -> ([GHC.Language], [GHC.OnOff Extension])
+saysOf name body = case name of
+  "LANGUAGE" ->
+    let names = languageNames body
+     in (mapMaybe lookupEdition names, mapMaybe nameSwitch names)
+  "OPTIONS_GHC" -> options
+  "OPTIONS" -> options
+  _ -> ([], [])
+  where
+    options =
+      ( mapMaybe (lookupEdition <=< T.stripPrefix "-X") (T.words body),
+        concatMap flagSwitches (T.words body)
+      )
 
 -- | The extension a name turns on, or off where it puts @No@ in front of one.
 nameSwitch :: Text -> Maybe (GHC.OnOff Extension)
@@ -127,8 +163,12 @@ languageNames = filter (not . T.null) . fmap T.strip . T.splitOn ","
 
 -- | Parse the name of an edition of the language, such as @GHC2021@.
 lookupEdition :: Text -> Maybe GHC.Language
-lookupEdition name =
-  lookup name [(T.pack (show e), e) | e <- [minBound .. maxBound]]
+lookupEdition name = Map.lookup name editionsByName
+
+-- | Every edition of the language this compiler knows, by its name.
+editionsByName :: Map Text GHC.Language
+editionsByName =
+  Map.fromList [(T.pack (show e), e) | e <- [minBound .. maxBound]]
 
 -- | Parse an extension name.
 lookupExtension :: Text -> Maybe Extension

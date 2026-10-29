@@ -20,11 +20,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Traversable (for)
-import GHC.LanguageExtensions.Type (Extension)
 import Tilia.Corpus (Example (..))
 import Tilia.Cpp (usesCpp)
 import Tilia.Format (rewritten)
 import Tilia.Parser (parseModule)
+import Tilia.Pragma (Defaults)
 import Tilia.TestConfig (formatCppExample, printExample)
 import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
 
@@ -203,7 +203,7 @@ syntheticSubjects =
 
 -- | A module to format, and to check what that printed where it is
 -- checked.
-subjectOf :: Maybe [Extension] -> Bool -> Text -> Text -> Subject
+subjectOf :: Maybe Defaults -> Bool -> Text -> Text -> Subject
 subjectOf package isChecked name source =
   Subject
     { subjectName = name,
@@ -224,7 +224,7 @@ subjectOf package isChecked name source =
 
 -- | What formatting a module prints, as the corpus does it, or 'Nothing'
 -- where it is declined.
-formatted :: Maybe [Extension] -> FilePath -> Text -> Maybe Text
+formatted :: Maybe Defaults -> FilePath -> Text -> Maybe Text
 formatted package path source
   | usesCpp (effectiveExtensionsFor package source) source =
       either (const Nothing) Just (formatCppExample package path source)

@@ -34,6 +34,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Version (Version, versionBranch)
+import GHC.Driver.Session (OnOff (..))
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import Tilia.Cabal.Package
   ( PackageProblem (..),
@@ -90,7 +91,7 @@ import Tilia.Parser
     pmGathered,
     pmModule,
   )
-import Tilia.Pragma (effectiveExtensions, movesPositions)
+import Tilia.Pragma (defaultsOf, effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 import Tilia.Utils (collected, spellList, tshow)
 
@@ -288,7 +289,9 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
 -- otherwise works out with Cabal, the package database, and the sources of
 -- dependencies.
 data Compiled = Compiled
-  { -- | The extensions the component puts in force.
+  { -- | The extensions the component puts in force, which an edition a
+    -- module names adds to, as which of them its own edition brought is not
+    -- known.
     compiledExtensions :: [Extension],
     -- | The version of the compiler.
     compiledWith :: Version,
@@ -322,7 +325,8 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
           versionMacros
             (Just (numbers compiledWith))
             (fmap numbers compiledPackages),
-        sessionPackage = \_ -> pure (Right compiledExtensions),
+        sessionPackage =
+          \_ -> pure (Right (defaultsOf [] (On <$> compiledExtensions))),
         sessionCheckAst = checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = Nothing

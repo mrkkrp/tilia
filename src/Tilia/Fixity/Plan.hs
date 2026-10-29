@@ -59,7 +59,7 @@ import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
-import Tilia.Pragma (effectiveExtensions)
+import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.Utils (byteOrderMark, inParallel, quietly, readFileText, sha256Of)
 
 ----------------------------------------------------------------------------
@@ -919,8 +919,8 @@ inhabited names
 configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
-  -- | What extensions the module's package puts in force.
-  [Extension] ->
+  -- | What the module's package puts in force.
+  Defaults ->
   -- | The module's name, for the parser to put in its errors.
   Text ->
   -- | Its text.
@@ -937,6 +937,6 @@ configurationsOf macros extensions modName text =
     named = T.unpack modName
 
 -- | Does this module see the Prelude without importing it?
-hasImplicitPrelude :: [Extension] -> Text -> Choice "implicitPrelude"
+hasImplicitPrelude :: Defaults -> Text -> Choice "implicitPrelude"
 hasImplicitPrelude extensions source =
   fromBool (ImplicitPrelude `elem` effectiveExtensions extensions source)

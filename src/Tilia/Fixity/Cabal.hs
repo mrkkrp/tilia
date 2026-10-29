@@ -25,8 +25,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Driver.Session qualified as GHC
-import GHC.LanguageExtensions.Type (Extension)
-import Tilia.Pragma (applyExtensionName, lookupEdition)
+import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Utils (fieldWords, quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
@@ -82,10 +81,10 @@ sourceDirs contents = Data.List.nub (named <> ["."])
   where
     named = concatMap fieldWords (fieldsNamed "hs-source-dirs" (T.lines contents))
 
--- | The extensions a package puts in force, read from its @.cabal@ file.
-declaredExtensions :: Text -> [Extension]
+-- | What a package puts in force, read from its @.cabal@ file.
+declaredExtensions :: Text -> Defaults
 declaredExtensions contents =
-  foldl applyExtensionName baseline named
+  defaultsOf baseline (mapMaybe nameSwitch named)
   where
     ls = T.lines contents
     baseline =

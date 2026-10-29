@@ -39,7 +39,7 @@ import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 import Tilia.Gathered (Gathered (..), gathered)
-import Tilia.Pragma (effectiveExtensions)
+import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, linesOf, sourceOf)
 import Tilia.Span (Span (..), startPoint)
 import Tilia.Span.Ghc (spanOf)
@@ -223,26 +223,19 @@ isQuasiQuote = \case
 stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
 stateFor config path source =
   GHC.initParserState
-    (parserOpts config')
+    (parserOpts (inForce config source))
     (GHC.stringBufferFromByteString (T.encodeUtf8 source))
     (GHC.mkRealSrcLoc (mkFastString path) 1 1)
-  where
-    config' =
-      config
-        { pcExtensions = withImplied (effectiveExtensions (pcExtensions config) source)
-        }
 
 -- | Would the parser read these two texts with the same extensions?
 readAlike :: ParserConfig -> Text -> Text -> Bool
 readAlike config a b = bits a == bits b
   where
-    bits t =
-      GHC.pExtsBitmap
-        ( parserOpts
-            config
-              { pcExtensions = withImplied (effectiveExtensions (pcExtensions config) t)
-              }
-        )
+    bits = GHC.pExtsBitmap . parserOpts . inForce config
+
+-- | The extensions to parse a module with.
+inForce :: ParserConfig -> Text -> [Extension]
+inForce config = withImplied . effectiveExtensions (pcDefaults config)
 
 -- | Close a set of extensions under what they imply.
 withImplied :: [Extension] -> [Extension]
@@ -254,10 +247,10 @@ withImplied = settle . nub
     implied e = [to | (from, GHC.On to) <- GHC.impliedXFlags, from == e]
 
 -- | Options to parse with.
-parserOpts :: ParserConfig -> GHC.ParserOpts
-parserOpts ParserConfig{pcExtensions} =
+parserOpts :: [Extension] -> GHC.ParserOpts
+parserOpts extensions =
   GHC.mkParserOpts
-    (EnumSet.fromList pcExtensions)
+    (EnumSet.fromList extensions)
     quietDiagnostics
     False -- safe imports
     True -- keep Haddock tokens
@@ -312,8 +305,8 @@ describeParseError e =
 
 -- | Parser configuration.
 newtype ParserConfig = ParserConfig
-  { -- | Extensions to enable before parsing.
-    pcExtensions :: [Extension]
+  { -- | What the component of the module puts in force before its pragmas.
+    pcDefaults :: Defaults
   }
 
 -- | What a file's name says it holds.
