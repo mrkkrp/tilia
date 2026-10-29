@@ -136,7 +136,10 @@ describeFormatError palette = \case
       <> describePackageProblem problem
   NotParsed e -> "cannot parse " <> located (describeParseError e)
   PositionPragmas path ->
-    "will not format " <> file path <> ": it uses {-# LINE #-} pragmas, and no reformatting can leave those true"
+    "will not format "
+      <> file path
+      <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas, and no"
+      <> " reformatting can leave those true"
   CppUnsupported path why ->
     "will not format " <> file path <> ": " <> describeCppError why
   Unreadable path why -> "cannot read " <> file path <> ": " <> why
@@ -212,10 +215,6 @@ refused = \case
   NoBuildPlan{} -> False
 
 -- | What a run works out once and then uses for every file.
---
--- Finding the project, solving its build plan and building a resolver cost
--- about as much as formatting a small file, and none of it depends on which
--- file is being formatted.
 data Session = Session
   { -- | The project.
     sessionRoot :: ProjectRoot,
@@ -230,9 +229,8 @@ data Session = Session
     sessionCheckAst :: Choice "checkAst",
     -- | Whether to check idempotence.
     sessionCheckIdempotence :: Choice "checkIdempotence",
-    -- | An account of how each file's fixities were determined. 'Nothing'
-    -- when this information was not requested, which is what keeps an
-    -- ordinary run from doing any of the work.
+    -- | An account of how each file's fixities were determined, or 'Nothing'
+    -- where none was asked for.
     sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes))
   }
 
@@ -342,10 +340,8 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   where
     numbers = fmap toInteger . versionBranch
 
--- | What the run made of every file's operators, by file.
---
--- Empty unless the session was asked to keep an account of it. Nothing here
--- is rendered; 'Tilia.Fixity.Debug.renderFixityNotes' does that.
+-- | What the run made of every file's operators, by file, empty unless the
+-- session keeps an account of it.
 fixityNotesOf :: Session -> IO (Map FilePath FixityNotes)
 fixityNotesOf session = case sessionFixityNotes session of
   Nothing -> pure Map.empty

@@ -250,7 +250,8 @@ instance FromJSON PlanPackage where
                 )
             (_, Just "local") -> LocalPackage (maybe "" T.unpack (join sourcePath))
             (_, Just "source-repo") -> SourceRepo
-            -- Anything else is treated as already present.
+            -- Anything else, a local or remote tarball among them, is
+            -- treated as already present.
             _ -> PreExisting
         }
 
@@ -453,12 +454,8 @@ data Readiness
     PlanStale [FilePath]
   | -- | The plan says nothing about components the run is about to format.
     PlanNarrow [Text]
-  | -- | The plan is there, and some packages have neither been downloaded
-    -- nor built. The names are listed so that a caller can say what it is
-    -- waiting for.
-    --
-    -- Built counts as having them: their interfaces provide everything the
-    -- source tarball would.
+  | -- | The plan is there, and the packages named have neither been
+    -- downloaded nor built.
     SourcesMissing [Text]
   deriving (Eq, Show)
 
@@ -467,9 +464,6 @@ planPathFor :: FilePath -> FilePath
 planPathFor projectDir = projectDir </> "dist-newstyle" </> "cache" </> "plan.json"
 
 -- | Check what is missing.
---
--- One read of the plan and one @stat@ per package, so this is fast enough
--- to run before every format.
 checkReadiness :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
 checkReadiness caching wanted projectDir =
   readBuildPlan (planPathFor projectDir) >>= \case

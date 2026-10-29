@@ -429,7 +429,8 @@ typeNameOf = dataTypeName . dataTypeOf
 -- Ordinary comments are compared as they will be printed, in order: the
 -- text is normalised on the way in, so a comment that came out unchanged
 -- reads back identically, and one that was mangled or moved past its
--- neighbor does not.
+-- neighbor does not, unless it trails a line and moved past comments on
+-- lines of their own written below it.
 --
 -- Except in the header, where the order says nothing. The pragmas are
 -- sorted and so are the imports, and a comment written against either

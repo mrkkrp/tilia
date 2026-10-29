@@ -112,6 +112,7 @@ funDeps ctx fdeps =
     <> space
     <> indent (commaSep (fmap (align . at_ ctx (funDep ctx)) fdeps))
 
+-- | One functional dependency of a class, as in @a b -> c@.
 funDep :: Ctx -> FunDep GhcPs -> Doc
 funDep ctx (FunDep _ before after) =
   hsep (fmap (name ctx) before)
@@ -258,6 +259,8 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
               includeUnless (null given) $
                 hardBreak <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
 
+-- | What the head of a family says of its result, a kind or a variable
+-- naming it, if anything.
 familyResultSig :: Ctx -> LFamilyResultSig GhcPs -> Maybe Doc
 familyResultSig ctx (L _ sig) = case sig of
   NoSig NoExtField -> Nothing
@@ -266,6 +269,7 @@ familyResultSig ctx (L _ sig) = case sig of
   TyVarSig NoExtField bndr ->
     Just (txt "=" <> breakOrSpace <> at ctx bndr (tyVarBndr ctx))
 
+-- | The injectivity annotation of a type family, as in @| r -> a@.
 injectivityAnn :: Ctx -> InjectivityAnn GhcPs -> Doc
 injectivityAnn ctx (InjectivityAnn _ from to) =
   txt "|"

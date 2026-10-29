@@ -158,8 +158,8 @@ specialiseSig ctx binders target types InlinePragma{..} =
               (joinedBy "::" <> commaSep (fmap (hsSigType ctx) types))
         )
   where
-    -- A pragma that says neither when to inline nor whether to is saying
-    -- nothing, so the phase is left off rather than printed as @[~]@.
+    -- A @NOINLINE@ written without a phase reads as never active, so that
+    -- phase is left off rather than printed as @[~]@.
     phase = case (inl_inline, inl_act) of
       (NoInline _, NeverActive) -> mempty
       _ -> activation inl_act
