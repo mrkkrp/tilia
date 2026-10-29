@@ -5,6 +5,7 @@
 module Tilia.Pragma.Ghc
   ( InForce (..),
     inForceAfter,
+    readFlags,
   )
 where
 
@@ -45,10 +46,17 @@ inForceAfter flags =
       inForceSafety = GHC.safeHaskell dflags
     }
   where
-    dflags = snd (GHC.runCmdLineP reading defaults)
+    dflags = readFlags flags
     switched = \case
       GHC.On e -> (e, True)
       GHC.Off e -> (e, False)
+
+-- | What GHC's flag reader makes of these flags, read in order from its
+-- defaults, of the flags that can switch an extension, the edition or the
+-- Safe Haskell mode.
+readFlags :: [Text] -> GHC.DynFlags
+readFlags flags = snd (GHC.runCmdLineP reading defaults)
+  where
     reading = processArgs named (fmap noLoc args) (\_ -> pure [])
     named = mapMaybe ((`Map.lookup` switchingFlags) . drop 1) args
     args = fmap T.unpack flags
