@@ -25,7 +25,6 @@ module Tilia.Cpp.Directives
     ruledOutBranch,
     unconditionalErrors,
     Assignment,
-    resolved,
 
     -- * The directives themselves
     Directive (..),
@@ -265,17 +264,16 @@ untouched (Varied ranges) s = not (any reaches ranges)
 branchLeaves :: Text -> Either CppError [Text]
 branchLeaves source = do
   forest <- readConditionals source
-  traverse
-    resolved
-    ( filter
-        (null . unconditionalErrors)
-        ( distinct
-            [ configurationOf forest a source
-            | a <- branchAssignments forest,
-              possible forest (completed forest a)
-            ]
-        )
-    )
+  pure
+    [ withoutOpaque leaf
+    | leaf <-
+        distinct
+          [ configurationOf forest a source
+          | a <- branchAssignments forest,
+            possible forest (completed forest a)
+          ],
+      null (unconditionalErrors leaf)
+    ]
   where
     distinct = Map.elems . Map.fromList . fmap (\t -> (t, t))
 
@@ -410,13 +408,13 @@ correspondingBranches before after = do
             let answers = completed forest a,
             possible forest answers
           ]
-  traverse (\a -> (,) <$> reading before left a <*> reading after right a) choices
+  pure [(reading before left a, reading after right a) | a <- choices]
   where
     reading source forest assignment =
       let selected = configurationOf forest assignment source
        in if null (unconditionalErrors selected)
-            then Just <$> resolved selected
-            else Right Nothing
+            then Just (withoutOpaque selected)
+            else Nothing
 
 -- | An unconditional @#error@ means this configuration has no Haskell
 -- program to parse. Conditional errors are only considered after choosing a
@@ -434,11 +432,6 @@ unconditionalErrors source =
 
 -- | Which branch every question was answered with to reach a configuration.
 type Assignment = Map [Guard] Int
-
--- | A module with every conditional answered, and its other directives
--- taken out, or why its conditionals do not make sense.
-resolved :: Text -> Either CppError Text
-resolved source = withoutOpaque source <$ readConditionals source
 
 ----------------------------------------------------------------------------
 -- The directives themselves

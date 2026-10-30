@@ -72,9 +72,9 @@ import Tilia.Cpp.Directives
     implied,
     nestedIn,
     readConditionals,
-    resolved,
     scanConditionals,
     unconditionalErrors,
+    withoutOpaque,
   )
 import Tilia.Fixity (Fixities, Fixity, ModuleChain (..), Namespace (..), OpName)
 import Tilia.Fixity.Plan (Resolver, Route, newResolverVia)
@@ -348,5 +348,6 @@ answeredBaseline answers source = case configurations source of
 -- it, unless it aborts with @#error@.
 answeredLeaf :: Assignment -> Text -> Either CppError [(Assignment, Text)]
 answeredLeaf answers source
-  | null (unconditionalErrors source) = (\t -> [(answers, t)]) <$> resolved source
+  | null (unconditionalErrors source) =
+      [(answers, withoutOpaque source)] <$ readConditionals source
   | otherwise = Right []
