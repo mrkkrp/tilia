@@ -11,6 +11,8 @@ module Tilia.Fixity
     defaultFixity,
     spellFixity,
     readPrecedence,
+    opName,
+    qualifierOf,
 
     -- * Module declarations
     declaredFixities,
@@ -838,7 +840,7 @@ operatorsUsed found =
     inTypes =
       [n | HsOpTy _ _ _ (L _ n) _ <- gatheredTypes found]
     named namespace n =
-      (namespace, (qualifierOf n, OpName (T.pack (occNameString (rdrNameOcc n)))))
+      (namespace, (qualifierOf n, opName n))
 
 -- | The uses of an operator in an expression that a local binding captures,
 -- by where the operator is written, with the fixity the binding's group
