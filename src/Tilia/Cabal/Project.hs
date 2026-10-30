@@ -9,12 +9,26 @@ module Tilia.Cabal.Project
     findProjectRoot,
     startingDirectory,
     cabalFilesIn,
+    projectConfigFiles,
   )
 where
 
 import Control.Monad (filterM)
+import Data.ByteString qualified as BS
+import Data.Either (fromRight)
 import Data.List (isSuffixOf, sort)
 import Data.Maybe (listToMaybe)
+import Data.Set qualified as Set
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
+import Distribution.Fields.Field
+  ( Field (..),
+    FieldLine (..),
+    Name (..),
+    fieldUniverse,
+  )
+import Distribution.Fields.Parser (readFields)
+import Distribution.Parsec.Position (Position)
 import System.Directory
   ( canonicalizePath,
     doesDirectoryExist,
@@ -84,3 +98,26 @@ cabalFilesAmong directory entries =
   filterM
     doesFileExist
     (fmap (directory </>) (sort (filter (".cabal" `isSuffixOf`) entries)))
+
+-- | A project configuration file and the files it imports, directly or
+-- through one another, each once, with its fields.
+--
+-- A file that cannot be read, such as an import from a URL, is passed over.
+projectConfigFiles :: FilePath -> IO [(FilePath, [Field Position])]
+projectConfigFiles = go Set.empty . pure
+  where
+    go _ [] = pure []
+    go seen (given : rest) = do
+      file <- quietly given (canonicalizePath given)
+      contents <- quietly Nothing (Just <$> BS.readFile file)
+      case contents of
+        Just bytes | Set.notMember file seen -> do
+          let fields = fromRight [] (readFields bytes)
+          ((file, fields) :)
+            <$> go (Set.insert file seen) (importsOf file fields <> rest)
+        _ -> go seen rest
+    importsOf file fields =
+      [ takeDirectory file </> T.unpack (T.decodeUtf8Lenient value)
+      | Field (Name _ "import") [FieldLine _ value] <-
+          concatMap fieldUniverse fields
+      ]

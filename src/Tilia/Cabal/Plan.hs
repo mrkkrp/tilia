@@ -95,7 +95,7 @@ import System.Process
     waitForProcess,
   )
 import Tilia.Cabal.Package (readPackageDescription)
-import Tilia.Cabal.Project (cabalFilesIn)
+import Tilia.Cabal.Project (cabalFilesIn, projectConfigFiles)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
@@ -519,13 +519,10 @@ filesNewerThanPlan :: BuildPlan -> FilePath -> Maybe UTCTime -> IO [FilePath]
 filesNewerThanPlan plan projectDir solved = quietly [] $ do
   written <- getModificationTime (planPathFor projectDir)
   let planTime = maybe written (max written) solved
-  atRoot <- quietly [] (listDirectory projectDir)
+  configs <- traverse (projectConfigFiles . (projectDir </>)) projectFiles
   atRootPackage <- cabalFilesIn projectDir
   inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
-  let candidates =
-        [projectDir </> f | f <- atRoot, f `elem` projectFiles]
-          <> atRootPackage
-          <> inPackages
+  let candidates = fmap fst (concat configs) <> atRootPackage <> inPackages
   newer <- traverse (isNewerThan planTime) candidates
   pure [f | Just f <- newer]
   where

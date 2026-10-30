@@ -221,6 +221,32 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
+    it "reads the packages the files it imports name, as cabal does"
+      $ withProject
+        [ ("cabal.project", "packages: one\nimport: config/more.config\n"),
+          ("config/more.config", "packages: two\nimport: last.config\n"),
+          ("config/last.config", "packages: three\n"),
+          ("one/one.cabal", package "one" "src"),
+          ("two/two.cabal", package "two" "src"),
+          ("three/three.cabal", package "three" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs ->
+            sort (fmap componentPackage cs) `shouldBe` ["one", "three", "two"]
+
+    it "reads a file imported in a cycle once"
+      $ withProject
+        [ ("cabal.project", "packages: one\nimport: more.config\n"),
+          ("more.config", "import: ./cabal.project\n"),
+          ("one/one.cabal", package "one" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> fmap componentPackage cs `shouldBe` ["one"]
+
     it "looks in every source directory a component names"
       $ withProject
         [ ("only.cabal", packageWith "only" ["src", "gen"] ["A", "B"]),
