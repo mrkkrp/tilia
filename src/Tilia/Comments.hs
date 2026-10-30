@@ -132,7 +132,7 @@ commentAt :: Lines -> Span -> CommentStyle -> Text -> Comment
 commentAt ls spn style raw =
   Comment
     { commentSpan = spn,
-      commentBody = normalizeBody startColumn style raw,
+      commentBody = normalizeBody (spanStartColumn spn) style raw,
       commentStyle = style,
       commentAbove = above,
       commentCodeBeforeStopsAt = codeBeforeStopsAt,
@@ -181,25 +181,28 @@ transcendentComment ls c = case commentStyle c of
   BlockComment ->
     c
       { commentBody =
-          normalizeBody startColumn BlockComment (sliceSpan (lineTexts ls) s)
+          normalizeBody
+            (spanStartColumn s)
+            BlockComment
+            (sliceSpan (lineTexts ls) s)
       }
   _ -> c
   where
     s = commentSpan c
-    startColumn =
-      maybe 0 (`offsetOf` spanStartColumn s) (lineAt (spanStartLine s) ls)
 
 -- | Apply the normalizations, in the only order that works: dedent before
 -- stripping, since a line of nothing but spaces has to still count as
 -- indented when the common indentation is measured.
 normalizeBody :: Int -> CommentStyle -> Text -> NonEmpty Text
-normalizeBody startColumn style raw =
+normalizeBody column style raw =
   case NE.nonEmpty (T.lines raw) of
     Nothing -> spaceAfterDashes style raw :| []
     Just (first' :| rest) ->
       fmap T.stripEnd (spaceAfterDashes style first' :| fmap dedent rest)
   where
-    dedent l = T.drop (min startColumn (T.length (T.takeWhile isSpace l))) l
+    dedent l =
+      let n = offsetOf (T.takeWhile isSpace l) column
+       in T.replicate (columnOf l n - column) " " <> T.drop n l
 
 -- | @--foo@ becomes @-- foo@; @----@ and @-- foo@ are left alone.
 --
