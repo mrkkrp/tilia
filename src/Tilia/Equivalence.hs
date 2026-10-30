@@ -377,7 +377,7 @@ asDocString path x y = case (cast x, cast y) of
       HsDocStringNext -> "pointer"
       HsDocStringPrevious -> "pointer"
       HsDocStringNamed n -> "named " <> T.pack n
-      HsDocStringGroup n -> "group " <> T.pack (show n)
+      HsDocStringGroup n -> "group " <> tshow n
 
 -- | What a doc string says, with the whitespace thrown away.
 docWords :: HsDocString -> [ByteString]

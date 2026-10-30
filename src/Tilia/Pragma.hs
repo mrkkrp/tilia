@@ -31,6 +31,7 @@ import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Parser.Header (toArgs)
 import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
+import Tilia.Utils (tshow)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas.
 movesPositions :: Text -> Bool
@@ -180,7 +181,7 @@ lookupEdition name = Map.lookup name editionsByName
 -- | Every edition of the language this compiler knows, by its name.
 editionsByName :: Map Text GHC.Language
 editionsByName =
-  Map.fromList [(T.pack (show e), e) | e <- [minBound .. maxBound]]
+  Map.fromList [(tshow e, e) | e <- [minBound .. maxBound]]
 
 -- | Parse an extension name.
 lookupExtension :: Text -> Maybe Extension

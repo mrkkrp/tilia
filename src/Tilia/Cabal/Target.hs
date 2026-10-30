@@ -63,7 +63,7 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
 import Tilia.Ignore (belowRoot, ignoreFilesAbove, isIgnored)
-import Tilia.Utils (fieldWords, quietly)
+import Tilia.Utils (fieldWords, quietly, tshow)
 
 -- | Which components a run was asked for.
 data Target
@@ -92,7 +92,7 @@ parseTarget written = case T.splitOn ":" (T.strip (T.pack written)) of
   where
     unrecognised =
       "unrecognised target "
-        <> T.pack (show written)
+        <> tshow written
         <> ": expected all, a package or component name, or one of\
            \ lib:, exe:, test:, bench: followed by a name"
     kindNamed = \case

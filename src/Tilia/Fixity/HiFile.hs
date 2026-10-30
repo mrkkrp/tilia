@@ -35,6 +35,7 @@ import Tilia.Fixity
 import Tilia.Fixity.KnownKeys.Ghc910 qualified as Ghc910
 import Tilia.Fixity.KnownKeys.Ghc912 qualified as Ghc912
 import Tilia.Fixity.KnownKeys.Ghc914 qualified as Ghc914
+import Tilia.Utils (tshow)
 
 -- | What an interface file says about the operators its module offers.
 data HiFile = HiFile
@@ -88,7 +89,7 @@ data Tables = Tables
 hiFile :: Get HiFile
 hiFile = do
   magic <- word32be
-  unless (magic == 0x1face64) (failure ("not a 64-bit interface file: " <> T.pack (show magic)))
+  unless (magic == 0x1face64) (failure ("not a 64-bit interface file: " <> tshow magic))
   version <- string
   series <- case take 3 version of
     "910" -> pure Series910
@@ -200,7 +201,7 @@ occName = do
       2 -> pure InTypes
       3 -> pure InTypes
       4 -> InTerms <$ uleb
-      b -> failure ("unknown namespace " <> T.pack (show b))
+      b -> failure ("unknown namespace " <> tshow b)
   s <- uleb
   pure (namespace, s)
 

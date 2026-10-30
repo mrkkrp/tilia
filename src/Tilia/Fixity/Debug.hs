@@ -41,7 +41,7 @@ import Tilia.Fixity
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser (ParsedModule (..))
-import Tilia.Utils (indent, lineWidth, wrapTo)
+import Tilia.Utils (indent, lineWidth, tshow, wrapTo)
 
 -- | Everything that decided one module's fixities.
 data FixityNotes = FixityNotes
@@ -231,4 +231,4 @@ aboutFile palette notes =
 
     operators = \case
       1 -> "1 operator"
-      n -> T.pack (show n) <> " operators"
+      n -> tshow n <> " operators"

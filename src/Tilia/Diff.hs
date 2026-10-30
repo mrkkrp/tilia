@@ -19,6 +19,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Palette (Color (..), Palette, paint)
+import Tilia.Utils (tshow)
 
 -- | What a line of the comparison does.
 data Mark = Context | Removed | Added
@@ -98,7 +99,7 @@ unified palette above (beforeName, afterName) before after
           <> " @@"
       where
         span' which n = case slice range of
-          (l : _) -> T.pack (show (which l)) <> "," <> T.pack (show n)
+          (l : _) -> tshow (which l) <> "," <> tshow n
           [] -> "0,0"
 
     line (Line mark _ _ text) = case mark of

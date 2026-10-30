@@ -92,7 +92,7 @@ import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
 import Tilia.Span (Span, covers)
 import Tilia.Span.Ghc (spanOf)
-import Tilia.Utils (collected, spellList)
+import Tilia.Utils (collected, spellList, tshow)
 
 ----------------------------------------------------------------------------
 -- Fixities
@@ -133,7 +133,7 @@ readPrecedence t = case T.signed T.decimal t of
 -- | A fixity, written the way it would be declared.
 spellFixity :: Fixity -> Text
 spellFixity (Fixity direction precedence) =
-  which direction <> " " <> T.pack (show precedence)
+  which direction <> " " <> tshow precedence
   where
     which = \case
       LeftAssoc -> "infixl"

@@ -56,7 +56,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (Defaults, effectiveExtensions)
-import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of, sha256OfFile)
+import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of, sha256OfFile, tshow)
 
 ----------------------------------------------------------------------------
 -- Resolving
@@ -180,7 +180,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                     configurationsOf (macrosOf plan) extensions modName text
                 stamp =
                   digestOf . T.intercalate "\n" $
-                    [T.pack (show extensions), macrosRead, text]
+                    [tshow extensions, macrosRead, text]
             case digestOf . T.pack <$> Map.lookup modName local of
               Nothing -> summarized
               Just key ->
@@ -189,7 +189,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                     (cachedSummaries cache key stamp)
                     (storeSummaries cache key stamp)
                     (Just <$> summarized)
-      macrosRead = T.pack (show (macrosOf plan))
+      macrosRead = tshow (macrosOf plan)
       extensionsOf modName
         | Just path <- Map.lookup modName local =
             either (const Nothing) Just <$> packageReader path
