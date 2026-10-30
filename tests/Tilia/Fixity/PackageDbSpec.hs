@@ -27,6 +27,28 @@ spec = do
       dirsOf [("import-dirs", "${pkgroot}/../lib/base-4.20.2.0")]
         `shouldBe` Just ["${pkgroot}/../lib/base-4.20.2.0"]
 
+    it "reads the package root as ghc-pkg writes it, escapes and all" $
+      dirsOf
+        [ ("pkgroot", "\"/opt/J\\243zef, \\\"q\\\"/lib\""),
+          ("import-dirs", "${pkgroot}/base")
+        ]
+        `shouldBe` Just ["/opt/Józef, \"q\"/lib/base"]
+
+    it "reads a directory ghc-pkg quotes, as it does one with a space" $
+      dirsOf
+        [ ("pkgroot", "\"/opt/lib\""),
+          ( "import-dirs",
+            " \"${pkgroot}/a b\" ${pkgroot}/plain \"${pkgroot}/c,d\" \
+            \\"/with space/\\233\""
+          )
+        ]
+        `shouldBe` Just
+          [ "/opt/lib/a b",
+            "/opt/lib/plain",
+            "/opt/lib/c,d",
+            "/with space/é"
+          ]
+
     it "roots every directory a package names" $
       dirsOf
         [ ("pkgroot", "/opt/ghc/lib"),
