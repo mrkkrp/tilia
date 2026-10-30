@@ -161,6 +161,10 @@
   of each dependency and the `.cabal` file of each package of the project
   once rather than once per component.
   [PR 344](https://github.com/mrkkrp/tilia/pull/344).
+* The release binaries are built with GHC 9.14.1 rather than 9.10.3, and
+  so read `.cabal` files with Cabal-syntax 3.16: a package declaring
+  `cabal-version: 3.14` or `3.16` can be formatted, where the binaries said
+  its `.cabal` file did not parse.
 
 ## Tilia 0.1.2.0
 

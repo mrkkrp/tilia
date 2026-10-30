@@ -140,13 +140,13 @@ Tilia is built and tested with every compiler in the `compilers` list in
 
 6. Update `CHANGELOG.md`.
 
-The first entry of `compilers` in `flake.nix` is the base compiler: it
-builds the release binaries, runs weeder, the self-format checks and the
-benchmarks, and provides the default development shell. When it changes,
-which happens when the oldest version is dropped, update `GHC_VERSION` in
-`.github/workflows/release.yaml` to match, as well as the `restore-keys` of
-the `format` job and the compiler of the `bench` job in `ci.yaml`, and
-record the benchmarks again with the new base compiler.
+`baseCompiler` in `flake.nix` names the base compiler, the newest of
+`compilers`: it builds the release binaries, runs weeder, the self-format
+checks and the benchmarks, and provides the default development shell. When
+it changes, update `GHC_VERSION` in `.github/workflows/release.yaml` to
+match, as well as the `restore-keys` of the `format` job and the compiler
+of the `bench` job in `ci.yaml`, and record the benchmarks again with the
+new base compiler.
 
 ## Switching `ghc-lib-parser`
 

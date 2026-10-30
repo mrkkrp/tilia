@@ -16,7 +16,7 @@
       inherit (nixpkgs) lib;
 
       compilers = [ "ghc9103" "ghc9124" "ghc9141" ];
-      baseCompiler = builtins.head compilers;
+      baseCompiler = "ghc9141";
 
       # Files that participate in the build. Anything outside this set can
       # change without forcing a rebuild.
