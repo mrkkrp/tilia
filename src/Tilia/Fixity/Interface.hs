@@ -26,7 +26,7 @@ import GHC.Generics (Generic)
 import Tilia.Fixity
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly)
+import Tilia.Utils (blocksOf, indented, quietly)
 
 -- | What an interface says about the operators a module offers.
 data Interface = Interface
@@ -173,8 +173,6 @@ typeNamesIn out =
       keyword `elem` (["data", "type", "newtype", "class"] :: [Text]),
       name <- take 1 (dropWhile (`elem` (["family", "role", "instance"] :: [Text])) rest)
     ]
-  where
-    indented l = maybe False (== ' ') (fst <$> T.uncons l)
 
 -- | Sort declared fixities into the namespaces they govern.
 namespaced :: Set OpName -> Map OpName Fixity -> Fixities
@@ -187,17 +185,11 @@ namespaced types declared =
 
 -- | Split the output into sections.
 sections :: Text -> [(Text, Text)]
-sections = go . T.lines
-  where
-    go = \case
-      [] -> []
-      (l : ls)
-        | indented l -> go ls
-        | otherwise ->
-            let (body, rest) = span indented ls
-                (heading, opening) = T.breakOn " " l
-             in (heading, T.unwords (opening : body)) : go rest
-    indented l = maybe False (== ' ') (fst <$> T.uncons l)
+sections out =
+  [ (heading, T.unwords (opening : body))
+  | (l, body) <- blocksOf (T.lines out),
+    let (heading, opening) = T.breakOn " " l
+  ]
 
 -- | One entry of a @fixities@ line: @infixl 9 !@ and the like.
 fixityEntry :: Text -> Maybe (OpName, Fixity)

@@ -13,7 +13,6 @@ module Tilia.Fixity.PackageDb
 where
 
 import Control.Monad (filterM)
-import Data.Char (isSpace)
 import Data.List (nub)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -22,7 +21,7 @@ import Data.Text qualified as T
 import System.Directory (doesDirectoryExist, findExecutable)
 import System.FilePath ((</>))
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (fieldWords, quietly)
+import Tilia.Utils (blocksOf, fieldWords, looksLikeModule, quietly)
 
 -- | An installed package.
 data InstalledPackage = InstalledPackage
@@ -137,9 +136,6 @@ moduleNames = go . fieldWords
       (m : rest) | looksLikeModule m -> m : go rest
       (_ : rest) -> go rest
       [] -> []
-    looksLikeModule m = case T.uncons m of
-      Just (c, _) -> c `elem` ['A' .. 'Z'] && not (T.any (== ':') m)
-      Nothing -> False
 
 -- | The modules an @exposed-modules@ field names that another package
 -- holds, each with its name there.
@@ -154,19 +150,9 @@ reexportedModules = go . fieldWords
 
 -- | Split a record into its fields.
 parseFields :: Text -> Map.Map Text Text
-parseFields = Map.fromList . mapMaybe field . groups . T.lines
+parseFields = Map.fromList . mapMaybe field . blocksOf . T.lines
   where
-    groups = \case
-      [] -> []
-      (l : ls)
-        | isContinuation l -> groups ls
-        | otherwise ->
-            let (continued, rest) = span isContinuation ls
-             in (l : continued) : groups rest
-    isContinuation l = not (T.null l) && isSpace (T.head l)
-
-    field [] = Nothing
-    field (l : rest) = case T.breakOn ":" l of
+    field (l, rest) = case T.breakOn ":" l of
       (key, value)
         | not (T.null value) ->
             Just (T.strip key, T.unwords (T.drop 1 value : fmap T.strip rest))

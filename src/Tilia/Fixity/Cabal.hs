@@ -28,7 +28,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Driver.Session qualified as GHC
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
-import Tilia.Utils (fieldWords, quietly)
+import Tilia.Utils (fieldWords, looksLikeModule, quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
 -- source tarball.
@@ -74,9 +74,6 @@ containedModules t =
       concatMap moduleNames . fieldsNamed field . T.lines
       where
         moduleNames = filter looksLikeModule . fieldWords
-        looksLikeModule m = case T.uncons m of
-          Just (c, _) -> c `elem` ['A' .. 'Z']
-          Nothing -> False
 
 -- | Every directory a @.cabal@ file's modules could be under.
 sourceDirs :: Text -> [Text]
