@@ -11,6 +11,7 @@ module Tilia.Source.Lines
     lineTexts,
     lineAt,
     blankAt,
+    blankAcross,
     offsetOf,
     columnOf,
     contentColumn,
@@ -80,6 +81,10 @@ lineAt n ls
 -- | Was this line empty?
 blankAt :: Int -> Lines -> Bool
 blankAt n = maybe False (T.all isSpace) . lineAt n
+
+-- | Were all the lines from one to another, both included, empty?
+blankAcross :: (Int, Int) -> Lines -> Bool
+blankAcross (from, to) ls = all (`blankAt` ls) [from .. to]
 
 -- | How many characters of a line come before the compiler's column.
 --

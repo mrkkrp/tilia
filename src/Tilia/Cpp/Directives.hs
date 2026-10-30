@@ -46,7 +46,7 @@ module Tilia.Cpp.Directives
   )
 where
 
-import Data.Char (isAlphaNum, isSpace)
+import Data.Char (isAlphaNum)
 import Data.List (sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -59,10 +59,13 @@ import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy)
 import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
-  ( conditionalKeywords,
+  ( Written (..),
+    blankAcross,
+    conditionalKeywords,
     contentColumn,
     continuesGroup,
     directiveOnLine,
+    linesOf,
     opaqueKeywords,
     opensGroup,
   )
@@ -368,16 +371,14 @@ ruledOutBranch source = do
   forest <- scanConditionals source
   listToMaybe (go Map.empty forest)
   where
-    written = zip [1 ..] (T.lines source)
-    holdsSomething (from, to) =
-      any (\(n, l) -> from <= n && n <= to && not (T.all isSpace l)) written
+    written = linesOf (Written source)
     go asked forest =
       concat
         [ [ opening
           | Just j <- [Map.lookup (gsGuards gs) asked],
             (i, opening, r) <- zip3 [0 :: Int ..] (gsOwnLines gs) (gsBranches gs),
             i /= j,
-            holdsSomething r
+            not (blankAcross r written)
           ]
             <> concat
               [ go (Map.insert (gsGuards gs) i asked) nested
