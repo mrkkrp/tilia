@@ -139,7 +139,12 @@ parseInterface modName out
       ("interface" : m : _) -> m == modName
       _ -> False
     sectionsNamed name = [body | (heading, body) <- sections out, heading == name]
-    fixities = Map.fromList (concatMap declared (sectionsNamed "fixities"))
+    fixities =
+      Map.fromListWith
+        (flip (<>))
+        [ (op, [fixity])
+        | (op, fixity) <- concatMap declared (sectionsNamed "fixities")
+        ]
     declared = mapMaybe fixityEntry . T.splitOn ","
     ownExports section =
       Set.fromList
@@ -173,14 +178,19 @@ typeNamesIn out =
       name <- take 1 (dropWhile (`elem` (["family", "role", "instance"] :: [Text])) rest)
     ]
 
--- | Sort declared fixities into the namespaces they govern.
-namespaced :: Set OpName -> Map OpName Fixity -> Fixities
+-- | Sort declared fixities into the namespaces they govern: of two for one
+-- name, GHC lists the term's first.
+namespaced :: Set OpName -> Map OpName [Fixity] -> Fixities
 namespaced types declared =
   Map.fromList
     [ ((namespace, op), fixity)
-    | (op, fixity) <- Map.toList declared,
-      namespace <- if Set.member op types then [InTypes] else [InTerms]
+    | (op, fixities) <- Map.toList declared,
+      (namespace, fixity) <- zip (governed op fixities) fixities
     ]
+  where
+    governed op = \case
+      [_, _] -> [InTerms, InTypes]
+      _ -> [if Set.member op types then InTypes else InTerms]
 
 -- | Split the output into sections.
 sections :: Text -> [(Text, Text)]

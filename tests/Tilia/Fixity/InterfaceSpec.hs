@@ -140,6 +140,24 @@ spec = do
       declaresIn "exports:\n  !\nfixities infixl 9 !\nab12\n  data Other a b where\n  (!) :: Int\n"
         `shouldBe` [((InTerms, OpName "!"), Fixity LeftAssoc 9)]
 
+    it "gives a type and a constructor of one name each its own" $
+      declaresIn
+        "exports:\n  :.{:.}\n\
+        \fixities infixr 5 :., infixl 4 :.\n\
+        \b4c8\n  type (:.) :: * -> * -> *\n  data (:.) a b = a :. b\n"
+        `shouldBe` [ ((InTypes, OpName ":."), Fixity LeftAssoc 4),
+                     ((InTerms, OpName ":."), Fixity RightAssoc 5)
+                   ]
+
+    it "gives one fixity for a type and a constructor of one name to both" $
+      declaresIn
+        "exports:\n  :-{:-}\n\
+        \fixities infix 8 :-, infix 8 :-\n\
+        \eeee\n  type (:-) :: * -> * -> *\n  data (:-) a b = a :- b\n"
+        `shouldBe` [ ((InTypes, OpName ":-"), Fixity NoAssoc 8),
+                     ((InTerms, OpName ":-"), Fixity NoAssoc 8)
+                   ]
+
   describe "the members of a name" $ do
     it "takes the members an entry wears in braces" $
       members "exports:\n  GHC.Internal.Base.NonEmpty{GHC.Internal.Base.:|}\n"
