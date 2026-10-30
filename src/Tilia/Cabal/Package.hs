@@ -84,7 +84,7 @@ import System.FilePath
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (attempted, quietly)
+import Tilia.Utils (attempted, quietly, tshow)
 
 -- | Why a file's extensions could not be settled.
 data PackageProblem
@@ -523,8 +523,8 @@ extensionsInForce bi =
       Cabal.EnableExtension e -> nameSwitch (named e)
       Cabal.DisableExtension e -> nameSwitch ("No" <> named e)
       _ -> Nothing
-    named = T.pack . show
+    named = tshow
 
 -- | GHC's name for a language edition, when it has one.
 ghcLanguage :: Cabal.Language -> Maybe GHC.Language
-ghcLanguage = lookupEdition . T.pack . show
+ghcLanguage = lookupEdition . tshow

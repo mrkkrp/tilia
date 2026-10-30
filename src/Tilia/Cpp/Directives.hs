@@ -72,6 +72,7 @@ import Tilia.Span
     spanEndLine,
     spanStartLine,
   )
+import Tilia.Utils (tshow)
 
 ----------------------------------------------------------------------------
 -- Reading a module
@@ -166,23 +167,23 @@ data Malformation
 describeCppError :: CppError -> Text
 describeCppError = \case
   MalformedConditional n k m ->
-    "the #" <> k <> " at line " <> T.pack (show n) <> case m of
+    "the #" <> k <> " at line " <> tshow n <> case m of
       NeverClosed -> " is never closed"
       NothingOpen -> " has no conditional to belong to"
       AfterElse -> " comes after the #else of its conditional"
   TooManyConfigurations -> "too many configurations to format"
   ConfigurationNotParsed c e -> describeParseError e <> inConfiguration c
   DirectiveInQuotedText n k ->
-    "the #" <> k <> " at line " <> T.pack (show n) <> " is inside a quasi-quote or a multi-line string"
+    "the #" <> k <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
   MacroInQuotedText n t ->
-    t <> " at line " <> T.pack (show n) <> " is inside a quasi-quote or a multi-line string"
+    t <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
   RuledOutBranch n ->
     "the branch at line "
-      <> T.pack (show n)
+      <> tshow n
       <> " is ruled out by a conditional around it that asks the same question"
   AbortingAlternative n ->
     "the alternative that the #error at line "
-      <> T.pack (show n)
+      <> tshow n
       <> " aborts cannot be formatted without parsing it"
 
 -- | Which configuration, in words. Empty where there is only one.

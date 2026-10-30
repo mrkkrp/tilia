@@ -52,7 +52,7 @@ import System.Directory
 import System.FilePath (takeDirectory, (</>))
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
-import Tilia.Utils (quietly, readUtf8File, writeUtf8File)
+import Tilia.Utils (quietly, readUtf8File, tshow, writeUtf8File)
 
 -- | Where cached answers are kept together with a token unique to this
 -- build plan and environment, or nowhere, in which case nothing is
@@ -469,7 +469,7 @@ renderFixity ((namespace, OpName op), Fixity direction precedence) =
   [ op,
     renderNamespace namespace,
     renderDirection direction,
-    T.pack (show precedence)
+    tshow precedence
   ]
   where
     renderDirection = \case

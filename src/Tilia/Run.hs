@@ -57,6 +57,7 @@ import Tilia.Utils
     inParallel,
     indent,
     lineWidth,
+    tshow,
     wrapTo,
     writeUtf8File,
   )
@@ -288,7 +289,7 @@ countedBy wanted =
 -- | Render the number of files.
 count :: Palette -> Int -> Text -> Text
 count palette n extension =
-  T.pack (show n)
+  tshow n
     <> " "
     <> paint palette Place extension
     <> (if n == 1 then " file" else " files")
