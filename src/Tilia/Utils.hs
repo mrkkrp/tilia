@@ -11,6 +11,7 @@ module Tilia.Utils
     blocksOf,
     indented,
     looksLikeModule,
+    pathUnder,
     asUtf8,
     byteOrderMark,
     sha256Of,
@@ -47,6 +48,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (doesFileExist)
+import System.FilePath (equalFilePath, normalise, splitDirectories)
 
 -- | 'show' a value and take the result as 'Text'.
 tshow :: (Show a) => a -> Text
@@ -89,6 +91,15 @@ blocksOf = \case
 -- | Does a line begin with white space?
 indented :: Text -> Bool
 indented = maybe False (isSpace . fst) . T.uncons
+
+-- | A path's segments under a directory, if it is at or under it.
+pathUnder :: FilePath -> FilePath -> Maybe [FilePath]
+pathUnder directory path =
+  go (splitDirectories directory) (splitDirectories (normalise path))
+  where
+    go [] fs = Just fs
+    go (d : ds) (f : fs) | equalFilePath d f = go ds fs
+    go _ _ = Nothing
 
 -- | Could a word name a module: does it begin with a capital letter and
 -- hold no colon?
