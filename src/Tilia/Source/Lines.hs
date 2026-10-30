@@ -13,6 +13,7 @@ module Tilia.Source.Lines
     blankAt,
     offsetOf,
     columnOf,
+    contentColumn,
     directivePresentOnLine,
     directiveOnLine,
     conditionalKeywords,
@@ -97,6 +98,11 @@ offsetOf line column = T.length (T.take (walk 0 1) line)
 -- | The compiler's column for the character at this offset.
 columnOf :: Text -> Int -> Int
 columnOf line offset = T.foldl' (flip afterChar) 1 (T.take offset line)
+
+-- | The compiler's column for the first character of a line that is not
+-- white space.
+contentColumn :: Text -> Int
+contentColumn l = columnOf l (T.length (T.takeWhile isSpace l))
 
 -- | Where the column moves to once this character has been read.
 afterChar :: Char -> Int -> Int

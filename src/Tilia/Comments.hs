@@ -44,6 +44,7 @@ import Tilia.Source.Lines
   ( Lines,
     blankAt,
     columnOf,
+    contentColumn,
     directiveOnLine,
     lineAt,
     lineTexts,
@@ -151,21 +152,20 @@ commentAt ls spn style raw =
       Nothing -> TopOfFile
       Just l
         | T.all isSpace l -> BlankLine
-        | otherwise -> ContentAt (contentStart l)
+        | otherwise -> ContentAt (contentColumn l)
     before' = maybe T.empty (T.stripEnd . T.take startColumn) openingLine
     codeBeforeStopsAt = do
       l <- openingLine
       if T.null before' then Nothing else Just (columnOf l (T.length before'))
     nextLine =
       listToMaybe
-        [ (n, contentStart l)
+        [ (n, contentColumn l)
         | (n, Just l) <-
             takeWhile
               (isJust . snd)
               [(n, lineAt n ls) | n <- [spanEndLine spn + 1 ..]],
           not (T.all isSpace l || isJust (directiveOnLine l))
         ]
-    contentStart l = columnOf l (T.length (T.takeWhile isSpace l))
     followed = case lineAt (spanEndLine spn) ls of
       Just l -> not (T.all isSpace (T.drop (offsetOf l (spanEndColumn spn)) l))
       Nothing -> False
@@ -384,7 +384,7 @@ asOrdinary ls c
                 spanStartColumn =
                   if n == spanStartLine s
                     then spanStartColumn s
-                    else columnOf l (T.length (T.takeWhile isSpace l)),
+                    else contentColumn l,
                 spanEndLine = n,
                 spanEndColumn =
                   if n == spanEndLine s

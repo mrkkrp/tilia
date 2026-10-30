@@ -59,8 +59,8 @@ import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy)
 import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
-  ( columnOf,
-    conditionalKeywords,
+  ( conditionalKeywords,
+    contentColumn,
     continuesGroup,
     directiveOnLine,
     opaqueKeywords,
@@ -648,7 +648,7 @@ macroLines source =
     written = directives source
     inDirective n = any (\d -> dLine d <= n && n <= dLastLine d) written
     code (n, l) = not (T.null (T.strip l) || inDirective n || uses l)
-    indentation l = columnOf l (T.length (T.takeWhile isSpace l)) - 1
+    indentation l = contentColumn l - 1
     closing = maybe False ((`elem` ("})]" :: String)) . fst) . T.uncons . T.stripStart
     uses l = Set.member name defined && enclosed arguments
       where
