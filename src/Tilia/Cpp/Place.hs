@@ -62,7 +62,7 @@ import Tilia.Doc.Internal
     wrap,
   )
 import Tilia.Source (Lines, Written (..), blankAt, lineAt, linesOf)
-import Tilia.Span (Span (..), mkSpan)
+import Tilia.Span (Span (..), mkSpan, startPoint)
 
 -- | What the configurations of a module had besides their code.
 data CommentSummary = CommentSummary
@@ -331,24 +331,23 @@ unified ds = fmap (rewrite Set.empty) ds
     hulls =
       Map.filter
         ((> 1) . length)
-        (Map.fromListWith (<>) [(startPoint' s, [s]) | d <- ds, s <- outermost d])
+        (Map.fromListWith (<>) [(startPoint s, [s]) | d <- ds, s <- outermost d])
     rewrite seen = \case
       DLocated s x
-        | Set.notMember (startPoint' s) seen,
-          Just ss <- Map.lookup (startPoint' s) hulls ->
-            DLocated (foldr (<>) s ss) (rewrite (Set.insert (startPoint' s) seen) x)
-        | otherwise -> DLocated s (rewrite (Set.insert (startPoint' s) seen) x)
+        | Set.notMember (startPoint s) seen,
+          Just ss <- Map.lookup (startPoint s) hulls ->
+            DLocated (foldr (<>) s ss) (rewrite (Set.insert (startPoint s) seen) x)
+        | otherwise -> DLocated s (rewrite (Set.insert (startPoint s) seen) x)
       d@DCppChoice{} -> d
       d -> mapChildren (rewrite seen) d
     outermost = go Set.empty
       where
         go seen = \case
           DLocated s x
-            | Set.member (startPoint' s) seen -> go seen x
-            | otherwise -> s : go (Set.insert (startPoint' s) seen) x
+            | Set.member (startPoint s) seen -> go seen x
+            | otherwise -> s : go (Set.insert (startPoint s) seen) x
           DCppChoice{} -> []
           d -> foldChildren (go seen) d
-    startPoint' s = (spanStartLine s, spanStartColumn s)
 
 -- | Give one alternative of a choice its anchors.
 anchoredIn ::

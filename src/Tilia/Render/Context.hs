@@ -396,7 +396,7 @@ holdsLineComment ctx s =
 writtenHaddock :: Ctx -> Maybe Span -> Maybe (NonEmpty Text)
 writtenHaddock ctx ms = do
   s <- ms
-  c <- Map.lookup (spanStartLine s, spanStartColumn s) (ctxHaddocks ctx)
+  c <- Map.lookup (startPoint s) (ctxHaddocks ctx)
   case commentStyle c of
     DocComment -> Just (commentBody c)
     _ -> Nothing
