@@ -1529,6 +1529,47 @@ withPlan plan = do
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
         unsettledThrough answer (InTerms, OpName "sort") `shouldBe` []
 
+    it "leaves unsettled what one configuration declares and another does not"
+      $ withFakeProject
+        [ ( "src/Partly.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "module Partly ((<+>)) where",
+                "#ifdef FAST",
+                "infixr 5 <+>",
+                "#endif",
+                "(<+>) :: Int -> Int -> Int",
+                "a <+> b = a + b"
+              ]
+          )
+        ]
+      $ \rs -> do
+        answer <- askModule rs Nothing "Partly"
+        unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
+
+    it "keeps the fixity of a name only one configuration exports"
+      $ withFakeProject
+        [ ( "src/Partly.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "#ifdef FAST",
+                "module Partly ((<+>), f) where",
+                "#else",
+                "module Partly (f) where",
+                "#endif",
+                "infixr 5 <+>",
+                "(<+>) :: Int -> Int -> Int",
+                "a <+> b = a + b",
+                "f :: Int",
+                "f = 1"
+              ]
+          )
+        ]
+      $ \rs ->
+        fixitiesOf rs "Partly"
+          `shouldReturn` Just
+            (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5))
+
     it "settles what an import it can read decides, though no configuration reads every import"
       $ withFakeProject
         [ ( "src/Bothbad.hs",
