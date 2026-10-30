@@ -93,12 +93,11 @@ blankAcross (from, to) ls = all (`blankAt` ls) [from .. to]
 -- than it has characters, and cutting the text at a column would cut in the
 -- wrong place. In a file indented with tabs that is every line.
 offsetOf :: Text -> Int -> Int
-offsetOf line column = T.length (T.take (walk 0 1) line)
+offsetOf line column = T.foldr walk (\i !_ -> i) line 0 1
   where
-    walk i c
-      | c >= column = i
-      | i >= T.length line = i + (column - c)
-      | otherwise = walk (i + 1) (afterChar (T.index line i) c)
+    walk ch next i c
+      | c < column = next (i + 1) (afterChar ch c)
+      | otherwise = i
 
 -- | The compiler's column for the character at this offset.
 columnOf :: Text -> Int -> Int

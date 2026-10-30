@@ -148,7 +148,8 @@ syntheticSubjects =
   [ subjectOf Nothing False "synthetic/comments" commented,
     subjectOf Nothing False "synthetic/imports" imported,
     subjectOf Nothing False "synthetic/conditionals" conditional,
-    subjectOf Nothing False "synthetic/nesting" nested
+    subjectOf Nothing False "synthetic/nesting" nested,
+    subjectOf Nothing False "synthetic/long-line" long
   ]
   where
     commented =
@@ -196,6 +197,16 @@ syntheticSubjects =
           "",
           "wide :: [Int]",
           "wide = [" <> T.intercalate ", " (numbers 5000) <> "]"
+        ]
+    long =
+      T.unlines
+        [ "module Long where",
+          "",
+          "long :: [Int]",
+          "long = ["
+            <> T.intercalate ", " (numbers 1000)
+            <> "]"
+            <> foldMap (\n -> " {- " <> n <> " -}") (numbers 20)
         ]
     deeper n e =
       "case x of { " <> n <> " -> (" <> e <> "); _ -> x + " <> n <> " }"
