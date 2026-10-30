@@ -62,8 +62,8 @@ import Tilia.Cabal.Package
   )
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
-import Tilia.Ignore (ignoreFilesAbove, isIgnored)
-import Tilia.Utils (fieldWords, pathUnder, quietly, tshow)
+import Tilia.Ignore (withoutIgnored)
+import Tilia.Utils (fieldWords, quietly, tshow)
 
 -- | Which components a run was asked for.
 data Target
@@ -251,14 +251,7 @@ filesOfComponents root components = do
           let d = joined (componentRoot c) written
         ]
   candidates <- concat <$> traverse present (Map.toList directories)
-  let inProject =
-        [ (path, below)
-        | path <- candidates,
-          Just below <- [pathUnder (prPath root) path]
-        ]
-  ignoreFiles <- ignoreFilesAbove (prPath root) (fmap snd inProject)
-  let excluded = Set.fromList [path | (path, below) <- inProject, isIgnored ignoreFiles below]
-  pure (sort (filter (`Set.notMember` excluded) candidates))
+  sort <$> withoutIgnored (prPath root) candidates
   where
     present (directory, wanted) = do
       entries <- quietly [] (listDirectory directory)
