@@ -1,3 +1,174 @@
+## Unreleased
+
+* An import is resolved first among the modules of the importing file's own
+  component, as GHC resolves it, so a test suite's own `Utils` gives its
+  operators their fixities rather than a library's `Utils`, and a module
+  another component holds no longer stands in for a dependency's module of
+  that name. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A pattern synonym bundled with a type in an export list, as in
+  `T (E, (:<))`, keeps its fixity, and `T (.., P)` exports every constructor
+  of `T` with its fixity, rather than the modules importing them taking
+  these operators for `infixl 9`.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Two runs storing one answer in the cache at once no longer leave it
+  holding part of the answer, or none, which a later run could take for a
+  module declaring fewer fixities, or none.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A `cabal.project` that takes its `packages` from a file it imports with
+  `import:`, directly or through further imports, has those packages
+  formatted, as `cabal` builds them, rather than being reported as naming no
+  packages, and an edit to an imported file makes the build plan stale, as
+  it does for `cabal`. An import from a URL is passed over.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* An entry of the `packages` field of a `cabal.project` written with `**`,
+  as `**/*.cabal`, or with more than one `*` in a name, as `pkgs/*-*`, finds
+  the packages it finds for `cabal`, rather than none.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `inplace` counts a file it cannot write, such as a read-only one, among
+  the failed files, says why, and goes on with the rest, printing its
+  summary and exiting with a code of its own, 20, rather than stopping at
+  that file with exit code 1, which `check` uses for a file that would
+  change. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A dependency's module is read only from its path under one of the
+  package's source directories, rather than from any file in its tarball
+  whose path ends the same way, which could be another module's, and a
+  source directory written as `src/` or `./src` is found.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `cabal path`, which tells where `cabal` keeps the sources it downloads,
+  runs in the project's directory rather than in the one Tilia runs in, so a
+  `remote-repo-cache` set in the project's `cabal.project` is found, as when
+  `for-editor` formats a file from outside its project, and what it says is
+  remembered for that project alone.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* An operator in a type takes the fixity of the type of its name where one
+  may be in scope, and that of a promoted constructor only where none can
+  be, while one written with a tick, as in `':+:`, takes the constructor's.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* The constructors of a data instance exported with their family, as in
+  `F (..)`, keep their fixities.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* An operator that one CPP configuration of a module declares a fixity for
+  and another exports without one is left unsettled, rather than taken to
+  have the declared fixity in every configuration.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `--check-ast` no longer reports a comment as gained where it is written
+  under the last import or the `module` line, further left than the comment
+  at the end of that line, and goes with the code after it.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* The diffs `check` prints apply with `git apply` and `patch`: a hunk at the
+  end of a file no longer shows an empty line after the last one, a file
+  without a newline at its end gets `\ No newline at end of file`, and
+  carriage returns are kept, so a file whose formatting changes only its
+  line endings gets a diff headed with its name.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Only the comment Stack reads its options from, the one at the margin of
+  the first line, or of the line under the `#!` line, whose first word is
+  `stack`, is taken for a Stack script header, so a comment such as
+  `-- stacks of disks` at the top of a module stays an ordinary one rather
+  than being split from its next line by an empty one.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A Haddock written between `{-` and `-}` that documents nothing has only
+  the trigger of its first line escaped, rather than a backslash also being
+  put before anything on its other lines that looks like a trigger.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* The lines of a block comment keep their columns against its first line
+  where tabs indent them, a tab counting up to the next multiple of eight as
+  GHC counts it, rather than losing or keeping a character of indentation
+  for each character before the comment.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Foreign libraries are formatted like other components: `check` and
+  `inplace` take their modules, `for-editor` settles a module's extensions
+  from the one that holds it, and `flib:NAME` selects one. A target may name
+  its kind in any of the spellings `cabal` takes, as `library:`,
+  `foreign-library:`, `executable:`, `test-suite:` or `tst:`, in any case.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Packages are found in a package database, and their interfaces read, where
+  the database or an import directory has a path holding a space, a comma or
+  a character outside ASCII, which `ghc-pkg` writes quoted and escaped.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* On Windows, an absolute entry of the `packages` field of a `cabal.project`
+  written with forward slashes, as `C:/proj/lib`, is looked for where it
+  points rather than under the working directory of its drive, and an entry
+  written with backslashes can hold a glob.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* With a compiler whose interfaces are read through `ghc --show-iface`, one
+  outside GHC 9.10 to 9.14, a constructor named after its type, such as
+  `:*:`, gets its fixity rather than none.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A module whose quasi-quotation holds `{-# LINE` or `{-# COLUMN` as text is
+  formatted rather than declined as one using those pragmas.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Formatting a line with comments at its end takes time linear in the line's
+  length rather than quadratic: a line of 64,000 characters with 20 block
+  comments after it took 17.7 seconds to format, and takes 0.3.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A dependency's source that stays missing with no download to blame, such
+  as one of a package the compiler already has, any source under
+  `--no-downloads`, or one the fetch for a plan given with `--build-plan`
+  does not bring in, no longer makes every run ask `cabal` twice where it
+  keeps sources: it is asked again only after a download leaves a source
+  missing. The fetch for a plan given with `--build-plan` no longer runs on
+  every run for a source it does not bring in either.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A `cabal.project`, or a file it imports, that does not parse is reported
+  as not parsing, with what the parser said, rather than as naming no
+  packages. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A byte order mark at the start of a `.tiliaignore` is skipped, as Git
+  skips one in a `.gitignore`, rather than being read as part of its first
+  pattern. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A comment lined up with the last line of a construct at the end of a
+  module, such as under the last binding of a `where` clause, stays under
+  that line, as it does where code follows, rather than going to the margin
+  after an empty line. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A comment written before the closing bracket of a tuple section, as in
+  `(x, {- later -})`, stays inside the section rather than moving to the
+  front of the next declaration, where the module no longer parsed, or under
+  the whole declaration. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Blank lines between implicit-parameter bindings in a `let` or a `where`
+  are kept, as between value bindings, rather than dropped.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A `case`, a `do` block or another expression that hangs after `>-` stays
+  on the line of the `>-`, as one after `-<` does, rather than going on a
+  line of its own under it.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `INLINABLE` pragmas keep the spelling they are written with, `INLINABLE`
+  or `INLINEABLE`, rather than all coming out as `INLINEABLE`.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `SPECIALISE` pragmas, `SPECIALISE INLINE` and `SPECIALISE instance`
+  among them, keep the spelling they are written with, `SPECIALISE` or
+  `SPECIALIZE`, rather than all coming out as `SPECIALIZE`.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* An options pragma with no options, such as `{-# OPTIONS_GHC #-}`, comes
+  out with one space before `#-}` rather than two.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A `cabal` failure other than one to resolve dependencies, such as a
+  `cabal.project` that does not parse, is printed once rather than twice, as
+  `cabal` is asked again without the test suites and benchmarks only where
+  it could not resolve dependencies with them.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* Whether what goes to standard error is colored is decided by whether
+  standard error is a terminal, rather than by whether standard output is,
+  and a `NO_COLOR` set to the empty string no longer turns colors off, as
+  no-color.org asks. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* The summary `inplace` prints is written in the locale's encoding, with
+  what it cannot show transliterated, as what goes to standard error is,
+  rather than as UTF-8 whatever the locale. The module `for-editor` prints
+  and the diffs `check` prints are still UTF-8.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A module declined for an alternative that aborts with `#error` names the
+  line of the `#error`, where it could name line 0 when the alternative
+  settled a conditional around the `#error`.
+  [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* A missing build plan is reported once, as in
+  `no build plan for /p: nowhere.json does not exist`, rather than as
+  `no build plan for /p: no build plan at nowhere.json`, and a plan that
+  does not parse is named. A source file or a `.cabal` file that cannot be
+  read, and a CPP configuration that does not parse, name their file once
+  too. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `--debug-fixity` lists a fixity a module declares for a type beside the
+  one it declares for a constructor of the same name, rather than the
+  constructor's alone. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+
 ## Tilia 0.1.3.0
 
 * An empty context comes out as written in a class or a data declaration,
