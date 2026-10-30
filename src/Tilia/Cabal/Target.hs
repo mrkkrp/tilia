@@ -21,7 +21,7 @@ where
 import Control.Monad (filterM)
 import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
-import Data.List (isPrefixOf, isSuffixOf, sort)
+import Data.List (isPrefixOf, isSuffixOf, sort, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -300,20 +300,27 @@ packageToCabalFile root entry = do
           pure [path | there]
       | otherwise = cabalFilesIn path
 
--- | Resolve a path whose components may contain @*@.
+-- | Resolve a path whose components may contain @*@, or be @**@, which
+-- stands for any number of directories.
 packageGlobToCabalFiles :: FilePath -> [String] -> IO [FilePath]
 packageGlobToCabalFiles here = \case
   [] -> pure [here]
   ("" : rest) -> packageGlobToCabalFiles here rest
   ("." : rest) -> packageGlobToCabalFiles here rest
+  components@("**" : rest) ->
+    (<>)
+      <$> packageGlobToCabalFiles here rest
+      <*> entriesMatching (const True) components
   (component : rest)
-    | '*' `elem` component -> do
-        entries <- quietly [] (listDirectory here)
-        concat
-          <$> traverse
-            (\e -> packageGlobToCabalFiles (here </> e) rest)
-            (sort (filter (globMatching component) entries))
+    | '*' `elem` component -> entriesMatching (globMatching component) rest
     | otherwise -> packageGlobToCabalFiles (here </> component) rest
+  where
+    entriesMatching matching rest = do
+      entries <- quietly [] (listDirectory here)
+      concat
+        <$> traverse
+          (\e -> packageGlobToCabalFiles (here </> e) rest)
+          (sort (filter matching entries))
 
 -- | Does a name match a pattern with @*@ in it?
 globMatching :: String -> String -> Bool
@@ -321,7 +328,7 @@ globMatching pattern name = case break (== '*') pattern of
   (before, []) -> before == name
   (before, _ : after) ->
     before `isPrefixOf` name
-      && after `isSuffixOf` drop (length before) name
+      && any (globMatching after) (tails (drop (length before) name))
 
 -- | Every component one @.cabal@ file declares.
 componentsInCabalFile :: FilePath -> IO (Either TargetProblem [Component])
