@@ -144,8 +144,10 @@ describeFormatError palette = \case
       <> file path
       <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas, and no"
       <> " reformatting can leave those true"
-  CppUnsupported path why ->
-    "will not format " <> file path <> ": " <> describeCppError why
+  CppUnsupported path why -> case why of
+    ConfigurationNotParsed{} ->
+      "will not format " <> located (describeCppError why)
+    _ -> "will not format " <> file path <> ": " <> describeCppError why
   Unreadable path why -> "cannot read " <> file path <> ": " <> why
   Unwritable path why -> "cannot write " <> file path <> ": " <> why
   NotEquivalent path why ->

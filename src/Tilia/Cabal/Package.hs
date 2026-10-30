@@ -90,7 +90,7 @@ import System.FilePath
 import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (attempted, pathUnder, quietly, tshow)
+import Tilia.Utils (pathUnder, quietly, readBytes, tshow)
 
 -- | Why a file's extensions could not be settled.
 data PackageProblem
@@ -263,7 +263,7 @@ componentBranchesOf compiler ref cabalFile = do
 -- | Read and parse a @.cabal@ file, or say why it cannot be.
 readPackageDescription :: FilePath -> IO (Either PackageProblem GenericPackageDescription)
 readPackageDescription cabalFile =
-  attempted (BS.readFile cabalFile) >>= \case
+  readBytes cabalFile >>= \case
     Left why -> pure (Left (PackageUnreadable cabalFile why))
     Right bytes -> pure (parsePackageDescription cabalFile bytes)
 
