@@ -152,9 +152,9 @@ record the benchmarks again with the new base compiler.
 
 To switch to another version of `ghc-lib-parser`:
 
-1. Change the bounds on `ghc-lib-parser` in `tilia.cabal`, in the library,
-   the test suite and the benchmarks, and bump `index-state` in `cabal.project`
-   past its release. If `haskell.nix`'s index of Hackage does not reach that
+1. Change the bounds on `ghc-lib-parser` in the stanza of that name in
+   `tilia.cabal`, and bump `index-state` in `cabal.project` past its
+   release. If `haskell.nix`'s index of Hackage does not reach that
    far, update the `haskellNix` input as well.
 2. Fix what the new API breaks. Warnings are errors in this project, so a
    constructor that the new syntax tree adds and the printer does not handle

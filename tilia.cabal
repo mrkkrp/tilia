@@ -37,7 +37,9 @@ flag dev
   default: False
   manual: True
 
-common common-ghc-options
+common shared
+  default-language: GHC2021
+  build-depends: base >=4.20 && <5
   ghc-options:
     -O2
     -Wall
@@ -51,8 +53,12 @@ common common-ghc-options
       -haddock
       -Winvalid-haddock
 
+common ghc-lib-parser
+  build-depends: ghc-lib-parser >=9.14 && <9.15
+
 library
-  import: common-ghc-options
+  import: shared
+  import: ghc-lib-parser
   exposed-modules:
     Tilia.Cabal.Package
     Tilia.Cabal.Plan
@@ -121,12 +127,10 @@ library
     Tilia.Utils
 
   hs-source-dirs: src
-  default-language: GHC2021
   build-depends:
     Cabal-syntax >=3.12 && <3.17,
     aeson >=2.1 && <3,
     array >=0.5 && <0.6,
-    base >=4.20 && <5,
     base16-bytestring >=1 && <2,
     bytestring >=0.11 && <0.13,
     choice >=0.2 && <0.3,
@@ -135,7 +139,6 @@ library
     deepseq >=1.4 && <1.6,
     directory ^>=1.3,
     filepath >=1.4 && <1.6,
-    ghc-lib-parser >=9.14 && <9.15,
     process >=1.6 && <1.7,
     syb >=0.7 && <0.8,
     tar >=0.6 && <0.8,
@@ -145,14 +148,12 @@ library
     zlib >=0.6 && <0.8,
 
 executable tilia
-  import: common-ghc-options
+  import: shared
   main-is: Main.hs
   hs-source-dirs: app
   other-modules: Paths_tilia
   autogen-modules: Paths_tilia
-  default-language: GHC2021
   build-depends:
-    base >=4.20 && <5,
     bytestring >=0.11 && <0.13,
     choice >=0.2 && <0.3,
     directory ^>=1.3,
@@ -178,7 +179,8 @@ executable tilia
     "-with-rtsopts=-N12 -A32m"
 
 test-suite tests
-  import: common-ghc-options
+  import: shared
+  import: ghc-lib-parser
   type: exitcode-stdio-1.0
   main-is: Main.hs
   build-tool-depends: hspec-discover:hspec-discover >=2 && <3
@@ -226,11 +228,9 @@ test-suite tests
     Tilia.TestUtils
     Tilia.WithProjectPlan
 
-  default-language: GHC2021
   build-depends:
     QuickCheck >=2.14 && <3,
     array >=0.5 && <0.6,
-    base >=4.20 && <5,
     base16-bytestring >=1 && <2,
     bytestring >=0.11 && <0.13,
     choice >=0.2 && <0.3,
@@ -238,7 +238,6 @@ test-suite tests
     cryptohash-sha256 >=0.11 && <0.12,
     directory ^>=1.3,
     filepath >=1.4 && <1.6,
-    ghc-lib-parser >=9.14 && <9.15,
     hspec >=2 && <3,
     http-client >=0.7 && <0.8,
     req >=3.13 && <4,
@@ -255,7 +254,8 @@ test-suite tests
     "-with-rtsopts=-M8G -N"
 
 benchmark bench
-  import: common-ghc-options
+  import: shared
+  import: ghc-lib-parser
   type: exitcode-stdio-1.0
   main-is: Main.hs
   hs-source-dirs:
@@ -273,9 +273,7 @@ benchmark bench
     Tilia.TestUtils
 
   c-sources: bench/cbits/counter.c
-  default-language: GHC2021
   build-depends:
-    base >=4.20 && <5,
     base16-bytestring >=1 && <2,
     bytestring >=0.11 && <0.13,
     choice >=0.2 && <0.3,
@@ -284,7 +282,6 @@ benchmark bench
     deepseq >=1.4 && <1.6,
     directory ^>=1.3,
     filepath >=1.4 && <1.6,
-    ghc-lib-parser >=9.14 && <9.15,
     http-client >=0.7 && <0.8,
     optparse-applicative >=0.14 && <0.20,
     process >=1.6.12 && <1.7,
