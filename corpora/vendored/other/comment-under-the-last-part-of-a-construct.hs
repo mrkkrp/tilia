@@ -45,3 +45,10 @@ selvedge = "doubled"
   -- on both sides
 beam :: Int
 beam = 2
+
+-- At the end of the module, where nothing follows the construct, too.
+loom :: Int
+loom = shuttles
+  where
+    shuttles = 2
+    -- and a spare

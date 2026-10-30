@@ -187,11 +187,14 @@ placeComments regions leads fences comments =
 
         under
           | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,
-            Just (line, column) <- commentNextLine bottom,
-            column /= spanStartColumn here,
-            any ((<= (line, column)) . startPoint) next =
+            all (beginsUnder (commentNextLine bottom)) next =
               lineOfCode top
           | otherwise = Nothing
+
+        beginsUnder below r = case below of
+          Just (line, column) ->
+            column /= spanStartColumn here && startPoint r <= (line, column)
+          Nothing -> False
 
         lineOfCode top = do
           r <- nearest (Down . startPoint) (filter linedUp onThatLine)
