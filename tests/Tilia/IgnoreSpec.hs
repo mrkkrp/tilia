@@ -72,6 +72,9 @@ spec = do
     it "reads lines ended with a carriage return" $
       "*.hs\r\n!keep.hs\r\n" `ignores` ["a.hs"] `butNot` ["keep.hs"]
 
+    it "reads its first line past a byte order mark" $
+      "\xFEFF*.hs\n" `ignores` ["a.hs"] `butNot` []
+
   describe "ignore files in several directories" $ do
     it "match from their own directories" $
       nested [([], ""), (["src"], "/x/\n")] ["src/x/B.hs"] ["x/B.hs", "src/A.hs"]

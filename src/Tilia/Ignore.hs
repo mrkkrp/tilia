@@ -35,7 +35,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath (joinPath, (</>))
-import Tilia.Utils (pathUnder, quietly)
+import Tilia.Utils (byteOrderMark, pathUnder, quietly)
 
 -- | The patterns of one ignore file, in the order they are written.
 newtype IgnoreFile = IgnoreFile [Pattern]
@@ -70,12 +70,15 @@ data Token
   | -- | A bracket expression, whether it is negated, and what it holds.
     Bracket Bool [Char -> Bool]
 
--- | Read an ignore file.
+-- | Read an ignore file, past the byte order mark it may begin with, as Git
+-- does.
 parseIgnoreFile :: Text -> IgnoreFile
 parseIgnoreFile =
   IgnoreFile
     . mapMaybe (parsePattern . T.unpack . withoutReturn)
     . T.lines
+    . snd
+    . byteOrderMark
   where
     withoutReturn = T.dropWhileEnd (== '\r')
 
