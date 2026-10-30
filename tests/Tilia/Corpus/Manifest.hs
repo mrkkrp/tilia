@@ -23,7 +23,6 @@ module Tilia.Corpus.Manifest
 where
 
 import Crypto.Hash.SHA256 qualified as SHA256
-import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.List (sortOn)
 import Data.Map.Strict (Map)
@@ -33,7 +32,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
-import Tilia.Utils (readUtf8File)
+import Tilia.Utils (readUtf8File, writeUtf8File)
 
 ----------------------------------------------------------------------------
 -- What an example does
@@ -122,7 +121,7 @@ readManifest path =
 writeManifest :: FilePath -> Manifest -> IO ()
 writeManifest path manifest = do
   createDirectoryIfMissing True (takeDirectory path)
-  BS.writeFile path . T.encodeUtf8 $
+  writeUtf8File path $
     T.unlines (header <> fmap line (Map.toAscList manifest))
   where
     header =
@@ -172,7 +171,7 @@ readReport path =
 writeReport :: FilePath -> [(FilePath, Outcome, Text)] -> IO ()
 writeReport path entries = do
   createDirectoryIfMissing True (takeDirectory path)
-  BS.writeFile path . T.encodeUtf8 $
+  writeUtf8File path $
     T.unlines (header <> concatMap section grouped)
   where
     interesting = [e | e@(_, outcome, _) <- entries, outcome /= Formatted]

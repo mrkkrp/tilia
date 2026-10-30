@@ -6,7 +6,6 @@
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
-    writeUtf8File,
     withFiles,
     withOpsProject,
     switchedOn,
@@ -35,11 +34,10 @@ where
 
 import Control.Exception (bracket)
 import Data.Bits (xor)
-import Data.ByteString qualified as BS
 import Data.Char (ord)
 import Data.Choice (pattern Do)
 import Data.Either (isRight)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.List (isSuffixOf, sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
@@ -47,7 +45,6 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
 import Data.Word (Word64)
 import GHC.Driver.Session qualified as GHC
 import GHC.IO.Encoding (getLocaleEncoding, setLocaleEncoding)
@@ -90,7 +87,7 @@ import Tilia.Parser
   )
 import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
 import Tilia.Source (comments)
-import Tilia.Utils (quietly)
+import Tilia.Utils (quietly, writeUtf8File)
 
 -- | Run something with the given variables set, and the environment as it
 -- was afterwards however it turns out.
@@ -104,19 +101,15 @@ withEnvironment vars act = bracket set restore (const act)
       pure (key, was)
     restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
 
--- | Write a file as UTF-8, making the directories it is in.
-writeUtf8File :: FilePath -> Text -> IO ()
-writeUtf8File path text = do
-  createDirectoryIfMissing True (takeDirectory path)
-  BS.writeFile path (T.encodeUtf8 text)
-
 -- | Run something on a new temporary directory, by its canonical path,
 -- holding these files at their paths in it.
 withFiles :: [(FilePath, Text)] -> (FilePath -> IO a) -> IO a
 withFiles files act =
   withSystemTempDirectory "tilia" $ \dir -> do
     root <- canonicalizePath dir
-    traverse_ (\(path, text) -> writeUtf8File (root </> path) text) files
+    for_ files $ \(path, text) -> do
+      createDirectoryIfMissing True (takeDirectory (root </> path))
+      writeUtf8File (root </> path) text
     act root
 
 -- | Run something on a project of one package, @fake@, whose module @Ops@

@@ -7,6 +7,7 @@ module Tilia.Utils
   ( quietly,
     attempted,
     readUtf8File,
+    writeUtf8File,
     fieldWords,
     asUtf8,
     byteOrderMark,
@@ -60,6 +61,10 @@ readUtf8File path = quietly Nothing $ do
   if there
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
     else pure Nothing
+
+-- | Write a file as UTF-8.
+writeUtf8File :: FilePath -> Text -> IO ()
+writeUtf8File path = BS.writeFile path . T.encodeUtf8
 
 -- | The words of a field's value, which whitespace and commas separate.
 fieldWords :: Text -> [Text]

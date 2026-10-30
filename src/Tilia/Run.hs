@@ -39,7 +39,6 @@ import Data.List (sortOn)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
 import System.FilePath (takeExtension)
 import Tilia.Diff (diffInFull)
 import Tilia.Format
@@ -60,6 +59,7 @@ import Tilia.Utils
     indent,
     lineWidth,
     wrapTo,
+    writeUtf8File,
   )
 
 ----------------------------------------------------------------------------
@@ -167,7 +167,7 @@ formattingOutcome before formatted
 -- | Put a formatted file back, and only if it changed.
 writeBack :: (FilePath, Outcome) -> IO ()
 writeBack (path, outcome) = case outcome of
-  Changed _ after -> BS.writeFile path (T.encodeUtf8 after)
+  Changed _ after -> writeUtf8File path after
   _ -> pure ()
 
 ----------------------------------------------------------------------------

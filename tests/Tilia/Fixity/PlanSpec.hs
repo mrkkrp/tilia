@@ -22,7 +22,7 @@ import Control.Exception (bracket)
 import Control.Monad (forM_, when)
 import Data.ByteString.Lazy qualified as BL
 import Data.Choice (pattern Do, pattern Don't, pattern Is)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.List (isInfixOf)
 import Data.List qualified
@@ -32,7 +32,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Text.IO qualified as T
 import Data.Time (addUTCTime, getCurrentTime)
 import System.Directory
   ( createDirectoryIfMissing,
@@ -75,7 +74,7 @@ import Tilia.TestUtils
     withEnvironment,
     withOpsProject,
   )
-import Tilia.Utils (inParallel)
+import Tilia.Utils (inParallel, writeUtf8File)
 import Tilia.WithProjectPlan (withProjectPlan)
 
 spec :: Spec
@@ -620,7 +619,7 @@ repositories = describe "a package fetched from a repository" $ do
 
   it "leaves a file+noindex repository's tarballs where they are" $
     withSystemTempDirectory "tilia-noindex" $ \repo -> do
-      T.writeFile (repo </> "thing-1.0.tar.gz") "not really a tarball"
+      writeUtf8File (repo </> "thing-1.0.tar.gz") "not really a tarball"
       withCache
         []
         (fromRepository ("{\"type\":\"local-repo-no-index\",\"path\":\"" <> T.pack repo <> "\"}"))
@@ -706,7 +705,7 @@ withRemembered holding refused act =
     let at = root </> "hackage.haskell.org" </> "thing" </> "1.0"
     when holding $ do
       createDirectoryIfMissing True at
-      T.writeFile (at </> "thing-1.0.tar.gz") "not really a tarball"
+      writeUtf8File (at </> "thing-1.0.tar.gz") "not really a tarball"
     cache <- openCache (Do #useCache) (PlanToken (T.pack (takeBaseName root)))
     storePackageCache cache root
     storeFutileFetch cache refused
@@ -814,7 +813,7 @@ withLayouts act =
 withIndexIn :: FilePath -> IO ()
 withIndexIn root = do
   createDirectoryIfMissing True (root </> "hackage.haskell.org")
-  T.writeFile (root </> "hackage.haskell.org" </> "01-index.tar") ""
+  writeUtf8File (root </> "hackage.haskell.org" </> "01-index.tar") ""
 
 -- | Run something on where @plannedTarballs@ looked, against a package
 -- cache holding the entries given.
@@ -832,7 +831,7 @@ withCache cached planText act =
     withEnvironment [("CABAL_DIR", cabalDir)] $
       withSystemTempDirectory "tilia-repo-plan" $ \dir -> do
         createDirectoryIfMissing True (takeDirectory (planPathFor dir))
-        T.writeFile (planPathFor dir) planText
+        writeUtf8File (planPathFor dir) planText
         readBuildPlan (planPathFor dir) >>= \case
           Left why -> expectationFailure (T.unpack why)
           Right plan ->
@@ -850,7 +849,7 @@ withCache cached planText act =
               </> T.unpack held
               </> T.unpack version
       createDirectoryIfMissing True at
-      T.writeFile
+      writeUtf8File
         (at </> T.unpack (held <> "-" <> version <> ".tar.gz"))
         "not really a tarball"
 
@@ -922,7 +921,7 @@ withFakeCheckout :: [(FilePath, Text)] -> (FilePath -> IO a) -> IO a
 withFakeCheckout clones act =
   withSystemTempDirectory "tilia-checkout" $ \dir -> do
     createDirectoryIfMissing True (takeDirectory (planPathFor dir))
-    T.writeFile (planPathFor dir) fromAGitRepository
+    writeUtf8File (planPathFor dir) fromAGitRepository
     traverse_ (unpack dir) clones
     withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act dir)
   where
@@ -930,8 +929,10 @@ withFakeCheckout clones act =
       let at = dir </> "dist-newstyle" </> "src" </> named
           belongsTo = takeWhile (/= '-') named
       createDirectoryIfMissing True (at </> "src" </> "Private")
-      T.writeFile (at </> belongsTo <> ".cabal") (describing (T.pack belongsTo) version)
-      T.writeFile (at </> "src" </> "Private" </> "Ops.hs") privateOps
+      writeUtf8File
+        (at </> belongsTo <> ".cabal")
+        (describing (T.pack belongsTo) version)
+      writeUtf8File (at </> "src" </> "Private" </> "Ops.hs") privateOps
     describing named' version =
       T.unlines
         [ "cabal-version: 2.4",
@@ -1118,7 +1119,8 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
   it "is read again once its text has changed" $
     withFakePlan [("src/Ops.hs", declaring "infixl 6")] $ \plan -> do
       _ <- newResolver plan >>= (`fixitiesOf` "Ops")
-      traverse_ (\dir -> T.writeFile (dir </> "src" </> "Ops.hs") (declaring "infixr 2")) (localDirsOf plan)
+      for_ (localDirsOf plan) $ \dir ->
+        writeUtf8File (dir </> "src" </> "Ops.hs") (declaring "infixr 2")
       newResolver plan
         >>= (`fixitiesOf` "Ops")
         >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 2)))
@@ -1943,7 +1945,7 @@ withTempProject plan act =
     act dir
 
 writePlan :: FilePath -> Text -> IO ()
-writePlan dir = T.writeFile (planPathFor dir)
+writePlan dir = writeUtf8File (planPathFor dir)
 
 -- | A project whose @.cabal@ file changed after its plan was written, under
 -- a plan of its own, so that what it leaves in the cache is its own.
@@ -1958,7 +1960,7 @@ withChangedPackage act =
            \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
     now <- getCurrentTime
     setModificationTime (planPathFor dir) (addUTCTime (-60) now)
-    T.writeFile (dir </> "thing.cabal") ""
+    writeUtf8File (dir </> "thing.cabal") ""
     setModificationTime (dir </> "thing.cabal") (addUTCTime (-30) now)
     act dir
 
@@ -2139,7 +2141,7 @@ withFakePlan sources act =
     if any ((".cabal" `Data.List.isSuffixOf`) . fst) sources
       then pure ()
       else
-        T.writeFile (dir </> "fake.cabal") $
+        writeUtf8File (dir </> "fake.cabal") $
           T.unlines
             [ "cabal-version: 2.4",
               "name: fake",
@@ -2149,8 +2151,8 @@ withFakePlan sources act =
               "  hs-source-dirs: src",
               "  default-language: Haskell2010"
             ]
-    traverse_ (\(path, text) -> T.writeFile (dir </> path) text) sources
-    T.writeFile (dir </> "plan.json") $
+    traverse_ (\(path, text) -> writeUtf8File (dir </> path) text) sources
+    writeUtf8File (dir </> "plan.json") $
       "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
       \[{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
       \\"pkg-src\":{\"type\":\"local\",\"path\":\""
@@ -2187,7 +2189,7 @@ withFakeArchive sources act =
     writeTarball tarball $
       (held </> T.unpack name <> ".cabal", cabal)
         : [(held </> path, text) | (path, text) <- sources]
-    T.writeFile (dir </> "plan.json") plan
+    writeUtf8File (dir </> "plan.json") plan
     withEnvironment [("CABAL_DIR", dir), ("XDG_CACHE_HOME", dir </> "cache")] $
       readBuildPlan (dir </> "plan.json") >>= \case
         Left why -> error (T.unpack why)

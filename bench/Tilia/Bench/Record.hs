@@ -11,16 +11,14 @@ module Tilia.Bench.Record
   )
 where
 
-import Data.ByteString qualified as BS
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
 import Data.Word (Word64)
 import Text.Read (readMaybe)
-import Tilia.Utils (readUtf8File)
+import Tilia.Utils (readUtf8File, writeUtf8File)
 
 -- | The bytes each benchmark allocated and the instructions it retired, by
 -- stage and module.
@@ -72,7 +70,7 @@ readRecord path =
 -- shows what changed rather than what moved.
 writeRecord :: FilePath -> Record -> IO ()
 writeRecord path record =
-  BS.writeFile path . T.encodeUtf8 . T.unlines $
+  writeUtf8File path . T.unlines $
     [ "# What each benchmark costs, as far as that does not depend on how",
       "# busy the machine is. `cabal bench` checks it, and",
       "# `TILIA_BENCH_ACCEPT=1 cabal bench` writes it again.",
