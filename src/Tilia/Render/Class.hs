@@ -18,15 +18,13 @@ where
 
 import Data.Choice (fromBool, pattern Do)
 import Data.Foldable (fold)
-import Data.Function (on)
-import Data.List (sortBy)
 import Data.Maybe (isNothing)
 import GHC.Builtin.Types (cTupleTyConName, isCTupleTyConName)
 import GHC.Core.Coercion.Axiom (Role (..))
 import GHC.Hs
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.Name.Reader (RdrName (..))
-import GHC.Types.SrcLoc (GenLocated (..), leftmost_smallest, unLoc)
+import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Data (dataDecl)
@@ -315,8 +313,3 @@ roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
       Nominal -> txt "nominal"
       Representational -> txt "representational"
       Phantom -> txt "phantom"
-
--- | Merge several lists of declarations back into the order they were
--- written in.
-inSourceOrder :: [[LHsDecl GhcPs]] -> [LHsDecl GhcPs]
-inSourceOrder = sortBy (leftmost_smallest `on` getLocA) . concat
