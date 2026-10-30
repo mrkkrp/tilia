@@ -39,7 +39,7 @@ module Tilia.Cabal.Plan
   )
 where
 
-import Control.Monad (filterM, join, void)
+import Control.Monad (filterM, join)
 import Data.Aeson
   ( FromJSON (..),
     Value,
@@ -508,6 +508,19 @@ sourcesShortOf cache projectDir plan = do
       installed <- getInstalledPackages cache
       pure (filter (not . builtAlready installed) absent)
 
+-- | The packages a fetch left the plan short of, with @cabal@ asked again
+-- where it keeps what it downloads if there are any.
+--
+-- A fetch leaving a source missing where @cabal@ last said is what a moved
+-- package cache looks like, and the only thing taken for one.
+shortAfterFetch :: Cache -> FilePath -> BuildPlan -> IO [PlanPackage]
+shortAfterFetch cache projectDir plan =
+  sourcesShortOf cache projectDir plan >>= \case
+    [] -> pure []
+    _ -> do
+      forgetPackageCache cache projectDir
+      sourcesShortOf cache projectDir plan
+
 -- | Has the compiler got this package already?
 builtAlready :: [InstalledPackage] -> PlanPackage -> Bool
 builtAlready installed p = any matches installed
@@ -622,14 +635,16 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
               tryWholeProject ["build", ":all", "--only-download"] >>= \case
                 Left err -> pure (Left err)
                 Right () ->
-                  withPlan ((Right () <$) . rememberFutileFetch futility)
-    fetchWhatIsShort = withPlan fetch
-    withPlan use =
+                  withPlan
+                    shortAfterFetch
+                    ((Right () <$) . rememberFutileFetch futility)
+    fetchWhatIsShort = withPlan sourcesShortOf fetch
+    withPlan shortOf use =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure (Right ())
         Right plan -> do
           cache <- openCache caching =<< tokenForBuildPlan plan
-          use . fmap ppName =<< sourcesShortOf cache projectDir plan
+          use . fmap ppName =<< shortOf cache projectDir plan
     solveThenFetch = do
       started <- getCurrentTime
       tryWholeProject ["build", ":all", "--dry-run"] >>= \case
@@ -666,7 +681,8 @@ runCabal projectDir args = quietly (Left "could not run cabal") $ do
     _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
 
 -- | Fetch the sources of a trusted plan's dependencies that are neither
--- installed nor fetched already, at the versions the plan names.
+-- installed nor fetched already, at the versions the plan names, unless a
+-- fetch has already failed to bring them in.
 fetchUninstalled ::
   -- | Whether to use the cache.
   Choice "useCache" ->
@@ -677,13 +693,19 @@ fetchUninstalled ::
   IO ()
 fetchUninstalled caching projectDir plan = do
   cache <- openCache caching =<< tokenForBuildPlan plan
-  sourcesShortOf cache projectDir plan >>= \case
+  refused <- cachedFutileFetch cache
+  short <- sourcesShortOf cache projectDir plan
+  case [p | p <- short, ppName p `notElem` refused] of
     [] -> pure ()
-    short ->
-      void . runCabal projectDir $
-        "fetch"
-          : "--no-dependencies"
-          : [T.unpack (ppName p <> "-" <> ppVersion p) | p <- short]
+    wanted ->
+      runCabal projectDir ("fetch" : "--no-dependencies" : fmap named wanted)
+        >>= \case
+          Left _ -> pure ()
+          Right () ->
+            storeFutileFetch cache . fmap ppName
+              =<< shortAfterFetch cache projectDir plan
+  where
+    named p = T.unpack (ppName p <> "-" <> ppVersion p)
 
 -- | Get a plan that is safe to use, doing whatever @cabal@ work is needed.
 loadPlan ::
@@ -716,9 +738,8 @@ loadPlan caching downloading wanted projectDir = do
           _ -> readBuildPlan (planPathFor projectDir)
 
 -- | Every planned package whose source could be in the package cache, with
--- where that would be: under the package cache @cabal@ last named for the
--- project, unless a tarball it downloads is not there and a fetch has not
--- already failed to bring it in, when @cabal@ is asked again.
+-- where that would be under the package cache @cabal@ last named for the
+-- project, or names now where it has named none.
 plannedTarballs ::
   -- | Where what @cabal@ said is remembered.
   Cache ->
@@ -728,16 +749,7 @@ plannedTarballs ::
   BuildPlan ->
   IO [(PlanPackage, FilePath)]
 plannedTarballs cache projectDir plan =
-  cachedPackageCache cache projectDir >>= \case
-    Just remembered -> do
-      tarballs <- under remembered
-      refused <- cachedFutileFetch cache
-      absent <-
-        filterM
-          (fmap not . doesFileExist . snd)
-          [t | t@(p, _) <- tarballs, isFetchable p, ppName p `notElem` refused]
-      if null absent then pure tarballs else asked
-    Nothing -> asked
+  maybe asked under =<< cachedPackageCache cache projectDir
   where
     asked = do
       cacheRoot <- packageCacheRoot projectDir

@@ -25,6 +25,7 @@ module Tilia.Fixity.Cache
     storeSolveTime,
     cachedPackageCache,
     storePackageCache,
+    forgetPackageCache,
   )
 where
 
@@ -477,6 +478,14 @@ storePackageCache ::
   IO ()
 storePackageCache cache projectDir =
   writeAtomically (at cache (packageCacheFile cache projectDir)) . T.pack
+
+-- | Forget where @cabal@ said it keeps the sources it downloads for a
+-- project.
+forgetPackageCache :: Cache -> FilePath -> IO ()
+forgetPackageCache cache projectDir =
+  traverse_
+    (quietly () . removeFile)
+    (at cache (packageCacheFile cache projectDir))
 
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
