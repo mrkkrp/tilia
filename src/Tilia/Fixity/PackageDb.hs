@@ -13,11 +13,14 @@ module Tilia.Fixity.PackageDb
 where
 
 import Control.Monad (filterM)
-import Data.List (nub)
+import Data.List (nub, stripPrefix)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Distribution.Compat.Newtype (unpack')
+import Distribution.FieldGrammar.Newtypes (FSep (..), FilePathNT (..), alaList')
+import Distribution.Parsec (Parsec, simpleParsec)
 import System.Directory (doesDirectoryExist, findExecutable)
 import System.FilePath ((</>))
 import Tilia.Process (readProgramOutput)
@@ -81,15 +84,17 @@ compilerIdentity =
 -- | The databases a set of records came out of.
 databasesIn :: [Map.Map Text Text] -> [FilePath]
 databasesIn fields =
-  nub
-    [ T.unpack (unquote root) </> "package.conf.d"
-    | f <- fields,
-      Just root <- [Map.lookup "pkgroot" f]
-    ]
+  nub [root </> "package.conf.d" | Just root <- fmap packageRoot fields]
 
--- | Strip the quotes a path is written in when it has none needing them.
-unquote :: Text -> Text
-unquote = T.dropAround (== '"') . T.strip
+-- | Where a record's database keeps what @${pkgroot}@ stands for.
+packageRoot :: Map.Map Text Text -> Maybe FilePath
+packageRoot = fmap getFilePathNT . parsedField "pkgroot"
+
+-- | A record's field, read as Cabal-syntax reads it, which is how
+-- @ghc-pkg@ writes it.
+parsedField :: (Parsec a) => Text -> Map.Map Text Text -> Maybe a
+parsedField key fields =
+  simpleParsec . T.unpack . T.strip =<< Map.lookup key fields
 
 -- | Split @ghc-pkg dump@ output into its records.
 records :: Text -> [Text]
@@ -117,15 +122,13 @@ fromFields fields = do
         ipImportDirs =
           maybe
             []
-            (fmap (T.unpack . rooted fields . unquote) . T.words)
-            (Map.lookup "import-dirs" fields)
+            (fmap rooted . unpack' (alaList' FSep FilePathNT))
+            (parsedField "import-dirs" fields)
       }
-
--- | Put the package's root where its registration only left a variable.
-rooted :: Map.Map Text Text -> Text -> Text
-rooted fields path = case Map.lookup "pkgroot" fields of
-  Nothing -> path
-  Just root -> T.replace "${pkgroot}" (unquote root) path
+  where
+    rooted path =
+      fromMaybe path ((<>) <$> root <*> stripPrefix "${pkgroot}" path)
+    root = packageRoot fields
 
 -- | The modules an @exposed-modules@ field names that the package holds.
 moduleNames :: Text -> [Text]
