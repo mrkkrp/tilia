@@ -329,7 +329,7 @@ ieItem ctx here withComma = \case
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
-    Just written -> verbatimLines AtIndent TrimWhitespace (NE.toList written)
+    Just c -> verbatimLines AtIndent TrimWhitespace (NE.toList (commentBody c))
     Nothing -> txt (docSectionName n)
   where
     plain warning n doc =

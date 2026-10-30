@@ -43,7 +43,6 @@ module Tilia.Render.Context
   )
 where
 
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -386,11 +385,11 @@ holdsLineComment ctx s =
 ----------------------------------------------------------------------------
 -- Haddocks
 
--- | The author's own text for the Haddock at this position, if we kept it.
-writtenHaddock :: Ctx -> Maybe Span -> Maybe (NonEmpty Text)
+-- | The Haddock the author wrote at this position, if we kept it.
+writtenHaddock :: Ctx -> Maybe Span -> Maybe Comment
 writtenHaddock ctx ms = do
   s <- ms
   c <- Map.lookup (startPoint s) (ctxHaddocks ctx)
   case commentStyle c of
-    DocComment -> Just (commentBody c)
+    DocComment -> Just c
     _ -> Nothing
