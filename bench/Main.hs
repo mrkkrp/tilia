@@ -9,7 +9,7 @@ module Main (main) where
 
 import Control.Applicative ((<|>))
 import Control.Exception (SomeException, try)
-import Control.Monad (join, mfilter, unless)
+import Control.Monad (join, mfilter, unless, when)
 import Data.ByteString qualified as BS
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (for_)
@@ -44,7 +44,6 @@ import Options.Applicative
     strOption,
     value,
   )
-import System.Environment (lookupEnv)
 import System.Exit (die, exitFailure)
 import System.IO (BufferMode (..), hSetBuffering, stdout)
 import System.Info (fullCompilerVersion)
@@ -55,6 +54,7 @@ import Tilia.Bench.Fixity
 import Tilia.Bench.Measure
 import Tilia.Bench.Record
 import Tilia.Corpus (hackagePackages, obtain)
+import Tilia.TestUtils (switchedOn)
 
 -- | How the benchmarks were asked to run.
 data Options = Options
@@ -81,7 +81,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   options <- execParser optionsInfo
-  accepting <- (== Just "1") <$> lookupEnv "TILIA_BENCH_ACCEPT"
+  accepting <- switchedOn "TILIA_BENCH_ACCEPT"
   examples <- obtain hackagePackages >>= either (die . T.unpack) pure
   sampled <- corpusSubjects examples >>= either (die . T.unpack) pure
   let matching name = maybe True (`T.isInfixOf` name) (optMatch options)
@@ -110,6 +110,10 @@ main = do
   ended <- withFixityBenchmarks $ \(resolving, interfaces) -> do
     let record = comparable processor interfaces written
         decoding = recordInterfaces written == interfaces
+        reheaded =
+          recordCompiler written /= compiler
+            || recordProcessor written /= fromMaybe "none" processor
+            || not decoding
         checked (stage, _) = decoding || stage /= stageName Decode
     others <- for [b | b <- resolving, matching (benchmarkName b)] $ \b -> do
       (_, m) <- measureIO counter (optRuns options) (benchmarkRun b) id
@@ -123,6 +127,10 @@ main = do
     for_ baseline (summarize measured)
     if accepting
       then do
+        when (partial && reheaded) $
+          die
+            "Only some benchmarks were run, on another compiler, processor\n\
+            \or set of interfaces than the record's: accept them all at once."
         let entryOf k m =
               steadied (Map.lookup k (recordEntries record)) $
                 Entry

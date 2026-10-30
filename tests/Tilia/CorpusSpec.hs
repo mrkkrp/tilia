@@ -40,6 +40,7 @@ import Tilia.TestUtils
     countLeaves,
     effectiveExtensionsFor,
     parserConfigFor,
+    switchedOn,
     withEnvironment,
   )
 
@@ -92,7 +93,7 @@ againstLists listed run examples =
 -- | A corpus checked against a generated record of what it does.
 againstRecord :: FilePath -> (Example -> IO Result) -> [Example] -> Spec
 againstRecord path run examples = do
-  accept <- runIO accepting
+  accept <- runIO (switchedOn "TILIA_CORPUS_ACCEPT")
   if accept then accepted else checked
   where
     reportPath = replaceExtension path ".report"

@@ -19,7 +19,6 @@ module Tilia.Corpus.Manifest
     readReport,
     writeReport,
     reasonLines,
-    accepting,
   )
 where
 
@@ -33,7 +32,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (createDirectoryIfMissing)
-import System.Environment (lookupEnv)
 import System.FilePath (takeDirectory)
 import Tilia.Utils (readUtf8File)
 
@@ -206,11 +204,3 @@ writeReport path entries = do
 -- | The lines a report gives an example's reason.
 reasonLines :: Text -> [Text]
 reasonLines = fmap ("    " <>) . T.lines . T.strip
-
--- | Is this run supposed to write the records rather than check against
--- them?
-accepting :: IO Bool
-accepting =
-  lookupEnv "TILIA_CORPUS_ACCEPT" >>= \case
-    Just s | s `notElem` ["", "0", "no", "false"] -> pure True
-    _ -> pure False
