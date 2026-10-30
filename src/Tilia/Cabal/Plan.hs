@@ -466,25 +466,38 @@ planPathFor projectDir = projectDir </> "dist-newstyle" </> "cache" </> "plan.js
 -- | Check what is missing.
 checkReadiness :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
 checkReadiness caching wanted projectDir =
-  readBuildPlan (planPathFor projectDir) >>= \case
-    Left _ -> pure PlanMissing
-    Right plan -> do
-      solved <- cachedSolveTime =<< openCache caching =<< tokenForBuildPlan plan
-      newer <- filesNewerThanPlan plan projectDir solved
-      let covered = plannedComponents plan
-          missing = [spellPlanComponent c | c <- wanted, c `notElem` covered]
-      case (newer, missing) of
-        (_ : _, _) -> pure (PlanStale newer)
-        ([], _ : _) -> pure (PlanNarrow missing)
-        ([], []) ->
-          sourcesShortOf caching plan >>= \case
-            [] -> pure Ready
-            ps -> pure (SourcesMissing (fmap ppName ps))
+  readinessOf caching wanted projectDir =<< readBuildPlan (planPathFor projectDir)
+
+-- | 'checkReadiness', given the plan as read.
+readinessOf ::
+  -- | Whether to use the cache.
+  Choice "useCache" ->
+  -- | The components the run is about to format.
+  [PlanComponent] ->
+  -- | The project whose plan it is.
+  FilePath ->
+  -- | Its plan, or why it could not be read.
+  Either Text BuildPlan ->
+  IO Readiness
+readinessOf caching wanted projectDir = \case
+  Left _ -> pure PlanMissing
+  Right plan -> do
+    cache <- openCache caching =<< tokenForBuildPlan plan
+    solved <- cachedSolveTime cache
+    newer <- filesNewerThanPlan plan projectDir solved
+    let covered = plannedComponents plan
+        missing = [spellPlanComponent c | c <- wanted, c `notElem` covered]
+    case (newer, missing) of
+      (_ : _, _) -> pure (PlanStale newer)
+      ([], _ : _) -> pure (PlanNarrow missing)
+      ([], []) ->
+        sourcesShortOf cache plan >>= \case
+          [] -> pure Ready
+          ps -> pure (SourcesMissing (fmap ppName ps))
 
 -- | The packages the plan expects to fetch whose sources are not here.
-sourcesShortOf :: Choice "useCache" -> BuildPlan -> IO [PlanPackage]
-sourcesShortOf caching plan = do
-  cache <- openCache caching =<< tokenForBuildPlan plan
+sourcesShortOf :: Cache -> BuildPlan -> IO [PlanPackage]
+sourcesShortOf cache plan = do
   tarballs <- filter (isFetchable . fst) <$> plannedTarballs cache plan
   absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
   if null absent
@@ -615,7 +628,9 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
     withPlan use =
       readBuildPlan (planPathFor projectDir) >>= \case
         Left _ -> pure (Right ())
-        Right plan -> use . fmap ppName =<< sourcesShortOf caching plan
+        Right plan -> do
+          cache <- openCache caching =<< tokenForBuildPlan plan
+          use . fmap ppName =<< sourcesShortOf cache plan
     solveThenFetch = do
       started <- getCurrentTime
       tryWholeProject ["build", ":all", "--dry-run"] >>= \case
@@ -661,8 +676,9 @@ fetchUninstalled ::
   -- | The build plan to use.
   BuildPlan ->
   IO ()
-fetchUninstalled caching projectDir plan =
-  sourcesShortOf caching plan >>= \case
+fetchUninstalled caching projectDir plan = do
+  cache <- openCache caching =<< tokenForBuildPlan plan
+  sourcesShortOf cache plan >>= \case
     [] -> pure ()
     short ->
       void . runCabal projectDir $
@@ -683,18 +699,22 @@ loadPlan ::
   FilePath ->
   IO (Either Text BuildPlan)
 loadPlan caching downloading wanted projectDir = do
-  readiness <- checkReadiness caching wanted projectDir
-  prepareWith
-    caching
-    downloading
-    (runCabal projectDir)
-    (futilityFor caching projectDir)
-    wanted
-    projectDir
-    readiness
-    >>= \case
-      Left err -> pure (Left err)
-      _ -> readBuildPlan (planPathFor projectDir)
+  written <- readBuildPlan (planPathFor projectDir)
+  readiness <- readinessOf caching wanted projectDir written
+  case (readiness, written) of
+    (Ready, Right plan) -> pure (Right plan)
+    _ ->
+      prepareWith
+        caching
+        downloading
+        (runCabal projectDir)
+        (futilityFor caching projectDir)
+        wanted
+        projectDir
+        readiness
+        >>= \case
+          Left err -> pure (Left err)
+          _ -> readBuildPlan (planPathFor projectDir)
 
 -- | Every planned package whose source could be in the package cache, with
 -- where that would be: under the package cache @cabal@ last named, unless
