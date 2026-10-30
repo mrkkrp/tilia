@@ -25,7 +25,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
-import System.Directory (doesFileExist)
+import System.Directory (canonicalizePath, doesFileExist)
 import Test.Hspec
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cabal.Plan
@@ -145,8 +145,12 @@ withPlan plan = do
       [path | (path, Nothing) <- own] `shouldBe` []
 
     it "resolves every module they import" $ do
-      answers <- traverse (\m -> (m,) <$> resolve m) (importedByOwn own)
-      [m | (m, Nothing) <- answers] `shouldBe` []
+      answers <-
+        traverse
+          (\(path, m) -> (m,) <$> askModule resolver (Just path) m)
+          (importedByOwn own)
+      [m | (m, answer) <- answers, not (settlesEverything answer)]
+        `shouldBe` []
 
     it "settles every operator they use" $ do
       unsettled <- traverse (unsettledIn resolver) [(path, m) | (path, Just m) <- own]
@@ -256,14 +260,15 @@ percent part whole = if whole == 0 then 0 else part * 100 `div` whole
 ----------------------------------------------------------------------------
 -- This project
 
--- | Every Haskell file this project is made of, parsed.
+-- | Every Haskell file this project is made of, by its canonical path,
+-- parsed.
 --
 -- 'Nothing' where one did not parse, which is a failure of its own rather
 -- than something to skip over quietly.
 ownModules :: IO [(FilePath, Maybe (HsModule GhcPs))]
 ownModules = do
   paths <- concat <$> traverse haskellFilesIn ["src", "app", "tests"]
-  traverse parsed paths
+  traverse parsed =<< traverse canonicalizePath paths
   where
     parsed path = do
       source <- T.decodeUtf8Lenient <$> BS.readFile path
@@ -276,18 +281,20 @@ ownModules = do
 
 -- | What a module exports, where reading it settles every name.
 fixitiesThrough :: Resolver -> Text -> IO (Maybe Fixities)
-fixitiesThrough resolver modName = settled <$> askModule resolver modName
+fixitiesThrough resolver modName =
+  settled <$> askModule resolver Nothing modName
   where
     settled established
       | settlesEverything established = Just (establishedFixities established)
       | otherwise = Nothing
 
--- | Every module this project's own source imports.
-importedByOwn :: [(FilePath, Maybe (HsModule GhcPs))] -> [Text]
+-- | Every module this project's own source imports, with each file
+-- importing it.
+importedByOwn :: [(FilePath, Maybe (HsModule GhcPs))] -> [(FilePath, Text)]
 importedByOwn own =
   Set.toList . Set.fromList $
-    [ importModule i
-    | (_, Just hsModule) <- own,
+    [ (path, importModule i)
+    | (path, Just hsModule) <- own,
       i <- moduleImports (Is #implicitPrelude) (pure hsModule),
       not ("Paths_" `T.isPrefixOf` importModule i)
     ]
@@ -304,7 +311,7 @@ unsettledIn ::
   (FilePath, HsModule GhcPs) ->
   IO [String]
 unsettledIn resolver (path, hsModule) = do
-  scope <- scopeFor resolver (Is #implicitPrelude) (pure hsModule)
+  scope <- scopeFor resolver (Just path) (Is #implicitPrelude) (pure hsModule)
   pure
     [ path <> ": " <> T.unpack (operatorSpelling qualifier op) <> " " <> show why
     | ((qualifier, op), why) <- unknownOperators scope (pure (gathered hsModule))

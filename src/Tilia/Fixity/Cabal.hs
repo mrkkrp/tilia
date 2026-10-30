@@ -21,7 +21,11 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List (isSuffixOf)
 import Data.Text (Text)
 import Distribution.PackageDescription (GenericPackageDescription)
-import Tilia.Cabal.Package (declaredModules, parsePackageDescription)
+import Tilia.Cabal.Package
+  ( declaredModules,
+    packageBranches,
+    parsePackageDescription,
+  )
 import Tilia.Utils (quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
@@ -32,7 +36,7 @@ packageModules :: FilePath -> IO (Maybe [Text])
 packageModules tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
   evaluate . force $
-    fmap fst . declaredModules
+    fmap fst . concatMap snd . declaredModules . packageBranches
       <$> cabalFileInArchive (Tar.read (GZip.decompress bytes))
 
 -- | The first @.cabal@ file at the top level of an archive.
