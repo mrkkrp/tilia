@@ -10,6 +10,7 @@ module Main (main) where
 import Control.Applicative ((<|>))
 import Control.Exception (SomeException, try)
 import Control.Monad (join, mfilter, unless)
+import Data.ByteString qualified as BS
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (for_)
 import Data.Int (Int64)
@@ -20,6 +21,7 @@ import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Ord (Down (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import Data.Traversable (for)
 import Data.Version (showVersion)
@@ -428,7 +430,7 @@ type Baseline = Map Key (Int64, Maybe Word64)
 -- | Save what was measured.
 writeBaseline :: FilePath -> [(Key, Measurement)] -> IO ()
 writeBaseline path measured =
-  T.writeFile path . T.unlines $
+  BS.writeFile path . T.encodeUtf8 . T.unlines $
     [ T.unwords
         [ stage,
           T.pack (show (measuredTime m)),
@@ -441,7 +443,7 @@ writeBaseline path measured =
 -- | Read what 'writeBaseline' saved.
 readBaseline :: FilePath -> IO Baseline
 readBaseline path = do
-  text <- T.readFile path
+  text <- T.decodeUtf8Lenient <$> BS.readFile path
   pure $
     Map.fromList
       [ ((stage, T.unwords rest), (t, readMaybe (T.unpack retired)))
