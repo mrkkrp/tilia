@@ -407,9 +407,9 @@ spec = do
     it "counts a file whose endings disagree as one that would change" $
       differs (formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n") `shouldBe` True
 
-    it "says as much in the diff, having nothing else to show" $
+    it "shows the line whose ending would change in the diff" $
       reportOut (checkReport Plain [("A.hs", formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n")])
-        `shouldSatisfy` T.isInfixOf "differ only in how they end their lines"
+        `shouldSatisfy` T.isInfixOf "\n-b\n+b\r\n"
 
     it "leaves a carriage return that is not a line ending where it is" $
       written (formattingOutcome "x = \"a\\\r b\"\r\n" "y = \"a\\\r b\"\n")

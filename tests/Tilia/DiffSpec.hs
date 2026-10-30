@@ -55,6 +55,31 @@ spec = do
             " h"
           ]
 
+    it "ends a hunk at the last line, with nothing after it" $
+      diff Plain ("x", "y") "a\nb\n" "a\nB\n"
+        `shouldBe` T.intercalate
+          "\n"
+          ["--- x", "+++ y", "@@ -1,2 +1,2 @@", " a", "-b", "+B"]
+
+    it "marks a last line that no newline ends" $
+      diff Plain ("x", "y") "a\nb" "a\nb\n"
+        `shouldBe` T.intercalate
+          "\n"
+          [ "--- x",
+            "+++ y",
+            "@@ -1,2 +1,2 @@",
+            " a",
+            "-b",
+            "\\ No newline at end of file",
+            "+b"
+          ]
+
+    it "keeps the carriage returns the lines end in" $
+      diff Plain ("x", "y") "a\r\nb\nc\r\n" "a\r\nb\r\nc\r\n"
+        `shouldBe` T.intercalate
+          "\n"
+          ["--- x", "+++ y", "@@ -1,3 +1,3 @@", " a\r", "-b", "+b\r", " c\r"]
+
     it "keeps changes far apart in hunks of their own" $
       length (filter (T.isPrefixOf "@@") (T.lines (diff Plain ("x", "y") far (T.replace "k" "K" (T.replace "b" "B" far)))))
         `shouldBe` 2
