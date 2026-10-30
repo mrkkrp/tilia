@@ -7,12 +7,15 @@ module Tilia.Span.Ghc
     spanOf,
     spansOf,
     bracketsSpan,
+    inSourceOrder,
   )
 where
 
+import Data.Function (on)
+import Data.List (sortBy)
 import Data.Maybe (mapMaybe)
 import GHC.Parser.Annotation (AnnListBrackets (..), HasLoc, getHasLoc)
-import GHC.Types.SrcLoc (GenLocated)
+import GHC.Types.SrcLoc (GenLocated, getLoc, leftmost_smallest)
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Span (Span, mkSpan)
 
@@ -40,6 +43,11 @@ bracketsSpan = \case
   ListBraces open close -> spanOf open <> spanOf close
   ListSquare open close -> spanOf open <> spanOf close
   _ -> Nothing
+
+-- | Merge several lists of located things back into the order they were
+-- written in.
+inSourceOrder :: (HasLoc l) => [[GenLocated l a]] -> [GenLocated l a]
+inSourceOrder = sortBy (leftmost_smallest `on` (getHasLoc . getLoc)) . concat
 
 -- | The span covering every located thing in the list.
 spansOf :: (HasLoc l) => [GenLocated l a] -> Maybe Span

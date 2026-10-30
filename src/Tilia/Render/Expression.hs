@@ -17,9 +17,8 @@ where
 
 import Control.Applicative ((<|>))
 import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
-import Data.Function (on)
 import Data.Generics.Schemes (listify)
-import Data.List (sortBy, unsnoc)
+import Data.List (unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
@@ -36,7 +35,6 @@ import GHC.Types.SourceText
 import GHC.Types.SrcLoc
   ( GenLocated (..),
     isZeroWidthSpan,
-    leftmost_smallest,
     noSrcSpan,
     unLoc,
   )
@@ -692,10 +690,7 @@ localBinds ctx bracing = \case
         | (position, item) <- positioned sorted
         ]
     where
-      sorted =
-        sortBy
-          (leftmost_smallest `on` getLocA)
-          (fmap (fmap Left) binds <> fmap (fmap Right) sigs)
+      sorted = inSourceOrder [fmap (fmap Left) binds, fmap (fmap Right) sigs]
       rendered position item =
         blockItem position NoBrace $ \b ->
           at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
