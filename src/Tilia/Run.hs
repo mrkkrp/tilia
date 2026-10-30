@@ -34,7 +34,7 @@ import Data.Text qualified as T
 import System.FilePath (takeExtension)
 import Tilia.Diff (diffInFull)
 import Tilia.Format
-  ( FormatError (Threw, Unreadable),
+  ( FormatError (Threw, Unreadable, Unwritable),
     Session,
     describeFormatError,
     formatErrorExitCode,
@@ -153,11 +153,14 @@ formattingOutcome before formatted
   where
     after = setNewlineStyle (getNewlineStyle before) formatted
 
--- | Put a formatted file back, and only if it changed.
-writeBack :: (FilePath, Outcome) -> IO ()
+-- | Put a formatted file back, and only if it changed, counting it as failed
+-- where it cannot be written.
+writeBack :: (FilePath, Outcome) -> IO (FilePath, Outcome)
 writeBack (path, outcome) = case outcome of
-  Changed _ after -> writeUtf8File path after
-  _ -> pure ()
+  Changed _ after ->
+    (path,) . either (Failed . Unwritable path) (const outcome)
+      <$> attempted (writeUtf8File path after)
+  _ -> pure (path, outcome)
 
 ----------------------------------------------------------------------------
 -- Report
