@@ -49,11 +49,9 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as T
 import GHC.Hs hiding (Fixity)
 import GHC.LanguageExtensions.Type (Extension (NegativeLiterals))
-import GHC.Types.Name.Occurrence (occNameString)
-import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
+import GHC.Types.Name.Reader (RdrName (..))
 import GHC.Types.SrcLoc (GenLocated (..))
 import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Comments (Comment (..), CommentStyle (..), carriesOn, commentTrailing)
@@ -61,10 +59,11 @@ import Tilia.Doc.Combinators
 import Tilia.Fixity
   ( Fixity,
     Namespace (..),
-    OpName (..),
     Resolution (..),
     Scope,
     lookupFixity,
+    opName,
+    qualifierOf,
   )
 import Tilia.Render.Layout (Bracing (..))
 import Tilia.Source
@@ -186,14 +185,9 @@ negativeLiteralGap ctx = includeWhen (extensionOn ctx NegativeLiterals) space
 operatorFixity :: Ctx -> Namespace -> RdrName -> Maybe Fixity
 operatorFixity ctx namespace name = do
   scope <- ctxScope ctx
-  case lookupFixity scope namespace qualifier op of
+  case lookupFixity scope namespace (qualifierOf name) (opName name) of
     Resolved fixity _ -> Just fixity
     Unresolved _ -> Nothing
-  where
-    op = OpName (T.pack (occNameString (rdrNameOcc name)))
-    qualifier = case name of
-      Qual m _ -> Just (T.pack (moduleNameString m))
-      _ -> Nothing
 
 ----------------------------------------------------------------------------
 -- What lies between two spans
