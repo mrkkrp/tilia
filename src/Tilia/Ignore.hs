@@ -8,7 +8,6 @@ module Tilia.Ignore
     isIgnored,
     isIgnoredInProject,
     ignoreFilesAbove,
-    belowRoot,
   )
 where
 
@@ -26,7 +25,7 @@ import Data.Char
     isSymbol,
     isUpper,
   )
-import Data.List (inits, isPrefixOf, isSuffixOf, stripPrefix, tails)
+import Data.List (inits, isPrefixOf, isSuffixOf, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -35,8 +34,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath (joinPath, normalise, splitDirectories, (</>))
-import Tilia.Utils (quietly)
+import System.FilePath (joinPath, (</>))
+import Tilia.Utils (pathUnder, quietly)
 
 -- | The patterns of one ignore file, in the order they are written.
 newtype IgnoreFile = IgnoreFile [Pattern]
@@ -258,7 +257,7 @@ isIgnoredInProject ::
   IO Bool
 isIgnoredInProject root path = quietly False $ do
   file <- canonicalizePath path
-  case belowRoot root file of
+  case pathUnder root file of
     Nothing -> pure False
     Just below -> do
       ignoreFiles <- ignoreFilesAbove root [below]
@@ -281,13 +280,3 @@ ignoreFilesAbove root paths =
           bytes <- BS.readFile file
           pure [(directory, parseIgnoreFile (T.decodeUtf8Lenient bytes))]
         else pure []
-
--- | A path's segments relative to the project root, if it is under it.
-belowRoot ::
-  -- | The project root.
-  FilePath ->
-  -- | The path.
-  FilePath ->
-  Maybe [FilePath]
-belowRoot root path =
-  stripPrefix (splitDirectories root) (splitDirectories (normalise path))

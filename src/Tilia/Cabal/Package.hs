@@ -84,7 +84,7 @@ import System.FilePath
 import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (attempted, quietly, tshow)
+import Tilia.Utils (attempted, pathUnder, quietly, tshow)
 
 -- | Why a file's extensions could not be settled.
 data PackageProblem
@@ -176,11 +176,14 @@ claiming file components =
   where
     covered = not . null . covering
     named c = any (declares c) (covering c)
-    declares c d =
-      isDeclaredModule (componentModules c) (componentEntries c) (under d)
-    under d = joinPath (drop (length (splitDirectories d)) (splitDirectories file))
-    nearness = maximum . fmap length . covering
-    covering c = [d | d <- componentDirs c, d `covers` file]
+    declares c (_, under) =
+      isDeclaredModule (componentModules c) (componentEntries c) (joinPath under)
+    nearness = maximum . fmap (length . fst) . covering
+    covering c =
+      [ (d, under)
+      | d <- componentDirs c,
+        Just under@(_ : _) <- [pathUnder d file]
+      ]
 
 -- | Is a file, named relative to a source directory, one of the modules or
 -- entry points declared there?
@@ -194,14 +197,6 @@ isDeclaredModule ::
 isDeclaredModule modules entries path =
   takeExtension path `elem` sourceExtensions
     && (Set.member path entries || Set.member (dropExtension path) modules)
-
--- | Whether a file is somewhere under a directory.
-covers :: FilePath -> FilePath -> Bool
-covers directory file = go (splitDirectories directory) (splitDirectories file)
-  where
-    go [] (_ : _) = True
-    go (d : ds) (f : fs) = equalFilePath d f && go ds fs
-    go _ _ = False
 
 -- | The nearest @.cabal@ file at or above a directory.
 findCabalFile ::
