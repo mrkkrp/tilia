@@ -12,6 +12,7 @@ module Tilia.Pragma
     nameSwitch,
     flagSwitches,
     optionFlags,
+    pragmaFlags,
     languageNames,
     withoutSkippedComments,
     sameInForce,
@@ -101,18 +102,21 @@ switchesOf name = snd . editionsAndSwitches name
 -- | The editions a pragma of this name and body names, and what it turns on
 -- and off.
 editionsAndSwitches :: Text -> Text -> ([GHC.Language], [GHC.OnOff Extension])
-editionsAndSwitches name body = case name of
-  "LANGUAGE" ->
-    let names = languageNames body
-     in (mapMaybe lookupEdition names, mapMaybe nameSwitch names)
-  "OPTIONS_GHC" -> options
-  "OPTIONS" -> options
-  _ -> ([], [])
+editionsAndSwitches name body =
+  ( mapMaybe (lookupEdition <=< T.stripPrefix "-X") flags,
+    concatMap flagSwitches flags
+  )
   where
-    options =
-      ( mapMaybe (lookupEdition <=< T.stripPrefix "-X") (optionFlags body),
-        concatMap flagSwitches (optionFlags body)
-      )
+    flags = pragmaFlags name body
+
+-- | The flags a pragma of this name and body gives GHC: each name of a
+-- @LANGUAGE@ pragma after @-X@, and the flags of an options pragma.
+pragmaFlags :: Text -> Text -> [Text]
+pragmaFlags name body = case name of
+  "LANGUAGE" -> ["-X" <> n | n <- languageNames body]
+  "OPTIONS_GHC" -> optionFlags body
+  "OPTIONS" -> optionFlags body
+  _ -> []
 
 -- | The flags of the body of an options pragma, split as GHC splits them.
 optionFlags :: Text -> [Text]
