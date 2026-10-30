@@ -38,13 +38,15 @@ import Tilia.Source (SourceType (..))
 import Tilia.Span
 import Tilia.Span.Ghc
 
--- | A run of declarations, with blank lines wherever we think they belong.
-decls :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
-decls = declRun Disregard
+-- | A run of declarations standing on their own, with blank lines wherever
+-- we think they belong.
+decls :: Ctx -> [LHsDecl GhcPs] -> Doc
+decls ctx = declRun Disregard ctx Free
 
--- | A run of declarations that keeps the author's grouping.
-declsKeepingGroups :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
-declsKeepingGroups = declRun Respect
+-- | A run of declarations in a class or an instance, which keeps the
+-- author's grouping.
+declsKeepingGroups :: Ctx -> [LHsDecl GhcPs] -> Doc
+declsKeepingGroups ctx = declRun Respect ctx Associated
 
 -- | Whether the author's own blank lines are consulted.
 data Grouping

@@ -204,7 +204,7 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
       (null hsmodDecls)
       ( hardBreak
           <> declarationsStart
-          <> declarationLayout (decls ctx Free hsmodDecls)
+          <> declarationLayout (decls ctx hsmodDecls)
       )
   where
     declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of

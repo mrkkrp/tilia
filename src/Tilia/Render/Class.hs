@@ -84,7 +84,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     body =
       includeUnless
         (null members)
-        (breakOrSpace <> indent (knotDeclsGrouped (ctxKnot ctx) ctx Associated members))
+        (breakOrSpace <> indent (knotDeclsGrouped (ctxKnot ctx) ctx members))
 
     members =
       inSourceOrder
@@ -144,7 +144,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
 
     body =
       includeUnless (null members) . indent $
-        breakOrSpace <> knotDeclsGrouped (ctxKnot ctx) ctx Associated members
+        breakOrSpace <> knotDeclsGrouped (ctxKnot ctx) ctx members
 
     members =
       inSourceOrder
