@@ -81,7 +81,7 @@ merge written conditionals guards varied settledOthers = go Broken
       | s : others <- spines,
         all (agreeAll varied layout s) others =
           d
-      | Just xs <- traverse only spines = alongside layout xs
+      | Just xs <- traverse sole spines = alongside layout xs
       | otherwise = factored middle layout spines
       where
         spines = fmap (spineAt layout) ds
@@ -124,9 +124,6 @@ merge written conditionals guards varied settledOthers = go Broken
       inside <- sole [i | (i, s) <- zip [0 :: Int ..] spans, all (covers s) spans]
       openedAgainst inside layout =<< listToMaybe (drop inside xs)
       where
-        sole [i] = Just i
-        sole _ = Nothing
-
         openedAgainst inside l d = case unwrap d of
           Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
           Nothing -> case spineAt l d of
@@ -246,7 +243,7 @@ merge written conditionals guards varied settledOthers = go Broken
     middle _ [] = mempty
     middle layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
-      | Just xs <- traverse only ss = go layout xs
+      | Just xs <- traverse sole ss = go layout xs
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | otherwise =
           minimumBy
@@ -433,8 +430,11 @@ merge written conditionals guards varied settledOthers = go Broken
       Just (from, to) -> any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)
       Nothing -> False
 
-    only [d] = Just d
-    only _ = Nothing
+-- | The one element of a list that has one.
+sole :: [a] -> Maybe a
+sole = \case
+  [x] -> Just x
+  _ -> Nothing
 
 -- | Would these two documents print the same, laid out like this?
 agree :: Varied -> Layout -> Doc -> Doc -> Bool
@@ -548,12 +548,9 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
   [] -> Just base
   [(_, only)] -> Just only
   many -> case (spineAt layout base, [(v, spineAt layout d) | (v, d) <- many]) of
-    ([b], ss) | Just xs <- traverse (\(v, s) -> (,) v <$> single s) ss -> descend b xs
+    ([b], ss) | Just xs <- traverse (\(v, s) -> (,) v <$> sole s) ss -> descend b xs
     (bs, ss) -> spliced bs ss
   where
-    single [d] = Just d
-    single _ = Nothing
-
     descend b xs = do
       own@(_, i) <- unwrap b
       others <- traverse (traverse unwrap) xs
@@ -579,7 +576,7 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
     cluster _ [c] = Just c
     cluster bs cs
       | to - from == 1,
-        Just xs <- traverse (\c -> (,) (chVaried c) <$> single (chWith c)) cs,
+        Just xs <- traverse (\c -> (,) (chVaried c) <$> sole (chWith c)) cs,
         (b : _) <- drop from bs =
           ( \d ->
               Change
