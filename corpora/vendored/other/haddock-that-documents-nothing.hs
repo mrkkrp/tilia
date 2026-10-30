@@ -39,3 +39,15 @@ block = g 1
                   on to a second line -}
       -> Int
     g = id
+
+-- A block one above a local binding has only its trigger escaped: the lines
+-- under it are its text.
+blockAbove :: Int
+blockAbove = g
+  where
+    {- | What g is, as these would write it:
+
+    -- | One.
+    {- * Two. -}
+    -}
+    g = 1

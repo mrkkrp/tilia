@@ -350,7 +350,8 @@ escapeTrigger :: Comment -> Comment
 escapeTrigger c = case commentStyle c of
   DocComment ->
     c
-      { commentBody = fmap escape (commentBody c),
+      { commentBody = case commentBody c of
+          opening :| rest -> escape opening :| rest,
         commentStyle = if bracketed c then BlockComment else LineComment
       }
   _ -> c
