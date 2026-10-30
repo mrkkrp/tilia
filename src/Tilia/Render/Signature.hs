@@ -50,8 +50,10 @@ sigDecl ctx = \case
   SpecSig _ n types prag ->
     specialiseSig ctx Nothing (noLocA (HsVar NoExtField n)) types prag
   SpecSigE _ binders e prag -> specialiseSigE ctx binders e prag
-  SpecInstSig _ sigType ->
-    pragma "SPECIALIZE instance" (indent (hsSigType ctx sigType))
+  SpecInstSig (_, src) sigType ->
+    pragma
+      (spelledAsWritten "SPECIALIZE" "SPECIALISE" src <> " instance")
+      (indent (hsSigType ctx sigType))
   MinimalSig _ formula ->
     at ctx formula (pragma "MINIMAL" . indent . booleanFormula ctx)
   CompleteMatchSig _ names ty -> completeSig ctx names ty
@@ -134,7 +136,7 @@ inlineSig ctx n InlinePragma{..} =
       ConLike -> txt "CONLIKE"
       FunLike -> mempty
 
--- | A @SPECIALIZE@ pragma.
+-- | A @SPECIALIZE@ pragma, spelled as written.
 specialiseSig ::
   Ctx ->
   Maybe (RuleBndrs GhcPs) ->
@@ -144,7 +146,7 @@ specialiseSig ::
   Doc
 specialiseSig ctx binders target types InlinePragma{..} =
   pragmaBrackets $
-    txt "SPECIALIZE"
+    txt (spelledAsWritten "SPECIALIZE" "SPECIALISE" inl_src)
       <> space
       <> inlineSpec inl_inline
       <> space

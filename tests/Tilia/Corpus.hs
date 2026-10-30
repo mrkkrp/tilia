@@ -394,7 +394,8 @@ ormoluSkip =
     "other" </> "cpp" </> "separation-2a.hs",
     "other" </> "cpp" </> "separation-2b.hs",
     "other" </> "cpp" </> "shifted.hs",
-    "other" </> "cpp" </> "simple-import.hs"
+    "other" </> "cpp" </> "simple-import.hs",
+    "declaration" </> "signature" </> "specialize" </> "specialize-2.hs"
   ]
     <> ormoluRecordBraces
 

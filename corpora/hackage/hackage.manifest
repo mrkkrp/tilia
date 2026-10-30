@@ -236,7 +236,7 @@ formatted       e1fc76d1f4fb  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Men
 formatted       9825c48e7a9c  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Occurs.hs
 formatted       d47e8c206217  Agda-2.8.0/src/full/Agda/TypeChecking/Modalities.hs
 formatted       1fd16a038ff2  Agda-2.8.0/src/full/Agda/TypeChecking/Monad.hs
-formatted       4d33b706cb4f  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base.hs
+formatted       0ed8f798da0a  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base.hs
 formatted       9ab4cf397957  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base/Types.hs
 formatted       7860b2253820  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base/Warning.hs
 formatted       56ab8bfd7ea3  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Benchmark.hs
@@ -627,7 +627,7 @@ formatted       6fd907018c80  async-2.2.6/bench/race.hs
 formatted       4db35c37a9a6  async-2.2.6/test/test-async.hs
 formatted       9f3238148609  attoparsec-0.14.4/Data/Attoparsec.hs
 formatted       7d88b33f4399  attoparsec-0.14.4/Data/Attoparsec/ByteString.hs
-formatted       4ba03080e749  attoparsec-0.14.4/Data/Attoparsec/ByteString/Char8.hs
+formatted       00312ec6e47a  attoparsec-0.14.4/Data/Attoparsec/ByteString/Char8.hs
 formatted       0e47afce0362  attoparsec-0.14.4/Data/Attoparsec/ByteString/Internal.hs
 formatted       fcc23ffbbc3d  attoparsec-0.14.4/Data/Attoparsec/ByteString/Lazy.hs
 formatted       220f76f3ce4e  attoparsec-0.14.4/Data/Attoparsec/Char8.hs
@@ -636,7 +636,7 @@ formatted       4b9154d41c2a  attoparsec-0.14.4/Data/Attoparsec/Internal.hs
 formatted       dbeb97f732d5  attoparsec-0.14.4/Data/Attoparsec/Internal/Types.hs
 formatted       ea3b710a875e  attoparsec-0.14.4/Data/Attoparsec/Lazy.hs
 formatted       3d8057d5d688  attoparsec-0.14.4/Data/Attoparsec/Number.hs
-formatted       45050bdb0a87  attoparsec-0.14.4/Data/Attoparsec/Text.hs
+formatted       c4be73924922  attoparsec-0.14.4/Data/Attoparsec/Text.hs
 formatted       8419b057d5a4  attoparsec-0.14.4/Data/Attoparsec/Text/Internal.hs
 formatted       b1c4021729a8  attoparsec-0.14.4/Data/Attoparsec/Text/Lazy.hs
 formatted       63d322215a87  attoparsec-0.14.4/Data/Attoparsec/Types.hs
@@ -3888,7 +3888,7 @@ formatted       14f5c5822c66  raaz-0.3.11/core/Raaz/Core/Types/Copying.hs
 formatted       7a6d55f211a6  raaz-0.3.11/core/Raaz/Core/Types/Endian.hs
 formatted       a48c22bbc9bf  raaz-0.3.11/core/Raaz/Core/Types/Equality.hs
 formatted       72aa730843b9  raaz-0.3.11/core/Raaz/Core/Types/Internal.hs
-formatted       131bd6941a42  raaz-0.3.11/core/Raaz/Core/Types/Pointer.hs
+formatted       c7e28dcd7d70  raaz-0.3.11/core/Raaz/Core/Types/Pointer.hs
 formatted       f9be8525b0e9  raaz-0.3.11/core/Raaz/Core/Types/Tuple.hs
 formatted       d98d94a62e17  raaz-0.3.11/core/Raaz/Core/Util/ByteString.hs
 formatted       aadc37085673  raaz-0.3.11/core/Raaz/Primitive/AEAD/Internal.hs
