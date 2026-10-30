@@ -55,7 +55,6 @@ import Tilia.Fixity
 import Tilia.Fixity.Cache
   ( PlanToken (..),
     openCache,
-    storeFutileFetch,
     storePackageCache,
   )
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
@@ -698,36 +697,41 @@ packageCache = describe "where the package cache is looked for" $ do
 
   describe "and where it was remembered" $ do
     it "is not asked again where the plan's tarballs are there" $
-      withRemembered True [] $ \root asked found -> do
+      withRemembered True $ \root asked found -> do
         asked `shouldBe` []
         found `shouldBe` [root </> "hackage.haskell.org/thing/1.0/thing-1.0.tar.gz"]
 
-    it "is asked again where a tarball of the plan is not there" $
-      withRemembered False [] $ \_ asked _ ->
-        asked `shouldBe` ["path"]
-
-    it "is not asked again for a tarball fetching did not bring in" $
-      withRemembered False ["thing"] $ \_ asked _ ->
+    it "is not asked again where a tarball of the plan is not there" $
+      withRemembered False $ \_ asked _ ->
         asked `shouldBe` []
+
+    it "is asked again where a fetch leaves a tarball of the plan missing" $
+      afterFetching (\_ -> pure ()) `shouldReturn` ["path"]
+
+    it "is not asked again where a fetch brings the plan's tarballs in" $
+      afterFetching
+        ( \root -> do
+            let at = root </> "hackage.haskell.org/tilia-phantom/9.9.9"
+            createDirectoryIfMissing True at
+            writeUtf8File (at </> "tilia-phantom-9.9.9.tar.gz") "not really"
+        )
+        `shouldReturn` []
 
 -- | Find the tarballs of a plan wanting one package from Hackage, where the
 -- package cache was remembered to be a directory of its own, holding the
--- tarball or not, and a fetch was remembered not to bring in the packages
--- given, and hand over the directory, the commands the stand-in for
--- @cabal@ was given, and where each tarball was found.
+-- tarball or not, and hand over the directory, the commands the stand-in
+-- for @cabal@ was given, and where each tarball was found.
 withRemembered ::
   Bool ->
-  [Text] ->
   (FilePath -> [String] -> [FilePath] -> Expectation) ->
   Expectation
-withRemembered holding refused act =
+withRemembered holding act =
   withSystemTempDirectory "tilia-remembered" $ \root -> do
     let at = root </> "hackage.haskell.org" </> "thing" </> "1.0"
     when holding $ do
       createDirectoryIfMissing True at
       writeUtf8File (at </> "thing-1.0.tar.gz") "not really a tarball"
     cache <- openCache (Do #useCache) (PlanToken (T.pack (takeBaseName root)))
-    storeFutileFetch cache refused
     withTempProject (Just (fromRepository hackage)) $ \dir -> do
       storePackageCache cache dir root
       readBuildPlan (planPathFor dir) >>= \case
@@ -737,6 +741,21 @@ withRemembered holding refused act =
           act root asked (fmap snd found)
   where
     hackage = "{\"type\":\"secure-repo\",\"uri\":\"https://hackage.haskell.org/\"}"
+
+-- | The commands the stand-in for @cabal@ is given while a project short of
+-- a tarball fetches it, the package cache remembered to be a directory of
+-- its own, which the fetch does what is given to.
+afterFetching :: (FilePath -> IO ()) -> IO [String]
+afterFetching fetched =
+  withSystemTempDirectory "tilia-remembered" $ \root ->
+    withEnvironment [("XDG_CACHE_HOME", root </> "cache")] $
+      withTempProject (Just wantingATarball) $ \dir -> do
+        Right plan <- readBuildPlan (planPathFor dir)
+        cache <- openCache (Do #useCache) =<< tokenForBuildPlan plan
+        storePackageCache cache dir root
+        let cabal args = Right () <$ when (args == fetching) (fetched root)
+            short = SourcesMissing ["tilia-phantom"]
+        fst <$> runsCabal (prepareWith cabal undiscoveredFutility [] dir short)
 
 -- | A plan handed over to be taken as it is.
 givenPlans :: Spec
@@ -764,6 +783,12 @@ givenPlans = describe "a plan trusted as up to date" $ do
     withGivenPlan [unavailable, dependency "tilia-nowhere-either" "1.0"] $ \project planFile ->
       filter (== "fetch") . fst <$> runsCabal (fetchingFor project planFile)
         `shouldReturn` ["fetch"]
+
+  it "does not fetch again what fetching did not bring in" $
+    withGivenPlan [unavailable] $ \project planFile -> do
+      let succeeding = fmap fst . runsCabalWith "exit 0" . fetchingFor project
+      succeeding planFile `shouldReturn` ["path", "fetch", "path"]
+      succeeding planFile `shouldReturn` []
 
   it "runs no cabal where it reads interfaces alone, whatever it is asked" $
     withGivenPlan [unavailable] $ \project planFile ->
@@ -801,7 +826,12 @@ withGivenPlan others act =
 -- | The @cabal@ commands something runs, as told by a stand-in put first
 -- on the path that fails, and what it came to.
 runsCabal :: IO a -> IO ([String], a)
-runsCabal act
+runsCabal = runsCabalWith "exit 1"
+
+-- | 'runsCabal', with the stand-in going on to run the shell commands
+-- given.
+runsCabalWith :: String -> IO a -> IO ([String], a)
+runsCabalWith script act
   | System.Info.os == "mingw32" =
       expectationFailure "the stand-in for cabal is a shell script, which does not run on Windows"
         >> (,) [] <$> act
@@ -809,7 +839,12 @@ runsCabal act
       withSystemTempDirectory "tilia-cabal" $ \bin -> do
         let stand = bin </> "cabal"
             commandLog = bin </> "commands"
-        writeFile stand ("#!/bin/sh\necho \"$1\" >> '" <> commandLog <> "'\nexit 1\n")
+        writeFile stand $
+          "#!/bin/sh\necho \"$1\" >> '"
+            <> commandLog
+            <> "'\n"
+            <> script
+            <> "\n"
         setPermissions stand . setOwnerExecutable True =<< getPermissions stand
         path <- maybe "" (searchPathSeparator :) <$> lookupEnv "PATH"
         answer <- withEnvironment [("PATH", bin <> path)] act
