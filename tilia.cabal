@@ -25,6 +25,7 @@ extra-source-files:
 
 extra-doc-files:
   CHANGELOG.md
+  HACKING.md
   README.md
 
 source-repository head
