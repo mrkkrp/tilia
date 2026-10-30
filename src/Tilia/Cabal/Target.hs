@@ -32,13 +32,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
 import Distribution.Fields.Parser (readFields)
-import Distribution.PackageDescription
-  ( GenericPackageDescription (..),
-    PackageDescription (..),
-    unPackageName,
-    unUnqualComponentName,
-  )
-import Distribution.Types.PackageId (PackageIdentifier (..))
+import Distribution.PackageDescription (GenericPackageDescription (..))
 import System.Directory (canonicalizePath, doesFileExist, listDirectory)
 import System.FilePath
   ( dropTrailingPathSeparator,
@@ -48,17 +42,16 @@ import System.FilePath
   )
 import Tilia.Cabal.Package
   ( ComponentSection (..),
+    Kind (..),
     PackageProblem,
     addedSources,
-    benchmarkBranches,
     describePackageProblem,
-    executableBranches,
     isDeclaredModule,
     joined,
-    libraryBranches,
+    packageComponents,
+    packageOf,
     readPackageDescription,
     setupScript,
-    suiteBranches,
   )
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
@@ -74,11 +67,6 @@ data Target
   | -- | @kind:name@, or @package:kind:name@.
     Qualified (Maybe Text) Kind Text
   deriving (Eq, Show)
-
--- | The kinds of component a @.cabal@ file can declare, and the setup
--- script beside it.
-data Kind = Lib | Exe | Test | Bench | Setup
-  deriving (Eq, Ord, Show)
 
 -- | Read a target as it was written on the command line.
 parseTarget :: String -> Either Text Target
@@ -355,11 +343,6 @@ componentsInCabalFile cabalFile =
              | hasSetup
              ]
 
--- | The name of a package.
-packageOf :: GenericPackageDescription -> Text
-packageOf =
-  T.pack . unPackageName . pkgName . Distribution.PackageDescription.package . packageDescription
-
 -- | The directories a branch's declarations may be found in under one
 -- source directory.
 sourcesIn :: FilePath -> ComponentSection -> Map FilePath Wanted
@@ -373,21 +356,11 @@ sourcesIn d ComponentSection{..} =
 -- | The components of a parsed @.cabal@ file, in the order declared.
 declaredComponents :: FilePath -> GenericPackageDescription -> [Component]
 declaredComponents root described =
-  concat
-    [ foldMap
-        (pure . made Lib package . libraryBranches)
-        (condLibrary described),
-      [made Lib (nameOf n) (libraryBranches t) | (n, t) <- condSubLibraries described],
-      [made Exe (nameOf n) (executableBranches t) | (n, t) <- condExecutables described],
-      [made Test (nameOf n) (suiteBranches t) | (n, t) <- condTestSuites described],
-      [made Bench (nameOf n) (benchmarkBranches t) | (n, t) <- condBenchmarks described]
-    ]
+  [made kind name branches | (kind, name, branches) <- packageComponents described]
   where
-    package = packageOf described
-    nameOf = T.pack . unUnqualComponentName
     made kind name branches =
       Component
-        { componentPackage = package,
+        { componentPackage = packageOf described,
           componentKind = kind,
           componentName = name,
           componentRoot = root,
