@@ -25,9 +25,6 @@ import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
 import Control.Monad (filterM, join)
-import Crypto.Hash.SHA256 qualified as SHA256
-import Data.ByteString.Base16 qualified as B16
-import Data.ByteString.Lazy qualified as BL
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -39,7 +36,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
@@ -60,7 +56,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Memo (memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (Defaults, effectiveExtensions)
-import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of)
+import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of, sha256OfFile)
 
 ----------------------------------------------------------------------------
 -- Resolving
@@ -515,12 +511,6 @@ verified p tarball = case sourceHashOf p of
     quietly False $ do
       actual <- sha256OfFile tarball
       pure (actual == T.toLower expected)
-
--- | The SHA-256 of a file, as lower-case hex.
-sha256OfFile :: FilePath -> IO Text
-sha256OfFile path = do
-  bytes <- BL.readFile path
-  pure (T.decodeUtf8Lenient (B16.encode (SHA256.hashlazy bytes)))
 
 -- | Read what a module exports out of a tarball, following re-exports.
 fromSource ::
