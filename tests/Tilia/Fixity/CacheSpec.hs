@@ -261,6 +261,12 @@ spec = do
         storeSummaries cache "m" "stamp" (Just (crowded :| []))
         cachedSummaries cache "n" "stamp" `shouldReturn` Nothing
 
+    describe "where cabal keeps downloaded sources" $
+      it "keeps projects apart under one plan" $ \cache -> do
+        storePackageCache cache "/one" "/one/packages"
+        cachedPackageCache cache "/another" `shouldReturn` Nothing
+        cachedPackageCache cache "/one" `shouldReturn` Just "/one/packages"
+
     describe "module names with dots" $
       it "files a deeply qualified module without confusion" $ \cache -> do
         storeEstablished cache "thing-1.0" "A.B.C.D" (declaring [((InTerms, OpName "%"), Fixity NoAssoc 5)])

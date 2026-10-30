@@ -3,6 +3,7 @@
 -- | Running a program and reading its output.
 module Tilia.Process
   ( readProgramOutput,
+    readProgramOutputIn,
   )
 where
 
@@ -15,6 +16,7 @@ import System.Exit (ExitCode (..))
 import System.IO (Handle, hClose, hSetBinaryMode)
 import System.Process
   ( StdStream (CreatePipe),
+    cwd,
     proc,
     std_err,
     std_in,
@@ -31,7 +33,11 @@ import Tilia.Utils (quietly)
 --
 -- Line endings come back as newlines however the program wrote them.
 readProgramOutput :: FilePath -> [String] -> IO (Maybe Text)
-readProgramOutput program args = quietly Nothing $
+readProgramOutput = readProgramOutputIn "."
+
+-- | 'readProgramOutput', with the program run in the directory given.
+readProgramOutputIn :: FilePath -> FilePath -> [String] -> IO (Maybe Text)
+readProgramOutputIn dir program args = quietly Nothing $
   withCreateProcess spec $ \toChild fromChild childErrors running -> do
     traverse_ hClose toChild
     waitForErrors <- forked (drain childErrors)
@@ -43,7 +49,8 @@ readProgramOutput program args = quietly Nothing $
   where
     spec =
       (proc program args)
-        { std_in = CreatePipe,
+        { cwd = Just dir,
+          std_in = CreatePipe,
           std_out = CreatePipe,
           std_err = CreatePipe
         }

@@ -99,7 +99,7 @@ import Tilia.Cabal.Project (cabalFilesIn, projectConfigFiles)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
-import Tilia.Process (readProgramOutput)
+import Tilia.Process (readProgramOutputIn)
 import Tilia.Utils (quietly, sha256Of)
 
 ----------------------------------------------------------------------------
@@ -492,14 +492,15 @@ readinessOf caching wanted projectDir = \case
       (_ : _, _) -> pure (PlanStale newer)
       ([], _ : _) -> pure (PlanNarrow missing)
       ([], []) ->
-        sourcesShortOf cache plan >>= \case
+        sourcesShortOf cache projectDir plan >>= \case
           [] -> pure Ready
           ps -> pure (SourcesMissing (fmap ppName ps))
 
 -- | The packages the plan expects to fetch whose sources are not here.
-sourcesShortOf :: Cache -> BuildPlan -> IO [PlanPackage]
-sourcesShortOf cache plan = do
-  tarballs <- filter (isFetchable . fst) <$> plannedTarballs cache plan
+sourcesShortOf :: Cache -> FilePath -> BuildPlan -> IO [PlanPackage]
+sourcesShortOf cache projectDir plan = do
+  tarballs <-
+    filter (isFetchable . fst) <$> plannedTarballs cache projectDir plan
   absent <- fmap fst <$> filterM (fmap not . doesFileExist . snd) tarballs
   if null absent
     then pure []
@@ -628,7 +629,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
         Left _ -> pure (Right ())
         Right plan -> do
           cache <- openCache caching =<< tokenForBuildPlan plan
-          use . fmap ppName =<< sourcesShortOf cache plan
+          use . fmap ppName =<< sourcesShortOf cache projectDir plan
     solveThenFetch = do
       started <- getCurrentTime
       tryWholeProject ["build", ":all", "--dry-run"] >>= \case
@@ -676,7 +677,7 @@ fetchUninstalled ::
   IO ()
 fetchUninstalled caching projectDir plan = do
   cache <- openCache caching =<< tokenForBuildPlan plan
-  sourcesShortOf cache plan >>= \case
+  sourcesShortOf cache projectDir plan >>= \case
     [] -> pure ()
     short ->
       void . runCabal projectDir $
@@ -715,12 +716,19 @@ loadPlan caching downloading wanted projectDir = do
           _ -> readBuildPlan (planPathFor projectDir)
 
 -- | Every planned package whose source could be in the package cache, with
--- where that would be: under the package cache @cabal@ last named, unless
--- a tarball it downloads is not there and a fetch has not already failed
--- to bring it in, when @cabal@ is asked again.
-plannedTarballs :: Cache -> BuildPlan -> IO [(PlanPackage, FilePath)]
-plannedTarballs cache plan =
-  cachedPackageCache cache >>= \case
+-- where that would be: under the package cache @cabal@ last named for the
+-- project, unless a tarball it downloads is not there and a fetch has not
+-- already failed to bring it in, when @cabal@ is asked again.
+plannedTarballs ::
+  -- | Where what @cabal@ said is remembered.
+  Cache ->
+  -- | The project the plan is for.
+  FilePath ->
+  -- | The plan.
+  BuildPlan ->
+  IO [(PlanPackage, FilePath)]
+plannedTarballs cache projectDir plan =
+  cachedPackageCache cache projectDir >>= \case
     Just remembered -> do
       tarballs <- under remembered
       refused <- cachedFutileFetch cache
@@ -732,8 +740,8 @@ plannedTarballs cache plan =
     Nothing -> asked
   where
     asked = do
-      cacheRoot <- packageCacheRoot
-      storePackageCache cache cacheRoot
+      cacheRoot <- packageCacheRoot projectDir
+      storePackageCache cache projectDir cacheRoot
       under cacheRoot
     under cacheRoot = do
       repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
@@ -745,11 +753,12 @@ plannedTarballs cache plan =
       CheckedOut _ -> True
       _ -> False
 
--- | Where @cabal@ keeps downloaded package sources, one directory per
--- repository it downloads from.
-packageCacheRoot :: IO FilePath
-packageCacheRoot =
-  readProgramOutput
+-- | Where @cabal@ keeps the package sources it downloads for the project in
+-- the directory given, one directory per repository it downloads from.
+packageCacheRoot :: FilePath -> IO FilePath
+packageCacheRoot projectDir =
+  readProgramOutputIn
+    projectDir
     "cabal"
     ["path", "--remote-repo-cache", "--output-format=json"]
     >>= \case

@@ -70,7 +70,7 @@ withPlan plan = do
     runIO $
       filterM (fmap not . doesFileExist . snd)
         . filter ((`Set.member` readFromSourcePackages) . ppName . fst)
-        =<< plannedTarballs noCache plan
+        =<< plannedTarballs noCache "." plan
   describe "the tree this project is built against" $ do
     it "is a real dependency tree and not an empty plan" $
       length dependencies `shouldSatisfy` (>= 30)

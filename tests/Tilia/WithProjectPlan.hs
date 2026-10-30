@@ -82,7 +82,7 @@ fetchMissingSources plan = do
   absent <-
     filterM (fmap not . doesFileExist . snd)
       . filter (not . (`Set.member` unread) . ppName . fst)
-      =<< plannedTarballs noCache plan
+      =<< plannedTarballs noCache "." plan
   unless (null absent) $ do
     putStrLn ("fetching the source of " <> show (length absent) <> " package(s)")
     refused <- filterM (fmap isNothing . fetch . fst) absent

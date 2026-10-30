@@ -281,7 +281,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
       pure (plan, routes)
   packages <- liftIO (packageFilesOf project)
   packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
-  resolver <- liftIO (newResolverVia caching routes packageReader plan)
+  resolver <- liftIO (newResolverVia caching routes packageReader root plan)
   notes <-
     if isTrue debugFixity
       then Just <$> liftIO (newIORef Map.empty)

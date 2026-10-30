@@ -57,7 +57,7 @@ import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.IO (hClose, openBinaryTempFile)
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
-import Tilia.Utils (quietly, readUtf8File, tshow)
+import Tilia.Utils (quietly, readUtf8File, sha256Of, tshow)
 
 -- | Where cached answers are kept together with a token unique to this
 -- build plan and environment, or nowhere, in which case nothing is
@@ -458,15 +458,25 @@ storeSolveTime :: Cache -> UTCTime -> IO ()
 storeSolveTime cache =
   writeAtomically (at cache (solveTimeFile cache)) . T.pack . iso8601Show
 
--- | Where @cabal@ last said it keeps the sources it downloads.
-cachedPackageCache :: Cache -> IO (Maybe FilePath)
-cachedPackageCache cache =
-  readIfPresent (at cache (packageCacheFile cache)) (T.unpack . T.strip)
+-- | Where @cabal@ last said it keeps the sources it downloads for the
+-- project in the directory given.
+cachedPackageCache :: Cache -> FilePath -> IO (Maybe FilePath)
+cachedPackageCache cache projectDir =
+  readIfPresent
+    (at cache (packageCacheFile cache projectDir))
+    (T.unpack . T.strip)
 
--- | Remember where @cabal@ keeps the sources it downloads.
-storePackageCache :: Cache -> FilePath -> IO ()
-storePackageCache cache =
-  writeAtomically (at cache (packageCacheFile cache)) . T.pack
+-- | Remember where @cabal@ keeps the sources it downloads for a project.
+storePackageCache ::
+  -- | Where to remember it.
+  Cache ->
+  -- | The project's directory.
+  FilePath ->
+  -- | Where @cabal@ keeps the sources.
+  FilePath ->
+  IO ()
+storePackageCache cache projectDir =
+  writeAtomically (at cache (packageCacheFile cache projectDir)) . T.pack
 
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
@@ -576,9 +586,12 @@ fetchesFile cache = ["fetches", tokenOf cache]
 solveTimeFile :: Cache -> [Text]
 solveTimeFile cache = ["solve-times", tokenOf cache]
 
--- | The path of the directory @cabal@ downloads sources into.
-packageCacheFile :: Cache -> [Text]
-packageCacheFile cache = ["package-cache", tokenOf cache]
+-- | The path of the directory @cabal@ downloads a project's sources into.
+packageCacheFile :: Cache -> FilePath -> [Text]
+packageCacheFile cache projectDir =
+  [ "package-cache",
+    tokenOf cache <> "-" <> T.take 16 (sha256Of (T.pack projectDir))
+  ]
 
 -- | The token a cache is kept under.
 tokenOf :: Cache -> Text
