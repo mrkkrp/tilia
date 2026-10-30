@@ -7,7 +7,6 @@ module Tilia.Cabal.PackageSpec (spec) where
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.FilePath ((</>))
@@ -17,6 +16,7 @@ import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.TestUtils (withFiles)
+import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -414,7 +414,7 @@ conditionalLibrary =
 inPackage :: Text -> [FilePath] -> (FilePath -> IO a) -> IO a
 inPackage contents dirs use =
   withSystemTempDirectory "tilia-package" $ \root -> do
-    T.writeFile (root </> "demo.cabal") contents
+    writeUtf8File (root </> "demo.cabal") contents
     mapM_ (createDirectoryIfMissing True . (root </>)) (sort dirs)
     use root
 

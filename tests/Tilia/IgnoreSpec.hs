@@ -8,7 +8,8 @@ import Data.Text (Text)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import Test.Hspec
 import Tilia.Ignore
-import Tilia.TestUtils (underAsciiLocale, withFiles, writeUtf8File)
+import Tilia.TestUtils (underAsciiLocale, withFiles)
+import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do

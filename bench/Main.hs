@@ -55,6 +55,7 @@ import Tilia.Bench.Measure
 import Tilia.Bench.Record
 import Tilia.Corpus (hackagePackages, obtain)
 import Tilia.TestUtils (switchedOn)
+import Tilia.Utils (writeUtf8File)
 
 -- | How the benchmarks were asked to run.
 data Options = Options
@@ -438,7 +439,7 @@ type Baseline = Map Key (Int64, Maybe Word64)
 -- | Save what was measured.
 writeBaseline :: FilePath -> [(Key, Measurement)] -> IO ()
 writeBaseline path measured =
-  BS.writeFile path . T.encodeUtf8 . T.unlines $
+  writeUtf8File path . T.unlines $
     [ T.unwords
         [ stage,
           T.pack (show (measuredTime m)),

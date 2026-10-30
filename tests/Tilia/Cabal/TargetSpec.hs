@@ -7,13 +7,13 @@ module Tilia.Cabal.TargetSpec (spec) where
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import System.FilePath (takeFileName, (</>))
 import Test.Hspec
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
 import Tilia.TestUtils (withFiles)
+import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -149,7 +149,7 @@ spec = do
           ("lib/lib.cabal", package "lib" "src")
         ]
       $ \root -> do
-        T.writeFile
+        writeUtf8File
           (prPath root </> "proj" </> "cabal.project")
           ("packages: " <> T.pack (prPath root </> "lib") <> "\n")
         componentsOfTarget (ProjectRoot (prPath root </> "proj") ProjectFile) Everything

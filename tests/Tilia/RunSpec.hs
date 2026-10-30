@@ -30,7 +30,7 @@ import Tilia.Fixity
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
 import Tilia.Palette (Color (Bad), Palette (..))
 import Tilia.Run
-import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo)
+import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo, writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -484,7 +484,7 @@ withSource :: Text -> (FilePath -> IO a) -> IO a
 withSource contents act =
   withSystemTempDirectory "tilia-run" $ \directory -> do
     let path = directory </> "A.hs"
-    T.writeFile path contents
+    writeUtf8File path contents
     act path
 
 -- | The same, for a file that has to hold exactly these bytes.
