@@ -361,6 +361,4 @@ synDecl ctx tyCon fixity HsQTvs{..} rhs =
       )
     <> indent (space <> txt "=" <> separator <> hsType ctx rhs)
   where
-    separator
-      | typeIsDocumented (unLoc rhs) = hardBreak
-      | otherwise = breakOrSpace
+    separator = typeBreak (typeIsDocumented (unLoc rhs))

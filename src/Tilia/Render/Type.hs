@@ -26,6 +26,7 @@ module Tilia.Render.Type
     typeArgument,
     typeArgSpan,
     typeIsDocumented,
+    typeBreak,
     asSigType,
   )
 where
@@ -142,7 +143,7 @@ typeBody ctx documented here = \case
     HsRecTy _ fields -> recordFields ctx Nothing fields
   where
     recur = typeBody ctx documented Nothing
-    betweenArgs = if isTrue documented then hardBreak else breakOrSpace
+    betweenArgs = typeBreak (isTrue documented)
 
 -- | A chain of type operators, regrouped by precedence.
 typeChain :: Ctx -> LHsType GhcPs -> LocatedN RdrName -> LHsType GhcPs -> Doc
@@ -232,6 +233,11 @@ strictness = \case
   SrcLazy -> txt "~"
   SrcStrict -> txt "!"
   NoSrcStrict -> mempty
+
+-- | The break between the parts of a type, a hard one where the type
+-- carries documentation, which ends its line.
+typeBreak :: Bool -> Doc
+typeBreak documented = if documented then hardBreak else breakOrSpace
 
 -- | Does any argument of this type carry documentation?
 typeIsDocumented :: HsType GhcPs -> Bool
@@ -387,18 +393,14 @@ hsSigTypeBody :: Ctx -> HsSigType GhcPs -> Doc
 hsSigTypeBody ctx HsSig{..} =
   outerBndrs ctx afterBinders sig_bndrs <> hsType ctx sig_body
   where
-    afterBinders
-      | typeIsDocumented (unLoc sig_body) = hardBreak
-      | otherwise = breakOrSpace
+    afterBinders = typeBreak (typeIsDocumented (unLoc sig_body))
 
 -- | The @:: t@ that follows a name.
 typeAscription :: Ctx -> LHsSigType GhcPs -> Doc
 typeAscription ctx sigType =
   indent (space <> txt "::" <> separator <> hsSigType ctx sigType)
   where
-    separator
-      | typeIsDocumented (unLoc (sig_body (unLoc sigType))) = hardBreak
-      | otherwise = breakOrSpace
+    separator = typeBreak (typeIsDocumented (unLoc (sig_body (unLoc sigType))))
 
 -- | Give a plain type the shape of a signature type.
 asSigType :: LHsType GhcPs -> LHsSigType GhcPs
