@@ -37,14 +37,12 @@ hsPat ctx = hsPatClosing ctx Indented
 
 -- | A pattern whose outermost bracket closes where it is told to.
 hsPatClosing :: Ctx -> ClosingIndent -> LPat GhcPs -> Doc
-hsPatClosing ctx = hsPatIn ctx NoBrace (Isn't #inAsPat)
+hsPatClosing ctx = hsPatIn ctx (Isn't #inAsPat)
 
 -- | A pattern that knows where it stands.
 hsPatIn ::
   -- | The context.
   Ctx ->
-  -- | Bracing an or-pattern inherits.
-  Bracing ->
   -- | Is this inside an as-pattern?
   Choice "inAsPat" ->
   -- | Where its outermost bracket closes.
@@ -52,15 +50,13 @@ hsPatIn ::
   -- | The pattern.
   LPat GhcPs ->
   Doc
-hsPatIn ctx bracing inAsPat closing l =
-  at ctx l (patBody ctx bracing inAsPat closing (spanOf l))
+hsPatIn ctx inAsPat closing l =
+  at ctx l (patBody ctx inAsPat closing (spanOf l))
 
 -- | Every shape a pattern can take.
 patBody ::
   -- | The context.
   Ctx ->
-  -- | Bracing an or-pattern inherits.
-  Bracing ->
   -- | Is this inside an as-pattern?
   Choice "inAsPat" ->
   -- | Where its outermost bracket closes.
@@ -70,12 +66,12 @@ patBody ::
   -- | The pattern.
   Pat GhcPs ->
   Doc
-patBody ctx bracing inAsPat closing here = \case
+patBody ctx inAsPat closing here = \case
   WildPat _ -> txt "_"
   VarPat _ n -> name ctx n
   LazyPat _ p -> txt "~" <> recur p
   AsPat _ n p ->
-    name ctx n <> txt "@" <> hsPatIn ctx bracing (Is #inAsPat) Indented p
+    name ctx n <> txt "@" <> hsPatIn ctx (Is #inAsPat) Indented p
   ParPat _ p -> parensWith closing (insideBrackets here (recur p))
   BangPat _ p -> txt "!" <> recur p
   ListPat _ ps ->
@@ -86,9 +82,9 @@ patBody ctx bracing inAsPat closing here = \case
       closing
       (insideBrackets here (commaSep (fmap (align . recur) ps)))
   OrPat _ ps ->
-    itemsSepBy (fromBool (isTrue inAsPat)) bracing (fmap recur (NE.toList ps))
+    itemsSepBy (fromBool (isTrue inAsPat)) NoBrace (fmap recur (NE.toList ps))
   SumPat _ p tag arity -> unboxedSum closing tag arity (recur p)
-  ConPat _ con details -> conPattern ctx bracing inAsPat here con details
+  ConPat _ con details -> conPattern ctx inAsPat here con details
   ViewPat _ e p ->
     align $
       knotExpr (ctxKnot ctx) ctx plainSite e
@@ -109,14 +105,12 @@ patBody ctx bracing inAsPat closing here = \case
   EmbTyPat _ (HsTP _ ty) -> txt "type" <> space <> hsType ctx ty
   InvisPat _ (HsTP _ ty) -> txt "@" <> hsType ctx ty
   where
-    recur = hsPatIn ctx bracing inAsPat Indented
+    recur = hsPatIn ctx inAsPat Indented
 
 -- | A constructor pattern, in whichever of its three forms.
 conPattern ::
   -- | The context.
   Ctx ->
-  -- | Bracing an or-pattern inherits.
-  Bracing ->
   -- | Is this inside an as-pattern?
   Choice "inAsPat" ->
   -- | Where the pattern was written.
@@ -126,7 +120,7 @@ conPattern ::
   -- | What it was applied to.
   HsConPatDetails GhcPs ->
   Doc
-conPattern ctx bracing inAsPat here con = \case
+conPattern ctx inAsPat here con = \case
   PrefixCon args ->
     align $
       name ctx con
@@ -141,7 +135,7 @@ conPattern ctx bracing inAsPat here con = \case
       recur l
         <> attachOperator Normal (spanOf l) (spanOf con) (spanOf r) (name ctx con) (recur r)
   where
-    recur = hsPatIn ctx bracing inAsPat Indented
+    recur = hsPatIn ctx inAsPat Indented
     field = either wildcard (at_ ctx (patFieldBind ctx))
     wildcard l = at ctx l (const (txt ".."))
     visibleFields dotdot fields = case dotdot of
