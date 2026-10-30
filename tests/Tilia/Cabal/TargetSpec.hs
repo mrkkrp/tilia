@@ -543,6 +543,28 @@ spec = do
           Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
           Left problem -> describeTargetProblem problem `shouldSatisfy` T.isInfixOf "no packages"
 
+    it "says what the parser said of a cabal.project that will not parse" $
+      withProject [("cabal.project", "packages: one\nfoo bar: baz\n")] $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
+          Left problem -> do
+            let said = describeTargetProblem problem
+            said `shouldSatisfy` T.isInfixOf "cabal.project does not parse:"
+            said `shouldSatisfy` T.isInfixOf "line 2, column 5"
+
+    it "says so when a file it imports will not parse"
+      $ withProject
+        [ ("cabal.project", "packages: one\nimport: more.config\n"),
+          ("more.config", "foo bar: baz\n"),
+          ("one/one.cabal", package "one" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
+          Left problem ->
+            describeTargetProblem problem
+              `shouldSatisfy` T.isInfixOf "more.config does not parse:"
+
     it "includes optional packages that exist, ignoring absent ones"
       $ withProject
         [ ("cabal.project", "packages: main\noptional-packages: optional absent\n"),

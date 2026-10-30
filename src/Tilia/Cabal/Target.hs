@@ -19,6 +19,7 @@ module Tilia.Cabal.Target
 where
 
 import Control.Monad (filterM)
+import Data.Bifunctor (first)
 import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
 import Data.List (isPrefixOf, isSuffixOf, sort, tails)
@@ -151,6 +152,8 @@ admits Wanted{..} = isDeclaredModule wantedModules wantedEntries
 data TargetProblem
   = -- | A @cabal.project@ naming packages, none of which could be found.
     NoPackages FilePath
+  | -- | A project configuration file that does not parse, and why.
+    ProjectMalformed FilePath Text
   | -- | A @.cabal@ file that could not be read or parsed, and why.
     UnreadablePackage PackageProblem
   | -- | A target naming no component the project holds.
@@ -162,6 +165,8 @@ describeTargetProblem :: TargetProblem -> Text
 describeTargetProblem = \case
   NoPackages file ->
     T.pack file <> " names no packages that exist"
+  ProjectMalformed file why ->
+    T.pack file <> " does not parse:" <> foldMap ("\n  " <>) (T.lines why)
   UnreadablePackage problem -> describePackageProblem problem
   NoSuchTarget asked available ->
     "no component matches "
@@ -174,11 +179,12 @@ componentsOfTarget ::
   ProjectRoot ->
   Target ->
   IO (Either TargetProblem [Component])
-componentsOfTarget root target = do
-  files <- packageFilesOf root
-  if null files
-    then pure (Left (NoPackages (prPath root </> markerFile (prMarker root))))
-    else
+componentsOfTarget root target =
+  packageFilesOf root >>= \case
+    Left problem -> pure (Left problem)
+    Right [] ->
+      pure (Left (NoPackages (prPath root </> markerFile (prMarker root))))
+    Right files ->
       traverse componentsInCabalFile files >>= \case
         results
           | (problem : _) <- [p | Left p <- results] -> pure (Left problem)
@@ -265,20 +271,24 @@ filesOfComponents root components = do
 asDirectory :: FilePath -> FilePath
 asDirectory = dropTrailingPathSeparator . normalise
 
--- | The @.cabal@ files the project is made of.
+-- | The @.cabal@ files the project is made of, or which of its
+-- configuration files does not parse.
 --
 -- A @cabal.project@ names them, possibly through globs; anything else means
 -- the marker found by the walk upwards is itself the only package.
-packageFilesOf :: ProjectRoot -> IO [FilePath]
+packageFilesOf :: ProjectRoot -> IO (Either TargetProblem [FilePath])
 packageFilesOf root = case prMarker root of
-  PackageFile named -> pure [prPath root </> named]
+  PackageFile named -> pure (Right [prPath root </> named])
   ProjectFile -> do
     configs <- projectConfigFiles (prPath root </> "cabal.project")
-    found <-
-      traverse
-        (packageToCabalFile (prPath root))
-        (concatMap (packagesInProjectConfig . snd) configs)
-    pure (Set.toList (Set.fromList (concat found)))
+    case traverse (uncurry (first . ProjectMalformed)) configs of
+      Left problem -> pure (Left problem)
+      Right parsed -> do
+        found <-
+          traverse
+            (packageToCabalFile (prPath root))
+            (concatMap packagesInProjectConfig parsed)
+        pure (Right (Set.toList (Set.fromList (concat found))))
 
 -- | The entries of a project configuration file's @packages@ fields.
 packagesInProjectConfig :: [Field Position] -> [Text]
