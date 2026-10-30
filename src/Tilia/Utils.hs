@@ -8,6 +8,9 @@ module Tilia.Utils
     readUtf8File,
     writeUtf8File,
     fieldWords,
+    blocksOf,
+    indented,
+    looksLikeModule,
     asUtf8,
     byteOrderMark,
     sha256Of,
@@ -36,6 +39,7 @@ import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
+import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -70,6 +74,28 @@ writeUtf8File path = BS.writeFile path . T.encodeUtf8
 -- | The words of a field's value, which whitespace and commas separate.
 fieldWords :: Text -> [Text]
 fieldWords = filter (not . T.null) . concatMap (T.split (== ',')) . T.words
+
+-- | Group lines into blocks, each a line at the margin with the indented
+-- lines under it, dropping indented lines before the first.
+blocksOf :: [Text] -> [(Text, [Text])]
+blocksOf = \case
+  [] -> []
+  l : ls
+    | indented l -> blocksOf ls
+    | otherwise ->
+        let (under, rest) = span indented ls
+         in (l, under) : blocksOf rest
+
+-- | Does a line begin with white space?
+indented :: Text -> Bool
+indented = maybe False (isSpace . fst) . T.uncons
+
+-- | Could a word name a module: does it begin with a capital letter and
+-- hold no colon?
+looksLikeModule :: Text -> Bool
+looksLikeModule m = case T.uncons m of
+  Just (c, _) -> c `elem` ['A' .. 'Z'] && not (T.any (== ':') m)
+  Nothing -> False
 
 -- | Run an action and return its result or the exception it threw rendered
 -- as 'Text'.
