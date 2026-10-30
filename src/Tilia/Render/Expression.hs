@@ -1191,7 +1191,7 @@ quotation ctx here = \case
         BracketHasE{} -> "e"
   PatBr _ p -> quotedAs "p" (hsPat ctx p)
   DecBrL _ decls ->
-    quotedAs "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx Free decls))
+    quotedAs "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx decls))
   DecBrG _ _ -> error "Tilia: DecBrG is produced by the renamer"
   TypBr _ ty -> quotedAs "t" (starGuard ty (hsType ctx ty))
   VarBr _ isSingle n -> txt (if isSingle then "'" else "''") <> name ctx n

@@ -112,10 +112,10 @@ data Knot = Knot
     -- | Signature declarations, needed by @let@ and @where@ bodies.
     knotSig :: Ctx -> Sig GhcPs -> Doc,
     -- | A run of declarations, needed by Template Haskell brackets.
-    knotDecls :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc,
+    knotDecls :: Ctx -> [LHsDecl GhcPs] -> Doc,
     -- | A run of declarations that keeps the author's blank lines, needed
     -- by class and instance bodies.
-    knotDeclsGrouped :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
+    knotDeclsGrouped :: Ctx -> [LHsDecl GhcPs] -> Doc
   }
 
 -- | Whether a family or data declaration stands on its own or inside a
