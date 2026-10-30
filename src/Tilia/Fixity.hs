@@ -299,8 +299,9 @@ moduleExports =
       IEVar _ n _ -> [as (ExportName InTerms) n]
       IEThingAbs _ n _ -> [as (ExportName InTypes) n]
       IEThingAll _ n _ -> [as ExportAll n]
-      IEThingWith _ n _ ns _ ->
-        [as ExportSome n (fmap (opName . ieWrappedName . unLoc) ns)]
+      IEThingWith _ n wildcard ns _ ->
+        [as ExportAll n | IEWildcard _ <- [wildcard]]
+          <> [as ExportSome n (fmap (opName . ieWrappedName . unLoc) ns)]
       IEModuleContents _ m -> [ExportModule (T.pack (moduleNameString (unLoc m)))]
       _ -> []
     as item n =
@@ -333,9 +334,12 @@ listedMembers hsModule = case hsmodExports hsModule of
     declared = Map.map (Set.map snd) (declaredMembers hsModule)
     fromIE = \case
       IEThingAbs _ n _ -> [(nameOf n, Set.empty)]
-      IEThingAll _ n _ -> [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
-      IEThingWith _ n _ ns _ -> [(nameOf n, Set.fromList (fmap nameOf ns))]
+      IEThingAll _ n _ -> whole n
+      IEThingWith _ n wildcard ns _ ->
+        (nameOf n, Set.fromList (fmap nameOf ns))
+          : concat [whole n | IEWildcard _ <- [wildcard]]
       _ -> []
+    whole n = [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
     nameOf = opName . ieWrappedName . unLoc
 
 ----------------------------------------------------------------------------
