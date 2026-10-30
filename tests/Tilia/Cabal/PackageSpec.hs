@@ -10,12 +10,13 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (createDirectoryIfMissing, removeFile)
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 import Tilia.Pragma (Defaults, effectiveExtensions)
+import Tilia.TestUtils (withFiles)
 
 spec :: Spec
 spec = do
@@ -143,7 +144,7 @@ spec = do
 
   describe "a module no package above it claims" $ do
     it "is claimed by a package of the project that names it"
-      $ inProject
+      $ withFiles
         [ ("one/one.cabal", reachingOut "../common"),
           ("common/Common.hs", "module Common where\n")
         ]
@@ -153,7 +154,7 @@ spec = do
           `shouldReturn` True
 
     it "is claimed so where the package above it does not name it"
-      $ inProject
+      $ withFiles
         [ ("one/one.cabal", reachingOut "../two/shared"),
           ("two/two.cabal", twoComponents),
           ("two/shared/Common.hs", "module Common where\n")
@@ -167,7 +168,7 @@ spec = do
           `shouldReturn` True
 
     it "is still unclaimed where no package of the project names it"
-      $ inProject
+      $ withFiles
         [ ("one/one.cabal", reachingOut "../common"),
           ("other/Other.hs", "module Other where\n")
         ]
@@ -416,18 +417,6 @@ inPackage contents dirs use =
     T.writeFile (root </> "demo.cabal") contents
     mapM_ (createDirectoryIfMissing True . (root </>)) (sort dirs)
     use root
-
--- | Write files, each at its path relative to a new directory, and hand back
--- the directory.
-inProject :: [(FilePath, Text)] -> (FilePath -> IO a) -> IO a
-inProject files use =
-  withSystemTempDirectory "tilia-project" $ \root -> do
-    mapM_ (write root) files
-    use root
-  where
-    write root (path, contents) = do
-      createDirectoryIfMissing True (takeDirectory (root </> path))
-      T.writeFile (root </> path) contents
 
 -- | Ask about one file with a reader of its own, which is what a test that
 -- is not about caching wants.

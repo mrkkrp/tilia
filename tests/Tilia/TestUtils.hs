@@ -1,10 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
+    writeUtf8File,
+    withFiles,
+    withOpsProject,
     switchedOn,
     underAsciiLocale,
     parserConfigFor,
@@ -29,6 +33,7 @@ where
 
 import Control.Exception (bracket)
 import Data.Bits (xor)
+import Data.ByteString qualified as BS
 import Data.Char (ord)
 import Data.Choice (pattern Do)
 import Data.Foldable (traverse_)
@@ -38,12 +43,16 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Word (Word64)
 import GHC.Driver.Session qualified as GHC
 import GHC.IO.Encoding (getLocaleEncoding, setLocaleEncoding)
 import GHC.LanguageExtensions.Type (Extension (..))
+import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.Environment (lookupEnv, setEnv, unsetEnv)
+import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (mkTextEncoding)
+import System.IO.Temp (withSystemTempDirectory)
 import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
 import Tilia.Comments (Comment)
@@ -84,6 +93,75 @@ withEnvironment vars act = bracket set restore (const act)
       setEnv key value
       pure (key, was)
     restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
+
+-- | Write a file as UTF-8, making the directories it is in.
+writeUtf8File :: FilePath -> Text -> IO ()
+writeUtf8File path text = do
+  createDirectoryIfMissing True (takeDirectory path)
+  BS.writeFile path (T.encodeUtf8 text)
+
+-- | Run something on a new temporary directory, by its canonical path,
+-- holding these files at their paths in it.
+withFiles :: [(FilePath, Text)] -> (FilePath -> IO a) -> IO a
+withFiles files act =
+  withSystemTempDirectory "tilia" $ \dir -> do
+    root <- canonicalizePath dir
+    traverse_ (\(path, text) -> writeUtf8File (root </> path) text) files
+    act root
+
+-- | Run something on a project of one package, @fake@, whose module @Ops@
+-- declares @infixl 6 <+>@, and on a plan for it kept outside it that names
+-- the project relatively, as @haskell.nix@ writes it.
+withOpsProject ::
+  -- | Further files of the project, by their paths in it, each @.hs@ file
+  -- one more module of the package.
+  [(FilePath, Text)] ->
+  -- | Further entries of the plan.
+  [Text] ->
+  -- | Given the project's directory and the plan's path.
+  (FilePath -> FilePath -> IO a) ->
+  IO a
+withOpsProject files others act =
+  withFiles
+    ( [ ("project" </> "fake.cabal", cabal),
+        ("project" </> "src" </> "Ops.hs", ops),
+        ("elsewhere" </> "plan.json", plan)
+      ]
+        <> [("project" </> path, text) | (path, text) <- files]
+    )
+    $ \dir -> act (dir </> "project") (dir </> "elsewhere" </> "plan.json")
+  where
+    cabal =
+      T.unlines
+        [ "cabal-version: 2.4",
+          "name: fake",
+          "version: 0.1.0.0",
+          "library",
+          "  exposed-modules: " <> T.intercalate ", " ("Ops" : modules),
+          "  hs-source-dirs: src",
+          "  default-language: Haskell2010"
+        ]
+    modules =
+      [ T.pack (takeBaseName path)
+      | (path, _) <- files,
+        takeExtension path == ".hs"
+      ]
+    ops =
+      T.unlines
+        [ "module Ops ((<+>)) where",
+          "infixl 6 <+>",
+          "(<+>) :: a -> a -> a",
+          "(<+>) = const"
+        ]
+    plan =
+      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":["
+        <> T.intercalate
+          ","
+          ( "{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
+            \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}"
+              : others
+          )
+        <> "]}"
 
 -- | Is an environment variable set to anything but empty, @0@, @no@ or
 -- @false@?

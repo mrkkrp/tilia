@@ -8,13 +8,12 @@ import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>))
-import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
+import Tilia.TestUtils (withFiles)
 
 spec :: Spec
 spec = do
@@ -531,15 +530,8 @@ packageWith name dirs modules =
 -- | Lay out a project in a temporary directory and hand over its root.
 withProject :: [(FilePath, Text)] -> (ProjectRoot -> IO a) -> IO a
 withProject files act =
-  withSystemTempDirectory "tilia-target" $ \temporary -> do
-    directory <- canonicalizePath temporary
-    mapM_ (place directory) files
-    act (ProjectRoot directory (marker files))
+  withFiles files $ \directory -> act (ProjectRoot directory (marker files))
   where
-    place directory (path, contents) = do
-      createDirectoryIfMissing True (directory </> parent path)
-      T.writeFile (directory </> path) contents
-    parent = reverse . drop 1 . dropWhile (/= '/') . reverse
     marker fs
       | any ((== "cabal.project") . fst) fs = ProjectFile
       | (named : _) <- [p | (p, _) <- fs, ".cabal" `isSuffixOf` p] = PackageFile named

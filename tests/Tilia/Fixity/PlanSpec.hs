@@ -68,7 +68,13 @@ import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 import Tilia.Parser
 import Tilia.Process (readProgramOutput)
-import Tilia.TestUtils (parsed, routedResolver, unreadOnly, withEnvironment)
+import Tilia.TestUtils
+  ( parsed,
+    routedResolver,
+    unreadOnly,
+    withEnvironment,
+    withOpsProject,
+  )
 import Tilia.Utils (inParallel)
 import Tilia.WithProjectPlan (withProjectPlan)
 
@@ -764,43 +770,14 @@ givenPlans = describe "a plan trusted as up to date" $ do
         <> "\",\"pkg-src\":{\"type\":\"repo-tar\",\"repo\":\
            \{\"type\":\"secure-repo\",\"uri\":\"http://hackage.haskell.org/\"}}}"
 
--- | A project with one local module declaring @infixl 6 <+>@, and a plan
--- for it kept outside of it that names the project relatively, as
--- @haskell.nix@ writes it, along with the other entries given.
+-- | 'withOpsProject' with the other entries of the plan given, and a cache
+-- of its own.
 withGivenPlan :: [Text] -> (FilePath -> FilePath -> Expectation) -> Expectation
 withGivenPlan others act =
-  withSystemTempDirectory "tilia-given" $ \dir -> do
-    let project = dir </> "project"
-        planFile = dir </> "elsewhere" </> "plan.json"
-    createDirectoryIfMissing True (project </> "src")
-    createDirectoryIfMissing True (takeDirectory planFile)
-    T.writeFile (project </> "fake.cabal") $
-      T.unlines
-        [ "cabal-version: 2.4",
-          "name: fake",
-          "version: 0.1.0.0",
-          "library",
-          "  exposed-modules: Ops",
-          "  hs-source-dirs: src",
-          "  default-language: Haskell2010"
-        ]
-    T.writeFile (project </> "src" </> "Ops.hs") $
-      T.unlines
-        [ "module Ops ((<+>)) where",
-          "infixl 6 <+>",
-          "(<+>) :: a -> a -> a",
-          "(<+>) = const"
-        ]
-    T.writeFile planFile $
-      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":["
-        <> T.intercalate
-          ","
-          ( "{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
-            \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}"
-              : others
-          )
-        <> "]}"
-    withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act project planFile)
+  withOpsProject [] others $ \project planFile ->
+    withEnvironment
+      [("XDG_CACHE_HOME", takeDirectory project </> "cache")]
+      (act project planFile)
 
 -- | The @cabal@ commands something runs, as told by a stand-in put first
 -- on the path that fails, and what it came to.

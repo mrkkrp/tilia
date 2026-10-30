@@ -8,16 +8,13 @@
 module Tilia.EditorSpec (spec) where
 
 import Control.Exception (throwIO)
-import Data.ByteString qualified as BS
 import Data.Choice (pattern Don't)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
 import Data.Version (makeVersion)
 import GHC.LanguageExtensions.Type (Extension (..))
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Editor
@@ -30,6 +27,7 @@ import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..), OpName (..))
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Format (FormatError, formatErrorExitCode)
 import Tilia.Run (Outcome (..))
+import Tilia.TestUtils (withOpsProject)
 
 spec :: Spec
 spec = describe "formatting what an editor holds" $ do
@@ -225,12 +223,7 @@ failure = formatErrorExitCode
 -- handed to the test as a way to format a buffer as one of its files.
 withProject :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
 withProject act =
-  inProject $ \dir project -> do
-    let planFile = dir </> "elsewhere" </> "plan.json"
-    write planFile $
-      "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":[\
-      \{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\
-      \\"pkg-src\":{\"type\":\"local\",\"path\":\"./.\"}}]}"
+  inProject $ \project planFile ->
     act $ \file text -> do
       let path = project </> file
       editorSession
@@ -251,7 +244,7 @@ withProject act =
 -- that of @Boom@ throws.
 withCompiled :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
 withCompiled act =
-  inProject $ \_ project ->
+  inProject $ \project _ ->
     act $ \file text -> do
       let path = project </> file
       compiledSession path compiled (Don't #checkAst) (Don't #checkIdempotence)
@@ -282,40 +275,18 @@ withCompiled act =
 
 -- | A project with a module declaring @infixl 6 <+>@, one beginning with a
 -- byte order mark declaring @infixr 0 <->@, and a @.tiliaignore@ excluding
--- @src/Generated.hs@, given to the test with the directory it is in.
+-- @src/Generated.hs@, given to the test with a plan for it.
 inProject :: (FilePath -> FilePath -> Expectation) -> Expectation
-inProject act =
-  withSystemTempDirectory "tilia-editor" $ \dir -> do
-    let project = dir </> "project"
-    write (project </> "fake.cabal") $
-      T.unlines
-        [ "cabal-version: 2.4",
-          "name: fake",
-          "version: 0.1.0.0",
-          "library",
-          "  exposed-modules: Ops, Marked",
-          "  hs-source-dirs: src",
-          "  default-language: Haskell2010"
-        ]
-    write (project </> "src" </> "Ops.hs") $
-      T.unlines
-        [ "module Ops ((<+>)) where",
-          "infixl 6 <+>",
-          "(<+>) :: a -> a -> a",
-          "(<+>) = const"
-        ]
-    write (project </> "src" </> "Marked.hs") $
-      T.unlines
-        [ "\xFEFFmodule Marked ((<->)) where",
-          "infixr 0 <->",
-          "(<->) :: a -> a -> a",
-          "(<->) = const"
-        ]
-    write (project </> ".tiliaignore") "src/Generated.hs\n"
-    act dir project
-
--- | Write a file, with the directories it is in.
-write :: FilePath -> Text -> IO ()
-write path text = do
-  createDirectoryIfMissing True (takeDirectory path)
-  BS.writeFile path (T.encodeUtf8 text)
+inProject =
+  withOpsProject
+    [ ( "src" </> "Marked.hs",
+        T.unlines
+          [ "\xFEFFmodule Marked ((<->)) where",
+            "infixr 0 <->",
+            "(<->) :: a -> a -> a",
+            "(<->) = const"
+          ]
+      ),
+      (".tiliaignore", "src/Generated.hs\n")
+    ]
+    []
