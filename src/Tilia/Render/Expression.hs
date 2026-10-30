@@ -498,17 +498,7 @@ stmtBody ctx site mkBody = \case
         <> breakOrSpace
         <> indent (hsExpr ctx trS_using)
   RecStmt{..} ->
-    txt "rec"
-      <> space
-      <> align
-        ( at ctx recS_stmts $ \xs ->
-            items (siteBracing site) $
-              keepBlanks
-                (separatedByBlank ctx)
-                [ (spanOf s, at_ ctx (stmtBody ctx site mkBody) s)
-                | s <- xs
-                ]
-        )
+    txt "rec" <> space <> align (stmtBlock ctx site mkBody recS_stmts)
 
 -- | The statements of a block, with the break that introduces them.
 statements ::
@@ -523,7 +513,21 @@ statements ::
   XRec GhcPs [LStmt GhcPs (XRec GhcPs body)] ->
   Doc
 statements ctx site mkBody es =
-  breakOrSpace <> underSite site (at ctx es block)
+  breakOrSpace <> underSite site (stmtBlock ctx site mkBody es)
+
+-- | The statements of a block, each laid out as an item of it.
+stmtBlock ::
+  ( Body b,
+    Anno [LStmt GhcPs (XRec GhcPs body)] ~ SrcSpanAnnLW,
+    Anno (Stmt GhcPs (XRec GhcPs body)) ~ SrcSpanAnnA,
+    Anno body ~ SrcSpanAnnA
+  ) =>
+  Ctx ->
+  Site ->
+  BodyOf body b ->
+  XRec GhcPs [LStmt GhcPs (XRec GhcPs body)] ->
+  Doc
+stmtBlock ctx site mkBody es = at ctx es block
   where
     block xs =
       items (siteBracing site) $
