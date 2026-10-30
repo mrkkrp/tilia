@@ -779,6 +779,20 @@ afterFetching fetched =
 -- | A plan handed over to be taken as it is.
 givenPlans :: Spec
 givenPlans = describe "a plan trusted as up to date" $ do
+  it "says which plan is not there, once" $
+    withGivenPlan [] $ \project _ ->
+      readGivenPlan project "nowhere.json"
+        `shouldReturn` Left "nowhere.json does not exist"
+
+  it "says which plan does not parse" $
+    withGivenPlan [] $ \project _ -> do
+      let planFile = project </> "bad.json"
+          unparsed = T.pack planFile <> " does not parse: "
+      writeUtf8File planFile "{\"compiler-id\": 3}"
+      readGivenPlan project planFile >>= \case
+        Left why -> why `shouldSatisfy` T.isPrefixOf unparsed
+        Right _ -> expectationFailure "a plan that does not parse was read"
+
   it "finds a local package it names relatively under the project" $
     withGivenPlan [] $ \project planFile ->
       readGivenPlan project planFile >>= \case

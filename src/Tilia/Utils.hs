@@ -5,6 +5,7 @@
 module Tilia.Utils
   ( quietly,
     attempted,
+    readBytes,
     readUtf8File,
     writeUtf8File,
     fieldWords,
@@ -42,6 +43,7 @@ import Control.Exception
     displayException,
     fromException,
     throwIO,
+    try,
   )
 import Control.Monad (replicateM, (>=>))
 import Crypto.Hash.SHA256 qualified as SHA256
@@ -57,6 +59,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (doesFileExist)
 import System.FilePath (equalFilePath, normalise, splitDirectories)
+import System.IO.Error (ioeGetErrorString)
 
 -- | 'show' a value and take the result as 'Text'.
 tshow :: (Show a) => a -> Text
@@ -75,6 +78,12 @@ readUtf8File path = quietly Nothing $ do
   if there
     then Just . T.decodeUtf8Lenient <$> BS.readFile path
     else pure Nothing
+
+-- | Read a file's bytes, or say why they could not be read without naming
+-- the file, which whoever reports it names already.
+readBytes :: FilePath -> IO (Either Text BS.ByteString)
+readBytes path =
+  either (Left . T.pack . ioeGetErrorString) Right <$> try (BS.readFile path)
 
 -- | Write a file as UTF-8.
 writeUtf8File :: FilePath -> Text -> IO ()

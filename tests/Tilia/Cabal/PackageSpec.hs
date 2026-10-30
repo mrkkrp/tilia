@@ -18,6 +18,7 @@ import Tilia.Cabal.Package
   ( PackageProblem (..),
     newPackageReader,
     parsePackageDescription,
+    readPackageDescription,
   )
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 import Tilia.Pragma (Defaults, effectiveExtensions)
@@ -26,11 +27,17 @@ import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
-  describe "a .cabal file" $
+  describe "a .cabal file" $ do
     it "parses whatever version of the format it declares, up to the newest" $
       for_ ["2.4", "3.0", "3.4", "3.8", "3.12", "3.14", "3.16", "3.18"] $ \v ->
         let held = "cabal-version: " <> v <> "\nname: t\nversion: 0\nlibrary\n"
          in parsePackageDescription "t.cabal" held `shouldSatisfy` isRight
+
+    it "is said to be unreadable without being named again" $
+      withSystemTempDirectory "tilia-gone" $ \root -> do
+        let cabalFile = root </> "t.cabal"
+        fmap (const ()) <$> readPackageDescription cabalFile
+          `shouldReturn` Left (PackageUnreadable cabalFile "does not exist")
 
   describe "the component a file belongs to" $ do
     it "is the one whose source directory holds it" $

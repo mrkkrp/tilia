@@ -305,8 +305,10 @@ readGivenPlan root path =
 decodePlan :: FilePath -> IO (Either Text BuildPlan)
 decodePlan path =
   doesFileExist path >>= \case
-    False -> pure (Left ("no build plan at " <> T.pack path))
-    True -> either (Left . T.pack) Right <$> eitherDecodeFileStrict path
+    False -> pure (Left (T.pack path <> " does not exist"))
+    True -> first unparsed <$> eitherDecodeFileStrict path
+  where
+    unparsed why = T.pack path <> " does not parse: " <> T.pack why
 
 -- | Find where @cabal@ unpacked each @source-repository-package@.
 checkedOutIn :: FilePath -> BuildPlan -> IO BuildPlan

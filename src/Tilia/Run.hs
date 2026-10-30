@@ -26,7 +26,6 @@ module Tilia.Run
 where
 
 import Control.Exception (evaluate)
-import Data.ByteString qualified as BS
 import Data.List (sortOn)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -49,6 +48,7 @@ import Tilia.Utils
     byteOrderMark,
     inParallel,
     indent,
+    readBytes,
     tshow,
     wrappedUnder,
     writeUtf8File,
@@ -136,7 +136,7 @@ outcomeOf session path before =
 -- | Read a source file as UTF-8.
 readAsUtf8 :: FilePath -> IO (Either Text Text)
 readAsUtf8 path =
-  attempted (BS.readFile path) >>= \case
+  readBytes path >>= \case
     Left why -> pure (Left why)
     Right bytes -> pure (asUtf8 bytes)
 

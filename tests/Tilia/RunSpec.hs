@@ -6,7 +6,6 @@ module Tilia.RunSpec (spec) where
 
 import Control.Concurrent (getNumCapabilities, threadDelay)
 import Data.ByteString qualified as BS
-import Data.Either (isLeft)
 import Data.IORef
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text (Text)
@@ -30,8 +29,9 @@ import Tilia.Fixity
   )
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
 import Tilia.Palette (Color (Bad), Palette (..), paletteFor)
+import Tilia.Parser (parseModule)
 import Tilia.Run
-import Tilia.TestUtils (withEnvironment)
+import Tilia.TestUtils (defaultParserConfig, withEnvironment)
 import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo, writeUtf8File)
 
 spec :: Spec
@@ -143,6 +143,15 @@ spec = do
     it "names the file in the reason, once" $
       reportErr (inplaceReport Plain Plain mixed)
         `shouldSatisfy` any (T.isInfixOf "cannot read a.hs: no such file")
+
+    it "names a file once where one of its configurations does not parse" $
+      case parseModule defaultParserConfig "A.hs" "x = (" of
+        Right _ -> expectationFailure "x = ( parsed"
+        Left e -> do
+          let said = flattened (inplaceReport Plain Plain [("A.hs", Declined why)])
+              why = CppUnsupported "A.hs" (ConfigurationNotParsed [] e)
+          said `shouldSatisfy` T.isInfixOf "will not format A.hs:"
+          T.count "A.hs" said `shouldBe` 1
 
     it "orders the reasons by file, not by arrival" $
       reportErr (inplaceReport Plain Plain mixed)
@@ -399,10 +408,10 @@ spec = do
       withBytes (BS.pack [0x6D, 0xFF, 0xFE, 0x0A]) $ \path ->
         readAsUtf8 path `shouldReturn` Left "it is not valid UTF-8"
 
-    it "says so when it is not there" $
+    it "says so when it is not there, without naming it again" $
       withSystemTempDirectory "tilia-run" $ \directory ->
-        (isLeft <$> readAsUtf8 (directory </> "gone.hs"))
-          `shouldReturn` True
+        readAsUtf8 (directory </> "gone.hs")
+          `shouldReturn` Left "does not exist"
 
     it "hands over the line endings it found, rather than the platform's" $
       withBytes "module A where\r\n" $ \path ->
