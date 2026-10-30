@@ -48,11 +48,13 @@ activation = \case
   ActiveAfter _ n -> txt "[" <> outputable n <> txt "]"
   FinalActive -> error "Tilia: FinalActive is not expected in parsed source"
 
--- | Which flavour of inlining was asked for.
+-- | Which flavour of inlining was asked for, @INLINABLE@ spelled as written.
 inlineSpec :: InlineSpec -> Doc
 inlineSpec = \case
   Inline _ -> txt "INLINE"
-  Inlinable _ -> txt "INLINEABLE"
+  Inlinable (SourceText s)
+    | "INLINEABLE" `isInfixOf` fmap toUpper (unpackFS s) -> txt "INLINEABLE"
+  Inlinable _ -> txt "INLINABLE"
   NoInline _ -> txt "NOINLINE"
   Opaque _ -> txt "OPAQUE"
   NoUserInlinePrag -> mempty
