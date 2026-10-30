@@ -64,7 +64,7 @@ import Tilia.Comments
   )
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (ParsedModule (..))
-import Tilia.Pragma (languageNames, optionFlags)
+import Tilia.Pragma (languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..), startPoint)
@@ -498,8 +498,9 @@ commentDifference parsedBefore parsedAfter
     lost = pragmasOf before `Set.difference` pragmasOf after
     headerBefore = headerPragmas parsedBefore
     headerAfter = headerPragmas parsedAfter
-    flagsBefore = concatMap pragmaFlags headerBefore
-    flagsAfter = concatMap pragmaFlags headerAfter
+    flagsBefore = concatMap flagsOf headerBefore
+    flagsAfter = concatMap flagsOf headerAfter
+    flagsOf p = pragmaFlags (pragmaName p) (pragmaBody p)
     optionsBefore = filter (not . T.isPrefixOf "-X") flagsBefore
     optionsAfter = filter (not . T.isPrefixOf "-X") flagsAfter
     haddockBefore = [pragmaBody p | p <- headerBefore, pragmaName p == "OPTIONS_HADDOCK"]
@@ -550,14 +551,6 @@ headerPragmas m =
   where
     inHeader c =
       maybe True ((startPoint (commentSpan c) <) . startPoint) (pmHeaderEnd m)
-
--- | The flags GHC reads off a pragma of a module's header.
-pragmaFlags :: Pragma -> [Text]
-pragmaFlags p = case pragmaName p of
-  "LANGUAGE" -> ["-X" <> name | name <- languageNames (pragmaBody p)]
-  "OPTIONS_GHC" -> optionFlags (pragmaBody p)
-  "OPTIONS" -> optionFlags (pragmaBody p)
-  _ -> []
 
 -- | How what the flags of a module's header settle changed, if it did.
 inForceDifference :: InForce -> InForce -> Maybe Text
