@@ -79,13 +79,13 @@ main = do
   outcomes <- case cmd of
     Inplace target -> do
       outcomes <- traverse writeBack =<< formatComponents err opts target
-      outcomes <$ printReport (inplaceReport out err outcomes)
+      outcomes <$ printReport T.putStr (inplaceReport out err outcomes)
     Check target -> do
       outcomes <- formatComponents err opts target
-      outcomes <$ printReport (checkReport out err outcomes)
+      outcomes <$ printReport putUtf8 (checkReport out err outcomes)
     ForEditor file -> do
       (input, outcomes) <- formatStdin err opts file
-      outcomes <$ printReport (stdinReport err input outcomes)
+      outcomes <$ printReport putUtf8 (stdinReport err input outcomes)
   exitWith cmd outcomes
 
 -- | Format the files of the components a target asks for.
@@ -204,13 +204,18 @@ exitWith cmd outcomes = case exitCodeOf outcomes of
         (System.Exit.exitWith (ExitFailure 1))
     ForEditor _ -> pure ()
 
--- | Print a 'Report'.
-printReport :: Report -> IO ()
-printReport report = do
-  BS.putStr (T.encodeUtf8 (reportOut report))
+-- | Print a 'Report', with what writes its part for standard output.
+printReport :: (Text -> IO ()) -> Report -> IO ()
+printReport putOut report = do
+  putOut (reportOut report)
   hFlush stdout
   traverse_ (T.hPutStrLn stderr) (reportErr report)
   hFlush stderr
+
+-- | Write to standard output as UTF-8, whatever the locale, and with the
+-- newlines as they are.
+putUtf8 :: Text -> IO ()
+putUtf8 = BS.putStr . T.encodeUtf8
 
 -- | Every component the target asks for, and the project they were found
 -- in, which is where the run's settings are read from as well.
