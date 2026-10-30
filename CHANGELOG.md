@@ -144,6 +144,23 @@
   it points, as `cabal` looks for it, rather than under the project with the
   dots and the slash taken off, where it was usually not found and passed
   over. [Issue 294](https://github.com/mrkkrp/tilia/issues/294).
+* A string literal comes out as written wherever it is: its gaps line up
+  under its opening quote in a pattern and in a `WARNING` or `DEPRECATED`
+  message, as they already did in an expression, a rule's name is no longer
+  escaped again, as `"f/∘"` was into `"f/\8728"`, and an `SCC` label
+  written without quotes no longer gains them.
+  [PR 344](https://github.com/mrkkrp/tilia/pull/344).
+* Top-level splices written one after another stay together across a
+  comment or a preprocessor line between them, as standalone `deriving`
+  declarations already did, rather than having blank lines put between
+  them. [PR 344](https://github.com/mrkkrp/tilia/pull/344).
+* An interrupt arriving while a package or a file is read stops the run,
+  rather than being taken for that read failing.
+  [PR 344](https://github.com/mrkkrp/tilia/pull/344).
+* A run reads the build plan once where nothing is missing, and the sources
+  of each dependency and the `.cabal` file of each package of the project
+  once rather than once per component.
+  [PR 344](https://github.com/mrkkrp/tilia/pull/344).
 
 ## Tilia 0.1.2.0
 
