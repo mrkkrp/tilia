@@ -4,7 +4,6 @@ module Tilia.Span
     mkSpan,
     isSingleLine,
     sameLine,
-    blankBetween,
     meets,
     covers,
     zeroWidth,
@@ -52,11 +51,6 @@ isSingleLine s = spanStartLine s == spanEndLine s
 sameLine :: Maybe Span -> Maybe Span -> Bool
 sameLine (Just a) (Just b) = spanEndLine a == spanStartLine b
 sameLine _ _ = False
-
--- | Was there an empty line between the two?
-blankBetween :: Maybe Span -> Maybe Span -> Bool
-blankBetween (Just a) (Just b) = spanStartLine b > spanEndLine a + 1
-blankBetween _ _ = False
 
 -- | Do the two cover any of the same input?
 --

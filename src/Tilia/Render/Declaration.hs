@@ -35,7 +35,6 @@ import Tilia.Render.Pragma
 import Tilia.Render.Signature
 import Tilia.Render.Type
 import Tilia.Source (SourceType (..))
-import Tilia.Span
 import Tilia.Span.Ghc
 
 -- | A run of declarations standing on their own, with blank lines wherever
@@ -120,7 +119,7 @@ groupDecls ctx isSignatureFile (d : ds)
       _ -> False
     belongs previous current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
-        || isDerivingSeries ctx previous current
+        || isSeries ctx previous current
         || relatedDecls d current
         || relatedDecls previous current
 
@@ -132,12 +131,15 @@ isSignatureSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
     not (commentPrintedBetween ctx (spanOf x) (spanOf y))
   _ -> False
 
--- | Two standalone @deriving@ declarations the author ran together.
-isDerivingSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
-isDerivingSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
-  (DerivD{}, DerivD{}) ->
-    not (separatedByBlank ctx (spanOf x) (spanOf y))
+-- | Two standalone @deriving@ declarations, or two splices, the author ran
+-- together.
+isSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
+isSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
+  (DerivD{}, DerivD{}) -> ranTogether
+  (SpliceD{}, SpliceD{}) -> ranTogether
   _ -> False
+  where
+    ranTogether = not (separatedByBlank ctx (spanOf x) (spanOf y))
 
 -- | The kinds of declaration that grouping distinguishes.
 data Kind
@@ -152,7 +154,6 @@ data Kind
   | FamilyDeclaration
   | TypeSynonym
   | PragmaDeclaration
-  | TopLevelSplice
   | DocumentsNext
   | DocumentsPrevious
   | Unremarkable
@@ -181,7 +182,6 @@ declKind = \case
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) -> (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
-  SpliceD _ (SpliceDecl _ _ _) -> (TopLevelSplice, [])
   DocD _ (DocCommentNext _) -> (DocumentsNext, [])
   DocD _ (DocCommentPrev _) -> (DocumentsPrevious, [])
   _ -> (Unremarkable, [])
@@ -192,7 +192,6 @@ relatedDecls :: LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 relatedDecls a b = case (kindA, kindB) of
   (DocumentsNext, _) -> True
   (_, DocumentsPrevious) -> True
-  (TopLevelSplice, TopLevelSplice) -> not (blankBetween (spanOf a) (spanOf b))
   pair | pair `elem` relatedKinds -> shareAName namesA namesB
   _ -> False
   where
