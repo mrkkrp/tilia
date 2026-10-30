@@ -612,9 +612,10 @@ fromSummaries reach modName = \case
 
 -- | One answer from every configuration of a module that counts.
 --
--- A module may declare a fixity in one configuration and a different one in
--- another. Which of them holds depends on how the module is compiled, which
--- is not ours to decide, so disagreement leaves the name unsettled.
+-- A module may declare a fixity in one configuration and a different one, or
+-- none, which is infixl 9, in another. Which of them holds depends on how the
+-- module is compiled, which is not ours to decide, so disagreement leaves
+-- the name unsettled.
 -- Agreement across the ones that count is an answer, and a stronger one
 -- than the blanked text could give.
 --
@@ -648,7 +649,17 @@ agreeing answers =
     declared =
       Map.unionsWith
         (<>)
-        [Map.map pure (establishedFixities a) | a <- toList counted]
+        [ Map.map pure (Map.union (establishedFixities a) (defaulted a))
+        | a <- toList counted
+        ]
+    defaulted a =
+      Map.fromSet
+        (const defaultFixity)
+        ( Set.filter
+            (null . unsettledThrough a)
+            (Set.intersection fixed (certainNames (establishedCertain a)))
+        )
+    fixed = foldMap (Map.keysSet . establishedFixities) counted
     sole (fixity :| rest) =
       if all (== fixity) rest then Just fixity else Nothing
     disagreed = inhabited (Map.keysSet (Map.filter (isNothing . sole) declared))
