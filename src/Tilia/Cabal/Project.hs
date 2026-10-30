@@ -7,6 +7,7 @@ module Tilia.Cabal.Project
     Marker (..),
     markerFile,
     findProjectRoot,
+    startingDirectory,
     cabalFilesIn,
   )
 where
@@ -49,15 +50,10 @@ markerFile = \case
 -- | Walk upwards from a file or directory looking for a project.
 findProjectRoot :: FilePath -> IO (Maybe ProjectRoot)
 findProjectRoot start = quietly Nothing $ do
-  from <- startingDirectory
+  from <- startingDirectory =<< canonicalizePath start
   found <- traverse markersIn (from : ancestorsOf from)
   pure (listToMaybe (concatMap fst found <> concatMap snd found))
   where
-    startingDirectory = do
-      absolute <- canonicalizePath start
-      isDirectory <- doesDirectoryExist absolute
-      pure (if isDirectory then absolute else takeDirectory absolute)
-
     ancestorsOf directory =
       let parent = takeDirectory directory
        in if parent == directory then [] else parent : ancestorsOf parent
@@ -69,6 +65,13 @@ findProjectRoot start = quietly Nothing $ do
         ( [ProjectRoot directory ProjectFile | "cabal.project" `elem` entries],
           [ProjectRoot directory (PackageFile (takeFileName p)) | p <- take 1 packages]
         )
+
+-- | Where a walk upwards from a path starts: the path itself if it names a
+-- directory, else the directory holding it.
+startingDirectory :: FilePath -> IO FilePath
+startingDirectory path = do
+  isDirectory <- quietly False (doesDirectoryExist path)
+  pure (if isDirectory then path else takeDirectory path)
 
 -- | The @.cabal@ files sitting directly in a directory, in order.
 cabalFilesIn :: FilePath -> IO [FilePath]
