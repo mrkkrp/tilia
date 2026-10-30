@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Measure what formatting a fixed sample of modules costs, and compare
 -- what it allocates and the instructions it retires with the record kept
