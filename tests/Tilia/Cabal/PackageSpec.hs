@@ -4,6 +4,8 @@
 -- | Information obtained from @.cabal@ files.
 module Tilia.Cabal.PackageSpec (spec) where
 
+import Data.Either (isRight)
+import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -12,7 +14,11 @@ import System.Directory (createDirectoryIfMissing, removeFile)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-import Tilia.Cabal.Package (PackageProblem (..), newPackageReader)
+import Tilia.Cabal.Package
+  ( PackageProblem (..),
+    newPackageReader,
+    parsePackageDescription,
+  )
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.TestUtils (withFiles)
@@ -20,6 +26,12 @@ import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
+  describe "a .cabal file" $
+    it "parses whatever version of the format it declares, up to the newest" $
+      for_ ["2.4", "3.0", "3.4", "3.8", "3.12", "3.14", "3.16", "3.18"] $ \v ->
+        let held = "cabal-version: " <> v <> "\nname: t\nversion: 0\nlibrary\n"
+         in parsePackageDescription "t.cabal" held `shouldSatisfy` isRight
+
   describe "the component a file belongs to" $ do
     it "is the one whose source directory holds it" $
       inPackage twoComponents ["src", "test"] $ \root -> do

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -66,15 +65,11 @@ import Distribution.PackageDescription
     unUnqualComponentName,
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
-import Distribution.Parsec (showPError, simpleParsec)
+import Distribution.Parsec (PErrorWithSource (..), showPError, simpleParsec)
 import Distribution.System (buildArch, buildOS)
 import Distribution.Types.BuildInfo (usedExtensions)
-import Distribution.Types.CondTree (mapTreeConstrs, simplifyCondTree)
-#if MIN_VERSION_Cabal_syntax(3, 14, 0)
+import Distribution.Types.CondTree (simplifyCondTree)
 import Distribution.Utils.Path (SymbolicPathX, getSymbolicPath)
-#else
-import Distribution.Utils.Path (getSymbolicPath)
-#endif
 import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
@@ -282,7 +277,7 @@ parsePackageDescription cabalFile bytes =
       Left (PackageMalformed cabalFile (fmap said (NE.toList complaints)))
     Right description -> Right description
   where
-    said = T.pack . showPError cabalFile
+    said = T.pack . showPError cabalFile . perror
 
 -- | The value a build of a package on this platform gives each variable its
 -- conditions ask about.
@@ -444,17 +439,17 @@ data BranchSections = BranchSections
   }
 
 -- | Every branch of a library.
-libraryBranches :: CondTree ConfVar c Library -> [BranchSections]
+libraryBranches :: CondTree ConfVar Library -> [BranchSections]
 libraryBranches = branchesOf $ \l ->
   declaring (libBuildInfo l) (exposedModules l <> signatures l) []
 
 -- | Every branch of an executable.
-executableBranches :: CondTree ConfVar c Executable -> [BranchSections]
+executableBranches :: CondTree ConfVar Executable -> [BranchSections]
 executableBranches = branchesOf $ \e ->
   declaring (buildInfo e) [] [entryPoint (modulePath e)]
 
 -- | Every branch of a test suite.
-suiteBranches :: CondTree ConfVar c TestSuite -> [BranchSections]
+suiteBranches :: CondTree ConfVar TestSuite -> [BranchSections]
 suiteBranches = branchesOf $ \s ->
   case testInterface s of
     TestSuiteExeV10 _ path -> declaring (testBuildInfo s) [] [entryPoint path]
@@ -462,7 +457,7 @@ suiteBranches = branchesOf $ \s ->
     _ -> declaring (testBuildInfo s) [] []
 
 -- | Every branch of a benchmark.
-benchmarkBranches :: CondTree ConfVar c Benchmark -> [BranchSections]
+benchmarkBranches :: CondTree ConfVar Benchmark -> [BranchSections]
 benchmarkBranches = branchesOf $ \b ->
   case benchmarkInterface b of
     BenchmarkExeV10 _ path -> declaring (benchmarkBuildInfo b) [] [entryPoint path]
@@ -472,13 +467,12 @@ benchmarkBranches = branchesOf $ \b ->
 branchesOf ::
   (Semigroup a) =>
   (a -> ComponentSection) ->
-  CondTree ConfVar c a ->
+  CondTree ConfVar a ->
   [BranchSections]
 branchesOf f root = go mempty root
   where
     built valueOf =
-      sectionInfo . f . snd $
-        simplifyCondTree valueOf (mapTreeConstrs (const ()) root)
+      sectionInfo (f (simplifyCondTree valueOf root))
     go inherited node =
       let own = f (condTreeData node)
        in BranchSections inherited own built
@@ -536,16 +530,8 @@ joined a b
   | otherwise = a </> b
 
 -- | The path of an entry point.
---
--- Cabal 3.14 made a component's entry point a symbolic path; before that
--- it was already the plain path we want.
-#if MIN_VERSION_Cabal_syntax(3, 14, 0)
 entryPoint :: SymbolicPathX allowAbsolute from to -> FilePath
 entryPoint = normalise . getSymbolicPath
-#else
-entryPoint :: FilePath -> FilePath
-entryPoint = normalise
-#endif
 
 -- | The setup script of a package, beside its @.cabal@ file.
 --
