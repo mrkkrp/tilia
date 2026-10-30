@@ -11,6 +11,7 @@ module Tilia.Fixity.Debug
 where
 
 import Data.Choice (Choice)
+import Data.List (nub, sortOn)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -138,13 +139,12 @@ fixityNotes implicitPrelude resolve scope configurations = do
         )
 
     here =
-      [ (op, fixity)
-      | (OpName op, (fixity, DeclaredHere)) <- Map.toList declaredHere
-      ]
-    declaredHere =
-      Map.union
-        (reachUnqualified (scopeInTerms scope))
-        (reachUnqualified (scopeInTypes scope))
+      nub . sortOn fst $
+        [ (op, fixity)
+        | reach <- [scopeInTerms scope, scopeInTypes scope],
+          (OpName op, (fixity, DeclaredHere)) <-
+            Map.toList (reachUnqualified reach)
+        ]
 
     aboutOperator (namespace, (qualifier, op)) =
       OperatorNote
