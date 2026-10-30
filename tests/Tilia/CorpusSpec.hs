@@ -83,11 +83,13 @@ againstLists listed run examples =
   parallel $ for_ examples $ \example ->
     it (exampleName example) $ do
       result <- run example
-      case verdict (Set.member (exampleName example) declines) result of
+      let holds = Set.member (exampleName example)
+      case verdict (holds unreadable) (holds declines) result of
         Passes -> pure ()
         Fails why -> expectationFailure (T.unpack why)
         Reserved why -> pendingWith (T.unpack why)
   where
+    unreadable = Set.fromList (expectUnreadable listed)
     declines = Set.fromList (expectDeclined listed)
 
 -- | A corpus checked against a generated record of what it does.
@@ -247,11 +249,16 @@ data Verdict
 
 -- | What is to be said about what one example produced.
 verdict ::
+  -- | Does the corpus say this one cannot be read?
+  Bool ->
   -- | Does the corpus say this one should be declined?
   Bool ->
   Result ->
   Verdict
-verdict declines (Result outcome why _) = case outcome of
+verdict True _ (Result outcome _ _)
+  | outcome `elem` [DoesNotParse, NotUtf8] = Passes
+  | otherwise = Fails "the corpus says this cannot be read, and it was read"
+verdict False declines (Result outcome why _) = case outcome of
   Broken -> Fails why
   NotUtf8 -> Fails (unlisted "is not UTF-8")
   DoesNotParse -> Fails (unlisted ("does not parse, at " <> why))
