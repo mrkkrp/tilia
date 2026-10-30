@@ -413,7 +413,8 @@ ormoluRecordBraces =
     "declaration" </> "value" </> "function" </> "record" </> "updaters.hs",
     "declaration" </> "value" </> "function" </> "record" </> "wildcards.hs",
     "declaration" </> "value" </> "pattern-synonyms" </> "bidirectional.hs",
-    "declaration" </> "value" </> "pattern-synonyms" </> "unidirectional.hs"
+    "declaration" </> "value" </> "pattern-synonyms" </> "unidirectional.hs",
+    "declaration" </> "value" </> "function" </> "pragmas.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.
