@@ -744,7 +744,7 @@ cmdBody ctx site = \case
           <> breakOrSpace
           <> indent
             ( txt (arrowText arrow rightToLeft)
-                <> attach (exprHangs (unLoc input)) (hsExpr ctx writtenSecond)
+                <> attachBody (ExprBody ctx plainSite writtenSecond)
             )
   HsCmdArrForm _ form Prefix cmds ->
     bananaWith (closingFor site) $
