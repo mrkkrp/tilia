@@ -78,9 +78,7 @@ docBody ctx style doc@(L l str) =
     Just written ->
       ( maybe id located (spanOfSrcSpan l)
           $ align
-          $ sepBy
-            (verbatimBreak AtIndent TrimWhitespace)
-            (fmap txt (NE.toList written)),
+          $ verbatimLines AtIndent TrimWhitespace (NE.toList written),
         selfClosing written
       )
     Nothing
@@ -105,7 +103,7 @@ docBody ctx style doc@(L l str) =
       align $
         txt (blockOpener style)
           <> space
-          <> sepBy (verbatimBreak AtIndent TrimWhitespace) (fmap txt written')
+          <> verbatimLines AtIndent TrimWhitespace written'
           <> space
           <> txt "-}"
     asBlock = writtenAsBlock ctx doc

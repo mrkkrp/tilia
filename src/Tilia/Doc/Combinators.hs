@@ -16,6 +16,7 @@ module Tilia.Doc.Combinators
     LineStart (..),
     TrailingWhitespace (..),
     verbatimBreak,
+    verbatimLines,
     verbatim,
     emptyAnchor,
     insideBrackets,
@@ -126,12 +127,13 @@ blankLine = hardBreak <> hardBreak
 verbatimBreak :: LineStart -> TrailingWhitespace -> Doc
 verbatimBreak = DVerbatimBreak
 
+-- | Lines of text reproduced, each break between them a 'verbatimBreak'.
+verbatimLines :: LineStart -> TrailingWhitespace -> [Text] -> Doc
+verbatimLines start trailing = sepBy (verbatimBreak start trailing) . fmap txt
+
 -- | Text reproduced exactly, line breaks and all.
 verbatim :: Text -> Doc
-verbatim =
-  sepBy (verbatimBreak AtMargin KeepWhitespace)
-    . fmap txt
-    . T.splitOn "\n"
+verbatim = verbatimLines AtMargin KeepWhitespace . T.splitOn "\n"
 
 -- | An empty anchor so that comments can attach to it in situations when
 -- nothing more substantial is present but the position is such that it
