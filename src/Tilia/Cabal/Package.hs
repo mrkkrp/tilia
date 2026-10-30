@@ -13,10 +13,9 @@ module Tilia.Cabal.Package
     newPackageReader,
     ComponentSection (..),
     BranchSections,
-    libraryBranches,
-    executableBranches,
-    suiteBranches,
-    benchmarkBranches,
+    Kind (..),
+    packageOf,
+    packageComponents,
     addedSources,
     sourceExtensions,
     isDeclaredModule,
@@ -28,6 +27,7 @@ where
 import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Data.ByteString qualified as BS
 import Data.Either (rights)
+import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
 import Data.IORef
 import Data.List (sortOn)
@@ -53,9 +53,13 @@ import Distribution.PackageDescription
     Executable (..),
     GenericPackageDescription (..),
     Library (..),
+    PackageDescription (..),
     PackageFlag (..),
     TestSuite (..),
     TestSuiteInterface (..),
+    pkgName,
+    unPackageName,
+    unUnqualComponentName,
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec (showPError, simpleParsec)
@@ -335,13 +339,31 @@ sectionsInForce valueOf described =
 -- | Every branch of every component of a package, in the order declared.
 packageBranches :: GenericPackageDescription -> [BranchSections]
 packageBranches described =
+  [b | (_, _, branches) <- packageComponents described, b <- branches]
+
+-- | The kinds of component a @.cabal@ file can declare, and the setup
+-- script beside it.
+data Kind = Lib | Exe | Test | Bench | Setup
+  deriving (Eq, Ord, Show)
+
+-- | Every component of a package, in the order declared: its kind, its
+-- name, which for the main library is the package's own, and its branches.
+packageComponents :: GenericPackageDescription -> [(Kind, Text, [BranchSections])]
+packageComponents described =
   concat
-    [ foldMap libraryBranches (condLibrary described),
-      concatMap (libraryBranches . snd) (condSubLibraries described),
-      concatMap (executableBranches . snd) (condExecutables described),
-      concatMap (suiteBranches . snd) (condTestSuites described),
-      concatMap (benchmarkBranches . snd) (condBenchmarks described)
+    [ [(Lib, packageOf described, libraryBranches t) | t <- toList (condLibrary described)],
+      [(Lib, nameOf n, libraryBranches t) | (n, t) <- condSubLibraries described],
+      [(Exe, nameOf n, executableBranches t) | (n, t) <- condExecutables described],
+      [(Test, nameOf n, suiteBranches t) | (n, t) <- condTestSuites described],
+      [(Bench, nameOf n, benchmarkBranches t) | (n, t) <- condBenchmarks described]
     ]
+  where
+    nameOf = T.pack . unUnqualComponentName
+
+-- | The name of a package.
+packageOf :: GenericPackageDescription -> Text
+packageOf =
+  T.pack . unPackageName . pkgName . package . packageDescription
 
 -- | Every module any branch of a package declares, with where it would be
 -- written relative to the package, without an extension.
