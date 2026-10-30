@@ -20,7 +20,7 @@ module Tilia.Fixity.Plan
 where
 
 import Control.Applicative ((<|>))
-import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent (MVar, getNumCapabilities)
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
@@ -53,7 +53,7 @@ import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (HiFile, primopFixities)
 import Tilia.Fixity.Interface
 import Tilia.Fixity.PackageDb
-import Tilia.Memo (memoized, newFlights, newMemo)
+import Tilia.Memo (Flights, memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of, sha256OfFile, tshow)
@@ -136,17 +136,13 @@ newResolverWith routes cache installed tarballs packageReader plan = do
   answersRead <- newMemo
   extensionsRead <- newMemo
   archivesRead <- newMemo
-  interfacesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
-  let interfaceOf modName =
-        memoized flights interfacesRead Nothing modName $
-          case Map.lookup modName primopFixities of
-            Just declared -> pure (Just (asInterface declared))
-            Nothing -> case Map.lookup modName interfaces of
-              Nothing -> pure Nothing
-              Just (_, path) ->
-                bracket_ (waitQSem reading) (signalQSem reading) $
-                  readInterface modName path
+  interfaceOf <- interfaceMemo flights $ \modName ->
+    case Map.lookup modName interfaces of
+      Nothing -> pure Nothing
+      Just (_, path) ->
+        bracket_ (waitQSem reading) (signalQSem reading) $
+          readInterface modName path
   let workings =
         Workings
           { wkRoutes = routes,
@@ -202,6 +198,22 @@ newResolverWith routes cache installed tarballs packageReader plan = do
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty}
 
+-- | A module's interface, read once, with the primops' fixities standing
+-- in for that of @GHC.Prim@, which has no file.
+interfaceMemo ::
+  -- | Who is working out what, across the resolver's tables.
+  MVar Flights ->
+  -- | How to read a module's interface.
+  (Text -> IO (Maybe Interface)) ->
+  IO (Text -> IO (Maybe Interface))
+interfaceMemo flights read' = do
+  interfacesRead <- newMemo
+  pure $ \modName ->
+    memoized flights interfacesRead Nothing modName $
+      case Map.lookup modName primopFixities of
+        Just declared -> pure (Just (asInterface declared))
+        Nothing -> read' modName
+
 -- | A 'Resolver' that reads every module out of the interface given for it,
 -- for a program that has compiled the project and holds its interfaces.
 newResolverFrom ::
@@ -210,15 +222,9 @@ newResolverFrom ::
   IO Resolver
 newResolverFrom given = do
   flights <- newFlights
-  interfacesRead <- newMemo
   answersRead <- newMemo
-  let interfaceOf modName =
-        memoized flights interfacesRead Nothing modName $
-          case Map.lookup modName primopFixities of
-            Just declared -> pure (Just (asInterface declared))
-            Nothing ->
-              (either (const Nothing) Just . fromHiFile modName =<<)
-                <$> given modName
+  interfaceOf <- interfaceMemo flights $ \modName ->
+    (either (const Nothing) Just . fromHiFile modName =<<) <$> given modName
   pure
     Resolver
       { askModule = \modName ->
