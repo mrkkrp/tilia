@@ -26,6 +26,7 @@ import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
 import Control.Monad (filterM, join)
 import Data.Choice (Choice, fromBool, pattern Do)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -614,7 +615,7 @@ agreeing answers =
 -- | Where each module that lives in a directory rather than an archive is.
 localModules :: BuildPlan -> IO (Map Text FilePath)
 localModules plan =
-  Map.unions <$> traverse forPackage (concatMap directoryOf (bpPackages plan))
+  Map.unions <$> traverse forPackage (nubOrd (concatMap directoryOf (bpPackages plan)))
   where
     directoryOf p = case ppSource p of
       LocalPackage dir -> [dir]
