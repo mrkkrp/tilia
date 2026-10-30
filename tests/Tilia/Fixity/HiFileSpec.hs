@@ -83,7 +83,9 @@ withPlan plan = do
               shown <-
                 maybe Nothing (parseInterface m)
                   <$> readProgramOutput "ghc" ["--show-iface", path]
-              let found = [(m, x) | Just s <- [shown], x <- disagreements declared m d s]
+              let found = case shown of
+                    Nothing -> [(m, "ghc --show-iface gave nothing to compare")]
+                    Just s -> [(m, x) | x <- disagreements declared m d s]
               found <$ evaluate (length found)
         _ -> pure []
 
