@@ -14,8 +14,8 @@ where
 import Control.Monad.ST (ST, runST)
 import Data.Array.ST (STUArray, newArray, readArray, writeArray)
 import Data.Array.Unboxed (Array, UArray, listArray, (!))
+import Data.List (unfoldr)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Palette (Color (..), Palette, paint)
@@ -57,7 +57,8 @@ diffInFull palette path =
     before = "a/" <> T.pack path
     after = "b/" <> T.pack path
 
--- | One line of the comparison, with the number it has on each side.
+-- | One line of the comparison, with the number it has on each side, and
+-- with the newline it ends in, if it ends in one.
 data Line = Line !Mark !Int !Int !Text
 
 -- | A unified diff, with whatever heading the caller wants.
@@ -73,9 +74,6 @@ unified ::
   Text ->
   Text
 unified palette above (beforeName, afterName) before after
-  | null hunks,
-    before /= after =
-      "(the two differ only in how they end their lines)"
   | null hunks =
       "(the two are identical as text, so the difference is in something\
       \ the text does not show)"
@@ -88,7 +86,7 @@ unified palette above (beforeName, afterName) before after
 
     body = concatMap render hunks
 
-    render range = hunkHeading range : fmap line (slice range)
+    render range = hunkHeading range : concatMap line (slice range)
 
     hunkHeading range =
       paint palette Meta $
@@ -102,10 +100,15 @@ unified palette above (beforeName, afterName) before after
           (l : _) -> tshow (which l) <> "," <> tshow n
           [] -> "0,0"
 
-    line (Line mark _ _ text) = case mark of
-      Context -> paint palette Kept (" " <> text)
-      Removed -> paint palette Gone ("-" <> text)
-      Added -> paint palette New ("+" <> text)
+    line (Line mark _ _ text) = case T.stripSuffix "\n" text of
+      Just ended -> [marked ended]
+      Nothing ->
+        [marked text, paint palette Meta "\\ No newline at end of file"]
+      where
+        marked = case mark of
+          Context -> paint palette Kept . (" " <>)
+          Removed -> paint palette Gone . ("-" <>)
+          Added -> paint palette New . ("+" <>)
 
     slice (from, to) = take (to - from + 1) (drop from lines')
 
@@ -118,8 +121,12 @@ unified palette above (beforeName, afterName) before after
     changed = [i | (i, Line m _ _ _) <- zip [0 ..] lines', m /= Context]
     total = length lines'
     lines' = tag (split before) (split after)
-    split = fmap withoutReturn . T.splitOn "\n"
-    withoutReturn l = fromMaybe l (T.stripSuffix "\r" l)
+    split = unfoldr $ \t ->
+      if T.null t
+        then Nothing
+        else
+          let (l, rest) = T.breakOn "\n" t
+           in Just (l <> T.take 1 rest, T.drop 1 rest)
 
 -- | How many unchanged lines to show either side of a change.
 margin :: Int
