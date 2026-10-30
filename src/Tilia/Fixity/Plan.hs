@@ -409,7 +409,7 @@ buildModuleIndex cache installed tarballs =
     one (p, tarball) = do
       let key = cacheKey p
       let exposed = Map.lookup (ppName p, ppVersion p) byNameVersion
-      held <- fromCabalFile cache key tarball p
+      held <- fromCabalFile cache tarball p
       let modules = case (exposed, held) of
             (Nothing, Nothing) -> []
             (a, b) -> concat (catMaybes [a, b])
@@ -493,9 +493,6 @@ fromInterface interfaceOf modName =
 fromCabalFile ::
   -- | Where to remember the answer.
   Cache ->
-  -- | What to file it under. Carries the hash the tarball was verified
-  -- against, so a changed tarball misses rather than matching stale data.
-  Text ->
   -- | The tarball to read the @.cabal@ file out of.
   FilePath ->
   -- | The package it belongs to, consulted for the hash to verify against.
@@ -503,11 +500,13 @@ fromCabalFile ::
   -- | The modules it holds, or 'Nothing' if the tarball is absent, fails
   -- verification, or holds no @.cabal@ file.
   IO (Maybe [Text])
-fromCabalFile cache key tarball p =
+fromCabalFile cache tarball p =
   recalled (cachedModules cache key) (storeModules cache key) $
     verified p tarball >>= \case
       False -> pure Nothing
       True -> packageModules tarball
+  where
+    key = cacheKey p
 
 -- | Does the tarball hash to what the plan says it should?
 verified :: PlanPackage -> FilePath -> IO Bool
