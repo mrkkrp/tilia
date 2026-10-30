@@ -7,6 +7,7 @@ module Tilia.Cpp.Macros
   ( Macros (..),
     guardHolds,
     impliedBy,
+    isNameChar,
   )
 where
 
@@ -329,5 +330,6 @@ punctuation = ["&&", "||", "==", "!=", "<=", ">=", "(", ")", ",", "!", "<", ">"]
 isNameStart :: Char -> Bool
 isNameStart c = isAsciiLower c || isAsciiUpper c || c == '_'
 
+-- | Can a character be part of a preprocessor name?
 isNameChar :: Char -> Bool
 isNameChar c = isNameStart c || isDigit c
