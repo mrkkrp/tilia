@@ -178,6 +178,32 @@ spec = do
           Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
+    it "expands a component with more than one star in it"
+      $ withProject
+        [ ("cabal.project", "packages: pkgs/*-*\n"),
+          ("pkgs/one-a/one.cabal", package "one" "src"),
+          ("pkgs/two-b/two.cabal", package "two" "src"),
+          ("pkgs/three/three.cabal", package "three" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
+
+    it "expands a double star to any depth, none included"
+      $ withProject
+        [ ("cabal.project", "packages: pkgs/**/*.cabal\n"),
+          ("pkgs/one.cabal", package "one" "src"),
+          ("pkgs/a/two.cabal", package "two" "src"),
+          ("pkgs/a/b/three.cabal", package "three" "src"),
+          ("other/four.cabal", package "four" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs ->
+            sort (fmap componentPackage cs) `shouldBe` ["one", "three", "two"]
+
     it "passes over a package a comment has taken out"
       $ withProject
         [ ("cabal.project", "packages:\n  one\n  -- two\n"),
