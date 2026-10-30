@@ -5,11 +5,14 @@
 -- | The on-disk cache of what was read out of a package.
 module Tilia.Fixity.CacheSpec (spec) where
 
+import Control.Monad (replicateM, replicateM_)
 import Data.Choice (pattern Do, pattern Don't)
+import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 import System.Directory (getModificationTime, listDirectory, setModificationTime)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
@@ -18,6 +21,7 @@ import Tilia.Fixity
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
 import Tilia.TestUtils (underAsciiLocale, withEnvironment)
+import Tilia.Utils (inParallel)
 
 spec :: Spec
 spec = do
@@ -145,6 +149,23 @@ spec = do
         storeEstablished cache "thing-1.0" "M" (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
         cachedEstablished cache "thing-1.0" "M"
           `shouldReturn` Just (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
+
+      it "gives back no half of an answer two writers store at once" $ \cache -> do
+        let answers =
+              [ declaring
+                  [ ((InTerms, OpName (T.replicate n "+")), Fixity LeftAssoc k)
+                  | n <- [1 .. 200]
+                  ]
+              | k <- [1, 2]
+              ]
+            store = storeEstablished cache "thing-1.0" "M"
+            storing established = [] <$ replicateM_ 200 (store established)
+            recalling = replicateM 200 (cachedEstablished cache "thing-1.0" "M")
+        traverse_ store answers
+        recalled' <-
+          concat
+            <$> inParallel id (fmap storing answers <> [recalling, recalling])
+        filter (`notElem` fmap Just answers) recalled' `shouldBe` []
 
       it "round-trips the members of each name, a name without members among them" $ \cache -> do
         let established =

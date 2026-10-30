@@ -28,7 +28,9 @@ module Tilia.Fixity.Cache
   )
 where
 
+import Control.Exception (bracketOnError)
 import Control.Monad (join)
+import Data.ByteString qualified as BS
 import Data.Choice (Choice, isFalse)
 import Data.Foldable (toList, traverse_)
 import Data.List.NonEmpty (NonEmpty)
@@ -39,6 +41,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Time (UTCTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
@@ -47,12 +50,14 @@ import System.Directory
     createDirectoryIfMissing,
     getModificationTime,
     getXdgDirectory,
+    removeFile,
     renameFile,
   )
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath (takeDirectory, takeFileName, (</>))
+import System.IO (hClose, openBinaryTempFile)
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
-import Tilia.Utils (quietly, readUtf8File, tshow, writeUtf8File)
+import Tilia.Utils (quietly, readUtf8File, tshow)
 
 -- | Where cached answers are kept together with a token unique to this
 -- build plan and environment, or nowhere, in which case nothing is
@@ -591,13 +596,19 @@ readIfPresent place parse = case place of
   Nothing -> pure Nothing
   Just path -> fmap parse <$> readUtf8File path
 
--- | Write via a temporary file and a rename, making the directory if need
--- be.
+-- | Write via a temporary file of this write's own and a rename, making
+-- the directory if need be.
 writeAtomically :: Maybe FilePath -> Text -> IO ()
 writeAtomically place contents = case place of
   Nothing -> pure ()
   Just path -> quietly () $ do
-    createDirectoryIfMissing True (takeDirectory path)
-    let temporary = path <> ".tmp"
-    writeUtf8File temporary contents
-    renameFile temporary path
+    let directory = takeDirectory path
+    createDirectoryIfMissing True directory
+    bracketOnError
+      (openBinaryTempFile directory (takeFileName path <> ".tmp"))
+      (\(temporary, h) -> hClose h >> removeFile temporary)
+      ( \(temporary, h) -> do
+          BS.hPut h (T.encodeUtf8 contents)
+          hClose h
+          renameFile temporary path
+      )
