@@ -73,18 +73,19 @@ main :: IO ()
 main = do
   traverse_ transliterateUnprintable [stdout, stderr]
   opts <- customExecParser (prefs (columns lineWidth)) optsParserInfo
-  palette <- paletteFor
+  out <- paletteFor stdout
+  err <- paletteFor stderr
   let cmd = optCommand opts
   outcomes <- case cmd of
     Inplace target -> do
-      outcomes <- traverse writeBack =<< formatComponents palette opts target
-      outcomes <$ printReport (inplaceReport palette outcomes)
+      outcomes <- traverse writeBack =<< formatComponents err opts target
+      outcomes <$ printReport (inplaceReport out err outcomes)
     Check target -> do
-      outcomes <- formatComponents palette opts target
-      outcomes <$ printReport (checkReport palette outcomes)
+      outcomes <- formatComponents err opts target
+      outcomes <$ printReport (checkReport out err outcomes)
     ForEditor file -> do
-      (input, outcomes) <- formatStdin palette opts file
-      outcomes <$ printReport (stdinReport palette input outcomes)
+      (input, outcomes) <- formatStdin err opts file
+      outcomes <$ printReport (stdinReport err input outcomes)
   exitWith cmd outcomes
 
 -- | Format the files of the components a target asks for.

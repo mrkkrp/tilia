@@ -16,7 +16,8 @@ import Data.Text.IO qualified as T
 import GHC.Clock (getMonotonicTime)
 import System.Directory (getModificationTime)
 import System.FilePath ((</>))
-import System.IO.Temp (withSystemTempDirectory)
+import System.IO (Handle, IOMode (ReadWriteMode), withFile)
+import System.IO.Temp (withSystemTempDirectory, withSystemTempFile)
 import Test.Hspec
 import Tilia.Cabal.Package (PackageProblem (..))
 import Tilia.Cpp (CppError (..))
@@ -28,8 +29,9 @@ import Tilia.Fixity
     Unknown (..),
   )
 import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
-import Tilia.Palette (Color (Bad), Palette (..))
+import Tilia.Palette (Color (Bad), Palette (..), paletteFor)
 import Tilia.Run
+import Tilia.TestUtils (withEnvironment)
 import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo, writeUtf8File)
 
 spec :: Spec
@@ -88,12 +90,13 @@ spec = do
 
   describe "the summary an inplace run prints" $ do
     it "counts the files it formatted, indented, by extension" $
-      reportOut (inplaceReport Plain [("A.hs", Unchanged), ("B.hs", Changed "a" "b")])
+      reportOut (inplaceReport Plain Plain [("A.hs", Unchanged), ("B.hs", Changed "a" "b")])
         `shouldBe` "  [✓] Formatted 2 .hs files\n"
 
     it "counts each extension on its own line, in a settled order" $
       reportOut
         ( inplaceReport
+            Plain
             Plain
             [("C.hsig", Unchanged), ("A.hs", Unchanged), ("B.hs-boot", Unchanged)]
         )
@@ -104,15 +107,15 @@ spec = do
           ]
 
     it "says file rather than files when there is one" $
-      reportOut (inplaceReport Plain [("A.hs", Unchanged)])
+      reportOut (inplaceReport Plain Plain [("A.hs", Unchanged)])
         `shouldBe` "  [✓] Formatted 1 .hs file\n"
 
     it "counts neither a refusal nor a failure among the formatted" $
-      reportOut (inplaceReport Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
+      reportOut (inplaceReport Plain Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
         `shouldBe` "  [✓] Formatted 1 .hs file\n"
 
     it "says nothing at all about a run with no files" $
-      inplaceReport Plain [] `shouldBe` Report "" []
+      inplaceReport Plain Plain [] `shouldBe` Report "" []
 
   describe "the files a run did not format" $ do
     let mixed =
@@ -122,35 +125,35 @@ spec = do
           ]
 
     it "tallies refusals and failures apart, and puts refusals first" $
-      filter (T.isInfixOf "] ") (reportErr (inplaceReport Plain mixed))
+      filter (T.isInfixOf "] ") (reportErr (inplaceReport Plain Plain mixed))
         `shouldBe` [ "  [=] Declined 1 .hs file",
                      "  [=] Declined 1 .hs-boot file",
                      "  [✗] Failed 1 .hs file"
                    ]
 
     it "gives a reason for every one of them" $
-      length (filter opensAReason (reportErr (inplaceReport Plain mixed)))
+      length (filter opensAReason (reportErr (inplaceReport Plain Plain mixed)))
         `shouldBe` 3
 
     it "says what a file that would not settle did" $
       reportErr
-        (inplaceReport Plain [("A.hs", Failed (NotIdempotent "A.hs" "line 12 differs"))])
+        (inplaceReport Plain Plain [("A.hs", Failed (NotIdempotent "A.hs" "line 12 differs"))])
         `shouldSatisfy` any (T.isInfixOf "A.hs is not idempotent: line 12 differs")
 
     it "names the file in the reason, once" $
-      reportErr (inplaceReport Plain mixed)
+      reportErr (inplaceReport Plain Plain mixed)
         `shouldSatisfy` any (T.isInfixOf "cannot read a.hs: no such file")
 
     it "orders the reasons by file, not by arrival" $
-      reportErr (inplaceReport Plain mixed)
-        `shouldBe` reportErr (inplaceReport Plain (reverse mixed))
+      reportErr (inplaceReport Plain Plain mixed)
+        `shouldBe` reportErr (inplaceReport Plain Plain (reverse mixed))
 
     it "opens every case with a bullet" $
-      filter opensAReason (reportErr (inplaceReport Plain mixed))
+      filter opensAReason (reportErr (inplaceReport Plain Plain mixed))
         `shouldSatisfy` all (T.isPrefixOf "    · ")
 
     it "lines a wrapped case up with the text of its bullet" $
-      reportErr (inplaceReport Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 20 "and more words ")))])
+      reportErr (inplaceReport Plain Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 20 "and more words ")))])
         `shouldSatisfy` \case
           (_tallyLine : opening : continuation : _) ->
             T.isPrefixOf "    · " opening
@@ -158,56 +161,57 @@ spec = do
           _ -> False
 
     it "lays an unsettled operator at the door of the run, not of the module" $
-      flattened (inplaceReport Plain [("A.hs", missing "Criterion.Main")])
+      flattened (inplaceReport Plain Plain [("A.hs", missing "Criterion.Main")])
         `shouldSatisfy` T.isInfixOf
           "the fixity of <|> may be declared in Criterion.Main, which this run could not read"
 
     it "counts the modules when the answer could be in more than one" $
-      flattened (inplaceReport Plain [("A.hs", missingIn ["Criterion.Main", "Test.Tasty"])])
+      flattened (inplaceReport Plain Plain [("A.hs", missingIn ["Criterion.Main", "Test.Tasty"])])
         `shouldSatisfy` T.isInfixOf
           "may be declared in Criterion.Main or Test.Tasty, neither of which this run could read"
 
     it "names the module reading stopped at, not only the import above it" $
       flattened
-        (inplaceReport Plain [("A.hs", missingThrough [ModuleChain ("Test.Hspec" :| ["Test.QuickCheck.Property"])])])
+        (inplaceReport Plain Plain [("A.hs", missingThrough [ModuleChain ("Test.Hspec" :| ["Test.QuickCheck.Property"])])])
         `shouldSatisfy` T.isInfixOf
           "may be declared in Test.Hspec → Test.QuickCheck.Property, which this run could not read"
 
     it "gives one answer once however many operators share it" $
-      flattened (inplaceReport Plain [("A.hs", missingTwice "Criterion.Main")])
+      flattened (inplaceReport Plain Plain [("A.hs", missingTwice "Criterion.Main")])
         `shouldSatisfy` T.isInfixOf
           "the fixities of <|> and <+> may be declared in Criterion.Main, which this run could not read"
 
     it "puts a comma before the and once there are three of them" $
-      flattened (inplaceReport Plain [("A.hs", missingAll ["<|>", "<+>", "<*>"] "Criterion.Main")])
+      flattened (inplaceReport Plain Plain [("A.hs", missingAll ["<|>", "<+>", "<*>"] "Criterion.Main")])
         `shouldSatisfy` T.isInfixOf "the fixities of <|>, <+>, and <*> may be declared in"
 
     it "leaves a pair without one" $
-      flattened (inplaceReport Plain [("A.hs", missingAll ["<|>", "<+>"] "Criterion.Main")])
+      flattened (inplaceReport Plain Plain [("A.hs", missingAll ["<|>", "<+>"] "Criterion.Main")])
         `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> may be declared in"
 
     it "counts each answer's operators rather than the file's" $
-      flattened (inplaceReport Plain [("A.hs", twoAnswers)])
+      flattened (inplaceReport Plain Plain [("A.hs", twoAnswers)])
         `shouldSatisfy` T.isInfixOf
           "the fixity of <|> may be declared in Criterion.Main, which this run \
           \could not read, and the fixity of <+> is infixl 6 in Left but infixr 5 \
           \in Right"
 
     it "names the imports that disagree and what each brings" $
-      flattened (inplaceReport Plain [("A.hs", about "<+>")])
+      flattened (inplaceReport Plain Plain [("A.hs", about "<+>")])
         `shouldSatisfy` T.isInfixOf "the fixity of <+> is infixl 6 in Left but infixr 5 in Right"
 
     it "gathers the imports that agree with one another" $
-      flattened (inplaceReport Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Middle", Fixity LeftAssoc 6)]))])
+      flattened (inplaceReport Plain Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Middle", Fixity LeftAssoc 6)]))])
         `shouldSatisfy` T.isInfixOf "is infixl 6 in Left and Middle but infixr 5 in Right"
 
     it "lists three fixities the way it lists three of anything" $
-      flattened (inplaceReport Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Third", Fixity NoAssoc 4)]))])
+      flattened (inplaceReport Plain Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Third", Fixity NoAssoc 4)]))])
         `shouldSatisfy` T.isInfixOf "is infixl 6 in Left, infixr 5 in Right, and infix 4 in Third"
 
     it "gives one disagreement once however many operators share it" $
       flattened
         ( inplaceReport
+            Plain
             Plain
             [ ( "A.hs",
                 Declined
@@ -223,27 +227,27 @@ spec = do
         `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> are infixl 6 in Left but infixr 5 in Right"
 
     it "keeps all of it off the stream the summary goes to" $
-      reportOut (inplaceReport Plain mixed) `shouldBe` ""
+      reportOut (inplaceReport Plain Plain mixed) `shouldBe` ""
 
     it "says the same about them in either command" $
-      reportErr (checkReport Plain mixed) `shouldBe` reportErr (inplaceReport Plain mixed)
+      reportErr (checkReport Plain Plain mixed) `shouldBe` reportErr (inplaceReport Plain Plain mixed)
 
   describe "what a check run prints" $ do
     it "shows a diff for a file that would change" $
-      reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
+      reportOut (checkReport Plain Plain [("A.hs", Changed "one\n" "two\n")])
         `shouldSatisfy` T.isInfixOf "--- a/A.hs"
 
     it "heads it the way git heads one" $
-      reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
+      reportOut (checkReport Plain Plain [("A.hs", Changed "one\n" "two\n")])
         `shouldSatisfy` T.isInfixOf "diff --git a/A.hs b/A.hs"
 
     it "shows the removal and the addition" $ do
-      let shown = reportOut (checkReport Plain [("A.hs", Changed "one\n" "two\n")])
+      let shown = reportOut (checkReport Plain Plain [("A.hs", Changed "one\n" "two\n")])
       shown `shouldSatisfy` T.isInfixOf "-one"
       shown `shouldSatisfy` T.isInfixOf "+two"
 
     it "says nothing on standard output about a file it did not format" $
-      reportOut (checkReport Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
+      reportOut (checkReport Plain Plain [("A.hs", Unchanged), ("B.hs", decline), ("C.hs", failure)])
         `shouldBe` ""
 
   describe "what a for-editor run prints" $ do
@@ -268,53 +272,74 @@ spec = do
 
   describe "color" $ do
     it "leaves everything bare when there is nobody to see it" $
-      reportOut (inplaceReport Plain [("A.hs", Unchanged)])
+      reportOut (inplaceReport Plain Plain [("A.hs", Unchanged)])
         `shouldSatisfy` (not . T.isInfixOf "\ESC")
 
     it "colors the tick and not the brackets around it" $
-      reportOut (inplaceReport Colors [("A.hs", Unchanged)])
+      reportOut (inplaceReport Colors Colors [("A.hs", Unchanged)])
         `shouldSatisfy` T.isInfixOf "[\ESC[32m✓\ESC[0m]"
 
     it "colors the equals sign yellow" $
-      reportErr (inplaceReport Colors [("A.hs", decline)])
+      reportErr (inplaceReport Colors Colors [("A.hs", decline)])
         `shouldSatisfy` any (T.isInfixOf "[\ESC[33m=\ESC[0m]")
 
     it "sets the extension in the summary in bold" $
-      reportOut (inplaceReport Colors [("A.hs", Unchanged)])
+      reportOut (inplaceReport Colors Colors [("A.hs", Unchanged)])
         `shouldSatisfy` T.isInfixOf "\ESC[1m.hs\ESC[0m"
 
     it "sets the file a case is about in bold, and nothing around it" $
-      reportErr (inplaceReport Colors [("src/A.hs", failureAbout "src/A.hs")])
+      reportErr (inplaceReport Colors Colors [("src/A.hs", failureAbout "src/A.hs")])
         `shouldSatisfy` any (T.isInfixOf "\ESC[1msrc/A.hs\ESC[0m")
 
     it "leaves the file bare when there is nobody to see it" $
-      reportErr (inplaceReport Plain [("src/A.hs", failureAbout "src/A.hs")])
+      reportErr (inplaceReport Plain Plain [("src/A.hs", failureAbout "src/A.hs")])
         `shouldSatisfy` all (not . T.isInfixOf "\ESC")
 
     it "sets an operator a message names in cyan" $
-      reportErr (inplaceReport Colors [("A.hs", about "<|>")])
+      reportErr (inplaceReport Colors Colors [("A.hs", about "<|>")])
         `shouldSatisfy` any (T.isInfixOf "\ESC[36m<|>\ESC[0m")
 
     it "matches an operator as a whole word and not as a fragment" $ do
-      let shown = T.unlines (reportErr (inplaceReport Colors [("A.hs", about ".")]))
+      let shown = T.unlines (reportErr (inplaceReport Colors Colors [("A.hs", about ".")]))
       T.count "\ESC[36m" shown `shouldBe` 1
       shown `shouldSatisfy` T.isInfixOf "\ESC[1mA.hs\ESC[0m"
 
     it "leaves the operator bare when there is nobody to see it" $
-      reportErr (inplaceReport Plain [("A.hs", about "<|>")])
+      reportErr (inplaceReport Plain Plain [("A.hs", about "<|>")])
         `shouldSatisfy` all (not . T.isInfixOf "\ESC")
 
     it "sets a module a message names in bold" $
-      reportErr (inplaceReport Colors [("A.hs", missing "Criterion.Main")])
+      reportErr (inplaceReport Colors Colors [("A.hs", missing "Criterion.Main")])
         `shouldSatisfy` any (T.isInfixOf "\ESC[1mCriterion.Main\ESC[0m")
 
     it "colors a module even where a comma follows it" $
-      reportErr (inplaceReport Colors [("A.hs", missing "Criterion.Main")])
+      reportErr (inplaceReport Colors Colors [("A.hs", missing "Criterion.Main")])
         `shouldSatisfy` any (T.isInfixOf "\ESC[1mCriterion.Main\ESC[0m,")
 
     it "colors the cross red" $
-      reportErr (inplaceReport Colors [("A.hs", failure)])
+      reportErr (inplaceReport Colors Colors [("A.hs", failure)])
         `shouldSatisfy` any (T.isInfixOf "[\ESC[31m✗\ESC[0m]")
+
+    it "colors each stream with a palette of its own" $ do
+      let summary = inplaceReport Colors Plain [("A.hs", Unchanged), ("B.hs", decline)]
+          diffs = checkReport Plain Colors [("A.hs", Changed "a\n" "b\n"), ("B.hs", decline)]
+      reportOut summary `shouldSatisfy` T.isInfixOf "\ESC"
+      reportErr summary `shouldSatisfy` all (not . T.isInfixOf "\ESC")
+      reportOut diffs `shouldSatisfy` (not . T.isInfixOf "\ESC")
+      reportErr diffs `shouldSatisfy` any (T.isInfixOf "\ESC")
+
+    it "colors what goes to a terminal, and nothing else" $
+      withEnvironment [("NO_COLOR", "")] . withTerminal $ \terminal ->
+        withSystemTempFile "tilia-run" $ \_ file ->
+          ((,) <$> paletteFor terminal <*> paletteFor file)
+            `shouldReturn` (Colors, Plain)
+
+    it "turns colors off for a NO_COLOR that is set, but not for an empty one" $
+      withTerminal $ \terminal -> do
+        withEnvironment [("NO_COLOR", "1")] (paletteFor terminal)
+          `shouldReturn` Plain
+        withEnvironment [("NO_COLOR", "")] (paletteFor terminal)
+          `shouldReturn` Colors
 
   describe "breaking text to fit" $ do
     it "keeps every line within the room given" $
@@ -350,11 +375,11 @@ spec = do
             ("another/quite/deeply/nested/one/Module.hs", failure)
           ]
     it "never prints a line wider than it allows itself" $
-      fmap T.length (reportErr (inplaceReport Plain sprawling))
+      fmap T.length (reportErr (inplaceReport Plain Plain sprawling))
         `shouldSatisfy` all (<= lineWidth)
 
     it "does the same when the reason is enormous" $
-      fmap T.length (reportErr (inplaceReport Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 40 "and more words ")))]))
+      fmap T.length (reportErr (inplaceReport Plain Plain [("A.hs", Failed (Unreadable "A.hs" (T.replicate 40 "and more words ")))]))
         `shouldSatisfy` all (<= lineWidth)
 
     it "wraps what it says when it gives up, too" $
@@ -408,7 +433,7 @@ spec = do
       differs (formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n") `shouldBe` True
 
     it "shows the line whose ending would change in the diff" $
-      reportOut (checkReport Plain [("A.hs", formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n")])
+      reportOut (checkReport Plain Plain [("A.hs", formattingOutcome "a\r\nb\nc\r\n" "a\nb\nc\n")])
         `shouldSatisfy` T.isInfixOf "\n-b\n+b\r\n"
 
     it "leaves a carriage return that is not a line ending where it is" $
@@ -445,7 +470,7 @@ spec = do
       withSystemTempDirectory "tilia-run" $ \directory -> do
         let path = directory </> "gone" </> "A.hs"
         (_, outcome) <- writeBack (path, Changed "module A where\n" "x\n")
-        flattened (inplaceReport Plain [(path, outcome)])
+        flattened (inplaceReport Plain Plain [(path, outcome)])
           `shouldSatisfy` T.isInfixOf ("cannot write " <> T.pack path)
 
   describe "running over many files at once" $ do
@@ -507,6 +532,10 @@ written :: Outcome -> Maybe Text
 written = \case
   Changed _ wouldBe -> Just wouldBe
   _ -> Nothing
+
+-- | A terminal, the master side of a new pseudo-terminal.
+withTerminal :: (Handle -> IO a) -> IO a
+withTerminal = withFile "/dev/ptmx" ReadWriteMode
 
 -- | Writing this outcome back should do nothing whatsoever.
 untouched :: Outcome -> Expectation

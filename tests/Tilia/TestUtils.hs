@@ -54,7 +54,8 @@ import System.Directory
     doesDirectoryExist,
     listDirectory,
   )
-import System.Environment (lookupEnv, setEnv, unsetEnv)
+import System.Environment (lookupEnv)
+import System.Environment.Blank (setEnv, unsetEnv)
 import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (mkTextEncoding)
 import System.IO.Temp (withSystemTempDirectory)
@@ -88,17 +89,18 @@ import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
 import Tilia.Source (comments)
 import Tilia.Utils (quietly, writeUtf8File)
 
--- | Run something with the given variables set, and the environment as it
--- was afterwards however it turns out.
+-- | Run something with the given variables set, to empty values too, and the
+-- environment as it was afterwards however it turns out.
 withEnvironment :: [(String, String)] -> IO a -> IO a
 withEnvironment vars act = bracket set restore (const act)
   where
     set = traverse remember vars
     remember (key, value) = do
       was <- lookupEnv key
-      setEnv key value
+      setEnv key value True
       pure (key, was)
-    restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
+    restore = traverse_ $ \(key, was) ->
+      maybe (unsetEnv key) (\value -> setEnv key value True) was
 
 -- | Run something on a new temporary directory, by its canonical path,
 -- holding these files at their paths in it.

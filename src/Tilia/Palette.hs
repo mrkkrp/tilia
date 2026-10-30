@@ -11,22 +11,22 @@ module Tilia.Palette
   )
 where
 
-import Data.Maybe (isJust)
 import Data.Text (Text)
 import System.Environment (lookupEnv)
-import System.IO (hIsTerminalDevice, stdout)
+import System.IO (Handle, hIsTerminalDevice)
 
 -- | Whether to color the output.
 data Palette = Colors | Plain
   deriving (Eq, Show)
 
--- | Color output when there is somebody there to see it.
-paletteFor :: IO Palette
-paletteFor = do
+-- | Color what goes to a handle when there is somebody there to see it,
+-- unless a @NO_COLOR@ that is not empty says otherwise.
+paletteFor :: Handle -> IO Palette
+paletteFor h = do
   refused <- lookupEnv "NO_COLOR"
-  terminal <- hIsTerminalDevice stdout
+  terminal <- hIsTerminalDevice h
   pure $
-    if terminal && not (isJust refused)
+    if terminal && maybe True null refused
       then Colors
       else Plain
 
