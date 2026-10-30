@@ -51,6 +51,7 @@ import Data.Aeson
   )
 import Data.Aeson.Types (parseMaybe)
 import Data.Choice (Choice, isFalse)
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable (toList, traverse_)
 import Data.List qualified
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -720,7 +721,7 @@ plannedTarballs cache plan =
       repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
       traverse
         (\p -> (,) p <$> tarballFor cacheRoot repos p)
-        [p | p <- bpPackages plan, not (isLocal p)]
+        (nubOrdOn (\p -> (ppName p, ppVersion p)) [p | p <- bpPackages plan, not (isLocal p)])
     isLocal p = case ppSource p of
       LocalPackage _ -> True
       CheckedOut _ -> True
