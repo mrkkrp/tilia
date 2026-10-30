@@ -410,10 +410,7 @@ buildModuleIndex cache installed tarballs =
       let key = cacheKey p
       let exposed = Map.lookup (ppName p, ppVersion p) byNameVersion
       held <- fromCabalFile cache tarball p
-      let modules = case (exposed, held) of
-            (Nothing, Nothing) -> []
-            (a, b) -> concat (catMaybes [a, b])
-      pure [(m, (key, tarball)) | m <- modules]
+      pure [(m, (key, tarball)) | m <- concat (catMaybes [exposed, held])]
 
 -- | Where each installed module's compiled interface is.
 interfaceIndex :: [InstalledPackage] -> Map Text (Text, FilePath)
