@@ -32,6 +32,7 @@ module Tilia.Fixity
     certainlyBrings,
     decides,
     Namespace (..),
+    typeOperatorNamespace,
     Fixities,
     Certain (..),
     ModuleChain (..),
@@ -78,7 +79,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -87,7 +88,7 @@ import Data.Text.Read qualified as T
 import GHC.Generics (Generic)
 import GHC.Hs hiding (Fixity, OpName)
 import GHC.Types.Fixity qualified as GHC
-import GHC.Types.Name.Occurrence (occNameString)
+import GHC.Types.Name.Occurrence (isDataOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Gathered (Gathered (..))
@@ -744,6 +745,9 @@ lookupFixity scope namespace qualifier op =
       Just missing -> Unresolved missing
 
 -- | What the scope itself has for a use, and the namespace it came from.
+--
+-- A use among types is taken for a promoted constructor only where no type
+-- of its name may be in scope, as GHC prefers the type.
 fixityInScope ::
   -- | The scope.
   Scope ->
@@ -760,14 +764,21 @@ fixityInScope scope namespace qualifier op
   | Just fixity <- Map.lookup op builtInSyntax =
       Just (namespace, (fixity, BuiltIn))
   | otherwise =
-      case mapMaybe found (namespace : promotedFrom namespace) of
-        (answer : _) -> Just answer
-        [] -> Nothing
+      listToMaybe . mapMaybe found $
+        namespace : [n | n <- promotedFrom namespace, unclaimed]
   where
     found n =
       (n,) <$> case qualifier of
         Nothing -> Map.lookup op (reachUnqualified (reachIn n scope))
         Just q -> Map.lookup (q, op) (reachQualified (reachIn n scope))
+    unclaimed =
+      Set.notMember (qualifier, op) (reachDecided (reachIn namespace scope))
+        && null
+          [ ()
+          | (i, established) <- scopeUnsettled scope,
+            maySupply (establishedMembers established) qualifier op i,
+            _ <- unsettledThrough established (namespace, op)
+          ]
 
 -- | The operators the language gives a fixity, rather than a declaration
 -- anywhere: @:@ alone.
@@ -779,6 +790,13 @@ promotedFrom :: Namespace -> [Namespace]
 promotedFrom = \case
   InTypes -> [InTerms]
   InTerms -> []
+
+-- | The namespace an operator written in a type is in: among terms for a
+-- promoted constructor written with its tick, among types otherwise.
+typeOperatorNamespace :: RdrName -> Namespace
+typeOperatorNamespace n
+  | isDataOcc (rdrNameOcc n) = InTerms
+  | otherwise = InTypes
 
 -- | The unread imports that could have declared this operator.
 unreadThatMightDeclare ::
@@ -832,7 +850,8 @@ data Unknown
 -- nothing is regrouped around it.
 operatorsUsed :: Gathered -> [(Namespace, (Maybe Text, OpName))]
 operatorsUsed found =
-  fmap (named InTerms) inExpressions <> fmap (named InTypes) inTypes
+  fmap (named InTerms) inExpressions
+    <> [named (typeOperatorNamespace n) n | n <- inTypes]
   where
     captured = capturedUses found
     inExpressions =

@@ -127,6 +127,33 @@ spec = do
       lookupFixity (scopeOfBoth "import Terms\n") InTypes Nothing (OpName ":>")
         `shouldBe` Resolved (Fixity LeftAssoc 5) (DeclaredIn "Terms")
 
+    it "takes none for a type a read import brings in" $
+      lookupFixity
+        ( scopeBringing
+            [("Readable", [(InTypes, ":>")])]
+            "import Readable\nimport Terms\n"
+        )
+        InTypes
+        Nothing
+        (OpName ":>")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "takes none for a type the module declares" $
+      lookupFixity
+        (scopeOfBoth "import Terms\ntype a :> b = Either a b\n")
+        InTypes
+        Nothing
+        (OpName ":>")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "takes none where an unread import may bring a type in" $
+      lookupFixity
+        (scopeOfBoth "import Terms\nimport Opaque\n")
+        InTypes
+        Nothing
+        (OpName ":>")
+        `shouldBe` Unresolved (unreadOnly "Opaque")
+
     it "does not take a type's fixity for a term" $
       lookupFixity (scopeOfBoth "import Types\n") InTerms Nothing (OpName ":>")
         `shouldBe` Resolved defaultFixity ReportDefault
@@ -145,6 +172,15 @@ spec = do
 
     it "declines a type that writes a constructor they disagree about" $
       fmap snd (unsettledIn "module M where\nimport Terms\nimport Other.Terms\ntype T = Int :> Int\n")
+        `shouldBe` [Ambiguous termsDisagreeing]
+
+    it "settles a constructor written with its tick among the terms alone" $
+      fmap
+        snd
+        ( unsettledIn
+            "{-# LANGUAGE DataKinds #-}\nmodule M where\nimport Types\n\
+            \import Terms\nimport Other.Terms\ntype T = 1 ':> 2\n"
+        )
         `shouldBe` [Ambiguous termsDisagreeing]
 
   describe "what a module says it exports" $ do

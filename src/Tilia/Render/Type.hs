@@ -41,7 +41,7 @@ import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import GHC.Types.Var (Specificity (..))
 import Tilia.Doc.Combinators
-import Tilia.Fixity (Namespace (..))
+import Tilia.Fixity (typeOperatorNamespace)
 import Tilia.Render.Context
 import Tilia.Render.Haddock
 import Tilia.Render.Literal (stringLiteral)
@@ -153,7 +153,7 @@ typeChain ctx x op y =
     split t = case unLoc t of
       HsOpTy _ _ l o r -> Just (l, o, r)
       _ -> Nothing
-    fixity o = operatorFixity ctx InTypes (unLoc o)
+    fixity o = operatorFixity ctx (typeOperatorNamespace (unLoc o)) (unLoc o)
 
 -- | Print a chain of type operators once precedence has regrouped it.
 renderChain :: Ctx -> OpChain (LHsType GhcPs) (LocatedN RdrName) -> Doc
