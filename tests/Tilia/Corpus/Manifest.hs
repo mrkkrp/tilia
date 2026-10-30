@@ -23,8 +23,8 @@ module Tilia.Corpus.Manifest
   )
 where
 
-import Control.Exception (SomeException, try)
 import Crypto.Hash.SHA256 qualified as SHA256
+import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.List (sortOn)
 import Data.Map.Strict (Map)
@@ -32,10 +32,10 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Text.IO qualified as T
 import System.Directory (createDirectoryIfMissing)
 import System.Environment (lookupEnv)
 import System.FilePath (takeDirectory)
+import Tilia.Utils (readUtf8File)
 
 ----------------------------------------------------------------------------
 -- What an example does
@@ -107,9 +107,9 @@ type Manifest = Map FilePath Entry
 -- with a message about a file.
 readManifest :: FilePath -> IO Manifest
 readManifest path =
-  try (T.readFile path) >>= \case
-    Left (_ :: SomeException) -> pure Map.empty
-    Right text -> pure (Map.fromList (concatMap entry (T.lines text)))
+  readUtf8File path >>= \case
+    Nothing -> pure Map.empty
+    Just text -> pure (Map.fromList (concatMap entry (T.lines text)))
   where
     entry line = case T.words line of
       (what : digest : rest)
@@ -124,7 +124,8 @@ readManifest path =
 writeManifest :: FilePath -> Manifest -> IO ()
 writeManifest path manifest = do
   createDirectoryIfMissing True (takeDirectory path)
-  T.writeFile path (T.unlines (header <> fmap line (Map.toAscList manifest)))
+  BS.writeFile path . T.encodeUtf8 $
+    T.unlines (header <> fmap line (Map.toAscList manifest))
   where
     header =
       [ "# What each example of this corpus does today, one line each.",
@@ -149,9 +150,9 @@ type Report = Map FilePath (Outcome, [Text])
 -- 'readManifest'.
 readReport :: FilePath -> IO Report
 readReport path =
-  try (T.readFile path) >>= \case
-    Left (_ :: SomeException) -> pure Map.empty
-    Right text -> pure (go Nothing Map.empty (T.lines text))
+  readUtf8File path >>= \case
+    Nothing -> pure Map.empty
+    Just text -> pure (go Nothing Map.empty (T.lines text))
   where
     go section report = \case
       [] -> report
@@ -173,7 +174,8 @@ readReport path =
 writeReport :: FilePath -> [(FilePath, Outcome, Text)] -> IO ()
 writeReport path entries = do
   createDirectoryIfMissing True (takeDirectory path)
-  T.writeFile path (T.unlines (header <> concatMap section grouped))
+  BS.writeFile path . T.encodeUtf8 $
+    T.unlines (header <> concatMap section grouped)
   where
     interesting = [e | e@(_, outcome, _) <- entries, outcome /= Formatted]
     grouped =

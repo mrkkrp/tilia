@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | What the benchmarks cost when they were last recorded, kept in the
 -- repository so that a change to it shows in review like any other.
@@ -12,15 +11,16 @@ module Tilia.Bench.Record
   )
 where
 
-import Control.Exception (SomeException, try)
+import Data.ByteString qualified as BS
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Word (Word64)
 import Text.Read (readMaybe)
+import Tilia.Utils (readUtf8File)
 
 -- | The bytes each benchmark allocated and the instructions it retired, by
 -- stage and module.
@@ -50,9 +50,9 @@ data Entry = Entry
 -- before it is regenerated each say they are not in it.
 readRecord :: FilePath -> IO Record
 readRecord path =
-  try (T.readFile path) >>= \case
-    Left (_ :: SomeException) -> pure (Record "" "none" "" Map.empty)
-    Right text ->
+  readUtf8File path >>= \case
+    Nothing -> pure (Record "" "none" "" Map.empty)
+    Just text ->
       pure
         Record
           { recordCompiler = field "compiler " text,
@@ -72,7 +72,7 @@ readRecord path =
 -- shows what changed rather than what moved.
 writeRecord :: FilePath -> Record -> IO ()
 writeRecord path record =
-  T.writeFile path . T.unlines $
+  BS.writeFile path . T.encodeUtf8 . T.unlines $
     [ "# What each benchmark costs, as far as that does not depend on how",
       "# busy the machine is. `cabal bench` checks it, and",
       "# `TILIA_BENCH_ACCEPT=1 cabal bench` writes it again.",
