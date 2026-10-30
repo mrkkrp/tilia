@@ -34,6 +34,7 @@ module Tilia.Cabal.Plan
     Futility (..),
     undiscoveredFutility,
     futilityFor,
+    CabalFailure (..),
     prepareWith,
     loadPlan,
   )
@@ -50,6 +51,8 @@ import Data.Aeson
     (.:?),
   )
 import Data.Aeson.Types (parseMaybe)
+import Data.Bifunctor (first)
+import Data.ByteString qualified as BS
 import Data.Choice (Choice, isFalse)
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable (toList, traverse_)
@@ -82,10 +85,10 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
 import System.FilePath (isRelative, takeDirectory, (</>))
-import System.IO (hClose, hFlush, stderr)
+import System.IO (Handle, hClose, hFlush, stderr)
 import System.Info qualified
 import System.Process
-  ( StdStream (CreatePipe, Inherit, UseHandle),
+  ( StdStream (CreatePipe, UseHandle),
     createProcess,
     cwd,
     proc,
@@ -592,6 +595,13 @@ futilityFor caching projectDir =
         Left _ -> pure fallback
         Right plan -> use =<< openCache caching =<< tokenForBuildPlan plan
 
+-- | Why a run of @cabal@ failed, as said to the user.
+data CabalFailure
+  = -- | No plan satisfies what it was asked about.
+    Unsolvable Text
+  | -- | Anything else.
+    CabalFailed Text
+
 -- | Do whatever is missing, given a way to run @cabal@ and a memory of what
 -- earlier attempts came to.
 prepareWith ::
@@ -600,7 +610,7 @@ prepareWith ::
   -- | Whether to download what is missing.
   Choice "download" ->
   -- | Run @cabal@ with these arguments.
-  ([String] -> IO (Either Text ())) ->
+  ([String] -> IO (Either CabalFailure ())) ->
   -- | What earlier attempts came to.
   Futility ->
   -- | The components the run is about to format.
@@ -621,10 +631,14 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
       False -> solveThenFetch
   where
     wholeProject = ["--enable-tests", "--enable-benchmarks"]
-    tryWholeProject args =
-      cabal (args <> wholeProject) >>= \case
-        Right () -> pure (Right ())
-        Left _ -> cabal args
+    tryWholeProject args = do
+      attempt <- cabal (args <> wholeProject)
+      first said <$> case attempt of
+        Left (Unsolvable _) -> cabal args
+        _ -> pure attempt
+    said = \case
+      Unsolvable why -> why
+      CabalFailed why -> why
     fetch short
       | isFalse downloading = pure (Right ())
       | otherwise = do
@@ -657,28 +671,46 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
             _ -> pure (Right ())
 
 -- | Run @cabal@ in a project directory, letting it speak for itself.
-runCabal :: FilePath -> [String] -> IO (Either Text ())
-runCabal projectDir args = quietly (Left "could not run cabal") $ do
-  hFlush stderr
-  -- A duplicate because 'createProcess' closes the handle it is given once
-  -- the child has it, and closing the real standard error would leave
-  -- nothing to report the failure on.
-  passed <- hDuplicate stderr
-  -- A pipe closed at once rather than our standard input, which in an
-  -- editor's process carries what the editor says to it.
-  (toChild, _, _, running) <-
-    createProcess
-      (proc "cabal" args)
-        { cwd = Just projectDir,
-          std_in = CreatePipe,
-          std_out = UseHandle passed,
-          std_err = Inherit
-        }
-  traverse_ hClose toChild
-  code <- waitForProcess running
-  pure $ case code of
-    ExitSuccess -> Right ()
-    _ -> Left ("cabal " <> T.unwords (fmap T.pack args) <> " failed; see above")
+runCabal :: FilePath -> [String] -> IO (Either CabalFailure ())
+runCabal projectDir args =
+  quietly (Left (CabalFailed "could not run cabal")) $ do
+    hFlush stderr
+    -- A duplicate because 'createProcess' closes the handle it is given
+    -- once the child has it, and closing the real standard error would
+    -- leave nothing to report the failure on.
+    passed <- hDuplicate stderr
+    -- A pipe closed at once rather than our standard input, which in an
+    -- editor's process carries what the editor says to it.
+    (toChild, _, fromChild, running) <-
+      createProcess
+        (proc "cabal" args)
+          { cwd = Just projectDir,
+            std_in = CreatePipe,
+            std_out = UseHandle passed,
+            std_err = CreatePipe
+          }
+    traverse_ hClose toChild
+    complaints <- foldMap passedOn fromChild
+    code <- waitForProcess running
+    pure $ case code of
+      ExitSuccess -> Right ()
+      _
+        | "Could not resolve dependencies" `BS.isInfixOf` complaints ->
+            Left (Unsolvable failed)
+        | otherwise -> Left (CabalFailed failed)
+  where
+    failed = "cabal " <> T.unwords (fmap T.pack args) <> " failed; see above"
+
+-- | Copy what comes out of a handle to standard error as it comes, and hand
+-- all of it back once it ends.
+passedOn :: Handle -> IO BS.ByteString
+passedOn h = go []
+  where
+    go chunks =
+      BS.hGetSome h 4096 >>= \chunk ->
+        if BS.null chunk
+          then pure (BS.concat (reverse chunks))
+          else BS.hPut stderr chunk >> go (chunk : chunks)
 
 -- | Fetch the sources of a trusted plan's dependencies that are neither
 -- installed nor fetched already, at the versions the plan names, unless a

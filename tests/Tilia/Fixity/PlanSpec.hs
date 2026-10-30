@@ -170,7 +170,7 @@ checkReadiness = Plan.checkReadiness (Do #useCache)
 
 -- | 'Plan.prepareWith', with the cache in use as it is by default.
 prepareWith ::
-  ([String] -> IO (Either Text ())) ->
+  ([String] -> IO (Either CabalFailure ())) ->
   Futility ->
   [PlanComponent] ->
   FilePath ->
@@ -264,9 +264,28 @@ preparation = describe "preparing a project" $ do
   it "does not go on to fetch when the solve fails" $
     withTempProject Nothing $ \dir -> do
       steps <- newIORef []
-      let cabal args = record steps args >> pure (Left "cabal said no")
+      let cabal args = Left (Unsolvable "cabal said no") <$ record steps args
       prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Left "cabal said no"
       readIORef steps `shouldReturn` [solving, narrowSolve]
+
+  it "asks about less only where the whole project will not solve" $
+    withTempProject Nothing $ \dir -> do
+      steps <- newIORef []
+      let cabal args = Left (CabalFailed "cabal said no") <$ record steps args
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing
+        `shouldReturn` Left "cabal said no"
+      readIORef steps `shouldReturn` [solving]
+
+  it "hears from cabal that the whole project will not solve" $
+    withTempProject Nothing $ \dir -> do
+      let unsolvable = complaining "Could not resolve dependencies:"
+      fst <$> runsCabalWith unsolvable (loading dir)
+        `shouldReturn` ["build", "build"]
+
+  it "hears from cabal that it failed otherwise" $
+    withTempProject Nothing $ \dir -> do
+      let unparsed = complaining "Error parsing project file"
+      fst <$> runsCabalWith unparsed (loading dir) `shouldReturn` ["build"]
 
   it "asks about the test suites and the benchmarks, not the library alone" $
     withTempProject Nothing $ \dir -> do
@@ -285,7 +304,7 @@ preparation = describe "preparing a project" $ do
       let cabal args = do
             record steps args
             if wholeProject `Data.List.isSuffixOf` args
-              then pure (Left "a test suite will not solve")
+              then pure (Left (Unsolvable "a test suite will not solve"))
               else do
                 when (args == narrowSolve) (writePlan dir wantingATarball)
                 pure (Right ())
@@ -2260,8 +2279,18 @@ record :: IORef [[String]] -> [String] -> IO ()
 record steps args = modifyIORef' steps (<> [args])
 
 -- | A @cabal@ that does nothing and says it went well.
-obliging :: IORef [[String]] -> [String] -> IO (Either Text ())
+obliging :: IORef [[String]] -> [String] -> IO (Either CabalFailure ())
 obliging steps args = record steps args >> pure (Right ())
+
+-- | Load the plan of a project as a run does, with the real way of running
+-- @cabal@.
+loading :: FilePath -> IO (Either Text BuildPlan)
+loading = loadPlan (Do #useCache) (Do #download) []
+
+-- | What a stand-in for @cabal@ runs to fail, saying what is given on its
+-- standard error.
+complaining :: String -> String
+complaining complaint = "echo '" <> complaint <> "' >&2; exit 1"
 
 -- | Run an assertion on a module's fixities, failing where the module could
 -- not be resolved at all.
