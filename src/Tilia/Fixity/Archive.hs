@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
-import Tilia.Fixity.Cabal (cabalFileAtTop, entryPosixPath, sourceDirs)
+import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile, sourceDirs)
 import Tilia.Utils (quietly)
 
 -- | What a tarball holds that a module could be read out of.
@@ -49,10 +49,9 @@ readArchive tarball = quietly Nothing $ do
   where
     sweep cabal found = \case
       Tar.Next entry rest
-        | Tar.NormalFile content _ <- Tar.entryContent entry,
-          cabalFileAtTop (entryPosixPath entry),
-          Nothing <- cabal ->
-            sweep (Just (T.decodeUtf8Lenient (BL.toStrict content))) found rest
+        | Nothing <- cabal,
+          Just own <- ownCabalFile entry ->
+            sweep (Just own) found rest
         | Tar.NormalFile content _ <- Tar.entryContent entry,
           any (`isSuffixOf` entryPosixPath entry) moduleEndings ->
             sweep cabal ((entryPosixPath entry, BL.toStrict content) : found) rest
