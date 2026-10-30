@@ -165,6 +165,9 @@
   so read `.cabal` files with Cabal-syntax 3.16: a package declaring
   `cabal-version: 3.14` or `3.16` can be formatted, where the binaries said
   its `.cabal` file did not parse.
+* The `.cabal` file of a dependency is read with Cabal-syntax, as the
+  project's own are, rather than line by line, so a line of its description
+  that begins with the name of a field is no longer taken for that field.
 
 ## Tilia 0.1.2.0
 

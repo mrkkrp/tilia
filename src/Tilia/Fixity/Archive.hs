@@ -25,14 +25,17 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Distribution.PackageDescription (GenericPackageDescription)
 import GHC.Generics (Generic)
-import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile, sourceDirs)
+import Tilia.Cabal.Package (packageSourceDirs)
+import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile)
 import Tilia.Utils (quietly)
 
 -- | What a tarball holds that a module could be read out of.
 data Archive = Archive
-  { -- | The package's @.cabal@ file, the first one at the top.
-    archiveCabal :: Maybe Text,
+  { -- | What the package's @.cabal@ file describes, the first one at the top
+    -- that parses.
+    archiveCabal :: Maybe GenericPackageDescription,
     -- | Every file that could hold a module, by where it sits, in the order
     -- the tarball has them.
     archiveFiles :: [(FilePath, BS.ByteString)]
@@ -62,7 +65,7 @@ readArchive tarball = quietly Nothing $ do
 moduleIn :: Text -> Archive -> Maybe InArchive
 moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
   where
-    dirs = maybe [] sourceDirs (archiveCabal archive)
+    dirs = maybe [] packageSourceDirs (archiveCabal archive)
     pick ending =
       inArchive ending . T.decodeUtf8Lenient . snd
         <$> listToMaybe (under sfx matching <> matching)
@@ -72,7 +75,7 @@ moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
     under sfx matching = [f | d <- dirs, f <- matching, inDir sfx d (fst f)]
     inDir sfx d path
       | d == "." = takeWhile (/= '/') path <> sfx == path
-      | otherwise = ("/" <> T.unpack d <> sfx) `isSuffixOf` path
+      | otherwise = ("/" <> d <> sfx) `isSuffixOf` path
 
 -- | Where a module's file is under the directory that holds it, without an
 -- extension.

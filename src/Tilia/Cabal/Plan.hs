@@ -66,6 +66,9 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
 import Data.Time (UTCTime, getCurrentTime)
+import Distribution.Package (pkgName, pkgVersion, unPackageName)
+import Distribution.PackageDescription (package, packageDescription)
+import Distribution.Pretty (prettyShow)
 import Distribution.Version (Version, mkVersion)
 import GHC.IO.Handle (hDuplicate)
 import System.Directory
@@ -91,12 +94,13 @@ import System.Process
     std_out,
     waitForProcess,
   )
+import Tilia.Cabal.Package (readPackageDescription)
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
 import Tilia.Process (readProgramOutput)
-import Tilia.Utils (quietly, readUtf8File, sha256Of)
+import Tilia.Utils (quietly, sha256Of)
 
 ----------------------------------------------------------------------------
 -- The plan
@@ -321,15 +325,12 @@ checkedOutIn distDir plan = do
         | e <- Data.List.sort entries,
           (ppName p <> "-") `T.isPrefixOf` T.pack e
         ]
-    isThePackage p dir = quietly False $ do
-      contents <- readUtf8File (dir </> T.unpack (ppName p) <> ".cabal")
-      pure (maybe False (describes p) contents)
-    describes p text =
-      any (names "name:" (ppName p)) (T.lines text)
-        && any (names "version:" (ppVersion p)) (T.lines text)
-    names field value line = case T.stripPrefix field (T.toLower (T.strip line)) of
-      Just rest -> T.strip rest == T.toLower value
-      Nothing -> False
+    isThePackage p dir =
+      either (const False) (describes p . package . packageDescription)
+        <$> readPackageDescription (dir </> T.unpack (ppName p) <> ".cabal")
+    describes p identifier =
+      T.pack (unPackageName (pkgName identifier)) == ppName p
+        && T.pack (prettyShow (pkgVersion identifier)) == ppVersion p
 
 -- | The version macros a plan settles.
 macrosOf :: BuildPlan -> Macros
