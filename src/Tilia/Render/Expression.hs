@@ -253,9 +253,9 @@ gatherArgs f known = case unLoc f of
 tuple :: Ctx -> Maybe Span -> ClosingIndent -> Boxity -> [HsTupArg GhcPs] -> Doc
 tuple ctx here closing boxity args
   | any isMissing args = flat (brackets' (sepBy comma (fmap arg args)))
-  | otherwise = brackets' (insideBrackets here (commaSep (fmap arg args)))
+  | otherwise = brackets' (commaSep (fmap arg args))
   where
-    brackets' = boxityBrackets boxity closing
+    brackets' = boxityBrackets boxity closing . insideBrackets here
     isMissing = \case
       Missing _ -> True
       _ -> False
