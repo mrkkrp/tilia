@@ -418,18 +418,18 @@ spec = do
   describe "putting a file back" $ do
     it "writes one that changed" $
       withSource "module A where\n" $ \path -> do
-        writeBack (path, Changed "module A where\n" "module B where\n")
+        _ <- writeBack (path, Changed "module A where\n" "module B where\n")
         T.readFile path `shouldReturn` "module B where\n"
 
     it "writes it as UTF-8, and as the bytes it was given" $
       withSource "module A where\n" $ \path -> do
-        writeBack (path, Changed "module A where\n" "-- ✓ über\r\n")
+        _ <- writeBack (path, Changed "module A where\n" "-- ✓ über\r\n")
         BS.readFile path `shouldReturn` T.encodeUtf8 "-- ✓ über\r\n"
 
     it "takes back exactly what it read, over a whole round trip" $
       withBytes (T.encodeUtf8 "-- ü\r\nmodule A where\r\n") $ \path -> do
         Right asItIs <- readAsUtf8 path
-        writeBack (path, formattingOutcome asItIs "-- ü\nmodule B where\n")
+        _ <- writeBack (path, formattingOutcome asItIs "-- ü\nmodule B where\n")
         BS.readFile path `shouldReturn` T.encodeUtf8 "-- ü\r\nmodule B where\r\n"
 
     it "leaves one that did not alone, down to its modification time" $
@@ -440,6 +440,13 @@ spec = do
 
     it "leaves one it could not format alone" $
       untouched failure
+
+    it "fails one it cannot write, and says why" $
+      withSystemTempDirectory "tilia-run" $ \directory -> do
+        let path = directory </> "gone" </> "A.hs"
+        (_, outcome) <- writeBack (path, Changed "module A where\n" "x\n")
+        flattened (inplaceReport Plain [(path, outcome)])
+          `shouldSatisfy` T.isInfixOf ("cannot write " <> T.pack path)
 
   describe "running over many files at once" $ do
     it "answers in the order it was asked, not the order it finished" $ do
@@ -507,7 +514,7 @@ untouched outcome =
   withSource "module A where\n" $ \path -> do
     stamped <- getModificationTime path
     threadDelay 10000
-    writeBack (path, outcome)
+    _ <- writeBack (path, outcome)
     stampedAgain <- getModificationTime path
     stampedAgain `shouldBe` stamped
     T.readFile path `shouldReturn` "module A where\n"

@@ -116,6 +116,8 @@ data FormatError
     UnknownFixity FilePath [((Maybe Text, OpName), Unknown)]
   | -- | The file could not be read at all.
     Unreadable FilePath Text
+  | -- | The file could not be written back once formatted.
+    Unwritable FilePath Text
   | -- | Formatting the file changed its AST.
     NotEquivalent FilePath Text
   | -- | Formatting is not idempotent.
@@ -144,6 +146,7 @@ describeFormatError palette = \case
   CppUnsupported path why ->
     "will not format " <> file path <> ": " <> describeCppError why
   Unreadable path why -> "cannot read " <> file path <> ": " <> why
+  Unwritable path why -> "cannot write " <> file path <> ": " <> why
   NotEquivalent path why ->
     "formatting " <> file path <> " changed the program: " <> why
   NotIdempotent path why ->
@@ -191,6 +194,7 @@ formatErrorExitCode = \case
   NotEquivalent{} -> 17
   NotIdempotent{} -> 18
   Threw{} -> 19
+  Unwritable{} -> 20
   CppUnsupported _ why -> case why of
     MalformedConditional{} -> 9
     TooManyConfigurations -> 10
@@ -209,6 +213,7 @@ refused = \case
   NotParsed{} -> False
   NoPackage{} -> False
   Unreadable{} -> False
+  Unwritable{} -> False
   NotEquivalent{} -> False
   NotIdempotent{} -> False
   Threw{} -> False

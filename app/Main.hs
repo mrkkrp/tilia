@@ -77,8 +77,7 @@ main = do
   let cmd = optCommand opts
   outcomes <- case cmd of
     Inplace target -> do
-      outcomes <- formatComponents palette opts target
-      traverse_ writeBack outcomes
+      outcomes <- traverse writeBack =<< formatComponents palette opts target
       outcomes <$ printReport (inplaceReport palette outcomes)
     Check target -> do
       outcomes <- formatComponents palette opts target
