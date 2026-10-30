@@ -38,10 +38,10 @@ import Control.Concurrent
 import Control.Exception
   ( SomeAsyncException,
     SomeException,
+    catch,
     displayException,
     fromException,
     throwIO,
-    tryJust,
   )
 import Control.Monad (replicateM, (>=>))
 import Crypto.Hash.SHA256 qualified as SHA256
@@ -49,7 +49,6 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (isSpace)
-import Data.Either (fromRight)
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -63,9 +62,11 @@ import System.FilePath (equalFilePath, normalise, splitDirectories)
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
--- | Run an action, falling back on the given value if it throws.
+-- | Run an action, falling back on the given value if it throws, but for
+-- an asynchronous exception, which asks it to stop.
 quietly :: a -> IO a -> IO a
-quietly fallback = fmap (fromRight fallback) . attempted
+quietly fallback action =
+  action `catch` \e -> if asynchronous e then throwIO e else pure fallback
 
 -- | Read a file as UTF-8, leniently, if it is there and can be read.
 readUtf8File :: FilePath -> IO (Maybe Text)
@@ -115,12 +116,20 @@ looksLikeModule m = case T.uncons m of
   Nothing -> False
 
 -- | Run an action and return its result or the exception it threw rendered
--- as 'Text', letting an asynchronous exception, which asks it to stop, go
--- on.
+-- as 'Text', but for an asynchronous exception, which asks it to stop.
 attempted :: IO a -> IO (Either Text a)
-attempted = tryJust $ \(e :: SomeException) -> case fromException e of
-  Just (_ :: SomeAsyncException) -> Nothing
-  Nothing -> Just (T.pack (displayException e))
+attempted action =
+  (Right <$> action) `catch` \e ->
+    if asynchronous e
+      then throwIO e
+      else pure (Left (T.pack (displayException e)))
+
+-- | Does an exception ask what it interrupts to stop, as an interrupt or a
+-- cancellation does?
+asynchronous :: SomeException -> Bool
+asynchronous e = case fromException e of
+  Just (_ :: SomeAsyncException) -> True
+  Nothing -> False
 
 -- | Decode source as UTF-8.
 asUtf8 :: BS.ByteString -> Either Text Text
