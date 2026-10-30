@@ -60,7 +60,7 @@ findProjectRoot start = quietly Nothing $ do
 
     markersIn directory = quietly ([], []) $ do
       entries <- listDirectory directory
-      packages <- cabalFilesIn directory
+      packages <- cabalFilesAmong directory entries
       pure
         ( [ProjectRoot directory ProjectFile | "cabal.project" `elem` entries],
           [ProjectRoot directory (PackageFile (takeFileName p)) | p <- take 1 packages]
@@ -75,7 +75,12 @@ startingDirectory path = do
 
 -- | The @.cabal@ files sitting directly in a directory, in order.
 cabalFilesIn :: FilePath -> IO [FilePath]
-cabalFilesIn directory = quietly [] $ do
-  entries <- listDirectory directory
-  let named = sort (filter (".cabal" `isSuffixOf`) entries)
-  filterM doesFileExist (fmap (directory </>) named)
+cabalFilesIn directory =
+  quietly [] (cabalFilesAmong directory =<< listDirectory directory)
+
+-- | The @.cabal@ files among a directory's entries, in order.
+cabalFilesAmong :: FilePath -> [FilePath] -> IO [FilePath]
+cabalFilesAmong directory entries =
+  filterM
+    doesFileExist
+    (fmap (directory </>) (sort (filter (".cabal" `isSuffixOf`) entries)))
