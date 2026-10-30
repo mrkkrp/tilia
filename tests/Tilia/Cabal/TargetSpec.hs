@@ -26,12 +26,19 @@ spec = do
 
     it "takes each kind of component" $ do
       parseTarget "lib:tilia" `shouldBe` Right (Qualified Nothing Lib "tilia")
+      parseTarget "flib:tilia" `shouldBe` Right (Qualified Nothing FLib "tilia")
       parseTarget "exe:tilia" `shouldBe` Right (Qualified Nothing Exe "tilia")
       parseTarget "test:tests" `shouldBe` Right (Qualified Nothing Test "tests")
       parseTarget "bench:speed" `shouldBe` Right (Qualified Nothing Bench "speed")
 
-    it "takes benchmark as a spelling of bench" $
+    it "takes every spelling of a kind cabal takes, in any case" $ do
+      parseTarget "library:tilia" `shouldBe` Right (Qualified Nothing Lib "tilia")
+      parseTarget "foreign-library:tilia" `shouldBe` Right (Qualified Nothing FLib "tilia")
+      parseTarget "executable:tilia" `shouldBe` Right (Qualified Nothing Exe "tilia")
+      parseTarget "tst:tests" `shouldBe` Right (Qualified Nothing Test "tests")
+      parseTarget "test-suite:tests" `shouldBe` Right (Qualified Nothing Test "tests")
       parseTarget "benchmark:speed" `shouldBe` Right (Qualified Nothing Bench "speed")
+      parseTarget "LIB:tilia" `shouldBe` Right (Qualified Nothing Lib "tilia")
 
     it "takes a package in front of the kind" $
       parseTarget "tilia:lib:tilia" `shouldBe` Right (Qualified (Just "tilia") Lib "tilia")
@@ -43,13 +50,13 @@ spec = do
       parseTarget "" `shouldSatisfy` failed
 
     it "refuses a kind it does not know" $
-      parseTarget "flib:thing" `shouldSatisfy` failed
+      parseTarget "doc:thing" `shouldSatisfy` failed
 
     it "refuses more colons than it can account for" $
       parseTarget "a:lib:b:c" `shouldSatisfy` failed
 
     it "says what it would have accepted" $
-      case parseTarget "flib:thing" of
+      case parseTarget "doc:thing" of
         Left why -> why `shouldSatisfy` T.isInfixOf "lib:"
         Right _ -> expectationFailure "should not have parsed"
 
@@ -497,6 +504,20 @@ spec = do
         filesFor (Called "only") `shouldReturn` ["Setup.hs", "A.hs"]
         filesFor (Qualified Nothing Lib "only") `shouldReturn` ["A.hs"]
 
+    it "finds the modules of a foreign library, and names it as a plan does"
+      $ withProject
+        [ ("only.cabal", withForeignLibrary),
+          ("src/A.hs", "module A where\n"),
+          ("flib/F.hs", "module F where\n")
+        ]
+      $ \root ->
+        componentsOfTarget root (Qualified Nothing FLib "foreign") >>= \case
+          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> do
+            files <- filesOfComponents root cs
+            fmap takeFileName files `shouldBe` ["F.hs"]
+            fmap (fmap pcName . componentInPlan) cs `shouldBe` [Just "flib:foreign"]
+
     it "names each library the way a plan does" $
       withProject [("both.cabal", withSubLibrary)] $ \root ->
         componentsOfTarget root Everything >>= \case
@@ -624,6 +645,26 @@ withSubLibrary =
       "",
       "library inner",
       "  hs-source-dirs: inner",
+      "  default-language: Haskell2010"
+    ]
+
+-- | A package with a library and a foreign library.
+withForeignLibrary :: Text
+withForeignLibrary =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: only",
+      "version: 0.1.0.0",
+      "",
+      "library",
+      "  hs-source-dirs: src",
+      "  exposed-modules: A",
+      "  default-language: Haskell2010",
+      "",
+      "foreign-library foreign",
+      "  type: native-shared",
+      "  hs-source-dirs: flib",
+      "  other-modules: F",
       "  default-language: Haskell2010"
     ]
 
