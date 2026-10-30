@@ -18,14 +18,13 @@ import Data.Char (isSpace)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
-import Tilia.Comments (afterOpener, triggerOn)
+import Tilia.Comments (Comment (..), afterOpener, bracketed, singleLine, triggerOn)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
@@ -75,11 +74,11 @@ haddockInline ctx style doc =
 docBody :: Ctx -> DocStyle -> LHsDoc GhcPs -> (Doc, Bool)
 docBody ctx style doc@(L l str) =
   case reusableText ctx style doc of
-    Just written ->
+    Just c ->
       ( maybe id located (spanOfSrcSpan l)
           $ align
-          $ verbatimLines AtIndent TrimWhitespace (NE.toList written),
-        selfClosing written
+          $ verbatimLines AtIndent TrimWhitespace (NE.toList (commentBody c)),
+        selfClosing c
       )
     Nothing
       | null written' -> (writtenAt emptyBlock, True)
@@ -93,7 +92,7 @@ docBody ctx style doc@(L l str) =
         <> mconcat (replicate trailingBlanks (hardBreak <> txt "--"))
     trailingBlanks = case writtenHaddock ctx (spanOfSrcSpan l) of
       Nothing -> 0
-      Just ls -> length (takeWhile isBlankLine (reverse (NE.toList ls)))
+      Just c -> length (takeWhile isBlankLine (reverse (NE.toList (commentBody c))))
     isBlankLine t = T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
     line' isFirst t =
       (if isFirst then txt (opener style) else txt "--")
@@ -129,7 +128,7 @@ blockOpener = \case
 -- | Did the author write this Haddock as a block comment?
 writtenAsBlock :: Ctx -> LHsDoc GhcPs -> Bool
 writtenAsBlock ctx doc =
-  maybe False isBlockForm (writtenHaddock ctx (spanOfSrcSpan (getLoc doc)))
+  maybe False bracketed (writtenHaddock ctx (spanOfSrcSpan (getLoc doc)))
 
 -- | The anchor of a named documentation chunk.
 docSectionName :: String -> Text
@@ -141,11 +140,11 @@ docSectionName n = "-- $" <> T.pack n
 -- the one it was written in, since the text carries the style in its first
 -- characters, nor when it holds nothing but the spaces the end of a line
 -- loses.
-reusableText :: Ctx -> DocStyle -> LHsDoc GhcPs -> Maybe (NonEmpty Text)
+reusableText :: Ctx -> DocStyle -> LHsDoc GhcPs -> Maybe Comment
 reusableText ctx style doc = do
-  written <- writtenHaddock ctx (spanOfSrcSpan (getLoc doc))
-  if openedInStyle style (NE.head written) && not onlySpaces
-    then Just written
+  c <- writtenHaddock ctx (spanOfSrcSpan (getLoc doc))
+  if openedInStyle style (NE.head (commentBody c)) && not onlySpaces
+    then Just c
     else Nothing
   where
     onlySpaces = not (null text) && all isSpace text && '\n' `notElem` text
@@ -167,13 +166,9 @@ triggerFor = \case
   Section n -> T.replicate n "*"
   Chunk n -> "$" <> T.pack n
 
--- | Was the reused text a block comment?
-isBlockForm :: NonEmpty Text -> Bool
-isBlockForm written = "{-" `T.isPrefixOf` T.stripStart (NE.head written)
-
--- | May code follow the reused text on the line it ends?
-selfClosing :: NonEmpty Text -> Bool
-selfClosing written = isBlockForm written && null (NE.tail written)
+-- | May code follow a Haddock on the line it ends?
+selfClosing :: Comment -> Bool
+selfClosing c = bracketed c && singleLine c
 
 -- | Lay the document out on several lines if printing this fragment will
 -- emit a Haddock that takes whole lines.
@@ -192,7 +187,7 @@ printsWholeLineDocs ctx x = case docsIn x of
   docs -> any takesWholeLines docs
   where
     takesWholeLines doc = case reusableText ctx Pipe doc of
-      Just written -> not (selfClosing written)
+      Just c -> not (selfClosing c)
       Nothing -> not (null (docLines (writtenAsBlock ctx doc) (unLoc doc)))
 
 -- | The spans of every Haddock in a module.
