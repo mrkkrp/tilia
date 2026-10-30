@@ -36,6 +36,7 @@ import System.Directory (canonicalizePath, doesFileExist, listDirectory)
 import System.FilePath
   ( dropTrailingPathSeparator,
     normalise,
+    splitDirectories,
     takeDirectory,
     (</>),
   )
@@ -294,10 +295,7 @@ packagesInProjectConfig = concatMap entries . packagesIn
 -- | Turn one entry of a @packages@ field into the @.cabal@ files it names.
 packageToCabalFile :: FilePath -> Text -> IO [FilePath]
 packageToCabalFile root entry = do
-  paths <-
-    packageGlobToCabalFiles
-      (if "/" `T.isPrefixOf` written then "/" else root)
-      (fmap T.unpack (T.split (== '/') written))
+  paths <- packageGlobToCabalFiles root (splitDirectories (T.unpack written))
   concat <$> traverse asPackage paths
   where
     written = T.strip entry
@@ -312,7 +310,6 @@ packageToCabalFile root entry = do
 packageGlobToCabalFiles :: FilePath -> [String] -> IO [FilePath]
 packageGlobToCabalFiles here = \case
   [] -> pure [here]
-  ("" : rest) -> packageGlobToCabalFiles here rest
   ("." : rest) -> packageGlobToCabalFiles here rest
   components@("**" : rest) ->
     (<>)

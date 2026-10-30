@@ -7,7 +7,7 @@ module Tilia.Cabal.TargetSpec (spec) where
 import Data.List (isSuffixOf, sort)
 import Data.Text (Text)
 import Data.Text qualified as T
-import System.FilePath (takeFileName, (</>))
+import System.FilePath (isPathSeparator, takeFileName, (</>))
 import Test.Hspec
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
@@ -150,15 +150,16 @@ spec = do
             files <- filesOfComponents project cs
             fmap takeFileName files `shouldBe` ["L.hs"]
 
-    it "reads a package an absolute entry names"
+    it "reads a package an absolute entry names with forward slashes"
       $ withProject
         [ ("proj/cabal.project", ""),
           ("lib/lib.cabal", package "lib" "src")
         ]
       $ \root -> do
+        let entry = T.map forward (T.pack (prPath root </> "lib"))
         writeUtf8File
           (prPath root </> "proj" </> "cabal.project")
-          ("packages: " <> T.pack (prPath root </> "lib") <> "\n")
+          ("packages: " <> entry <> "\n")
         componentsOfTarget (ProjectRoot (prPath root </> "proj") ProjectFile) Everything
           >>= \case
             Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
@@ -565,6 +566,10 @@ spec = do
 
 ----------------------------------------------------------------------------
 -- Helpers
+
+-- | Turn a path separator into a forward slash, which every system takes.
+forward :: Char -> Char
+forward c = if isPathSeparator c then '/' else c
 
 failed :: Either Text Target -> Bool
 failed = \case
