@@ -19,8 +19,9 @@ module Tilia.Pragma
   )
 where
 
-import Control.Monad ((<=<))
-import Data.Char (isAlphaNum, isSpace)
+import Control.Monad (guard, (<=<))
+import Data.Char (isAlphaNum, isLower, isSpace, isUpper)
+import Data.List (unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe, maybeToList)
@@ -34,9 +35,10 @@ import GHC.Parser.Header (toArgs)
 import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 import Tilia.Utils (tshow)
 
--- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas.
-movesPositions :: Text -> Bool
-movesPositions = any positional . pragmaBodies
+-- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with
+-- these extensions in force.
+movesPositions :: [Extension] -> Text -> Bool
+movesPositions extensions = any positional . pragmaBodies extensions
   where
     positional body =
       T.toUpper (T.takeWhile (/= ' ') body) `elem` ["LINE", "COLUMN"]
@@ -206,15 +208,28 @@ byFlagName :: [GHC.FlagSpec Extension] -> Map Text Extension
 byFlagName flags =
   Map.fromList [(T.pack (GHC.flagSpecName f), GHC.flagSpecFlag f) | f <- flags]
 
--- | What every @{-# … #-}@ in a module has between its braces, each on one
--- line.
-pragmaBodies :: Text -> [Text]
-pragmaBodies = scanPragmas past
+-- | What every @{-# … #-}@ in a module with these extensions in force has
+-- between its braces, each on one line.
+pragmaBodies :: [Extension] -> Text -> [Text]
+pragmaBodies extensions = scanPragmas past
   where
     past go t = case T.uncons t of
       Just ('"', after) -> go (skipString after)
       Just ('\'', after) -> go (skipCharacter after)
-      _ -> go (skipCode t)
+      _
+        | QuasiQuotes `elem` extensions,
+          Just body <- quasiQuotation t ->
+            go (T.drop 2 (snd (T.breakOn "|]" body)))
+        | otherwise -> go (skipCode t)
+
+    quasiQuotation t = do
+      (quoter, rest) <- T.span inQuoter <$> T.stripPrefix "[" t
+      (modules, name) <- unsnoc (T.splitOn "." quoter)
+      guard (all (begins isUpper) modules && begins varStart name)
+      T.stripPrefix "|" rest
+    inQuoter c = inName c || c == '.'
+    begins p = maybe False (p . fst) . T.uncons
+    varStart c = isLower c || c == '_'
 
     skipString = inString . T.dropWhile (\c -> c /= '"' && c /= '\\')
 
@@ -233,7 +248,7 @@ pragmaBodies = scanPragmas past
       let (plain, rest) = T.break opens (T.drop 1 t)
           before = maybe (T.head t) snd (T.unsnoc plain)
        in if "'" `T.isPrefixOf` rest && inName before then skipCode rest else rest
-    opens c = c == '{' || c == '-' || c == '"' || c == '\''
+    opens c = c == '{' || c == '-' || c == '"' || c == '\'' || c == '['
     inName c = isAlphaNum c || c == '_' || c == '\''
 
 -- | What the @{-# … #-}@ of a module's header have between their braces, each

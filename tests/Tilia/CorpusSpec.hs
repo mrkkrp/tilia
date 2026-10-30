@@ -322,7 +322,7 @@ guarded result =
 -- more input or output.
 checkPure :: Palette -> FilePath -> Maybe Defaults -> Text -> Maybe Text -> Result
 checkPure palette path package source expected
-  | movesPositions source =
+  | movesPositions inForce source =
       Result Declined "a pragma that moves positions, which we do not rewrite" noDigest
   | usesCpp inForce source = checkCpp palette path package source expected
   | otherwise = case parseModule config path source of

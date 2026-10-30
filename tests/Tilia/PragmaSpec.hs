@@ -39,9 +39,18 @@ spec = do
           ("one among pragmas that do not move anything", langThenLine),
           ( "one after a character literal holding a double quote",
             "module M where\nq = '\"'\n{-# LINE 9 \"O.hs\" #-}\n"
+          ),
+          ( "one after a quasi-quotation",
+            "module M where\nx = [q|a|]\n{-# LINE 9 \"O.hs\" #-}\n"
           )
         ]
-        (\source -> movesPositions source `shouldBe` True)
+        (\source -> movesPositions [QuasiQuotes] source `shouldBe` True)
+
+      it "one after a list comprehension, where quasi-quotes are off" $
+        movesPositions
+          []
+          "module M where\nxs = [x|x<-[1]]\n{-# LINE 9 \"O.hs\" #-}\n"
+          `shouldBe` True
 
     describe "says nothing of" $ do
       for_'
@@ -60,9 +69,15 @@ spec = do
           ),
           ( "one in a string after a name ending in a prime",
             "module M where\nx = f'\"'\"\ny = \"{-# LINE 1 #-}\"\n"
+          ),
+          ( "one in a quasi-quotation",
+            "module M where\nx = [q|\n{-# LINE 1 \"O.hs\" #-}\n|]\n"
+          ),
+          ( "one in a qualified quasi-quotation",
+            "module M where\nx = [Q.q|{-# LINE 1 \"O.hs\" #-}|]\n"
           )
         ]
-        (\source -> movesPositions source `shouldBe` False)
+        (\source -> movesPositions [QuasiQuotes] source `shouldBe` False)
   describe "the extensions in force" $ do
     it "keeps what the package puts in force" $
       inForceUnder [ImplicitPrelude, GADTs] "module M where\n"
