@@ -175,30 +175,46 @@ data Report = Report
   deriving (Eq, Show)
 
 -- | The summary an @inplace@ run prints.
-inplaceReport :: Palette -> [(FilePath, Outcome)] -> Report
-inplaceReport palette outcomes =
+inplaceReport ::
+  -- | The palette of standard output.
+  Palette ->
+  -- | The palette of standard error.
+  Palette ->
+  -- | Every file of the run, and what became of it.
+  [(FilePath, Outcome)] ->
   Report
-    { reportOut = T.unlines (tally palette ("✓", Good) "Formatted" (not . skipped) outcomes),
-      reportErr = asides palette outcomes
+inplaceReport out err outcomes =
+  Report
+    { reportOut =
+        T.unlines (tally out ("✓", Good) "Formatted" (not . skipped) outcomes),
+      reportErr = asides err outcomes
     }
   where
     skipped o = declined o || failed o
 
 -- | The diffs a @check@ run prints, and what it could not or would not do.
-checkReport :: Palette -> [(FilePath, Outcome)] -> Report
-checkReport palette outcomes =
+checkReport ::
+  -- | The palette of standard output.
+  Palette ->
+  -- | The palette of standard error.
+  Palette ->
+  -- | Every file of the run, and what became of it.
+  [(FilePath, Outcome)] ->
+  Report
+checkReport out err outcomes =
   Report
     { reportOut =
         T.unlines
-          [ diffInFull palette path before after
+          [ diffInFull out path before after
           | (path, Changed before after) <- outcomes
           ],
-      reportErr = asides palette outcomes
+      reportErr = asides err outcomes
     }
 
 -- | The module a @for-editor@ run prints, formatted or as it was read where
 -- it was declined, and why it was not formatted.
 stdinReport ::
+  -- | The palette of standard error.
   Palette ->
   -- | The module as it was read.
   Text ->

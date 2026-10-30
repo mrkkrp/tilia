@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (replaceExtension, (</>))
+import System.IO (stdout)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
@@ -69,7 +70,7 @@ corpusSpec corpus =
         it "is available" . expectationFailure $
           "corpus not on this machine and could not be fetched: " <> T.unpack problem
       Right examples -> do
-        palette <- runIO paletteFor
+        palette <- runIO (paletteFor stdout)
         case corpusExpectations corpus of
           Listed lists -> againstLists lists (check palette) examples
           -- Plain, so that what a record says does not depend on whether the
