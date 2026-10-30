@@ -46,7 +46,6 @@ module Tilia.Cpp.Directives
   )
 where
 
-import Data.Char (isAlphaNum)
 import Data.List (sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -55,7 +54,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
-import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy)
+import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar)
 import Tilia.Doc.Internal (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
@@ -675,4 +674,3 @@ macroLines source =
           '(' -> k + 1
           ')' -> k - 1
           _ -> k
-    isNameChar c = isAlphaNum c || c == '_'
