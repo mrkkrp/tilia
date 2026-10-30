@@ -163,6 +163,14 @@ spec = do
       exportsOfSource "module M (module Data.Map) where\n"
         `shouldBe` Just [ExportModule "Data.Map"]
 
+    it "reads T (.., P) as T (..) and T (P) together" $
+      exportsOfSource
+        "{-# LANGUAGE PatternSynonyms #-}\nmodule M (T (.., P)) where\n"
+        `shouldBe` Just
+          [ ExportAll Nothing (OpName "T"),
+            ExportSome Nothing (OpName "T") [OpName "P"]
+          ]
+
   describe "which unread module an unsettled operator is blamed on" $ do
     it "passes over one whose export list has no such operator" $
       lookupFixity (scopeKnowing [("Opaque", ["<+>"])] usesUnknown) InTerms Nothing (OpName "<??>")
@@ -475,6 +483,12 @@ spec = do
     it "hands on every member of a name exported with (..)" $
       listedMembersIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
         `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
+
+    it "hands on every member of a name exported with (..) and the rest" $
+      listedMembersIn
+        "{-# LANGUAGE PatternSynonyms #-}\n\
+        \module M (T (.., P)) where\ndata T = A | Int :| Int\npattern P = A\n"
+        `shouldBe` [(OpName "T", [OpName ":|", OpName "A", OpName "P"])]
 
     it "says nothing of the members of a type it does not declare" $
       listedMembersIn "module M (T (..)) where\nimport Elsewhere\n"

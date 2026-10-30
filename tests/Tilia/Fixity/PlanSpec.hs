@@ -1785,6 +1785,24 @@ withPlan plan = do
           certainNamesOf rs "Own"
             `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C")])
 
+    it "keeps the fixity of a pattern synonym it bundles with a type" $
+      withFakeProject [("src/Own.hs", bundling "T (E, (:<))")] $
+        \rs ->
+          fixitiesOf rs "Own"
+            `shouldReturn` Just
+              (Map.singleton (InTerms, OpName ":<") (Fixity RightAssoc 5))
+
+    it "keeps the constructors of a type exported as T (.., P)" $
+      withFakeProject [("src/Own.hs", bundling "T (.., (:<))")] $
+        \rs ->
+          fixitiesOf rs "Own"
+            `shouldReturn` Just
+              ( Map.fromList
+                  [ ((InTerms, OpName ":+"), Fixity RightAssoc 4),
+                    ((InTerms, OpName ":<"), Fixity RightAssoc 5)
+                  ]
+              )
+
     it "takes the members of a type it hands on from the module the type came from"
       $ withFakeProject
         [ ("src/Inner.hs", "module Inner where\ndata T = C | D\n"),
@@ -2211,6 +2229,20 @@ opaqueSource =
       "import No.Such.Module",
       "f :: Int",
       "f = 1"
+    ]
+
+-- | A module bundling the pattern synonym @:<@ with its type @T@, which has
+-- the constructor @:+@, in the export given.
+bundling :: Text -> Text
+bundling export =
+  T.unlines
+    [ "{-# LANGUAGE PatternSynonyms #-}",
+      "module Own (" <> export <> ") where",
+      "infixr 4 :+",
+      "data T = E | Int :+ T",
+      "infixr 5 :<",
+      "pattern (:<) :: Int -> T -> T",
+      "pattern x :< xs = x :+ xs"
     ]
 
 -- | A project of made-up modules, with a build plan written by hand.

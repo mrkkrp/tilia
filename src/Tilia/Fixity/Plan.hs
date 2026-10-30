@@ -809,6 +809,11 @@ withReexports reach modName summary =
                     (certainMembersOf answers qualifier parent)
                     (Map.lookup parent declared)
                 )
+                <> Set.fromList
+                  [ (InTerms, kid)
+                  | kid <- kids,
+                    Set.member (InTerms, kid) (summaryNames summary)
+                  ]
             )
       ExportModule m ->
         (if Just m == summaryName summary || m == modName then own else mempty)
