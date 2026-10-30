@@ -42,14 +42,20 @@ import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import Tilia.Cabal.Package (PackageReader, declaredModules, newPackageReader, readPackageDescription)
+import Tilia.Cabal.Package
+  ( PackageReader,
+    declaredModules,
+    newPackageReader,
+    packageExtensions,
+    readPackageDescription,
+  )
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, pathOfModule, readArchive, writtenForHsc)
-import Tilia.Fixity.Cabal (declaredExtensions, packageModules)
+import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (HiFile, primopFixities)
 import Tilia.Fixity.Interface
@@ -192,7 +198,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
             either (const Nothing) Just <$> packageReader path
         | Just (package, tarball) <- Map.lookup modName index =
             memoized flights extensionsRead Nothing package $
-              fmap declaredExtensions . (archiveCabal =<<) <$> archiveOf tarball
+              fmap packageExtensions . (archiveCabal =<<) <$> archiveOf tarball
         | otherwise = pure Nothing
       archiveOf tarball =
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)

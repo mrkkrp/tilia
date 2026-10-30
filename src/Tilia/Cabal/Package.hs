@@ -8,7 +8,10 @@ module Tilia.Cabal.Package
   ( PackageProblem (..),
     describePackageProblem,
     readPackageDescription,
+    parsePackageDescription,
     declaredModules,
+    packageSourceDirs,
+    packageExtensions,
     PackageReader,
     newPackageReader,
     ComponentSection (..),
@@ -25,12 +28,13 @@ module Tilia.Cabal.Package
 where
 
 import Control.Concurrent.MVar (modifyMVar, newMVar)
+import Control.Monad ((<=<))
 import Data.ByteString qualified as BS
 import Data.Either (rights)
 import Data.Foldable (toList)
 import Data.Generics.Schemes (listify)
 import Data.IORef
-import Data.List (sortOn)
+import Data.List (nub, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -73,6 +77,7 @@ import Distribution.Utils.Path (getSymbolicPath)
 #endif
 import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
+import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
 import System.Directory (canonicalizePath, doesDirectoryExist)
 import System.FilePath
@@ -263,11 +268,19 @@ readPackageDescription :: FilePath -> IO (Either PackageProblem GenericPackageDe
 readPackageDescription cabalFile =
   attempted (BS.readFile cabalFile) >>= \case
     Left why -> pure (Left (PackageUnreadable cabalFile why))
-    Right bytes ->
-      pure $ case snd (runParseResult (parseGenericPackageDescription bytes)) of
-        Left (_, complaints) ->
-          Left (PackageMalformed cabalFile (fmap said (NE.toList complaints)))
-        Right description -> Right description
+    Right bytes -> pure (parsePackageDescription cabalFile bytes)
+
+-- | Parse what a @.cabal@ file holds, or say why it cannot be.
+parsePackageDescription ::
+  -- | Where it comes from, named in what goes wrong.
+  FilePath ->
+  BS.ByteString ->
+  Either PackageProblem GenericPackageDescription
+parsePackageDescription cabalFile bytes =
+  case snd (runParseResult (parseGenericPackageDescription bytes)) of
+    Left (_, complaints) ->
+      Left (PackageMalformed cabalFile (fmap said (NE.toList complaints)))
+    Right description -> Right description
   where
     said = T.pack . showPError cabalFile
 
@@ -374,6 +387,31 @@ declaredModules described =
     (d, section) <- addedSources branch,
     (sub, name) <- sectionModules section
   ]
+
+-- | Every directory any branch of a package names for its files, and then
+-- the package's own.
+packageSourceDirs :: GenericPackageDescription -> [FilePath]
+packageSourceDirs described = nub (named <> ["."])
+  where
+    named =
+      [ getSymbolicPath d
+      | branch <- packageBranches described,
+        d <- hsSourceDirs (sectionInfo (ownSection branch))
+      ]
+
+-- | What any branch of a package puts in force, all together: every edition
+-- it names and every extension it turns on or off, in order.
+packageExtensions :: GenericPackageDescription -> Defaults
+packageExtensions described =
+  defaultsOf
+    baseline
+    (mapMaybe extensionSwitch (concatMap usedExtensions infos))
+  where
+    infos =
+      [sectionInfo (ownSection branch) | branch <- packageBranches described]
+    baseline = case mapMaybe (ghcLanguage <=< defaultLanguage) infos of
+      [] -> GHC.languageExtensions (Just GHC.Haskell98)
+      editions -> nub (concatMap (GHC.languageExtensions . Just) editions)
 
 -- | What one branch of a component declares.
 data ComponentSection = ComponentSection
@@ -527,14 +565,16 @@ extensionsInForce :: BuildInfo -> Defaults
 extensionsInForce bi =
   defaultsOf
     (GHC.languageExtensions edition)
-    (mapMaybe switched (usedExtensions bi))
+    (mapMaybe extensionSwitch (usedExtensions bi))
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
-    switched = \case
-      Cabal.EnableExtension e -> nameSwitch (named e)
-      Cabal.DisableExtension e -> nameSwitch ("No" <> named e)
-      _ -> Nothing
-    named = tshow
+
+-- | GHC's reading of an extension Cabal turns on or off, where GHC knows it.
+extensionSwitch :: Cabal.Extension -> Maybe (GHC.OnOff Extension)
+extensionSwitch = \case
+  Cabal.EnableExtension e -> nameSwitch (tshow e)
+  Cabal.DisableExtension e -> nameSwitch ("No" <> tshow e)
+  _ -> Nothing
 
 -- | GHC's name for a language edition, when it has one.
 ghcLanguage :: Cabal.Language -> Maybe GHC.Language

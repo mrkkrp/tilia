@@ -1,16 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Reading a package's modules out of its @.cabal@ file.
+-- | Reading a package's description out of its source tarball.
 module Tilia.Fixity.Cabal
   ( packageModules,
     cabalFileInArchive,
     ownCabalFile,
     cabalFileAtTop,
     entryPosixPath,
-    containedModules,
-    sourceDirs,
-    declaredExtensions,
   )
 where
 
@@ -21,16 +18,11 @@ import Control.Applicative ((<|>))
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.ByteString.Lazy qualified as BL
-import Data.Char (isSpace)
 import Data.List (isSuffixOf)
-import Data.List qualified
-import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
-import GHC.Driver.Session qualified as GHC
-import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
-import Tilia.Utils (fieldWords, looksLikeModule, quietly)
+import Distribution.PackageDescription (GenericPackageDescription)
+import Tilia.Cabal.Package (declaredModules, parsePackageDescription)
+import Tilia.Utils (quietly)
 
 -- | The modules a package holds, read from the @.cabal@ file in its
 -- source tarball.
@@ -40,25 +32,30 @@ packageModules :: FilePath -> IO (Maybe [Text])
 packageModules tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
   evaluate . force $
-    containedModules <$> cabalFileInArchive (Tar.read (GZip.decompress bytes))
+    fmap fst . declaredModules
+      <$> cabalFileInArchive (Tar.read (GZip.decompress bytes))
 
 -- | The first @.cabal@ file at the top level of an archive.
 --
 -- Stops as soon as it finds one. The archive is decompressed lazily, so a
 -- @.cabal@ near the front costs a fraction of the whole file.
-cabalFileInArchive :: Tar.Entries e -> Maybe Text
+cabalFileInArchive :: Tar.Entries e -> Maybe GenericPackageDescription
 cabalFileInArchive = \case
   Tar.Next entry rest -> ownCabalFile entry <|> cabalFileInArchive rest
   Tar.Done -> Nothing
   Tar.Fail _ -> Nothing
 
--- | The text of an archive's entry if it is the package's own @.cabal@ file.
-ownCabalFile :: Tar.Entry -> Maybe Text
+-- | What an archive's entry describes if it is the package's own @.cabal@
+-- file and parses.
+ownCabalFile :: Tar.Entry -> Maybe GenericPackageDescription
 ownCabalFile entry
-  | cabalFileAtTop (entryPosixPath entry),
+  | cabalFileAtTop path,
     Tar.NormalFile content _ <- Tar.entryContent entry =
-      Just (T.decodeUtf8Lenient (BL.toStrict content))
+      either (const Nothing) Just $
+        parsePackageDescription path (BL.toStrict content)
   | otherwise = Nothing
+  where
+    path = entryPosixPath entry
 
 -- | Where an entry sits in its archive, written the way a tar file writes
 -- it.
@@ -70,55 +67,3 @@ cabalFileAtTop :: FilePath -> Bool
 cabalFileAtTop path = ".cabal" `isSuffixOf` path && depth path == 2
   where
     depth = (1 +) . length . filter (== '/')
-
--- | Every module a package holds, whether it exposes it or not.
-containedModules :: Text -> [Text]
-containedModules t =
-  modulesUnder "exposed-modules" t <> modulesUnder "other-modules" t
-  where
-    modulesUnder field =
-      concatMap moduleNames . fieldsNamed field . T.lines
-      where
-        moduleNames = filter looksLikeModule . fieldWords
-
--- | Every directory a @.cabal@ file's modules could be under.
-sourceDirs :: Text -> [Text]
-sourceDirs contents = Data.List.nub (named <> ["."])
-  where
-    named = concatMap fieldWords (fieldsNamed "hs-source-dirs" (T.lines contents))
-
--- | What a package puts in force, read from its @.cabal@ file.
-declaredExtensions :: Text -> Defaults
-declaredExtensions contents =
-  defaultsOf baseline (mapMaybe nameSwitch named)
-  where
-    ls = T.lines contents
-    baseline =
-      case mapMaybe lookupEdition (fieldsNamed "default-language" ls) of
-        [] -> GHC.languageExtensions (Just GHC.Haskell98)
-        editions ->
-          Data.List.nub (concatMap (GHC.languageExtensions . Just) editions)
-    named =
-      concatMap fieldWords $
-        fieldsNamed "extensions" ls <> fieldsNamed "default-extensions" ls
-
--- | The values of every field with the given name, wherever it appears and
--- however deeply it is nested.
-fieldsNamed :: Text -> [Text] -> [Text]
-fieldsNamed name = go . filter (not . commented)
-  where
-    commented = T.isPrefixOf "--" . T.stripStart
-    go = \case
-      [] -> []
-      (l : ls)
-        | Just value <- fieldValue l ->
-            let (continued, rest) = span (deeperThan (indentOf l)) ls
-             in T.unwords (value : fmap T.strip continued) : go rest
-        | otherwise -> go ls
-    fieldValue l =
-      let (key, rest) = T.break (== ':') l
-       in if T.toLower (T.strip key) == name && not (T.null rest)
-            then Just (T.strip (T.drop 1 rest))
-            else Nothing
-    deeperThan n l = T.null (T.strip l) || indentOf l > n
-    indentOf = T.length . T.takeWhile isSpace

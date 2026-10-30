@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Reading a @.cabal@ file's fields without a cabal parser.
+-- | Reading a package's description out of its @.cabal@ file and its
+-- tarball.
 module Tilia.Fixity.CabalSpec (spec) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -10,10 +11,18 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Distribution.PackageDescription (GenericPackageDescription)
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+import Tilia.Cabal.Package
+  ( declaredModules,
+    describePackageProblem,
+    packageExtensions,
+    packageSourceDirs,
+    parsePackageDescription,
+  )
 import Tilia.Fixity.Cabal
 import Tilia.Pragma (effectiveExtensions)
 
@@ -45,10 +54,14 @@ spec = do
       cabalFileInArchive
         ( archiveOf
             [ ("hspec-2.11.17/Setup.lhs", "main = undefined\n"),
-              ("hspec-2.11.17/hspec.cabal", "library\n  exposed-modules: Test.Hspec, Test.Hspec.Runner\n")
+              ( "hspec-2.11.17/hspec.cabal",
+                header
+                  <> "library\n\
+                     \  exposed-modules: Test.Hspec, Test.Hspec.Runner\n"
+              )
             ]
         )
-        `shouldSatisfy` maybe False (elem "Test.Hspec.Runner" . containedModules)
+        `shouldSatisfy` maybe False (elem "Test.Hspec.Runner" . modulesOf)
 
   describe "a tarball that cannot be read" $ do
     it "leaves its package unread when it is not gzip" $
@@ -57,7 +70,8 @@ spec = do
 
     it "leaves its package unread when it is cut short in its cabal file" $ do
       let names = ["M" <> T.pack (show n) | n <- [1 .. 5000 :: Int]]
-          cabal = "library\n  exposed-modules: " <> T.intercalate ", " names
+          cabal =
+            header <> "library\n  exposed-modules: " <> T.intercalate ", " names
           whole = GZip.compress (Tar.write [entryFor "big-1.0/big.cabal" cabal])
       withTarball (BL.take (BL.length whole `div` 2) whole) $ \path ->
         packageModules path `shouldReturn` Nothing
@@ -94,14 +108,11 @@ spec = do
       exposed "library\n  exposed-modules:\n    A\n  build-depends: base\n"
         `shouldMatchList` ["A"]
 
-    it "ignores anything that is not a module name" $
-      exposed "library\n  exposed-modules: A, base >=4, -Wall\n"
-        `shouldMatchList` ["A"]
-
   describe "conditionals" $ do
     it "takes a branch nested inside an if" $
       exposed
-        "library\n\
+        "flag fancy\n\
+        \library\n\
         \  exposed-modules: A\n\
         \  if flag(fancy)\n\
         \    exposed-modules: B\n"
@@ -118,7 +129,9 @@ spec = do
 
     it "takes a branch nested two deep" $
       exposed
-        "library\n\
+        "flag a\n\
+        \flag b\n\
+        \library\n\
         \  if flag(a)\n\
         \    if flag(b)\n\
         \      exposed-modules: Deep\n"
@@ -143,12 +156,25 @@ spec = do
         `shouldMatchList` ["A", "C"]
 
     it "keeps reading source directories past one" $
-      sourceDirs "library\n  hs-source-dirs: src\n-- a comment\ntest-suite t\n  hs-source-dirs: tests\n"
+      sourceDirs
+        "library\n\
+        \  hs-source-dirs: src\n\
+        \-- a comment\n\
+        \test-suite t\n\
+        \  type: exitcode-stdio-1.0\n\
+        \  main-is: T.hs\n\
+        \  hs-source-dirs: tests\n"
         `shouldBe` ["src", "tests", "."]
 
   describe "where a component with no hs-source-dirs lives" $ do
     it "offers the package directory even when other components name one" $
-      sourceDirs "library\n  build-depends: base\ntest-suite t\n  hs-source-dirs: tests\n"
+      sourceDirs
+        "library\n\
+        \  build-depends: base\n\
+        \test-suite t\n\
+        \  type: exitcode-stdio-1.0\n\
+        \  main-is: T.hs\n\
+        \  hs-source-dirs: tests\n"
         `shouldBe` ["tests", "."]
 
     it "offers it last, so a named directory is tried first" $
@@ -203,6 +229,8 @@ spec = do
         "library\n\
         \  default-language: Haskell2010\n\
         \test-suite spec\n\
+        \  type: exitcode-stdio-1.0\n\
+        \  main-is: T.hs\n\
         \  default-language: GHC2021\n"
         `shouldSatisfy` elem TypeOperators
 
@@ -211,6 +239,8 @@ spec = do
         "library\n\
         \  default-language: Haskell2010\n\
         \test-suite spec\n\
+        \  type: exitcode-stdio-1.0\n\
+        \  main-is: T.hs\n\
         \  default-language: GHC2021\n"
         `shouldSatisfy` elem ImplicitPrelude
 
@@ -221,7 +251,12 @@ spec = do
     it "takes every component's, since it does not know which one asks" $ do
       let found =
             extensions
-              "library\n  default-extensions: LambdaCase\ntest-suite t\n  default-extensions: MultiWayIf\n"
+              "library\n\
+              \  default-extensions: LambdaCase\n\
+              \test-suite t\n\
+              \  type: exitcode-stdio-1.0\n\
+              \  main-is: T.hs\n\
+              \  default-extensions: MultiWayIf\n"
       found `shouldSatisfy` elem LambdaCase
       found `shouldSatisfy` elem MultiWayIf
 
@@ -238,11 +273,29 @@ spec = do
 
 -- | The modules a @.cabal@ of this shape holds.
 exposed :: Text -> [Text]
-exposed = containedModules
+exposed = modulesOf . described
+
+-- | The directories a @.cabal@ of this shape offers modules under.
+sourceDirs :: Text -> [FilePath]
+sourceDirs = packageSourceDirs . described
 
 -- | What a @.cabal@ of this shape puts in force.
 extensions :: Text -> [Extension]
-extensions = (`effectiveExtensions` "") . declaredExtensions
+extensions = (`effectiveExtensions` "") . packageExtensions . described
+
+-- | What a @.cabal@ file holding the fields given describes.
+described :: Text -> GenericPackageDescription
+described fields =
+  either (error . T.unpack . describePackageProblem) id $
+    parsePackageDescription "t.cabal" (T.encodeUtf8 (header <> fields))
+
+-- | The fields a @.cabal@ file needs before its components.
+header :: Text
+header = "cabal-version: 2.4\nname: t\nversion: 0\n"
+
+-- | The names of the modules a package declares.
+modulesOf :: GenericPackageDescription -> [Text]
+modulesOf = fmap fst . declaredModules
 
 -- | A tar entry at the given path, holding the given text.
 entryFor :: FilePath -> Text -> Tar.Entry
