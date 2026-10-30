@@ -58,6 +58,7 @@ import Tilia.Comments
     Pragma (..),
     asOrdinary,
     carriedOnFrom,
+    carriesOn,
     commentPragma,
     commentTrailing,
     triggerEscaped,
@@ -607,12 +608,14 @@ lastRearrangedLine m cs =
         <> foldMap spanOf (hsmodExports m)
     carriedPast lastLine =
       maybe lastLine (spanEndLine . commentSpan . snd) . unsnoc $
-        takeWhile
-          (maybe False ((<= lastLine) . fst) . carriedOnFrom (remarks <> run))
-          run
+        takeWhile (\c -> any (carries c) (carriedOn c)) run
       where
         remarks = [c | c <- cs, spanEndLine (commentSpan c) == lastLine]
         run = following (lastLine + 1) cs
+        carriedOn = carriedOnFrom (remarks <> run)
+        carries c (line, remark) =
+          line <= lastLine && carriesOn remark (commentSpan c) next
+    next = spanOf =<< listToMaybe (hsmodDecls m)
     following n = \case
       c : more
         | spanStartLine (commentSpan c) < n -> following n more
