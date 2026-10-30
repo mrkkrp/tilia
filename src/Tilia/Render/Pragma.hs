@@ -9,6 +9,7 @@ module Tilia.Render.Pragma
     pragma,
     activation,
     inlineSpec,
+    spelledAsWritten,
     overlapMode,
     warnDecls,
     warningTxt,
@@ -18,6 +19,7 @@ where
 import Data.Char (toUpper)
 import Data.List (isInfixOf)
 import Data.Text (Text)
+import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
 import GHC.Hs
 import GHC.Types.Basic hiding (overlapMode)
@@ -52,12 +54,18 @@ activation = \case
 inlineSpec :: InlineSpec -> Doc
 inlineSpec = \case
   Inline _ -> txt "INLINE"
-  Inlinable (SourceText s)
-    | "INLINEABLE" `isInfixOf` fmap toUpper (unpackFS s) -> txt "INLINEABLE"
-  Inlinable _ -> txt "INLINABLE"
+  Inlinable src -> txt (spelledAsWritten "INLINABLE" "INLINEABLE" src)
   NoInline _ -> txt "NOINLINE"
   Opaque _ -> txt "OPAQUE"
   NoUserInlinePrag -> mempty
+
+-- | Whichever of two spellings of a pragma's name its source text uses, the
+-- first where it has none.
+spelledAsWritten :: Text -> Text -> SourceText -> Text
+spelledAsWritten usual other = \case
+  SourceText s
+    | T.unpack other `isInfixOf` fmap toUpper (unpackFS s) -> other
+  _ -> usual
 
 -- | The overlap pragma of an instance.
 overlapMode :: Ctx -> Maybe (LocatedP OverlapMode) -> Maybe Doc
