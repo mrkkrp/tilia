@@ -118,20 +118,22 @@ pragmaOrder named body = case named of
   "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
   _ -> Nothing
 
--- | Take the Stack script header off the front of a comment stream.
+-- | Take the Stack script header off the front of a comment stream: the
+-- comment whose first word is @stack@ at the margin of the first line, or
+-- of the line under the @#!@ line, which Stack reads its options from.
 takeStackHeader ::
-  -- | Where the header ends.
-  Maybe Span ->
+  -- | The lines above the module that the parser never sees.
+  [Text] ->
   -- | The comment stream.
   [Comment] ->
   (Doc, [Comment])
-takeStackHeader headerEnd = \case
+takeStackHeader prologue = \case
   (c : cs) | isStackHeader c -> (reproduce c <> blankLine, cs)
   cs -> (mempty, cs)
   where
     isStackHeader c =
-      writtenInHeader headerEnd (commentSpan c)
-        && T.isPrefixOf "stack" (T.stripStart (T.drop 2 (NE.head (commentBody c))))
+      startPoint (commentSpan c) == (if null prologue then 1 else 2, 1)
+        && take 1 (T.words (T.drop 2 (NE.head (commentBody c)))) == ["stack"]
     reproduce c =
       verbatimLines AtMargin TrimWhitespace (NE.toList (commentBody c))
 

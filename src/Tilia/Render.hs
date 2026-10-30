@@ -92,7 +92,7 @@ renderConfiguration settings parsed =
         (pmGathered parsed)
         (comments (pmSource parsed))
     plain = heldOff haddocks loose'
-    (stackHeader, rest) = takeStackHeader (pmHeaderEnd parsed) plain
+    (stackHeader, rest) = takeStackHeader (pmPrologue parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
     opening = importsOpening (sourceLines (pmSource parsed)) held hsMod
