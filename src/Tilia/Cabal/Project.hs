@@ -14,11 +14,13 @@ module Tilia.Cabal.Project
 where
 
 import Control.Monad (filterM)
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.Either (fromRight)
 import Data.List (isSuffixOf, sort)
 import Data.Maybe (listToMaybe)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Distribution.Fields.Field
@@ -36,7 +38,7 @@ import System.Directory
     listDirectory,
   )
 import System.FilePath (takeDirectory, takeFileName, (</>))
-import Tilia.Utils (quietly)
+import Tilia.Utils (quietly, tshow)
 
 -- | A project, and what marked it out.
 data ProjectRoot = ProjectRoot
@@ -100,10 +102,11 @@ cabalFilesAmong directory entries =
     (fmap (directory </>) (sort (filter (".cabal" `isSuffixOf`) entries)))
 
 -- | A project configuration file and the files it imports, directly or
--- through one another, each once, with its fields.
+-- through one another, each once, with its fields or why they do not
+-- parse.
 --
 -- A file that cannot be read, such as an import from a URL, is passed over.
-projectConfigFiles :: FilePath -> IO [(FilePath, [Field Position])]
+projectConfigFiles :: FilePath -> IO [(FilePath, Either Text [Field Position])]
 projectConfigFiles = go Set.empty . pure
   where
     go _ [] = pure []
@@ -112,9 +115,11 @@ projectConfigFiles = go Set.empty . pure
       contents <- quietly Nothing (Just <$> BS.readFile file)
       case contents of
         Just bytes | Set.notMember file seen -> do
-          let fields = fromRight [] (readFields bytes)
+          let fields = first tshow (readFields bytes)
           ((file, fields) :)
-            <$> go (Set.insert file seen) (importsOf file fields <> rest)
+            <$> go
+              (Set.insert file seen)
+              (importsOf file (fromRight [] fields) <> rest)
         _ -> go seen rest
     importsOf file fields =
       [ takeDirectory file </> T.unpack (T.decodeUtf8Lenient value)

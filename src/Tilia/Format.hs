@@ -26,6 +26,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Data.Choice (Choice, fromBool, isTrue)
+import Data.Either (fromRight)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict (Map)
@@ -279,7 +280,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
           then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
       pure (plan, routes)
-  packages <- liftIO (packageFilesOf project)
+  packages <- liftIO (fromRight [] <$> packageFilesOf project)
   packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
   resolver <- liftIO (newResolverVia caching routes packageReader root plan)
   notes <-
