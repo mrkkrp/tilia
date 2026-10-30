@@ -7,6 +7,7 @@ module Tilia.Fixity.CabalSpec (spec) where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -24,6 +25,7 @@ import Tilia.Cabal.Package
     packageSourceDirs,
     parsePackageDescription,
   )
+import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleIn)
 import Tilia.Fixity.Cabal
 import Tilia.Pragma (effectiveExtensions)
 
@@ -187,6 +189,29 @@ spec = do
     it "offers it when nothing names anything" $
       sourceDirs "library\n  build-depends: base\n" `shouldBe` ["."]
 
+  describe "a module's file in an archive" $ do
+    it "is found under a source directory" $
+      textOf "src" "Foo.Parser" [("t-0/src/Foo/Parser.hs", "found")]
+        `shouldBe` Just "found"
+
+    it "is found in the package directory" $
+      textOf "." "Parser" [("t-0/Parser.hs", "found")]
+        `shouldBe` Just "found"
+
+    it "is found under a source directory however it is spelled" $
+      fmap
+        (\dir -> textOf dir "Parser" [("t-0/src/Parser.hs", "found")])
+        ["src/", "./src"]
+        `shouldBe` [Just "found", Just "found"]
+
+    it "is not a file of that name below a source directory" $
+      textOf "src" "Parser" [("t-0/src/Foo/Parser.hs", "module Foo.Parser")]
+        `shouldBe` Nothing
+
+    it "is not a file under a directory of that name further down" $
+      textOf "src" "Parser" [("t-0/vendor/src/Parser.hs", "vendored")]
+        `shouldBe` Nothing
+
   describe "what the package puts in force" $ do
     it "reads an extension the .cabal turns on" $
       extensions "library\n  default-extensions: LambdaCase\n"
@@ -283,6 +308,17 @@ sourceDirs = packageSourceDirs . described
 -- | What a @.cabal@ of this shape puts in force.
 extensions :: Text -> [Extension]
 extensions = (`effectiveExtensions` "") . packageExtensions . described
+
+-- | The text an archive of these files gives for a module, where its
+-- @.cabal@ file names this source directory.
+textOf :: FilePath -> Text -> [(FilePath, BS.ByteString)] -> Maybe Text
+textOf dir modName files =
+  case moduleIn modName (Archive (Just cabal) files) of
+    Just (Haskell text) -> Just text
+    _ -> Nothing
+  where
+    cabal =
+      described ("library\n  hs-source-dirs: " <> T.pack dir <> "\n")
 
 -- | What a @.cabal@ file holding the fields given describes.
 described :: Text -> GenericPackageDescription
