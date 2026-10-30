@@ -19,7 +19,6 @@ module Tilia.Cabal.Target
 where
 
 import Control.Monad (filterM)
-import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.Char (toLower)
 import Data.List (isPrefixOf, isSuffixOf, sort)
@@ -31,8 +30,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
-import Distribution.Fields.Parser (readFields)
 import Distribution.PackageDescription (GenericPackageDescription (..))
+import Distribution.Parsec.Position (Position)
 import System.Directory (canonicalizePath, doesFileExist, listDirectory)
 import System.FilePath
   ( dropTrailingPathSeparator,
@@ -54,7 +53,13 @@ import Tilia.Cabal.Package
     setupScript,
   )
 import Tilia.Cabal.Plan (PlanComponent (..))
-import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), cabalFilesIn, markerFile)
+import Tilia.Cabal.Project
+  ( Marker (..),
+    ProjectRoot (..),
+    cabalFilesIn,
+    markerFile,
+    projectConfigFiles,
+  )
 import Tilia.Ignore (withoutIgnored)
 import Tilia.Utils (fieldWords, quietly, tshow)
 
@@ -260,19 +265,16 @@ packageFilesOf :: ProjectRoot -> IO [FilePath]
 packageFilesOf root = case prMarker root of
   PackageFile named -> pure [prPath root </> named]
   ProjectFile -> do
-    contents <-
-      quietly BS.empty (BS.readFile (prPath root </> "cabal.project"))
+    configs <- projectConfigFiles (prPath root </> "cabal.project")
     found <-
       traverse
         (packageToCabalFile (prPath root))
-        (packagesInCabalProjectContents contents)
+        (concatMap (packagesInProjectConfig . snd) configs)
     pure (Set.toList (Set.fromList (concat found)))
 
--- | The entries of a @cabal.project@'s @packages@ field.
-packagesInCabalProjectContents :: BS.ByteString -> [Text]
-packagesInCabalProjectContents contents = case readFields contents of
-  Left _ -> []
-  Right fields -> concatMap entries (packagesIn fields)
+-- | The entries of a project configuration file's @packages@ fields.
+packagesInProjectConfig :: [Field Position] -> [Text]
+packagesInProjectConfig = concatMap entries . packagesIn
   where
     packagesIn = concatMap $ \case
       Field (Name _ name) ls

@@ -313,6 +313,16 @@ preparation = describe "preparing a project" $ do
       setModificationTime (dir </> "thing.cabal") later
       checkReadiness [] dir `shouldReturn` PlanStale [dir </> "thing.cabal"]
 
+  it "takes a change to a file the project imports as making the plan stale" $
+    withOwnPlan $ \dir -> do
+      writeUtf8File (dir </> "cabal.project") "import: config/more.config\n"
+      createDirectoryIfMissing True (dir </> "config")
+      writeUtf8File (dir </> "config" </> "more.config") ""
+      earlier <- addUTCTime (-90) <$> getCurrentTime
+      setModificationTime (dir </> "cabal.project") earlier
+      imported <- canonicalizePath (dir </> "config" </> "more.config")
+      checkReadiness [] dir `shouldReturn` PlanStale [imported]
+
   describe "a plan narrower than the run" $ do
     it "notices a component the plan says nothing about" $
       withTempProject (Just twoComponents) $ \dir ->
@@ -2049,10 +2059,19 @@ withTempProject plan act =
 writePlan :: FilePath -> Text -> IO ()
 writePlan dir = writeUtf8File (planPathFor dir)
 
--- | A project whose @.cabal@ file changed after its plan was written, under
--- a plan of its own, so that what it leaves in the cache is its own.
+-- | A project whose @.cabal@ file changed after its plan was written.
 withChangedPackage :: (FilePath -> IO a) -> IO a
 withChangedPackage act =
+  withOwnPlan $ \dir -> do
+    now <- getCurrentTime
+    writeUtf8File (dir </> "thing.cabal") ""
+    setModificationTime (dir </> "thing.cabal") (addUTCTime (-30) now)
+    act dir
+
+-- | An empty project under a plan of its own, written a minute ago, so
+-- that what it leaves in the cache is its own.
+withOwnPlan :: (FilePath -> IO a) -> IO a
+withOwnPlan act =
   withTempProject Nothing $ \dir -> do
     writePlan dir $
       "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
@@ -2062,8 +2081,6 @@ withChangedPackage act =
            \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
     now <- getCurrentTime
     setModificationTime (planPathFor dir) (addUTCTime (-60) now)
-    writeUtf8File (dir </> "thing.cabal") ""
-    setModificationTime (dir </> "thing.cabal") (addUTCTime (-30) now)
     act dir
 
 -- | A plan naming one package that no package cache can have a tarball
