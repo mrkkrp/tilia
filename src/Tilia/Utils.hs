@@ -35,13 +35,21 @@ import Control.Concurrent
     putMVar,
     takeMVar,
   )
-import Control.Exception (SomeException, displayException, throwIO, try)
+import Control.Exception
+  ( SomeAsyncException,
+    SomeException,
+    displayException,
+    fromException,
+    throwIO,
+    tryJust,
+  )
 import Control.Monad (replicateM, (>=>))
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (isSpace)
+import Data.Either (fromRight)
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -57,10 +65,7 @@ tshow = T.pack . show
 
 -- | Run an action, falling back on the given value if it throws.
 quietly :: a -> IO a -> IO a
-quietly fallback action =
-  try action >>= \case
-    Left (_ :: SomeException) -> pure fallback
-    Right a -> pure a
+quietly fallback = fmap (fromRight fallback) . attempted
 
 -- | Read a file as UTF-8, leniently, if it is there and can be read.
 readUtf8File :: FilePath -> IO (Maybe Text)
@@ -110,12 +115,12 @@ looksLikeModule m = case T.uncons m of
   Nothing -> False
 
 -- | Run an action and return its result or the exception it threw rendered
--- as 'Text'.
+-- as 'Text', letting an asynchronous exception, which asks it to stop, go
+-- on.
 attempted :: IO a -> IO (Either Text a)
-attempted action =
-  try action >>= \case
-    Left (e :: SomeException) -> pure (Left (T.pack (displayException e)))
-    Right a -> pure (Right a)
+attempted = tryJust $ \(e :: SomeException) -> case fromException e of
+  Just (_ :: SomeAsyncException) -> Nothing
+  Nothing -> Just (T.pack (displayException e))
 
 -- | Decode source as UTF-8.
 asUtf8 :: BS.ByteString -> Either Text Text

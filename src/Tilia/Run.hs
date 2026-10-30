@@ -25,14 +25,7 @@ module Tilia.Run
   )
 where
 
-import Control.Exception
-  ( SomeAsyncException,
-    SomeException,
-    displayException,
-    evaluate,
-    fromException,
-    tryJust,
-  )
+import Control.Exception (evaluate)
 import Data.ByteString qualified as BS
 import Data.List (sortOn)
 import Data.Map.Strict qualified as Map
@@ -132,16 +125,13 @@ outcomeOf ::
   IO Outcome
 outcomeOf session path before =
   either (Failed . Threw path) id
-    <$> tryJust thrown (evaluate . outcome =<< formatted)
+    <$> attempted (evaluate . outcome =<< formatted)
   where
     formatted = formatSource session path (setNewlineStyle Lf source)
     outcome = \case
       Left e -> if refused e then Declined e else Failed e
       Right it -> formattingOutcome before (mark <> it)
     (mark, source) = byteOrderMark before
-    thrown (e :: SomeException) = case fromException e of
-      Just (_ :: SomeAsyncException) -> Nothing
-      Nothing -> Just (T.pack (displayException e))
 
 -- | Read a source file as UTF-8.
 readAsUtf8 :: FilePath -> IO (Either Text Text)
