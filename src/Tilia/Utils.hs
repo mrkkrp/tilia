@@ -11,6 +11,7 @@ module Tilia.Utils
     asUtf8,
     byteOrderMark,
     sha256Of,
+    sha256OfFile,
     lineWidth,
     indent,
     wrapTo,
@@ -34,6 +35,7 @@ import Control.Monad (replicateM, (>=>))
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as B16
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (for_, traverse_)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -90,7 +92,15 @@ byteOrderMark t = T.splitAt (if "\xFEFF" `T.isPrefixOf` t then 1 else 0) t
 
 -- | The SHA-256 of a text's UTF-8 encoding, in hexadecimal.
 sha256Of :: Text -> Text
-sha256Of = T.decodeUtf8Lenient . B16.encode . SHA256.hash . T.encodeUtf8
+sha256Of = hex . SHA256.hash . T.encodeUtf8
+
+-- | The SHA-256 of a file, in hexadecimal.
+sha256OfFile :: FilePath -> IO Text
+sha256OfFile = fmap (hex . SHA256.hashlazy) . BL.readFile
+
+-- | Bytes as lower-case hexadecimal.
+hex :: BS.ByteString -> Text
+hex = T.decodeUtf8Lenient . B16.encode
 
 -- | The line width for the terminal output of this program.
 lineWidth :: Int
