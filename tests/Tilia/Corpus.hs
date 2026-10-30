@@ -41,7 +41,6 @@ import System.Directory
     doesDirectoryExist,
     doesFileExist,
     getXdgDirectory,
-    listDirectory,
     removePathForcibly,
     renameDirectory,
     renameFile,
@@ -50,6 +49,7 @@ import System.Environment (lookupEnv)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Pragma (Defaults)
+import Tilia.TestUtils (haskellFilesIn)
 import Tilia.Utils (quietly)
 
 ----------------------------------------------------------------------------
@@ -1110,12 +1110,3 @@ packageReaderFor corpus
   | otherwise = do
       reader <- newPackageReader Nothing []
       pure (fmap (either (const Nothing) Just) . reader)
-
-haskellFilesIn :: FilePath -> IO [FilePath]
-haskellFilesIn dir = do
-  isDir <- doesDirectoryExist dir
-  if not isDir
-    then pure [dir | any (`isSuffixOf` dir) sourceExtensions]
-    else do
-      entries <- quietly [] (listDirectory dir)
-      concat <$> traverse (haskellFilesIn . (dir </>)) entries

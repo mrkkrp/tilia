@@ -19,7 +19,6 @@ import Control.Monad (filterM)
 import Data.ByteString qualified as BS
 import Data.Choice (pattern Don't, pattern Is)
 import Data.Foldable (for_)
-import Data.List (isSuffixOf, sort)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -27,8 +26,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath ((</>))
+import System.Directory (doesFileExist)
 import Test.Hspec
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cabal.Plan
@@ -40,7 +38,7 @@ import Tilia.Fixity.PackageDb
 import Tilia.Fixity.Plan
 import Tilia.Gathered (gathered)
 import Tilia.Parser
-import Tilia.TestUtils (defaultParserConfig, routedResolver)
+import Tilia.TestUtils (defaultParserConfig, haskellFilesIn, routedResolver)
 import Tilia.WithProjectPlan
   ( Dependency (..),
     compilerShipped,
@@ -276,18 +274,6 @@ ownModules = do
             Left _ -> Nothing
             Right pm -> Just (pmModule pm)
         )
-
-haskellFilesIn :: FilePath -> IO [FilePath]
-haskellFilesIn dir = do
-  entries <- sort <$> listDirectory dir
-  concat <$> traverse below entries
-  where
-    below entry = do
-      let path = dir </> entry
-      isDir <- doesDirectoryExist path
-      if isDir
-        then haskellFilesIn path
-        else pure [path | ".hs" `isSuffixOf` path]
 
 -- | What a module exports, where reading it settles every name.
 fixitiesThrough :: Resolver -> Text -> IO (Maybe Fixities)

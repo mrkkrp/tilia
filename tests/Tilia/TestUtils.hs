@@ -17,6 +17,7 @@ module Tilia.TestUtils
     parsed,
     parses,
     commentsIn,
+    haskellFilesIn,
     unreadOnly,
     inBothNamespaces,
     fingerprint,
@@ -39,6 +40,7 @@ import Data.Char (ord)
 import Data.Choice (pattern Do)
 import Data.Either (isRight)
 import Data.Foldable (traverse_)
+import Data.List (isSuffixOf, sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -50,12 +52,17 @@ import Data.Word (Word64)
 import GHC.Driver.Session qualified as GHC
 import GHC.IO.Encoding (getLocaleEncoding, setLocaleEncoding)
 import GHC.LanguageExtensions.Type (Extension (..))
-import System.Directory (canonicalizePath, createDirectoryIfMissing)
+import System.Directory
+  ( canonicalizePath,
+    createDirectoryIfMissing,
+    doesDirectoryExist,
+    listDirectory,
+  )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (mkTextEncoding)
 import System.IO.Temp (withSystemTempDirectory)
-import Tilia.Cabal.Package (newPackageReader)
+import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
 import Tilia.Comments (Comment)
 import Tilia.Cpp.Directives
@@ -83,6 +90,7 @@ import Tilia.Parser
   )
 import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
 import Tilia.Source (comments)
+import Tilia.Utils (quietly)
 
 -- | Run something with the given variables set, and the environment as it
 -- was afterwards however it turns out.
@@ -208,6 +216,16 @@ parsed source = case parseModule defaultParserConfig "M.hs" source of
 -- | Does a module parse, with what its own pragmas turn on?
 parses :: Text -> Bool
 parses = isRight . parseModule defaultParserConfig "M.hs"
+
+-- | Every file of Haskell source at or under a path, in order.
+haskellFilesIn :: FilePath -> IO [FilePath]
+haskellFilesIn path = do
+  isDir <- doesDirectoryExist path
+  if not isDir
+    then pure [path | any (`isSuffixOf` path) sourceExtensions]
+    else do
+      entries <- sort <$> quietly [] (listDirectory path)
+      concat <$> traverse (haskellFilesIn . (path </>)) entries
 
 -- | Every comment in a module.
 commentsIn :: Text -> [Comment]
