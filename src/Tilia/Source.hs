@@ -14,6 +14,7 @@ module Tilia.Source
     sourceLines,
     lineAt,
     blankAt,
+    blankAcross,
     offsetOf,
     directivePresentOnLine,
     directiveOnLine,

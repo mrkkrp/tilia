@@ -67,7 +67,7 @@ import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
   ( Lines,
     Written (..),
-    blankAt,
+    blankAcross,
     comments,
     dropping,
     linesOf,
@@ -317,7 +317,7 @@ linearCost limit forest source = go forest
         upTo
           0
           ( go (concatMap (`nestedIn` 0) gss)
-              : [ if holdsNothing r && all holdsNothing (take 1 (gsBranches gs))
+              : [ if blankAcross r written && all (`blankAcross` written) (take 1 (gsBranches gs))
                     then 0
                     else go (nestedIn gs i <> concatMap (`nestedIn` 0) others)
                 | (k, gs) <- zip [0 :: Int ..] gss,
@@ -332,7 +332,6 @@ linearCost limit forest source = go forest
                       )
                 ]
           )
-    holdsNothing (from, to) = all (`blankAt` written) [from .. to]
     upTo acc = \case
       _ | acc > limit -> acc
       [] -> acc
