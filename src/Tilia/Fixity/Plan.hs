@@ -100,7 +100,7 @@ newtype Resolver = Resolver
     askModule :: Maybe FilePath -> Text -> IO Established
   }
 
--- | Build a new 'Resolver'.
+-- | Build a new 'Resolver' for the project in the current directory.
 --
 -- Answers are remembered on disk between runs by "Tilia.Fixity.Cache", so a
 -- package is decompressed and parsed once per machine rather than once per
@@ -111,7 +111,12 @@ newResolver ::
   IO Resolver
 newResolver plan = do
   packageReader <- newPackageReader (plannedCompiler plan) []
-  newResolverVia (Do #useCache) [FromInterface, FromSource] packageReader plan
+  newResolverVia
+    (Do #useCache)
+    [FromInterface, FromSource]
+    packageReader
+    "."
+    plan
 
 -- | 'newResolver', restricted to the routes given.
 newResolverVia ::
@@ -121,14 +126,16 @@ newResolverVia ::
   [Route] ->
   -- | What the package of each of the project's own modules puts in force.
   PackageReader ->
+  -- | The project the plan is for.
+  FilePath ->
   -- | The build plan to use.
   BuildPlan ->
   IO Resolver
-newResolverVia caching routes packageReader plan = do
+newResolverVia caching routes packageReader projectDir plan = do
   cache <- openCache caching =<< tokenForBuildPlan plan
   tarballs <-
     if FromSource `elem` routes
-      then plannedTarballs cache plan
+      then plannedTarballs cache projectDir plan
       else pure []
   installed <- getInstalledPackages cache
   newResolverWith routes cache installed tarballs packageReader plan

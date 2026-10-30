@@ -666,7 +666,15 @@ packageCache = describe "where the package cache is looked for" $ do
     case said of
       Nothing -> expectationFailure "no cabal on the path to ask"
       Just reported ->
-        packageCacheRoot `shouldReturn` T.unpack (T.strip reported)
+        packageCacheRoot "." `shouldReturn` T.unpack (T.strip reported)
+
+  it "is the one the project's own configuration names" $
+    withSystemTempDirectory "tilia-own-cache" $ \dir -> do
+      writeUtf8File (dir </> "cabal.project") . T.pack $
+        "packages: .\nremote-repo-cache: " <> (dir </> "packages") <> "\n"
+      writeUtf8File (dir </> "thing.cabal") $
+        "cabal-version: 3.0\nname: thing\nversion: 1.0\n\nlibrary\n"
+      packageCacheRoot dir `shouldReturn` (dir </> "packages")
 
   describe "and where it is guessed, for a cabal too old to ask" $ do
     it "is what CABAL_DIR says, above all else" $
@@ -719,13 +727,13 @@ withRemembered holding refused act =
       createDirectoryIfMissing True at
       writeUtf8File (at </> "thing-1.0.tar.gz") "not really a tarball"
     cache <- openCache (Do #useCache) (PlanToken (T.pack (takeBaseName root)))
-    storePackageCache cache root
     storeFutileFetch cache refused
-    withTempProject (Just (fromRepository hackage)) $ \dir ->
+    withTempProject (Just (fromRepository hackage)) $ \dir -> do
+      storePackageCache cache dir root
       readBuildPlan (planPathFor dir) >>= \case
         Left why -> expectationFailure (T.unpack why)
         Right plan -> do
-          (asked, found) <- runsCabal (plannedTarballs cache plan)
+          (asked, found) <- runsCabal (plannedTarballs cache dir plan)
           act root asked (fmap snd found)
   where
     hackage = "{\"type\":\"secure-repo\",\"uri\":\"https://hackage.haskell.org/\"}"
@@ -846,12 +854,11 @@ withCache cached planText act =
         writeUtf8File (planPathFor dir) planText
         readBuildPlan (planPathFor dir) >>= \case
           Left why -> expectationFailure (T.unpack why)
-          Right plan ->
-            openCache (Don't #useCache) (PlanToken "")
-              >>= (`plannedTarballs` plan)
-              >>= \case
-                [(_, found)] -> act found
-                other -> expectationFailure (show (fmap snd other))
+          Right plan -> do
+            cache <- openCache (Don't #useCache) (PlanToken "")
+            plannedTarballs cache dir plan >>= \case
+              [(_, found)] -> act found
+              other -> expectationFailure (show (fmap snd other))
   where
     put cabalDir (repo, held, version) = do
       let at =
