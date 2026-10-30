@@ -17,7 +17,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
-import Tilia.TestUtils (answeredLeaves, defaultParserConfig)
+import Tilia.TestUtils (answeredLeaves, defaultParserConfig, parses)
 import Tilia.Utils (tshow)
 
 spec :: Spec
@@ -102,11 +102,6 @@ formatted :: (Testable p) => CppModule -> (Text -> p) -> Property
 formatted m k = case format (sourceOf m) of
   Left _ -> property Discard
   Right out -> property (k out)
-
-parses :: Text -> Bool
-parses t = case parseModule defaultParserConfig "M.hs" t of
-  Left _ -> False
-  Right _ -> True
 
 difference :: Text -> Text -> Maybe Text
 difference before after = do

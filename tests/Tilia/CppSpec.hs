@@ -4,6 +4,7 @@
 -- | Whether documents printed from different configurations line up.
 module Tilia.CppSpec (spec) where
 
+import Data.Either (isLeft, isRight)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, maybeToList)
@@ -27,6 +28,7 @@ import Tilia.TestUtils
     defaultParserConfig,
     leaves,
     linearLeaves,
+    parses,
   )
 
 -- | Format a module which uses the C preprocessor, configured with nothing.
@@ -721,10 +723,6 @@ elseBeforeElif =
 ----------------------------------------------------------------------------
 -- Asking it
 
-isLeft, isRight :: Either a b -> Bool
-isLeft = either (const True) (const False)
-isRight = either (const False) (const True)
-
 sameBranch :: (Maybe Text, Maybe Text) -> Either Text ()
 sameBranch (Nothing, Nothing) = Right ()
 sameBranch (Just input, Just output) = sameProgram input output
@@ -739,10 +737,6 @@ sameBranch (Just input, Just output) = sameProgram input output
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
 sameBranch _ = Left "preprocessing changed between succeeding and failing"
-
--- | Does a configuration parse, with what its own pragmas turn on?
-parses :: Text -> Bool
-parses t = either (const False) (const True) (parseModule defaultParserConfig "example.hs" t)
 
 -- | How many modules parsing every branch of a module comes to.
 branchesParsed :: Text -> Maybe Int

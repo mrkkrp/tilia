@@ -15,6 +15,7 @@ module Tilia.TestUtils
     defaultParserConfig,
     effectiveExtensionsFor,
     parsed,
+    parses,
     commentsIn,
     unreadOnly,
     inBothNamespaces,
@@ -36,6 +37,7 @@ import Data.Bits (xor)
 import Data.ByteString qualified as BS
 import Data.Char (ord)
 import Data.Choice (pattern Do)
+import Data.Either (isRight)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
@@ -202,6 +204,10 @@ parsed :: Text -> ParsedModule
 parsed source = case parseModule defaultParserConfig "M.hs" source of
   Left problem -> error (T.unpack (describeParseError problem))
   Right m -> m
+
+-- | Does a module parse, with what its own pragmas turn on?
+parses :: Text -> Bool
+parses = isRight . parseModule defaultParserConfig "M.hs"
 
 -- | Every comment in a module.
 commentsIn :: Text -> [Comment]
