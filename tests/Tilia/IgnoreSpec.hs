@@ -3,17 +3,12 @@
 -- | Ignore files written the way @.gitignore@ files are.
 module Tilia.IgnoreSpec (spec) where
 
-import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text.Encoding qualified as T
-import Data.Text.IO qualified as T
-import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
-import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Ignore
-import Tilia.TestUtils (underAsciiLocale)
+import Tilia.TestUtils (underAsciiLocale, withFiles, writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -96,7 +91,7 @@ spec = do
 
     it "is ignored by a .tiliaignore that is not ASCII under any locale" $
       withProject $ \root -> do
-        BS.writeFile (root </> ".tiliaignore") . T.encodeUtf8 $
+        writeUtf8File (root </> ".tiliaignore") $
           "# generated code — do not format\nsrc/Generated.hs\n"
         let generated = root </> "src" </> "Generated.hs"
         underAsciiLocale (isIgnoredInProject root generated)
@@ -109,16 +104,12 @@ spec = do
 -- | A project with @src/Generated.hs@, which its root's @.tiliaignore@
 -- ignores, and a @.tiliaignore@ in @src/inner@ ignoring boot files.
 withProject :: (FilePath -> Expectation) -> Expectation
-withProject act =
-  withSystemTempDirectory "tilia-ignore" $ \dir -> do
-    root <- canonicalizePath dir
-    let write path text = do
-          createDirectoryIfMissing True (takeDirectory (root </> path))
-          T.writeFile (root </> path) text
-    write ".tiliaignore" "src/Generated.hs\n"
-    write ("src" </> "Generated.hs") "module Generated where\n"
-    write ("src" </> "inner" </> ".tiliaignore") "*.hs-boot\n"
-    act root
+withProject =
+  withFiles
+    [ (".tiliaignore", "src/Generated.hs\n"),
+      ("src" </> "Generated.hs", "module Generated where\n"),
+      ("src" </> "inner" </> ".tiliaignore", "*.hs-boot\n")
+    ]
 
 -- | Check which of the paths a single ignore file at the root ignores.
 ignores :: Text -> [FilePath] -> [FilePath] -> Expectation

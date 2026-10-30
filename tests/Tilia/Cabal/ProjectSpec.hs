@@ -3,11 +3,10 @@
 -- | Finding the project a file belongs to.
 module Tilia.Cabal.ProjectSpec (spec) where
 
-import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
-import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 import Tilia.Cabal.Project
+import Tilia.TestUtils (withFiles)
 
 spec :: Spec
 spec = do
@@ -33,28 +32,28 @@ spec = do
 
   describe "marker precedence" $ do
     it "prefers cabal.project to a bare .cabal file" $
-      withTree [("cabal.project", ""), ("thing.cabal", "")] $ \dir -> do
+      withFiles [("cabal.project", ""), ("thing.cabal", "")] $ \dir -> do
         root <- findProjectRoot dir
         (prMarker <$> root) `shouldBe` Just ProjectFile
 
     it "accepts a bare .cabal file when there is no project" $
-      withTree [("thing.cabal", "")] $ \dir -> do
+      withFiles [("thing.cabal", "")] $ \dir -> do
         root <- findProjectRoot dir
         (prMarker <$> root) `shouldBe` Just (PackageFile "thing.cabal")
 
     it "passes over a stack.yaml, which cabal does not read" $
-      withTree [("stack.yaml", ""), ("thing.cabal", "")] $ \dir -> do
+      withFiles [("stack.yaml", ""), ("thing.cabal", "")] $ \dir -> do
         root <- findProjectRoot dir
         (prMarker <$> root) `shouldBe` Just (PackageFile "thing.cabal")
 
     it "climbs out of a stack project to the package it is asked about" $
-      withTree [("stack.yaml", ""), ("packages/inner/inner.cabal", "")] $
+      withFiles [("stack.yaml", ""), ("packages/inner/inner.cabal", "")] $
         \dir -> do
           root <- findProjectRoot (dir </> "packages" </> "inner")
           prPath <$> root `shouldBe` Just (dir </> "packages" </> "inner")
 
     it "climbs past a package to the project that contains it"
-      $ withTree
+      $ withFiles
         [ ("cabal.project", ""),
           ("packages/inner/placeholder", "")
         ]
@@ -63,7 +62,7 @@ spec = do
         (prMarker <$> root) `shouldBe` Just ProjectFile
 
     it "climbs past a package that has its own .cabal"
-      $ withTree
+      $ withFiles
         [ ("cabal.project", ""),
           ("packages/inner/inner.cabal", "")
         ]
@@ -73,7 +72,7 @@ spec = do
         (prMarker <$> root) `shouldBe` Just ProjectFile
 
     it "takes the nearest project of the ones above"
-      $ withTree
+      $ withFiles
         [ ("cabal.project", ""),
           ("packages/inner/cabal.project", ""),
           ("packages/inner/inner.cabal", "")
@@ -83,7 +82,7 @@ spec = do
         prPath <$> root `shouldBe` Just (dir </> "packages" </> "inner")
 
     it "takes the nearest package when no project is above either"
-      $ withTree
+      $ withFiles
         [ ("outer.cabal", ""),
           ("packages/inner/inner.cabal", "")
         ]
@@ -92,7 +91,7 @@ spec = do
         (prMarker <$> root) `shouldBe` Just (PackageFile "inner.cabal")
 
     it "climbs to a project past a package that is not the one asked about"
-      $ withTree
+      $ withFiles
         [ ("cabal.project", ""),
           ("outer.cabal", ""),
           ("packages/inner/inner.cabal", "")
@@ -103,22 +102,9 @@ spec = do
 
   describe "no project" $
     it "gives up rather than guessing" $
-      withTree [("lonely/Thing.hs", "module Thing where")] $ \dir -> do
+      withFiles [("lonely/Thing.hs", "module Thing where")] $ \dir -> do
         root <- findProjectRoot (dir </> "lonely")
         case root of
           Nothing -> pure ()
           Just found ->
             prPath found `shouldNotBe` (dir </> "lonely")
-
--- | Build a throwaway tree of files and run an action on its root.
-withTree :: [(FilePath, String)] -> (FilePath -> IO a) -> IO a
-withTree files action =
-  withSystemTempDirectory "tilia-project" $ \dir -> do
-    mapM_ (create dir) files
-    action dir
-  where
-    create dir (path, contents) = do
-      let full = dir </> path
-      createDirectoryIfMissing True (parentOf full)
-      writeFile full contents
-    parentOf = reverse . drop 1 . dropWhile (/= '/') . reverse
