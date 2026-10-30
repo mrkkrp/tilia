@@ -364,8 +364,6 @@ formatSource ::
   -- | Result.
   IO (Either FormatError Text)
 formatSource session path source = runExceptT $ do
-  when (movesPositions source) $
-    throwE (PositionPragmas path)
   package <- orElse (NoPackage path) =<< liftIO (sessionPackage session path)
   importer <- liftIO (canonicalizePath path)
   let resolver = sessionResolver session
@@ -419,7 +417,9 @@ formatSource session path source = runExceptT $ do
               ( printDoc (renderModule render parsed),
                 Just parsed
               )
-  let inForce@(_, cpp) = extensionsAndCpp source
+  let inForce@(extensions, cpp) = extensionsAndCpp source
+  when (movesPositions (Set.toList extensions) source) $
+    throwE (PositionPragmas path)
   (formatted, tree) <- formatting inForce Nothing source
   printedTree <-
     if isTrue (sessionCheckAst session)
