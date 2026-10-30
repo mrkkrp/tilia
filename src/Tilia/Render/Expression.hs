@@ -695,7 +695,10 @@ localBinds ctx bracing = \case
           at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
-    anchored ann (items bracing (fmap (at_ ctx implicitBind) xs))
+    anchored ann . items bracing $
+      keepBlanks
+        (separatedByBlank ctx)
+        [(spanOf x, at ctx x implicitBind) | x <- xs]
   EmptyLocalBinds _ -> mempty
   where
     implicitBind (IPBind _ (L _ n) e) =
