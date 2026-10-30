@@ -73,6 +73,13 @@ spec = do
         driver <- asked (root </> "tests" </> "Doctests.hs")
         (has BangPatterns unit, has BangPatterns driver) `shouldBe` (True, False)
 
+    it "is a foreign library where its source directory holds the file" $
+      inPackage withForeignLibrary ["src", "flib"] $ \root -> do
+        library <- asked (root </> "src" </> "M.hs")
+        flib <- asked (root </> "flib" </> "F.hs")
+        (has OverloadedStrings library, has OverloadedStrings flib)
+          `shouldBe` (False, True)
+
     it "inherits settings in conditional source directories" $
       inPackage conditionalLibrary ["src", "new"] $ \root ->
         (has BangPatterns <$> asked (root </> "new" </> "M.hs"))
@@ -237,6 +244,27 @@ twoComponents =
       "  type: exitcode-stdio-1.0",
       "  main-is: S.hs",
       "  hs-source-dirs: test",
+      "  default-language: Haskell2010",
+      "  default-extensions: OverloadedStrings"
+    ]
+
+-- | A library, and a foreign library with settings of its own.
+withForeignLibrary :: Text
+withForeignLibrary =
+  T.unlines
+    [ "cabal-version: 2.4",
+      "name: demo",
+      "version: 0",
+      "",
+      "library",
+      "  exposed-modules: M",
+      "  hs-source-dirs: src",
+      "  default-language: Haskell2010",
+      "",
+      "foreign-library demo",
+      "  type: native-shared",
+      "  other-modules: F",
+      "  hs-source-dirs: flib",
       "  default-language: Haskell2010",
       "  default-extensions: OverloadedStrings"
     ]

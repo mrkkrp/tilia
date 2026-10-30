@@ -87,11 +87,17 @@ parseTarget written = case T.splitOn ":" (T.strip (T.pack written)) of
       "unrecognised target "
         <> tshow written
         <> ": expected all, a package or component name, or one of\
-           \ lib:, exe:, test:, bench: followed by a name"
-    kindNamed = \case
+           \ lib:, flib:, exe:, test:, bench: followed by a name"
+    kindNamed k = case T.toLower k of
       "lib" -> Just Lib
+      "library" -> Just Lib
+      "flib" -> Just FLib
+      "foreign-library" -> Just FLib
       "exe" -> Just Exe
+      "executable" -> Just Exe
+      "tst" -> Just Test
       "test" -> Just Test
+      "test-suite" -> Just Test
       "bench" -> Just Bench
       "benchmark" -> Just Bench
       _ -> Nothing
@@ -218,6 +224,7 @@ componentInPlan c = case componentKind c of
 spellKind :: Kind -> Text
 spellKind = \case
   Lib -> "lib"
+  FLib -> "flib"
   Exe -> "exe"
   Test -> "test"
   Bench -> "bench"

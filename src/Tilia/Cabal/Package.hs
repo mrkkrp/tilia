@@ -55,6 +55,7 @@ import Distribution.PackageDescription
     CondTree (..),
     ConfVar (..),
     Executable (..),
+    ForeignLib (..),
     GenericPackageDescription (..),
     Library (..),
     PackageDescription (..),
@@ -352,7 +353,7 @@ packageBranches described =
 
 -- | The kinds of component a @.cabal@ file can declare, and the setup
 -- script beside it.
-data Kind = Lib | Exe | Test | Bench | Setup
+data Kind = Lib | FLib | Exe | Test | Bench | Setup
   deriving (Eq, Ord, Show)
 
 -- | Every component of a package, in the order declared: its kind, its
@@ -362,6 +363,7 @@ packageComponents described =
   concat
     [ [(Lib, packageOf described, libraryBranches t) | t <- toList (condLibrary described)],
       [(Lib, nameOf n, libraryBranches t) | (n, t) <- condSubLibraries described],
+      [(FLib, nameOf n, foreignLibBranches t) | (n, t) <- condForeignLibs described],
       [(Exe, nameOf n, executableBranches t) | (n, t) <- condExecutables described],
       [(Test, nameOf n, suiteBranches t) | (n, t) <- condTestSuites described],
       [(Bench, nameOf n, benchmarkBranches t) | (n, t) <- condBenchmarks described]
@@ -449,6 +451,10 @@ data BranchSections = BranchSections
 libraryBranches :: CondTree ConfVar Library -> [BranchSections]
 libraryBranches = branchesOf $ \l ->
   declaring (libBuildInfo l) (exposedModules l <> signatures l) []
+
+-- | Every branch of a foreign library.
+foreignLibBranches :: CondTree ConfVar ForeignLib -> [BranchSections]
+foreignLibBranches = branchesOf $ \f -> declaring (foreignLibBuildInfo f) [] []
 
 -- | Every branch of an executable.
 executableBranches :: CondTree ConfVar Executable -> [BranchSections]
