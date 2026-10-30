@@ -5,6 +5,7 @@
 module Tilia.Fixity.Cabal
   ( packageModules,
     cabalFileInArchive,
+    ownCabalFile,
     cabalFileAtTop,
     entryPosixPath,
     containedModules,
@@ -16,6 +17,7 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Control.Applicative ((<|>))
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.ByteString.Lazy qualified as BL
@@ -46,13 +48,17 @@ packageModules tarball = quietly Nothing $ do
 -- @.cabal@ near the front costs a fraction of the whole file.
 cabalFileInArchive :: Tar.Entries e -> Maybe Text
 cabalFileInArchive = \case
-  Tar.Next entry rest
-    | cabalFileAtTop (entryPosixPath entry),
-      Tar.NormalFile content _ <- Tar.entryContent entry ->
-        Just (T.decodeUtf8Lenient (BL.toStrict content))
-    | otherwise -> cabalFileInArchive rest
+  Tar.Next entry rest -> ownCabalFile entry <|> cabalFileInArchive rest
   Tar.Done -> Nothing
   Tar.Fail _ -> Nothing
+
+-- | The text of an archive's entry if it is the package's own @.cabal@ file.
+ownCabalFile :: Tar.Entry -> Maybe Text
+ownCabalFile entry
+  | cabalFileAtTop (entryPosixPath entry),
+    Tar.NormalFile content _ <- Tar.entryContent entry =
+      Just (T.decodeUtf8Lenient (BL.toStrict content))
+  | otherwise = Nothing
 
 -- | Where an entry sits in its archive, written the way a tar file writes
 -- it.
