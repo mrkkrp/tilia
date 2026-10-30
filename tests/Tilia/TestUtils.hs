@@ -5,6 +5,7 @@
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
+    switchedOn,
     underAsciiLocale,
     parserConfigFor,
     defaultParserConfig,
@@ -83,6 +84,12 @@ withEnvironment vars act = bracket set restore (const act)
       setEnv key value
       pure (key, was)
     restore = traverse_ (\(key, was) -> maybe (unsetEnv key) (setEnv key) was)
+
+-- | Is an environment variable set to anything but empty, @0@, @no@ or
+-- @false@?
+switchedOn :: String -> IO Bool
+switchedOn name =
+  maybe False (`notElem` ["", "0", "no", "false"]) <$> lookupEnv name
 
 -- | Run something with files opened in ASCII, as under @LANG=C@, and the
 -- locale's encoding as it was afterwards however it turns out.
