@@ -56,9 +56,8 @@ import Tilia.Utils
     byteOrderMark,
     inParallel,
     indent,
-    lineWidth,
     tshow,
-    wrapTo,
+    wrappedUnder,
     writeUtf8File,
   )
 
@@ -296,10 +295,7 @@ count palette n extension =
 
 -- | One case among several, opened by a bullet and wrapped underneath it.
 bulleted :: Palette -> FormatError -> [Text]
-bulleted palette e = case wrapTo (lineWidth - 6) (describeFormatError palette e) of
-  [] -> []
-  (opening : rest) ->
-    (indent 2 <> "· " <> opening) : fmap (indent 3 <>) rest
+bulleted palette e = wrappedUnder 3 (indent 2 <> "· ") (describeFormatError palette e)
 
 -- | Something to say under a mark of its own, wrapped to fit beneath it.
 noted ::
@@ -308,8 +304,5 @@ noted ::
   (Text, Color) ->
   Text ->
   [Text]
-noted palette (mark, color) text = case wrapTo (lineWidth - 6) text of
-  [] -> []
-  (opening : rest) ->
-    (indent 1 <> marker palette color mark <> " " <> opening)
-      : fmap (indent 3 <>) rest
+noted palette (mark, color) =
+  wrappedUnder 3 (indent 1 <> marker palette color mark <> " ")

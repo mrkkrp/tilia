@@ -19,6 +19,7 @@ module Tilia.Utils
     lineWidth,
     indent,
     wrapTo,
+    wrappedUnder,
     visibleLength,
     spellList,
     collected,
@@ -146,6 +147,14 @@ lineWidth = 76
 -- | Indentation for the terminal output.
 indent :: Int -> Text
 indent level = T.replicate (2 * level) " "
+
+-- | Text wrapped under an opening as wide as the given level of indentation:
+-- the opening begins the first line and the rest are indented to that
+-- level.
+wrappedUnder :: Int -> Text -> Text -> [Text]
+wrappedUnder level opening text = case wrapTo (lineWidth - 2 * level) text of
+  [] -> []
+  first : rest -> (opening <> first) : fmap (indent level <>) rest
 
 -- | Break text into lines that fit the room given, at spaces.
 wrapTo :: Int -> Text -> [Text]

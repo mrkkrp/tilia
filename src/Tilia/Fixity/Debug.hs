@@ -41,7 +41,7 @@ import Tilia.Fixity
   )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser (ParsedModule (..))
-import Tilia.Utils (indent, lineWidth, tshow, wrapTo)
+import Tilia.Utils (indent, tshow, wrappedUnder)
 
 -- | Everything that decided one module's fixities.
 data FixityNotes = FixityNotes
@@ -176,9 +176,7 @@ aboutFile palette notes =
       | otherwise = heading what : concatMap (entry . render) items
     heading what = indent 2 <> "· " <> what
 
-    entry line = case wrapTo (lineWidth - 8) line of
-      [] -> []
-      (opening : rest) -> (indent 3 <> "· " <> opening) : fmap (indent 4 <>) rest
+    entry = wrappedUnder 4 (indent 3 <> "· ")
 
     fromImport i =
       named (noteModule i)
