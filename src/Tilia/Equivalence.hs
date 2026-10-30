@@ -63,11 +63,11 @@ import Tilia.Comments
     triggerEscaped,
   )
 import Tilia.Imports (normalizeImports)
-import Tilia.Parser (ParsedModule (..))
+import Tilia.Parser (ParsedModule (..), writtenInHeader)
 import Tilia.Pragma (languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
-import Tilia.Span (Span (..), startPoint)
+import Tilia.Span (Span (..))
 import Tilia.Span.Ghc (spanOf, spansOf)
 import Tilia.Utils (tshow)
 
@@ -547,10 +547,9 @@ commentDifference parsedBefore parsedAfter
 -- in the order they are written.
 headerPragmas :: ParsedModule -> [Pragma]
 headerPragmas m =
-  mapMaybe commentPragma (takeWhile inHeader (comments (pmSource m)))
+  mapMaybe commentPragma (takeWhile written (comments (pmSource m)))
   where
-    inHeader c =
-      maybe True ((startPoint (commentSpan c) <) . startPoint) (pmHeaderEnd m)
+    written = writtenInHeader (pmHeaderEnd m) . commentSpan
 
 -- | How what the flags of a module's header settle changed, if it did.
 inForceDifference :: InForce -> InForce -> Maybe Text

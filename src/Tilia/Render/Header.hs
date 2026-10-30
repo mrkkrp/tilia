@@ -26,6 +26,7 @@ import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Comments (Comment (..), Pragma (..), commentPragma)
 import Tilia.Doc.Combinators
+import Tilia.Parser (writtenInHeader)
 import Tilia.Pragma (languageNames, lookupEdition, sameInForce)
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls)
@@ -103,7 +104,7 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
     headerPragma c = do
       p <- commentPragma c
       _ <- pragmaOrder (pragmaName p) (pragmaBody p)
-      if inHeader headerEnd (commentSpan c) then Just p else Nothing
+      if writtenInHeader headerEnd (commentSpan c) then Just p else Nothing
 
 -- | Where a pragma sorts, given its name and its body, or 'Nothing' for one
 -- the header does not hoist.
@@ -117,12 +118,6 @@ pragmaOrder named body = case named of
   "OPTIONS_HADDOCK" -> Just OptionsHaddockOrder
   _ -> Nothing
 
--- | Was this written above everything the compiler reads as code?
-inHeader :: Maybe Span -> Span -> Bool
-inHeader headerEnd s = case headerEnd of
-  Nothing -> True
-  Just end -> spanStartLine s < spanStartLine end
-
 -- | Take the Stack script header off the front of a comment stream.
 takeStackHeader ::
   -- | Where the header ends.
@@ -135,7 +130,7 @@ takeStackHeader headerEnd = \case
   cs -> (mempty, cs)
   where
     isStackHeader c =
-      inHeader headerEnd (commentSpan c)
+      writtenInHeader headerEnd (commentSpan c)
         && T.isPrefixOf "stack" (T.stripStart (T.drop 2 (NE.head (commentBody c))))
     reproduce c =
       verbatimLines AtMargin TrimWhitespace (NE.toList (commentBody c))

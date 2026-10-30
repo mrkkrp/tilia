@@ -5,6 +5,7 @@
 -- | Turning source text into a syntax tree and a comment stream.
 module Tilia.Parser
   ( ParsedModule (..),
+    writtenInHeader,
     parseModule,
     parseConfiguration,
     readAlike,
@@ -67,6 +68,12 @@ data ParsedModule = ParsedModule
     -- top of the module would change its meaning.
     pmHeaderEnd :: Maybe Span
   }
+
+-- | Was something that begins here written in the header, before what
+-- 'pmHeaderEnd' marks?
+writtenInHeader :: Maybe Span -> Span -> Bool
+writtenInHeader headerEnd s =
+  maybe True ((startPoint s <) . startPoint) headerEnd
 
 -- | Parse a module.
 parseModule ::
