@@ -1802,6 +1802,23 @@ withPlan plan = do
           certainNamesOf rs "Own"
             `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C")])
 
+    it "keeps the fixity of a data instance's constructor, with its family"
+      $ withFakeProject
+        [ ( "src/Own.hs",
+            T.unlines
+              [ "{-# LANGUAGE TypeFamilies #-}",
+                "module Own (F (..)) where",
+                "data family F a",
+                "infixr 5 :+",
+                "data instance F Int = Int :+ Int"
+              ]
+          )
+        ]
+      $ \rs ->
+        fixitiesOf rs "Own"
+          `shouldReturn` Just
+            (Map.singleton (InTerms, OpName ":+") (Fixity RightAssoc 5))
+
     it "keeps the fixity of a pattern synonym it bundles with a type" $
       withFakeProject [("src/Own.hs", bundling "T (E, (:<))")] $
         \rs ->

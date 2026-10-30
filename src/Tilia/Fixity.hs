@@ -197,7 +197,7 @@ declaredNamespaces hsModule =
       ForD _ f -> [opName (unLoc (fd_name f))]
       TyClD _ d@DataDecl{} -> fmap snd (membersOf d)
       TyClD _ ClassDecl{tcdSigs} -> concatMap (signedNames . unLoc) tcdSigs
-      _ -> []
+      d -> concatMap (constructorsOf . snd) (dataInstances d)
 
 -- | The members of the type or class a declaration declares, by
 -- namespace: a data type's constructors and record fields, a class's
@@ -207,12 +207,28 @@ declaredNamespaces hsModule =
 -- its own—@:|@ is a constructor and @infixr 5@ all the same.
 membersOf :: TyClDecl GhcPs -> [(Namespace, OpName)]
 membersOf = \case
-  DataDecl{tcdDataDefn} ->
-    fmap (InTerms,) (concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn)))
+  DataDecl{tcdDataDefn} -> fmap (InTerms,) (constructorsOf tcdDataDefn)
   ClassDecl{tcdSigs, tcdATs} ->
     fmap (InTerms,) (concatMap (signedNames . unLoc) tcdSigs)
       <> [(InTypes, opName (unLoc (fdLName (unLoc f)))) | f <- tcdATs]
   _ -> []
+
+-- | The data instances a declaration makes, each with its family: its own,
+-- or those of a class instance.
+dataInstances :: HsDecl GhcPs -> [(OpName, HsDataDefn GhcPs)]
+dataInstances = \case
+  InstD _ (DataFamInstD _ d) -> [instanceOf d]
+  InstD _ (ClsInstD _ ClsInstDecl{cid_datafam_insts}) ->
+    fmap (instanceOf . unLoc) cid_datafam_insts
+  _ -> []
+  where
+    instanceOf :: DataFamInstDecl GhcPs -> (OpName, HsDataDefn GhcPs)
+    instanceOf (DataFamInstDecl FamEqn{feqn_tycon, feqn_rhs}) =
+      (opName (unLoc feqn_tycon), feqn_rhs)
+
+-- | The constructors and record fields a data definition declares.
+constructorsOf :: HsDataDefn GhcPs -> [OpName]
+constructorsOf = concatMap (fromCon . unLoc) . consOf . dd_cons
   where
     consOf :: DataDefnCons (LConDecl GhcPs) -> [LConDecl GhcPs]
     consOf = toList
@@ -315,7 +331,8 @@ qualifierOf = \case
   Qual m _ -> Just (T.pack (moduleNameString m))
   _ -> Nothing
 
--- | The members of each type or class a module declares.
+-- | The members of each type or class a module declares, and of each data
+-- family it gives instances of.
 declaredMembers :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
 declaredMembers =
   Map.fromListWith Set.union . concatMap (fromDecl . unLoc) . hsmodDecls
@@ -323,7 +340,10 @@ declaredMembers =
     fromDecl = \case
       TyClD _ d@DataDecl{tcdLName} -> [entry tcdLName d]
       TyClD _ d@ClassDecl{tcdLName} -> [entry tcdLName d]
-      _ -> []
+      d ->
+        [ (family, Set.fromList (fmap (InTerms,) (constructorsOf defn)))
+        | (family, defn) <- dataInstances d
+        ]
     entry name d = (opName (unLoc name), Set.fromList (membersOf d))
 
 -- | The members a module's export list offers with each name.
