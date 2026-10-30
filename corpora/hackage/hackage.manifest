@@ -2817,7 +2817,7 @@ formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs
 formatted       34cb8bb8a612  leksah-0.16.2.2/main/Main.hs
 formatted       0d71ef1dc947  leksah-0.16.2.2/src/IDE/BufferMode.hs
-formatted       0cd8482b4f61  leksah-0.16.2.2/src/IDE/Build.hs
+formatted       404f52b9bd79  leksah-0.16.2.2/src/IDE/Build.hs
 formatted       d08cdd390358  leksah-0.16.2.2/src/IDE/Command.hs
 formatted       311f46674981  leksah-0.16.2.2/src/IDE/Command/Print.hs
 formatted       3587f60b8002  leksah-0.16.2.2/src/IDE/Command/VCS.hs
@@ -2834,7 +2834,7 @@ formatted       83a32ce3d650  leksah-0.16.2.2/src/IDE/Core/State.hs
 formatted       b8029845c5f6  leksah-0.16.2.2/src/IDE/Core/Types.hs
 formatted       375889d7ec16  leksah-0.16.2.2/src/IDE/Debug.hs
 does-not-parse  -             leksah-0.16.2.2/src/IDE/Find.hs
-formatted       a7b49b049b8e  leksah-0.16.2.2/src/IDE/GUIHistory.hs
+formatted       4d3884c63c61  leksah-0.16.2.2/src/IDE/GUIHistory.hs
 formatted       8ac61c496a03  leksah-0.16.2.2/src/IDE/HLint.hs
 formatted       8ddfdb5cd7cb  leksah-0.16.2.2/src/IDE/ImportTool.hs
 formatted       c94ba55b56fd  leksah-0.16.2.2/src/IDE/Keymap.hs

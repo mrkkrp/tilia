@@ -175,7 +175,10 @@ pragmaBlock =
     render p = located (hpSpan p) (written p) <> hardBreak
     written p = case hpWritten p of
       Nothing ->
-        txt "{-# " <> txt (hpName p) <> space <> txt (hpBody p) <> txt " #-}"
+        txt "{-# "
+          <> txt (hpName p)
+          <> includeUnless (T.null (hpBody p)) (space <> txt (hpBody p))
+          <> txt " #-}"
       Just ls -> verbatim (T.intercalate "\n" (NE.toList ls))
 
 -- | Does this name a whole edition of the language rather than one
