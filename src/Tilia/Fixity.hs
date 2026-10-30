@@ -193,15 +193,8 @@ declaredNamespaces hsModule =
       SigD _ sig -> signedNames sig
       ForD _ f -> [opName (unLoc (fd_name f))]
       TyClD _ d@DataDecl{} -> fmap snd (membersOf d)
-      TyClD _ ClassDecl{tcdSigs} -> concatMap (classMethods . unLoc) tcdSigs
+      TyClD _ ClassDecl{tcdSigs} -> concatMap (signedNames . unLoc) tcdSigs
       _ -> []
-
--- | The methods a class signature declares.
-classMethods :: Sig GhcPs -> [OpName]
-classMethods = \case
-  TypeSig _ ns _ -> fmap (opName . unLoc) ns
-  ClassOpSig _ _ ns _ -> fmap (opName . unLoc) ns
-  _ -> []
 
 -- | The members of the type or class a declaration declares, by
 -- namespace: a data type's constructors and record fields, a class's
@@ -214,7 +207,7 @@ membersOf = \case
   DataDecl{tcdDataDefn} ->
     fmap (InTerms,) (concatMap (fromCon . unLoc) (consOf (dd_cons tcdDataDefn)))
   ClassDecl{tcdSigs, tcdATs} ->
-    fmap (InTerms,) (concatMap (classMethods . unLoc) tcdSigs)
+    fmap (InTerms,) (concatMap (signedNames . unLoc) tcdSigs)
       <> [(InTypes, opName (unLoc (fdLName (unLoc f)))) | f <- tcdATs]
   _ -> []
   where
