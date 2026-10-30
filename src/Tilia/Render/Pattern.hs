@@ -25,6 +25,7 @@ import GHC.Types.Name.Reader (RdrName)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Layout
+import Tilia.Render.Literal (hsLit)
 import Tilia.Render.Name
 import Tilia.Render.Type
 import Tilia.Span
@@ -90,7 +91,7 @@ patBody ctx inAsPat closing here = \case
         <> joinedBy "->"
         <> indent (recur p)
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
-  LitPat _ lit -> outputable lit
+  LitPat _ lit -> hsLit lit
   NPat _ v (isJust -> negated) _ ->
     includeWhen negated (txt "-" <> negativeLiteralGap ctx)
       <> at ctx v (outputable . ol_val)

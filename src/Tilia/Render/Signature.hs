@@ -23,7 +23,6 @@ import GHC.Types.Basic
     InlinePragma (..),
     InlineSpec (..),
     RuleMatchInfo (..),
-    RuleName,
   )
 import GHC.Types.Fixity (Fixity (..), FixityDirection (..))
 import GHC.Types.Name.Reader (RdrName)
@@ -32,6 +31,7 @@ import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Expression (hsExpr)
+import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
@@ -223,7 +223,7 @@ completeSig ctx names ty =
 sccSig :: Ctx -> LocatedN RdrName -> Maybe (XRec GhcPs StringLiteral) -> Doc
 sccSig ctx n literal =
   pragma "SCC" . indent $
-    name ctx n <> foldMap (\l -> breakOrSpace <> outputable l) literal
+    name ctx n <> foldMap (\l -> breakOrSpace <> writtenString (unLoc l)) literal
 
 -- | @type T :: k@.
 standaloneKindSig :: Ctx -> StandaloneKindSig GhcPs -> Doc
@@ -250,8 +250,8 @@ ruleDecls ctx (HsRules ((_, close), _) rules) =
 
 -- | One rule of a @RULES@ block.
 ruleDecl :: Ctx -> RuleDecl GhcPs -> Doc
-ruleDecl ctx (HsRule _ ruleName phase binders lhs rhs) =
-  at ctx ruleName ruleNameLiteral
+ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
+  at ctx ruleName (\n -> writtenString (StringLiteral written n Nothing))
     <> space
     <> activation phase
     <> space
@@ -263,11 +263,6 @@ ruleDecl ctx (HsRule _ ruleName phase binders lhs rhs) =
           <> txt "="
           <> indent (breakOrSpace <> hsExpr ctx rhs)
       )
-
--- | A rule's name is a string literal, and printing it as one is what puts
--- the quotes back.
-ruleNameLiteral :: RuleName -> Doc
-ruleNameLiteral n = outputable (HsString NoSourceText n :: HsLit GhcPs)
 
 -- | The @forall@s a rule or a @SPECIALIZE@ pragma binds.
 ruleBinders :: Ctx -> RuleBndrs GhcPs -> Doc

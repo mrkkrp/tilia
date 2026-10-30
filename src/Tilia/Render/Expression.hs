@@ -31,7 +31,6 @@ import GHC.Types.Basic (Boxity (..))
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.Name.Occurrence (isVarOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName (..), mkVarUnqual, rdrNameOcc)
-import GHC.Types.SourceText
 import GHC.Types.SrcLoc
   ( GenLocated (..),
     isZeroWidthSpan,
@@ -47,7 +46,7 @@ import Tilia.Fixity
   )
 import Tilia.Render.Context
 import Tilia.Render.Layout
-import Tilia.Render.Literal (stringLiteral)
+import Tilia.Render.Literal (hsLit, writtenString)
 import Tilia.Render.Name
 import Tilia.Render.Operator
 import Tilia.Render.Pattern
@@ -70,11 +69,7 @@ exprBody ctx site here = \case
   HsOverLabel src _ -> txt "#" <> sourceText src
   HsIPVar _ (HsIPName n) -> txt "?" <> outputable n
   HsOverLit _ v -> outputable (ol_val v)
-  HsLit _ lit -> case lit of
-    HsString (SourceText s) _ -> stringLiteral s
-    HsStringPrim (SourceText s) _ -> stringLiteral s
-    HsMultilineString (SourceText s) _ -> stringLiteral s
-    other -> outputable other
+  HsLit _ lit -> hsLit lit
   HsLam _ variant' mg -> lambda ctx site variant' (ExprBody ctx) mg
   HsApp _ f x -> application ctx site f x
   HsAppType at' e a ->
@@ -182,7 +177,7 @@ exprBody ctx site here = \case
   HsPragE _ prag x -> case prag of
     HsPragSCC _ n ->
       txt "{-# SCC "
-        <> outputable n
+        <> writtenString n
         <> txt " #-}"
         <> breakOrSpace
         <> nest (if siteInBlock site then 1 else 0) (hsExpr ctx x)

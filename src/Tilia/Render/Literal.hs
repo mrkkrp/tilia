@@ -5,7 +5,9 @@
 
 -- | String literals.
 module Tilia.Render.Literal
-  ( stringLiteral,
+  ( hsLit,
+    writtenString,
+    stringLiteral,
   )
 where
 
@@ -16,9 +18,27 @@ import Data.Semigroup (Min (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (FastString, unpackFS)
+import GHC.Hs (GhcPs, HsLit (..))
 import GHC.Parser.CharClass (is_space)
+import GHC.Types.SourceText (SourceText (..), StringLiteral (..))
 import Tilia.Doc.Combinators
 import Tilia.Render.Layout (Position (..), positioned)
+import Tilia.Render.Name (outputable)
+
+-- | A literal, a string one as its author wrote it.
+hsLit :: HsLit GhcPs -> Doc
+hsLit = \case
+  HsString (SourceText s) _ -> stringLiteral s
+  HsStringPrim (SourceText s) _ -> stringLiteral s
+  HsMultilineString (SourceText s) _ -> stringLiteral s
+  other -> outputable other
+
+-- | A string literal as its author wrote it, or the bare text it holds where
+-- none was written, as for an unquoted @SCC@ label.
+writtenString :: StringLiteral -> Doc
+writtenString l = case sl_st l of
+  SourceText s -> stringLiteral s
+  NoSourceText -> txt (T.pack (unpackFS (sl_fs l)))
 
 -- | A string literal, from the text the author wrote.
 stringLiteral :: FastString -> Doc

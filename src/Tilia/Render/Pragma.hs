@@ -26,6 +26,7 @@ import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Module.Warnings
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
+import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
 
 -- | Wrap a body in pragma braces.
@@ -121,5 +122,5 @@ warningParts = \case
 -- | One message is written bare; several go in a list.
 literalList :: [LocatedE StringLiteral] -> Doc
 literalList = \case
-  [l] -> outputable l
-  ls -> brackets (commaSep (fmap outputable ls))
+  [l] -> writtenString (unLoc l)
+  ls -> brackets (commaSep (fmap (writtenString . unLoc) ls))
