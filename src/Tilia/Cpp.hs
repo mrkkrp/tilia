@@ -510,7 +510,8 @@ together formatter reached c
               <$> formatAllConfigs formatter (readingOf r t)
           else pure Nothing
       docs <-
-        except (traverse (complete (fmap (fmap fst) found)) (zip [0 ..] texts))
+        except . traverse (complete (fmap (fmap fst) found)) $
+          zip [0 ..] (fmap snd answers)
       let settledIn i
             | Just _ <- lookup i found = settledBy !! i
             | otherwise = foldMap ((settledBy !!) . fst) (listToMaybe found)

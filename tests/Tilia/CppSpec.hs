@@ -284,6 +284,10 @@ spec = do
       formatCpp abortingAlternative
         `shouldBe` Left "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
 
+    it "names the line of an #error that settling a conditional leaves unguarded" $
+      formatCpp abortingWhereSettled
+        `shouldBe` Left "the alternative that the #error at line 10 aborts cannot be formatted without parsing it"
+
     it "refuses a branch that a conditional around it asking the same question rules out" $
       formatCpp ruledOut
         `shouldBe` Left "the branch at line 6 is ruled out by a conditional around it that asks the same question"
@@ -663,6 +667,25 @@ abortingAlternative =
       "  + 2",
       "#if A",
       "g = 1",
+      "#endif"
+    ]
+
+-- | An alternative that aborts with @#error@ once what it answers settles
+-- the conditional around the @#error@, which another alternative leaves
+-- open.
+abortingWhereSettled :: Text
+abortingWhereSettled =
+  T.unlines
+    [ "module M where",
+      "",
+      "f =",
+      "#ifdef A",
+      "  1 +",
+      "#else",
+      "  2",
+      "#endif",
+      "#if defined(A) || defined(B)",
+      "#error \"b\"",
       "#endif"
     ]
 
