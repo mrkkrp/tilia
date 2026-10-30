@@ -137,6 +137,14 @@ spec = do
       "module M where\nimport Data.Maybe\nimport Data.Char () -- not needed, just\n                    -- re-exported\n"
         `losesTheCommentsOf` "module M where\n\nimport Data.Char () -- not needed, just\nimport Data.Maybe\n"
 
+    it "does not mind a comment under the last import going with the code after it" $
+      "module M where\nimport Data.List -- a remark\n-- about f\nf = 1\n"
+        `keepsTheCommentsOf` "module M where\n\nimport Data.List -- a remark\n\n-- about f\nf = 1\n"
+
+    it "does not mind a comment under the module line going with the code after it" $
+      "module M (f) where -- a remark\n-- about f\nf = 1\n"
+        `keepsTheCommentsOf` "module M (f) where -- a remark\n\n-- about f\nf = 1\n"
+
   describe "what the header puts in force" $ do
     it "does not mind language pragmas sorted where that changes nothing" $
       "{-# LANGUAGE NoStarIsType #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\n"
