@@ -168,6 +168,20 @@ spec = do
       notesFor [("Prelude", Just [])] "infixr 5 <+>\nf a b = a <+> b\n"
         >>= (`shouldContain'` "· <+> infixr 5")
 
+    it "lists what it declares for a type beside a constructor of its name" $ do
+      told <-
+        notesFor
+          [("Prelude", Just [])]
+          "data a :. b = a :. b\ninfixr 5 data :.\ninfixl 4 type :.\n"
+      told `shouldContain'` "· :. infixr 5"
+      told `shouldContain'` "· :. infixl 4"
+
+    it "lists once what it declares for both at once" $ do
+      told <-
+        notesFor [("Prelude", Just [])] "data a :- b = a :- b\ninfix 8 :-\n"
+      filter (== "· :- infix 8") (fmap T.stripStart told)
+        `shouldBe` ["· :- infix 8"]
+
 ----------------------------------------------------------------------------
 -- Helpers
 
