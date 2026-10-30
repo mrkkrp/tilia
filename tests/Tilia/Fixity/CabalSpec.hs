@@ -19,6 +19,7 @@ import Test.Hspec
 import Tilia.Cabal.Package
   ( declaredModules,
     describePackageProblem,
+    packageBranches,
     packageExtensions,
     packageSourceDirs,
     parsePackageDescription,
@@ -295,7 +296,7 @@ header = "cabal-version: 2.4\nname: t\nversion: 0\n"
 
 -- | The names of the modules a package declares.
 modulesOf :: GenericPackageDescription -> [Text]
-modulesOf = fmap fst . declaredModules
+modulesOf = fmap fst . concatMap snd . declaredModules . packageBranches
 
 -- | A tar entry at the given path, holding the given text.
 entryFor :: FilePath -> Text -> Tar.Entry

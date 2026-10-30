@@ -18,6 +18,7 @@ module Tilia.Cabal.Package
     Kind (..),
     packageOf,
     packageComponents,
+    packageBranches,
     addedSources,
     sourceExtensions,
     isDeclaredModule,
@@ -373,14 +374,20 @@ packageOf :: GenericPackageDescription -> Text
 packageOf =
   T.pack . unPackageName . pkgName . package . packageDescription
 
--- | Every module any branch of a package declares, with where it would be
--- written relative to the package, without an extension.
-declaredModules :: GenericPackageDescription -> [(Text, FilePath)]
-declaredModules described =
-  [ (T.intercalate "." (fmap T.pack (splitDirectories sub <> [name])), joined d (joined sub name))
-  | branch <- packageBranches described,
-    (d, section) <- addedSources branch,
-    (sub, name) <- sectionModules section
+-- | Each source directory the branches given name, with every module they
+-- declare there and where it would be written under it, without an
+-- extension.
+declaredModules :: [BranchSections] -> [(FilePath, [(Text, FilePath)])]
+declaredModules branches =
+  [ ( d,
+      [ ( T.intercalate "." (fmap T.pack (splitDirectories sub <> [name])),
+          joined sub name
+        )
+      | (sub, name) <- sectionModules section
+      ]
+    )
+  | branch <- branches,
+    (d, section) <- addedSources branch
   ]
 
 -- | Every directory any branch of a package names for its files, and then

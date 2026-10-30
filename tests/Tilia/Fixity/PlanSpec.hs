@@ -27,13 +27,15 @@ import Data.List (isInfixOf)
 import Data.List qualified
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map.Strict qualified as Map
+import Data.Maybe (listToMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Time (addUTCTime, getCurrentTime)
 import System.Directory
-  ( createDirectoryIfMissing,
+  ( canonicalizePath,
+    createDirectoryIfMissing,
     doesFileExist,
     getPermissions,
     setModificationTime,
@@ -87,6 +89,7 @@ spec = do
   askedAtOnce
   givenInterfaces
   readBefore
+  namedAlike
   gitDependencies
   repositories
   packageCache
@@ -589,7 +592,7 @@ hscModules = describe "a module written for hsc2hs" $ do
   it "declares nothing, where it is one of the project's own" $
     withFakeProject [("src/Cursed.hsc", cursed)] $
       \rs -> do
-        askModule rs "Cursed" `shouldReturn` mempty
+        askModule rs Nothing "Cursed" `shouldReturn` mempty
 
   it "declares nothing, where it comes out of a tarball" $
     withFakeArchive [("Cursed.hsc", cursed)] $
@@ -1133,6 +1136,78 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
         ]
     localDirsOf plan = [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
 
+-- | A module another component of the package names alike, as GHC finds it
+-- for each of them.
+namedAlike :: Spec
+namedAlike = describe "a module another component names alike" $ do
+  it "is the one of the component importing it" $
+    withFakePlan components $ \plan -> do
+      fixityFrom plan ("tests" </> "Main.hs") "Utils" "<+>"
+        `shouldReturn` Just (Fixity RightAssoc 5)
+      fixityFrom plan "Lib.hs" "Utils" "<+>"
+        `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is a dependency's for a component that does not hold it" $
+    withFakePlan components $ \plan ->
+      fixityFrom plan "Lib.hs" "Data.Function" "&"
+        `shouldReturn` Just (Fixity LeftAssoc 1)
+
+  it "is the one of a component sharing the importer's directory" $
+    withFakePlan components $ \plan ->
+      fixityFrom plan ("app" </> "Other.hs") "Data.Function" "&"
+        `shouldReturn` Just (Fixity RightAssoc 0)
+  where
+    fixityFrom plan file modName op = do
+      rs <- newResolver plan
+      importer <-
+        traverse
+          canonicalizePath
+          [dir </> file | LocalPackage dir <- fmap ppSource (bpPackages plan)]
+      Map.lookup (InTerms, OpName op) . establishedFixities
+        <$> askModule rs (listToMaybe importer) modName
+    components =
+      [ ( "fake.cabal",
+          T.unlines
+            [ "cabal-version: 2.4",
+              "name: fake",
+              "version: 0.1.0.0",
+              "library",
+              "  exposed-modules: Lib, Utils",
+              "  default-language: Haskell2010",
+              "test-suite tests",
+              "  type: exitcode-stdio-1.0",
+              "  main-is: Main.hs",
+              "  other-modules: Utils",
+              "  hs-source-dirs: tests",
+              "  default-language: Haskell2010",
+              "executable other",
+              "  main-is: Other.hs",
+              "  hs-source-dirs: app",
+              "  default-language: Haskell2010",
+              "executable app",
+              "  main-is: Main.hs",
+              "  other-modules: Data.Function",
+              "  hs-source-dirs: app",
+              "  default-language: Haskell2010"
+            ]
+        ),
+        ("Lib.hs", "module Lib () where\nimport Utils ()\n"),
+        ("Utils.hs", utils "infixl 6"),
+        ("tests/Main.hs", "module Main (main) where\nimport Utils ()\n"),
+        ("tests/Utils.hs", utils "infixr 5"),
+        ( "app/Data/Function.hs",
+          "module Data.Function ((&)) where\ninfixr 0 &\n\
+          \(&) :: a -> (a -> b) -> b\nx & f = f x\n"
+        )
+      ]
+    utils fixity =
+      T.unlines
+        [ "module Utils ((<+>)) where",
+          fixity <> " <+>",
+          "(<+>) :: Int -> Int -> Int",
+          "a <+> b = a + b"
+        ]
+
 -- | How many modules the ring has.
 ringSize :: Int
 ringSize = 8
@@ -1162,7 +1237,8 @@ ringSource i =
 
 -- | What a module exports, where reading it settles every name.
 fixitiesOf :: Resolver -> Text -> IO (Maybe Fixities)
-fixitiesOf resolver modName = settled <$> askModule resolver modName
+fixitiesOf resolver modName =
+  settled <$> askModule resolver Nothing modName
   where
     settled established
       | settlesEverything established = Just (establishedFixities established)
@@ -1170,11 +1246,13 @@ fixitiesOf resolver modName = settled <$> askModule resolver modName
 
 -- | The members of each of a module's names.
 membersIn :: Resolver -> Text -> IO (Map.Map OpName (Set.Set OpName))
-membersIn resolver modName = establishedMembers <$> askModule resolver modName
+membersIn resolver modName =
+  establishedMembers <$> askModule resolver Nothing modName
 
 -- | Every name a module certainly brings in.
 certainNamesOf :: Resolver -> Text -> IO (Set.Set (Namespace, OpName))
-certainNamesOf resolver modName = certainNames . establishedCertain <$> askModule resolver modName
+certainNamesOf resolver modName =
+  certainNames . establishedCertain <$> askModule resolver Nothing modName
 
 -- | A module of the kind @hsc2hs@ takes, declaring an operator nothing can
 -- get at.
@@ -1430,7 +1508,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs "Disagree"
+        answer <- askModule rs Nothing "Disagree"
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
         unsettledThrough answer (InTerms, OpName "sort") `shouldBe` []
 
@@ -1461,7 +1539,7 @@ withPlan plan = do
 
   describe "what a package module brings in" $
     it "names what it hands on" $ do
-      answer <- askModule resolver "Prettyprinter"
+      answer <- askModule resolver Nothing "Prettyprinter"
       certainNames (establishedCertain answer) `shouldSatisfy` Set.member (InTerms, OpName "<+>")
 
   describe "the members of each of a module's names" $ do
@@ -1515,7 +1593,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module M where\nimport Facade (T (..))\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName ":|")
           `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Facade")
 
@@ -1547,7 +1625,7 @@ withPlan plan = do
     it "is what it hands on from where reading gave up" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
-          answer <- askModule rs "Opaque"
+          answer <- askModule rs Nothing "Opaque"
           establishedUnsettled answer
             `shouldBe` Map.singleton ["No.Such.Module"] (Set.singleton (InTerms, OpName "<+>"))
           establishedUntold answer `shouldBe` Set.empty
@@ -1562,24 +1640,25 @@ withPlan plan = do
               ]
           )
         ]
-      $ \rs -> settlesEverything <$> askModule rs "Wide" `shouldReturn` True
+      $ \rs ->
+        settlesEverything <$> askModule rs Nothing "Wide" `shouldReturn` True
 
     it "is everything for a module it cannot find at all" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
-        \rs -> askModule rs "No.Such.Module" `shouldReturn` unreadable
+        \rs -> askModule rs Nothing "No.Such.Module" `shouldReturn` unreadable
 
     it "is everything it does not certainly bring in, when what it hands on whole cannot be read"
       $ withFakeProject
         [("src/Facade.hs", "module Facade (module No.Such.Module) where\nimport No.Such.Module\n")]
       $ \rs -> do
-        answer <- askModule rs "Facade"
+        answer <- askModule rs Nothing "Facade"
         establishedUntold answer `shouldBe` Set.singleton ["No.Such.Module"]
 
     it "is the type and its members, when a type it hands on is beyond us"
       $ withFakeProject
         [("src/Facade.hs", "module Facade (T (..)) where\nimport No.Such.Module\n")]
       $ \rs -> do
-        answer <- askModule rs "Facade"
+        answer <- askModule rs Nothing "Facade"
         unsettledThrough answer (InTypes, OpName "T") `shouldBe` [["No.Such.Module"]]
         unsettledThrough answer (InTerms, OpName ":|") `shouldBe` [["No.Such.Module"]]
 
@@ -1588,11 +1667,11 @@ withPlan plan = do
         [ ("src/Ping.hs", "module Ping (module Pong) where\nimport Pong\n"),
           ("src/Pong.hs", "module Pong (module Ping) where\nimport Ping\n")
         ]
-      $ \rs -> askModule rs "Ping" `shouldReturn` mempty
+      $ \rs -> askModule rs Nothing "Ping" `shouldReturn` mempty
 
     it "is everything for a module whose source will not parse" $
       withFakeProject [("src/Bad.hs", "module Bad ((<+>)) where\nf = (((\n")] $
-        \rs -> askModule rs "Bad" `shouldReturn` unreadable
+        \rs -> askModule rs Nothing "Bad" `shouldReturn` unreadable
 
     it "is what any configuration leaves unsettled, where none settles every name"
       $ withFakeProject
@@ -1609,7 +1688,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs "Both"
+        answer <- askModule rs Nothing "Both"
         establishedUnsettled answer
           `shouldBe` Map.singleton ["No.Such.Module"] (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "<?>")])
 
@@ -1617,7 +1696,7 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
           let m = parsed "module M where\nimport Opaque\n"
-          scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+          scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<??>")
             `shouldBe` Resolved defaultFixity ReportDefault
 
@@ -1625,24 +1704,30 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
           let m = parsed "module M where\nimport Opaque\n"
-          scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+          scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<+>")
             `shouldBe` Unresolved (ModuleChain ("Opaque" :| ["No.Such.Module"]) :| [])
 
     it "names the module that stopped it rather than the import above it" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
-        \rs -> Map.keys . establishedUnsettled <$> askModule rs "Opaque" `shouldReturn` [["No.Such.Module"]]
+        \rs ->
+          Map.keys . establishedUnsettled <$> askModule rs Nothing "Opaque"
+            `shouldReturn` [["No.Such.Module"]]
 
     it "follows the reasons down more than one module"
       $ withFakeProject
         [ ("src/Near.hs", "module Near ((<+>)) where\nimport Middle\n"),
           ("src/Middle.hs", "module Middle ((<+>)) where\nimport No.Such.Module\n")
         ]
-      $ \rs -> Map.keys . establishedUnsettled <$> askModule rs "Near" `shouldReturn` [["Middle", "No.Such.Module"]]
+      $ \rs ->
+        Map.keys . establishedUnsettled <$> askModule rs Nothing "Near"
+          `shouldReturn` [["Middle", "No.Such.Module"]]
 
     it "has nothing to say about a module that could be read" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
-        \rs -> settlesEverything <$> askModule rs "Prelude" `shouldReturn` True
+        \rs ->
+          settlesEverything <$> askModule rs Nothing "Prelude"
+            `shouldReturn` True
 
   describe "what a module brings in" $ do
     it "is every name its interface exports" $ do
@@ -1753,7 +1838,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "clampTo")
           `shouldBe` Resolved defaultFixity ReportDefault
 
@@ -1764,7 +1849,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module C (w) where\nimport A\nimport B\nw = 1 :+: 2\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName ":+:")
           `shouldBe` Unresolved (unreadOnly "A")
 
@@ -1776,7 +1861,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Resolved defaultFixity ReportDefault
 
@@ -1788,7 +1873,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Unresolved (ModuleChain ("Core" :| ["A"]) :| [])
 
@@ -1799,7 +1884,7 @@ withPlan plan = do
         ]
       $ \rs -> do
         let m = parsed "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
-        scope <- scopeFor rs (Is #implicitPrelude) (pure (pmModule m))
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "<+>")
           `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Other")
 
@@ -2062,7 +2147,11 @@ endToEnd ::
   (Scope -> Expectation) ->
   Expectation
 endToEnd resolver source assertion =
-  scopeFor resolver (Is #implicitPrelude) (pure (pmModule (parsed source)))
+  scopeFor
+    resolver
+    Nothing
+    (Is #implicitPrelude)
+    (pure (pmModule (parsed source)))
     >>= assertion
 
 -- | Check one expected fixity, returning a description of any mismatch.
@@ -2150,7 +2239,9 @@ withFakePlan sources act =
               "  hs-source-dirs: src",
               "  default-language: Haskell2010"
             ]
-    traverse_ (\(path, text) -> writeUtf8File (dir </> path) text) sources
+    for_ sources $ \(path, text) -> do
+      createDirectoryIfMissing True (takeDirectory (dir </> path))
+      writeUtf8File (dir </> path) text
     writeUtf8File (dir </> "plan.json") $
       "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
       \[{\"pkg-name\":\"fake\",\"pkg-version\":\"0.1.0.0\",\

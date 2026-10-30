@@ -27,7 +27,7 @@ import Control.Exception (bracket_, evaluate)
 import Control.Monad (filterM, join)
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Containers.ListUtils (nubOrd)
-import Data.Foldable (toList)
+import Data.Foldable (asum, toList)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -37,15 +37,18 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Traversable (for)
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
-import System.Directory (doesFileExist)
+import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath ((</>))
 import Tilia.Cabal.Package
-  ( PackageReader,
+  ( Kind (Lib),
+    PackageReader,
     declaredModules,
     newPackageReader,
+    packageComponents,
     packageExtensions,
     readPackageDescription,
   )
@@ -63,7 +66,16 @@ import Tilia.Fixity.PackageDb
 import Tilia.Memo (Flights, memoized, newFlights, newMemo)
 import Tilia.Parser
 import Tilia.Pragma (Defaults, effectiveExtensions)
-import Tilia.Utils (byteOrderMark, inParallel, quietly, readUtf8File, sha256Of, sha256OfFile, tshow)
+import Tilia.Utils
+  ( byteOrderMark,
+    inParallel,
+    pathUnder,
+    quietly,
+    readUtf8File,
+    sha256Of,
+    sha256OfFile,
+    tshow,
+  )
 
 ----------------------------------------------------------------------------
 -- Resolving
@@ -82,8 +94,10 @@ data Route
 
 -- | What can be asked about a module, once a plan says where to look.
 newtype Resolver = Resolver
-  { -- | What reading a module established about the names it exports.
-    askModule :: Text -> IO Established
+  { -- | What reading a module established about the names it exports, as
+    -- the file at the canonical path given, where it is one of the
+    -- project's own, imports it.
+    askModule :: Maybe FilePath -> Text -> IO Established
   }
 
 -- | Build a new 'Resolver'.
@@ -138,7 +152,7 @@ newResolverWith ::
 newResolverWith routes cache installed tarballs packageReader plan = do
   index <- buildModuleIndex cache installed tarballs
   let interfaces = interfaceIndex installed
-  local <- localModules plan
+  importable <- localModules plan
   flights <- newFlights
   answersRead <- newMemo
   extensionsRead <- newMemo
@@ -154,7 +168,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
         Workings
           { wkRoutes = routes,
             wkCache = cache,
-            wkLocal = local,
+            wkImportable = importable,
             wkIndex = index,
             wkInterfaces = interfaces,
             wkInterfaceOf = interfaceOf,
@@ -169,13 +183,16 @@ newResolverWith routes cache installed tarballs packageReader plan = do
           }
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
-      reach visiting modName
-        | modName `Set.member` visiting = pure mempty
+      reach visiting local modName
+        | key `Set.member` visiting = pure mempty
         | otherwise =
-            memoized flights answersRead mempty modName $
-              resolveModule workings visiting modName
-      summariesOf modName text =
-        extensionsOf modName >>= \case
+            memoized flights answersRead mempty key $
+              resolveModule workings (Set.insert key visiting) found modName
+        where
+          found = local modName
+          key = maybe modName T.pack found
+      summariesOf found modName text =
+        extensionsOf found modName >>= \case
           Nothing -> pure Nothing
           Just extensions -> do
             let summarized =
@@ -184,7 +201,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                 stamp =
                   digestOf . T.intercalate "\n" $
                     [tshow extensions, macrosRead, text]
-            case digestOf . T.pack <$> Map.lookup modName local of
+            case digestOf . T.pack <$> found of
               Nothing -> summarized
               Just key ->
                 join
@@ -193,8 +210,8 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                     (storeSummaries cache key stamp)
                     (Just <$> summarized)
       macrosRead = tshow (macrosOf plan)
-      extensionsOf modName
-        | Just path <- Map.lookup modName local =
+      extensionsOf found modName
+        | Just path <- found =
             either (const Nothing) Just <$> packageReader path
         | Just (package, tarball) <- Map.lookup modName index =
             memoized flights extensionsRead Nothing package $
@@ -203,7 +220,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
       archiveOf tarball =
         memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
       moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
-  pure Resolver{askModule = reach Set.empty}
+  pure Resolver{askModule = reach Set.empty . importable}
 
 -- | A module's interface, read once, with the primops' fixities standing
 -- in for that of @GHC.Prim@, which has no file.
@@ -234,7 +251,7 @@ newResolverFrom given = do
     (either (const Nothing) Just . fromHiFile modName =<<) <$> given modName
   pure
     Resolver
-      { askModule = \modName ->
+      { askModule = \_ modName ->
           memoized flights answersRead unreadable modName $
             fromInterface interfaceOf modName
       }
@@ -249,6 +266,9 @@ newResolverFrom given = do
 scopeFor ::
   -- | What can be asked about the modules it imports.
   Resolver ->
+  -- | The canonical path of the module, where it is one of the project's
+  -- own.
+  Maybe FilePath ->
   -- | Whether @ImplicitPrelude@ is on, which the module's own pragmas
   -- and its package's @default-extensions@ decide between them.
   Choice "implicitPrelude" ->
@@ -257,11 +277,12 @@ scopeFor ::
   NonEmpty (HsModule GhcPs) ->
   -- | Everything that module can see, and what it could not find out.
   IO Scope
-scopeFor resolver implicitPrelude configurations = do
+scopeFor resolver importer implicitPrelude configurations = do
   let imports = moduleImports implicitPrelude configurations
+      asked = askModule resolver importer
   answers <-
     inParallel
-      (\m -> (m,) <$> askModule resolver m)
+      (\m -> (m,) <$> asked m)
       (fmap importModule imports)
   let table = Map.fromList answers
   pure $
@@ -280,9 +301,10 @@ data Workings = Workings
     wkRoutes :: [Route],
     -- | Where to remember answers between runs.
     wkCache :: Cache,
-    -- | The modules of the project's own packages, which are read straight
-    -- from disk rather than out of an archive.
-    wkLocal :: Map Text FilePath,
+    -- | Where each module the file at the canonical path given, where it is
+    -- one of the project's own, imports from a directory rather than an
+    -- archive is. See 'localModules'.
+    wkImportable :: Maybe FilePath -> Text -> Maybe FilePath,
     -- | Which package holds each module, and the tarball to find it in; the
     -- package is the cache key, which carries the hash the tarball was
     -- verified against.
@@ -291,13 +313,23 @@ data Workings = Workings
     wkInterfaces :: Map Text (Text, FilePath),
     -- | A module's interface, read at most once a run.
     wkInterfaceOf :: Text -> IO (Maybe Interface),
-    -- | How to reach another module. Tied back on itself by
+    -- | How to reach another module, given where each module the one
+    -- importing it imports from a directory is. Tied back on itself by
     -- 'newResolverWith', so that the memo it keeps covers the recursive
     -- calls too.
-    wkReach :: Set Text -> Text -> IO Established,
-    -- | What each configuration of a module says, given its text, worked
-    -- out once a run.
-    wkSummariesOf :: Text -> Text -> IO (Maybe (NonEmpty ModuleSummary)),
+    wkReach ::
+      Set Text ->
+      (Text -> Maybe FilePath) ->
+      Text ->
+      IO Established,
+    -- | What each configuration of a module says, given where it is if it
+    -- is one of the project's own, its name and its text, worked out once a
+    -- run.
+    wkSummariesOf ::
+      Maybe FilePath ->
+      Text ->
+      Text ->
+      IO (Maybe (NonEmpty ModuleSummary)),
     -- | What a tarball holds for a module, each tarball read once a run.
     wkModuleInArchive :: FilePath -> Text -> IO (Maybe InArchive),
     -- | The modules @cabal@ writes itself, which are therefore in no
@@ -313,8 +345,12 @@ data Workings = Workings
 resolveModule ::
   -- | Where to look, and how to get back to the resolver.
   Workings ->
-  -- | Modules currently being resolved further up the call chain.
+  -- | Modules currently being resolved further up the call chain, this one
+  -- among them, each by its path if it is one of the project's own and by
+  -- its name otherwise.
   Set Text ->
+  -- | Where the module is, if it is one of the project's own.
+  Maybe FilePath ->
   -- | The module to resolve.
   Text ->
   IO Established
@@ -322,7 +358,7 @@ resolveModule
   Workings
     { wkRoutes,
       wkCache,
-      wkLocal,
+      wkImportable,
       wkIndex,
       wkInterfaces,
       wkInterfaceOf,
@@ -333,22 +369,23 @@ resolveModule
       wkReexported
     }
   visiting
+  found
   modName
-    | Just path <- Map.lookup modName wkLocal,
+    | Just path <- found,
       writtenForHsc path =
         pure mempty
-    | Just path <- Map.lookup modName wkLocal =
+    | Just path <- found =
         readUtf8File path >>= \case
           Nothing -> pure unreadable
           Just source ->
-            fromSummaries (wkReach visiting') modName
-              =<< wkSummariesOf modName (snd (byteOrderMark source))
+            fromSummaries (wkReach visiting (wkImportable found)) modName
+              =<< wkSummariesOf found modName (snd (byteOrderMark source))
     | Just original <- Map.lookup modName wkReexported,
       Map.notMember modName wkInterfaces =
-        wkReach visiting' original
+        wkReach visiting fromDependency original
     | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
     where
-      visiting' = Set.insert modName visiting
+      fromDependency = wkImportable Nothing
 
       taking = \case
         FromInterface -> viaInterface
@@ -377,8 +414,8 @@ resolveModule
           throughCache package $
             fromSource
               wkModuleInArchive
-              wkSummariesOf
-              (wkReach visiting')
+              (wkSummariesOf Nothing)
+              (wkReach visiting fromDependency)
               tarball
               modName
 
@@ -618,26 +655,56 @@ agreeing answers =
               (certainMembers b)
         }
 
--- | Where each module that lives in a directory rather than an archive is.
-localModules :: BuildPlan -> IO (Map Text FilePath)
-localModules plan =
-  Map.unions <$> traverse forPackage (nubOrd (concatMap directoryOf (bpPackages plan)))
+-- | Where each module the file at the canonical path given, where it is one
+-- of the project's own, imports from a directory rather than an archive is.
+--
+-- A module of the component with the source directory nearest above the
+-- file comes before any library's, as GHC looks in a component's own
+-- source directories before the packages it depends on. Components whose
+-- directories are as near count together.
+localModules :: BuildPlan -> IO (Maybe FilePath -> Text -> Maybe FilePath)
+localModules plan = do
+  components <-
+    concat
+      <$> traverse forPackage (nubOrd (concatMap directoryOf (bpPackages plan)))
+  let libraries = Map.unions [modules | (Lib, _, modules) <- components]
+  pure $ \importer ->
+    let covering =
+          [ (length rest, modules)
+          | Just file <- [importer],
+            (_, dirs, modules) <- components,
+            Just rest <- fmap (`pathUnder` file) dirs
+          ]
+        holding =
+          [modules | (n, modules) <- covering, all ((n <=) . fst) covering]
+     in \modName ->
+          asum (fmap (Map.lookup modName) holding)
+            <|> Map.lookup modName libraries
   where
     directoryOf p = case ppSource p of
       LocalPackage dir -> [dir]
       CheckedOut dir -> [dir]
       _ -> []
-    forPackage dir = quietly Map.empty $ do
+    forPackage dir = quietly [] $ do
       cabalFilesIn dir >>= \case
-        [] -> pure Map.empty
+        [] -> pure []
         (cabalFile : _) ->
           readPackageDescription cabalFile >>= \case
-            Left _ -> pure Map.empty
+            Left _ -> pure []
             Right described ->
-              Map.fromListWith (\_ first' -> first') . concat
-                <$> traverse (locate dir) (declaredModules described)
-    locate dir (m, unwritten) = do
-      found <- filterM doesFileExist [dir </> unwritten <> e | e <- moduleEndings]
+              traverse (component dir) (packageComponents described)
+    component dir (kind, _, branches) = do
+      placed <- for (declaredModules branches) $ \(d, modules) -> do
+        root <- canonicalizePath (dir </> d)
+        (root,) . concat <$> traverse (locate root) modules
+      pure
+        ( kind,
+          fmap fst placed,
+          Map.fromListWith (\_ first' -> first') (concatMap snd placed)
+        )
+    locate root (m, unwritten) = do
+      found <-
+        filterM doesFileExist [root </> unwritten <> e | e <- moduleEndings]
       pure [(m, path) | path <- take 1 found]
 
 -- | What a module exports, out of what it declares and what its imports

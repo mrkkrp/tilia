@@ -36,6 +36,7 @@ import Data.Text qualified as T
 import Data.Version (Version, versionBranch)
 import GHC.Driver.Session (OnOff (..))
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
+import System.Directory (canonicalizePath)
 import Tilia.Cabal.Package
   ( PackageProblem (..),
     PackageReader,
@@ -361,6 +362,7 @@ formatSource session path source = runExceptT $ do
   when (movesPositions source) $
     throwE (PositionPragmas path)
   package <- orElse (NoPackage path) =<< liftIO (sessionPackage session path)
+  importer <- liftIO (canonicalizePath path)
   let resolver = sessionResolver session
       config = ParserConfig package
       extensionsAndCpp text =
@@ -369,14 +371,20 @@ formatSource session path source = runExceptT $ do
       renderConfigFor extensions parsed = do
         let implicitPrelude =
               fromBool (Set.member ImplicitPrelude extensions)
-        scope <- liftIO (scopeFor resolver implicitPrelude (fmap pmModule parsed))
+        scope <-
+          liftIO $
+            scopeFor
+              resolver
+              (Just importer)
+              implicitPrelude
+              (fmap pmModule parsed)
         liftIO $ case sessionFixityNotes session of
           Nothing -> pure ()
           Just ref -> do
             told <-
               fixityNotes
                 implicitPrelude
-                (askModule resolver)
+                (askModule resolver (Just importer))
                 scope
                 parsed
             atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
