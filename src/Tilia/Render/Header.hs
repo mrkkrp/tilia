@@ -138,7 +138,7 @@ takeStackHeader headerEnd = \case
       inHeader headerEnd (commentSpan c)
         && T.isPrefixOf "stack" (T.stripStart (T.drop 2 (NE.head (commentBody c))))
     reproduce c =
-      sepBy (verbatimBreak AtMargin TrimWhitespace) (fmap txt (NE.toList (commentBody c)))
+      verbatimLines AtMargin TrimWhitespace (NE.toList (commentBody c))
 
 -- | The pragmas of a header, one per line, with the options in the order
 -- they were written, which is the order GHC reads their flags in, and every
@@ -329,7 +329,7 @@ ieItem ctx here withComma = \case
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
-    Just written -> sepBy (verbatimBreak AtIndent TrimWhitespace) (fmap txt (NE.toList written))
+    Just written -> verbatimLines AtIndent TrimWhitespace (NE.toList written)
     Nothing -> txt (docSectionName n)
   where
     plain warning n doc =
