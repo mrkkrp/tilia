@@ -877,11 +877,7 @@ matchGroup ctx bracing mkBody style MG{..}
   | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
   | otherwise = items blockBracing (fmap rendered (positioned (unLoc mg_alts)))
   where
-    blockBracing = case style of
-      CaseStyle -> ifEmpty
-      LambdaCaseStyle -> ifEmpty
-      _ -> NoBrace
-    ifEmpty = if null (unLoc mg_alts) then MayBrace else bracing
+    blockBracing = if isCaseStyle style then bracing else NoBrace
     rendered (position, m) =
       blockItem position bracing (\b -> at_ ctx (renderMatch b) m)
     renderMatch b m@Match{..} =
@@ -996,13 +992,10 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
       _ -> True
 
     separator
-      | length grhssGRHSs > 1 = mempty
+      | hasGuards = mempty
       | otherwise = case style of
-          FunctionStyle _ | hasGuards -> mempty
           FunctionStyle _ -> space <> indent (txt "=")
-          PatternBindStyle | hasGuards -> mempty
           PatternBindStyle -> space <> indent (txt "=")
-          s | isCaseStyle s && hasGuards -> mempty
           _ -> space <> txt "->"
 
     body = sepBy breakOrSpace (fmap alternative (NE.toList grhssGRHSs))

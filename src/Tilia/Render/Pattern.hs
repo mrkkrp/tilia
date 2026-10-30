@@ -22,7 +22,6 @@ import Data.Maybe (isJust)
 import GHC.Hs
 import GHC.Types.Basic (Arity, Boxity (..), ConTag)
 import GHC.Types.Name.Reader (RdrName)
-import GHC.Types.SrcLoc (GenLocated (..))
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Layout
@@ -140,8 +139,7 @@ conPattern ctx inAsPat here con = \case
     wildcard l = at ctx l (const (txt ".."))
     visibleFields dotdot fields = case dotdot of
       Nothing -> Right <$> fields
-      Just l@(L _ (RecFieldsDotDot n)) ->
-        (Right <$> take n fields) <> [Left l]
+      Just l -> (Right <$> fields) <> [Left l]
 
 -- | One field of a record pattern.
 patFieldBind :: Ctx -> HsRecField GhcPs (LPat GhcPs) -> Doc

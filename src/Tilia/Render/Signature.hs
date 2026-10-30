@@ -68,7 +68,7 @@ typeSig ::
   -- | The type they are given.
   LHsSigType GhcPs ->
   Doc
-typeSig _ _ [] _ = mempty
+typeSig _ _ [] _ = error "Tilia: a signature names something"
 typeSig ctx indentTail (n : ns) sigType
   | null ns = name ctx n <> typeAscription ctx sigType
   | otherwise =
