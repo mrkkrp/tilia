@@ -1999,7 +1999,7 @@ formatted       198e7e859e4a  fay-0.24.2.0/src/tests/Tests.hs
 formatted       8114602da4c3  fay-0.24.2.0/tests/AllBaseModules.hs
 formatted       e78d25c5a73d  fay-0.24.2.0/tests/AutomaticList.hs
 formatted       779c72fbdb74  fay-0.24.2.0/tests/Bool.hs
-formatted       ad89dd2cf37b  fay-0.24.2.0/tests/CPP.hs
+formatted       d5c6ec08c4a5  fay-0.24.2.0/tests/CPP.hs
 formatted       61e542a01350  fay-0.24.2.0/tests/Char.hs
 formatted       7badee2f20a7  fay-0.24.2.0/tests/Compile/CPPMultiLineStrings.hs
 formatted       a5ace073f2a3  fay-0.24.2.0/tests/Compile/CPPTypecheck.hs
