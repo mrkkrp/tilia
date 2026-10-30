@@ -81,7 +81,7 @@ jobs:
           nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
   bench:
     needs: lint
-    name: Benchmark on ghc9103
+    name: Benchmark on ghc9141
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -102,8 +102,8 @@ jobs:
             corpus-
       - name: Benchmark
         run: |
-          bench="$(nix build -L --no-link --print-out-paths .#ghc9103.bench-exe)"
-          nix develop -L .#ghc9103 -c "$bench/bin/bench"
+          bench="$(nix build -L --no-link --print-out-paths .#ghc9141.bench-exe)"
+          nix develop -L .#ghc9141 -c "$bench/bin/bench"
   format:
     needs: build
     name: Self-format with Cabal
@@ -127,7 +127,7 @@ jobs:
           key: cabal-format-${{ hashFiles('cabal.project', 'tilia.cabal') }}
           restore-keys: |
             cabal-format-
-            cabal-ghc9103-
+            cabal-ghc9141-
       - uses: actions/cache@v6
         with:
           path: |
@@ -136,7 +136,7 @@ jobs:
           key: tilia-format-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
             tilia-format-
-            tilia-ghc9103-
+            tilia-ghc9141-
 
       - name: Self-format
         run: |
