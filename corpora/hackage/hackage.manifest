@@ -178,7 +178,7 @@ formatted       3e1e5a066751  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.
 formatted       109612b2572f  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
 formatted       ed0ea780ef94  Agda-2.8.0/src/full/Agda/Termination/Termination.hs
 formatted       9ce4d907acfa  Agda-2.8.0/src/full/Agda/TheTypeChecker.hs
-formatted       522c2e92c2f2  Agda-2.8.0/src/full/Agda/TypeChecking/Abstract.hs
+formatted       f0d75a71448d  Agda-2.8.0/src/full/Agda/TypeChecking/Abstract.hs
 formatted       e757073d2d4e  Agda-2.8.0/src/full/Agda/TypeChecking/CheckInternal.hs
 formatted       2d6bbce1312f  Agda-2.8.0/src/full/Agda/TypeChecking/CheckInternal.hs-boot
 formatted       32a35663e792  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause.hs
@@ -205,7 +205,7 @@ formatted       ee105b08c0e0  Agda-2.8.0/src/full/Agda/TypeChecking/DisplayForm.
 formatted       2c03c6d0d27b  Agda-2.8.0/src/full/Agda/TypeChecking/DropArgs.hs
 formatted       c4bcc3ec3efc  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs
 formatted       546e2690c8bd  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs-boot
-formatted       d796fe01f1e9  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
+formatted       d66d78d15813  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
 formatted       4d637dbd29d8  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs-boot
 formatted       aaf8e5a6f74a  Agda-2.8.0/src/full/Agda/TypeChecking/Errors/Names.hs
 formatted       fa9468d1b394  Agda-2.8.0/src/full/Agda/TypeChecking/EtaContract.hs
@@ -440,7 +440,7 @@ formatted       ef7d967b9bdc  Agda-2.8.0/src/full/Agda/Utils/WithDefault.hs
 formatted       fe0ca6de293d  Agda-2.8.0/src/full/Agda/Utils/Zipper.hs
 formatted       86e923a357db  Agda-2.8.0/src/main/Main.hs
 formatted       61f76fd386b5  Agda-2.8.0/src/setup/Agda/Setup.hs
-formatted       4fdcc92be0f4  Agda-2.8.0/src/setup/Agda/Setup/DataFiles.hs
+formatted       57e71e771600  Agda-2.8.0/src/setup/Agda/Setup/DataFiles.hs
 formatted       7a631dd4456c  Agda-2.8.0/src/setup/Agda/Setup/EmacsMode.hs
 formatted       acb74e0db7a5  Agda-2.8.0/src/setup/Agda/Version.hs
 formatted       5164a4006c26  Agda-2.8.0/src/setup/Agda/VersionCommit.hs
@@ -759,7 +759,7 @@ formatted       a8b78f720f02  aws-0.25.3/Aws/Ses/Core.hs
 formatted       4115c76b6f3d  aws-0.25.3/Aws/SimpleDb.hs
 formatted       0b6040677d6d  aws-0.25.3/Aws/SimpleDb/Commands.hs
 formatted       30e4762ca046  aws-0.25.3/Aws/SimpleDb/Commands/Attributes.hs
-formatted       66e68309ec36  aws-0.25.3/Aws/SimpleDb/Commands/Domain.hs
+formatted       2f311cda5b86  aws-0.25.3/Aws/SimpleDb/Commands/Domain.hs
 formatted       d6accda5efc3  aws-0.25.3/Aws/SimpleDb/Commands/Select.hs
 formatted       75d5726cf334  aws-0.25.3/Aws/SimpleDb/Core.hs
 formatted       412e7ea774c8  aws-0.25.3/Aws/Sqs.hs
@@ -2468,7 +2468,7 @@ formatted       6f60ce8d90d0  hledger-1.52.1/Hledger/Cli/Commands/Import.hs
 formatted       3fc4bde8aaae  hledger-1.52.1/Hledger/Cli/Commands/Incomestatement.hs
 formatted       e795242e76e2  hledger-1.52.1/Hledger/Cli/Commands/Notes.hs
 formatted       7868c26f6945  hledger-1.52.1/Hledger/Cli/Commands/Payees.hs
-formatted       74c42e16a7cb  hledger-1.52.1/Hledger/Cli/Commands/Prices.hs
+formatted       fe56fd581b75  hledger-1.52.1/Hledger/Cli/Commands/Prices.hs
 formatted       177a0e3d59ff  hledger-1.52.1/Hledger/Cli/Commands/Print.hs
 formatted       b3664f32c410  hledger-1.52.1/Hledger/Cli/Commands/Register.hs
 formatted       fe57269eee06  hledger-1.52.1/Hledger/Cli/Commands/Rewrite.hs
@@ -3238,7 +3238,7 @@ formatted       4f544a701d34  pandoc-3.10.2/src/Text/Pandoc/Readers/TWiki.hs
 formatted       25cccdcbef5d  pandoc-3.10.2/src/Text/Pandoc/Readers/Textile.hs
 formatted       7e7d5f748c66  pandoc-3.10.2/src/Text/Pandoc/Readers/TikiWiki.hs
 formatted       92e7cf81f874  pandoc-3.10.2/src/Text/Pandoc/Readers/Txt2Tags.hs
-formatted       4af418633a39  pandoc-3.10.2/src/Text/Pandoc/Readers/Typst.hs
+formatted       38ba4ac13251  pandoc-3.10.2/src/Text/Pandoc/Readers/Typst.hs
 formatted       571c0f71e243  pandoc-3.10.2/src/Text/Pandoc/Readers/Typst/Math.hs
 formatted       862b8ee41599  pandoc-3.10.2/src/Text/Pandoc/Readers/Typst/Parsing.hs
 formatted       d9474be2d4dd  pandoc-3.10.2/src/Text/Pandoc/Readers/Vimwiki.hs
@@ -3325,7 +3325,7 @@ formatted       526459d5f74f  pandoc-3.10.2/src/Text/Pandoc/Writers/Roff.hs
 formatted       64258df1d09e  pandoc-3.10.2/src/Text/Pandoc/Writers/Shared.hs
 formatted       6ff714d9bc8d  pandoc-3.10.2/src/Text/Pandoc/Writers/TEI.hs
 formatted       01231d1cd443  pandoc-3.10.2/src/Text/Pandoc/Writers/Texinfo.hs
-formatted       3a596ddb6e0a  pandoc-3.10.2/src/Text/Pandoc/Writers/Textile.hs
+formatted       c961b91b586a  pandoc-3.10.2/src/Text/Pandoc/Writers/Textile.hs
 formatted       e65d7bf1c614  pandoc-3.10.2/src/Text/Pandoc/Writers/Txt2Tags.hs
 formatted       ab0ca20ffb33  pandoc-3.10.2/src/Text/Pandoc/Writers/Typst.hs
 formatted       5753a1fc2b52  pandoc-3.10.2/src/Text/Pandoc/Writers/Vimdoc.hs
@@ -4265,7 +4265,7 @@ formatted       1aee80e9930e  shake-0.19.9/src/Test/Docs.hs
 formatted       7425a9004035  shake-0.19.9/src/Test/Errors.hs
 formatted       b698eeb22c5b  shake-0.19.9/src/Test/Existence.hs
 formatted       33dfd1039065  shake-0.19.9/src/Test/FileLock.hs
-formatted       62fa7f2a0865  shake-0.19.9/src/Test/FilePath.hs
+formatted       1dd160a81730  shake-0.19.9/src/Test/FilePath.hs
 formatted       19b187c8cbe6  shake-0.19.9/src/Test/FilePattern.hs
 formatted       7f088d1e23e6  shake-0.19.9/src/Test/Files.hs
 formatted       f46b5feb3e77  shake-0.19.9/src/Test/Forward.hs
@@ -4442,7 +4442,7 @@ formatted       299f43f28485  statistics-0.16.5.0/tests/Tests/Function.hs
 formatted       9c5a618f3bf1  statistics-0.16.5.0/tests/Tests/Helpers.hs
 formatted       fec77bb7c2ff  statistics-0.16.5.0/tests/Tests/KDE.hs
 formatted       cf822ef362eb  statistics-0.16.5.0/tests/Tests/Matrix.hs
-formatted       27d419347379  statistics-0.16.5.0/tests/Tests/Matrix/Types.hs
+formatted       3f54ac156fe8  statistics-0.16.5.0/tests/Tests/Matrix/Types.hs
 formatted       5815fd5a68d5  statistics-0.16.5.0/tests/Tests/NonParametric.hs
 formatted       4d0172724882  statistics-0.16.5.0/tests/Tests/NonParametric/Table.hs
 formatted       65adfee8e313  statistics-0.16.5.0/tests/Tests/Orphanage.hs
