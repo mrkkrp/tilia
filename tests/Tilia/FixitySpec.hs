@@ -73,6 +73,12 @@ spec = do
       declaredWithNamespaces "module M where\ninfixl 6 <+>\na <+> b = a\n"
         `shouldBe` [((InTerms, OpName "<+>"), Fixity LeftAssoc 6)]
 
+    it "gives a data instance constructor's fixity to terms" $
+      declaredWithNamespaces
+        "{-# LANGUAGE TypeFamilies #-}\nmodule M where\ninfixr 5 :>\n\
+        \data family F a\ndata instance F Int = Int :> Int\n"
+        `shouldBe` [((InTerms, OpName ":>"), Fixity RightAssoc 5)]
+
     it "gives a pattern synonym's fixity to terms" $
       declaredWithNamespaces
         "{-# LANGUAGE PatternSynonyms #-}\nmodule M where\ninfixl 5 :>\npattern x :> y = (x, y)\n"
@@ -508,6 +514,24 @@ spec = do
     it "takes a class's associated families, among types" $
       declaredMembersIn "module M where\nclass C a where\n  type F a\n"
         `shouldBe` [(OpName "C", [(InTypes, OpName "F")])]
+
+    it "takes a data instance's constructors, under its family" $
+      declaredMembersIn
+        "{-# LANGUAGE TypeFamilies #-}\nmodule M where\n\
+        \data family F a\ndata instance F Int = A | Int :| Int\n"
+        `shouldBe` [ ( OpName "F",
+                       [(InTerms, OpName ":|"), (InTerms, OpName "A")]
+                     )
+                   ]
+
+    it "takes those of the data instances of a class instance" $
+      declaredMembersIn
+        "{-# LANGUAGE TypeFamilies #-}\nmodule M where\n\
+        \instance C Int where\n  data F Int = A | Int :| Int\n"
+        `shouldBe` [ ( OpName "F",
+                       [(InTerms, OpName ":|"), (InTerms, OpName "A")]
+                     )
+                   ]
 
     it "has nothing to say about a type synonym" $
       declaredMembersIn "module M where\ntype T = Int\n" `shouldBe` []
