@@ -81,7 +81,7 @@ import System.FilePath
     takeExtension,
     (</>),
   )
-import Tilia.Cabal.Project (cabalFilesIn)
+import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (attempted, quietly, tshow)
@@ -151,12 +151,6 @@ newPackageReader planned project = do
             | Just c <- claiming file components ->
                 pure (Right (componentExtensions c))
             | otherwise -> elsewhere file (FileUnclaimed cabalFile)
-
--- | Where to start looking for a @.cabal@ file.
-startingDirectory :: FilePath -> IO FilePath
-startingDirectory path = do
-  isDirectory <- quietly False (doesDirectoryExist path)
-  pure (if isDirectory then path else takeDirectory path)
 
 -- | One branch of a component, with everything in force in it already
 -- worked out.
