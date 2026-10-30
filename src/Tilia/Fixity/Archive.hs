@@ -27,6 +27,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Distribution.PackageDescription (GenericPackageDescription)
 import GHC.Generics (Generic)
+import System.FilePath.Posix qualified as Posix
 import Tilia.Cabal.Package (packageSourceDirs)
 import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile)
 import Tilia.Utils (quietly)
@@ -67,15 +68,15 @@ moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
   where
     dirs = maybe [] packageSourceDirs (archiveCabal archive)
     pick ending =
-      inArchive ending . T.decodeUtf8Lenient . snd
-        <$> listToMaybe (under sfx matching <> matching)
-      where
-        sfx = "/" <> pathOfModule modName <> ending
-        matching = [f | f <- archiveFiles archive, sfx `isSuffixOf` fst f]
-    under sfx matching = [f | d <- dirs, f <- matching, inDir sfx d (fst f)]
-    inDir sfx d path
-      | d == "." = takeWhile (/= '/') path <> sfx == path
-      | otherwise = ("/" <> d <> sfx) `isSuffixOf` path
+      inArchive ending . T.decodeUtf8Lenient
+        <$> listToMaybe
+          [ content
+          | d <- dirs,
+            let file =
+                  Posix.normalise (d <> "/" <> pathOfModule modName <> ending),
+            (path, content) <- archiveFiles archive,
+            drop 1 (dropWhile (/= '/') path) == file
+          ]
 
 -- | Where a module's file is under the directory that holds it, without an
 -- extension.
