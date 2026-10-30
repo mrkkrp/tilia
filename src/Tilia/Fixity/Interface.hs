@@ -12,7 +12,6 @@ module Tilia.Fixity.Interface
 where
 
 import Control.DeepSeq (NFData)
-import Control.Monad ((<=<))
 import Data.ByteString qualified as BS
 import Data.Char (isUpper)
 import Data.Map.Strict (Map)
@@ -59,8 +58,8 @@ readInterface ::
   IO (Maybe Interface)
 readInterface modName path =
   quietly Nothing $
-    (fromHiFile modName <=< decodeHiFile) <$> BS.readFile path >>= \case
-      Right interface -> pure (Just interface)
+    decodeHiFile <$> BS.readFile path >>= \case
+      Right hi -> pure (either (const Nothing) Just (fromHiFile modName hi))
       Left _ ->
         readProgramOutput "ghc" ["--show-iface", path] >>= \case
           Nothing -> pure Nothing
