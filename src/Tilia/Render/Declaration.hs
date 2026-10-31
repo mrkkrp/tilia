@@ -81,8 +81,8 @@ declRun grouping ctx style ds =
           isHeading (unLoc (NE.last previous))
             && commentRightUnder ctx ended began
 
-    isDocumented = any (isDocNext . unLoc)
-    isDocNext = \case
+    isDocumented = any (isDocComment . unLoc)
+    isDocComment = \case
       DocD _ (DocCommentNext _) -> True
       DocD _ (DocCommentPrev _) -> True
       _ -> False
@@ -152,7 +152,6 @@ data Kind
   | FamilyDeclaration
   | TypeSynonym
   | PragmaDeclaration
-  | DocumentsNext
   | DocumentsPrevious
   | Unremarkable
   deriving (Eq, Show)
@@ -180,7 +179,6 @@ declKind = \case
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) -> (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
-  DocD _ (DocCommentNext _) -> (DocumentsNext, [])
   DocD _ (DocCommentPrev _) -> (DocumentsPrevious, [])
   _ -> (Unremarkable, [])
 
@@ -188,7 +186,6 @@ declKind = \case
 -- them?
 relatedDecls :: LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 relatedDecls a b = case (kindA, kindB) of
-  (DocumentsNext, _) -> True
   (_, DocumentsPrevious) -> True
   pair | pair `elem` relatedKinds -> shareAName namesA namesB
   _ -> False
