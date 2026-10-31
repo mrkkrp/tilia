@@ -9,6 +9,7 @@ module Tilia.Comments.Attach
   ( attachComments,
     attachScopedComments,
     Margin (..),
+    commentText,
   )
 where
 
