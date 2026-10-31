@@ -218,7 +218,6 @@ isComment = \case
   GHC.ITlineComment _ _ -> True
   GHC.ITblockComment _ _ -> True
   GHC.ITdocComment _ _ -> True
-  GHC.ITdocOptions _ _ -> True
   _ -> False
 
 -- | Is this token a quasi-quotation?

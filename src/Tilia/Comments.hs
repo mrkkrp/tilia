@@ -122,7 +122,6 @@ mkComment ls spn = \case
   GHC.ITlineComment t _ -> Just (commentAt ls s LineComment (T.pack t))
   GHC.ITblockComment t _ -> Just (commentAt ls s BlockComment (T.pack t))
   GHC.ITdocComment _ _ -> Just (commentAt ls s DocComment (sliceSpan (lineTexts ls) s))
-  GHC.ITdocOptions t _ -> Just (commentAt ls s LineComment (T.pack t))
   _ -> Nothing
   where
     s = spanOfReal spn
