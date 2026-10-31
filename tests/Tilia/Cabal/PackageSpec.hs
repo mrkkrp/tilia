@@ -23,7 +23,6 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan (BuildPlan (..), plannedCompiler)
 import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.TestUtils (withFiles)
-import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -460,8 +459,7 @@ conditionalLibrary =
 -- | Write a @.cabal@ file and the given directories, and hand back the root.
 inPackage :: Text -> [FilePath] -> (FilePath -> IO a) -> IO a
 inPackage contents dirs use =
-  withSystemTempDirectory "tilia-package" $ \root -> do
-    writeUtf8File (root </> "demo.cabal") contents
+  withFiles [("demo.cabal", contents)] $ \root -> do
     mapM_ (createDirectoryIfMissing True . (root </>)) (sort dirs)
     use root
 
