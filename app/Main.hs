@@ -9,7 +9,6 @@ import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.Foldable (traverse_)
-import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
@@ -34,7 +33,6 @@ import Tilia.Cabal.Project (ProjectRoot, findProjectRoot)
 import Tilia.Cabal.Target
   ( Component,
     Target,
-    componentInPlan,
     componentsOfTarget,
     describeTargetProblem,
     filesOfComponents,
@@ -44,12 +42,12 @@ import Tilia.Editor (editorSession, formatBuffer)
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
   ( FormatError (NoProject, Unreadable),
-    PlanSource (..),
     Session,
     describeFormatError,
     fixityNotesOf,
     formatErrorExitCode,
     newSession,
+    planSourceFor,
   )
 import Tilia.Palette (Color (Bad), Palette, paletteFor)
 import Tilia.Parser (ghcLibParserVersion)
@@ -104,13 +102,11 @@ formatComponents palette opts@Opts{..} target = do
   files <-
     traverse makeRelativeToCurrentDirectory
       =<< filesOfComponents root components
+  planSource <- planSourceFor optBuildPlan (pure components)
   session <-
     newSession
       root
-      ( case optBuildPlan of
-          Nothing -> PlanFromCabal (mapMaybe componentInPlan components)
-          Just givenPlan -> GivenPlan givenPlan
-      )
+      planSource
       optUseCache
       optDownload
       optCheckAst

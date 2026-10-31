@@ -11,21 +11,20 @@ module Tilia.Editor
 where
 
 import Data.Choice (Choice)
-import Data.Maybe (mapMaybe)
+import Data.Either (fromRight)
 import Data.Text (Text)
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
   ( Target (Everything),
-    componentInPlan,
     componentsOfTarget,
   )
 import Tilia.Format
   ( Compiled (..),
     FormatError (NoProject),
-    PlanSource (..),
     Session,
     compiledSession,
     newSession,
+    planSourceFor,
     sessionRoot,
   )
 import Tilia.Ignore (isIgnoredInProject)
@@ -61,11 +60,8 @@ editorSession
     findProjectRoot file >>= \case
       Nothing -> pure (Left (NoProject file))
       Just root -> do
-        planSource <- case givenPlan of
-          Just plan -> pure (GivenPlan plan)
-          Nothing ->
-            PlanFromCabal . either (const []) (mapMaybe componentInPlan)
-              <$> componentsOfTarget root Everything
+        planSource <-
+          planSourceFor givenPlan (fromRight [] <$> componentsOfTarget root Everything)
         newSession
           root
           planSource
