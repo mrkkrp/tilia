@@ -119,8 +119,12 @@ directivePresentOnLine :: Int -> Lines -> Bool
 directivePresentOnLine n ls = isJust (directiveOnLine =<< lineAt n ls)
 
 -- | The keyword a directive line opens with, and everything after its @#@.
+--
+-- The @#@ is the first character of the line: cpp, in the traditional mode
+-- GHC runs it in, passes a line indented further on to GHC, which may read
+-- an OverloadedLabels label there.
 directiveOnLine :: Text -> Maybe (Text, Text)
-directiveOnLine l = case T.uncons (T.stripStart l) of
+directiveOnLine l = case T.uncons l of
   Just ('#', rest)
     | keyword `elem` directiveKeywords -> Just (keyword, body)
     where
