@@ -2751,7 +2751,7 @@ formatted       187fb9ddcd79  idris-1.3.4/src/Idris/Elab/Rewrite.hs
 formatted       77ebc33633f8  idris-1.3.4/src/Idris/Elab/RunElab.hs
 formatted       711d76a30f2c  idris-1.3.4/src/Idris/Elab/Term.hs
 formatted       43565a6d9bac  idris-1.3.4/src/Idris/Elab/Transform.hs
-formatted       cf8cbbec4fe7  idris-1.3.4/src/Idris/Elab/Type.hs
+formatted       eb98b1329d21  idris-1.3.4/src/Idris/Elab/Type.hs
 formatted       b3e66f72a9ac  idris-1.3.4/src/Idris/Elab/Utils.hs
 formatted       ac9c50ffdaf7  idris-1.3.4/src/Idris/Elab/Value.hs
 formatted       5ce0ed3888f3  idris-1.3.4/src/Idris/ElabDecls.hs

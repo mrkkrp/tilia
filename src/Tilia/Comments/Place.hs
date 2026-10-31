@@ -171,7 +171,9 @@ placeComments regions leads fences comments =
           where
             outside = maybe False (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
 
-        printedInPlace = shapeOf (After SpillAtIndentation) c == InPlace
+        printedInPlace = case shapeOf (After SpillAtIndentation) c of
+          HeldBack _ -> False
+          _ -> True
 
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
