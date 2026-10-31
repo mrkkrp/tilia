@@ -80,6 +80,10 @@ spec = do
           "\n"
           ["--- x", "+++ y", "@@ -1,3 +1,3 @@", " a\r", "-b", "+b\r", " c\r"]
 
+    it "starts a side with no lines at 0, as git does" $
+      diff Plain ("x", "y") "\n\n" ""
+        `shouldBe` T.intercalate "\n" ["--- x", "+++ y", "@@ -1,2 +0,0 @@", "-", "-"]
+
     it "keeps changes far apart in hunks of their own" $
       length (filter (T.isPrefixOf "@@") (T.lines (diff Plain ("x", "y") far (T.replace "k" "K" (T.replace "b" "B" far)))))
         `shouldBe` 2
