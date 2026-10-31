@@ -50,20 +50,21 @@ spec = do
       notesFor
         [("Prelude", Just []), ("Data.Map", Just [("!", infixl' 9)])]
         "import Data.Map\nf m = m ! 1\n"
-        >>= (`shouldContain'` "· ! infixl 9, declared in Data.Map")
+        >>= (`shouldContain'` "· ! infixl 9 (term), declared in Data.Map")
 
     it "says when the module declared it itself" $
       notesFor [("Prelude", Just [])] "infixr 5 <+>\nf a b = a <+> b\n"
-        >>= (`shouldContain'` "· <+> infixr 5, declared in this module")
+        >>= (`shouldContain'` "· <+> infixr 5 (term), declared in this module")
 
     it "says when nothing in scope declares it and everything was read" $
       notesFor [("Prelude", Just [])] "f a b = a <?> b\n"
-        >>= (`mentions` "<?> infixl 9, the Report's default")
+        >>= (`mentions` "<?> infixl 9 (term), the Report's default")
 
     it "says which unread module the answer might have been in" $
       notesFor [("Prelude", Just [])] "import Criterion.Main\nf a b = a <?> b\n"
         >>= ( `shouldContain'`
-                "· <?> unknown: may be declared in Criterion.Main, which this run could not read"
+                "· <?> unknown (term): may be declared in Criterion.Main, \
+                \which this run could not read"
             )
 
     it "counts the unread modules when there is more than one" $
@@ -78,7 +79,7 @@ spec = do
       notesFor
         [("Prelude", Just []), ("Data.Map", Just [("!", infixl' 9)])]
         "import qualified Data.Map as M\nf m = m M.! 1\n"
-        >>= (`shouldContain'` "· M.! infixl 9, declared in Data.Map")
+        >>= (`shouldContain'` "· M.! infixl 9 (term), declared in Data.Map")
 
     it "says when two imports disagree about one" $
       notesFor
@@ -106,6 +107,34 @@ spec = do
     it "gives an operator one line however often it is written" $ do
       told <- notesFor [("Prelude", Just [])] "f a b c = a <?> b <?> c <?> a\n"
       length (filter (T.isInfixOf "<?>") told) `shouldBe` 1
+
+    it "gives an operator a line per namespace where they differ" $ do
+      told <-
+        notesFor
+          [("Prelude", Just [])]
+          "data a :. b = a :. b\ninfixr 5 data :.\ninfixl 4 type :.\n\
+          \type T = Int :. Int\nx = 1 :. 2\n"
+      told `shouldContain'` "· :. infixl 4 (type), declared in this module"
+      told `shouldContain'` "· :. infixr 5 (term), declared in this module"
+
+    it "gives an operator one line where both namespaces agree" $ do
+      told <-
+        notesFor
+          [("Prelude", Just [])]
+          "data a :- b = a :- b\ninfix 8 :-\ntype T = Int :- Int\nx = 1 :- 2\n"
+      filter (T.isInfixOf "declared in this module") (fmap T.stripStart told)
+        `shouldBe` ["· :- infix 8 (type & term), declared in this module"]
+
+    it "names the namespace a constructor written among types answers from" $ do
+      let answerOf m =
+            mempty
+              { establishedFixities =
+                  Map.fromList
+                    [((InTerms, OpName ":>"), Fixity RightAssoc 5) | m == "Ops"]
+              }
+      told <- notesAgainst answerOf "import Ops\ntype T = Int :> Int\nx = 1 :> 2\n"
+      filter (T.isInfixOf ":>") (fmap T.stripStart told)
+        `shouldBe` ["· :> infixr 5 (term), declared in Ops"]
 
   describe "how far reading an import got" $ do
     it "names the module that stopped it rather than the import above it" $
@@ -166,21 +195,21 @@ spec = do
 
     it "lists what the module declares for itself" $
       notesFor [("Prelude", Just [])] "infixr 5 <+>\nf a b = a <+> b\n"
-        >>= (`shouldContain'` "· <+> infixr 5")
+        >>= (`shouldContain'` "· <+> infixr 5 (type & term)")
 
     it "lists what it declares for a type beside a constructor of its name" $ do
       told <-
         notesFor
           [("Prelude", Just [])]
           "data a :. b = a :. b\ninfixr 5 data :.\ninfixl 4 type :.\n"
-      told `shouldContain'` "· :. infixr 5"
-      told `shouldContain'` "· :. infixl 4"
+      told `shouldContain'` "· :. infixr 5 (term)"
+      told `shouldContain'` "· :. infixl 4 (type)"
 
     it "lists once what it declares for both at once" $ do
       told <-
         notesFor [("Prelude", Just [])] "data a :- b = a :- b\ninfix 8 :-\n"
-      filter (== "· :- infix 8") (fmap T.stripStart told)
-        `shouldBe` ["· :- infix 8"]
+      filter (T.isInfixOf ":-") (fmap T.stripStart told)
+        `shouldBe` ["· :- infix 8 (type & term)"]
 
 ----------------------------------------------------------------------------
 -- Helpers

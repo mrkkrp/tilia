@@ -46,6 +46,7 @@ module Tilia.Fixity
     Provenance (..),
     Resolution (..),
     lookupFixity,
+    fixityInScope,
 
     -- * What could not be answered
     Unknown (..),
