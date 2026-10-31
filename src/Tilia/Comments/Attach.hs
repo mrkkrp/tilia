@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (..), Spill (..), foldChildren)
+import Tilia.Doc.Internal (Doc (..), foldChildren)
 import Tilia.Span
 
 -- | Attach comments to a 'Doc'.
@@ -98,10 +98,10 @@ closingComments margin = \case
   where
     placeOne opensTheRun c =
       commentDoc c $
-        closeLine
+        DCloseLine
           <> includeWhen (opensTheRun || commentGapAbove c) blankLine
           <> commentText margin c
-          <> closeLine
+          <> DCloseLine
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
 -- in that order.
@@ -240,12 +240,12 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
-  EndsTheLine -> space <> body <> closeLine <> gapBelow
-  HeldBack spill -> holdBack spill (renderComment c)
+  EndsTheLine -> space <> body <> DCloseLine <> gapBelow
+  HeldBack spill -> DHoldBack spill (renderComment c)
   OnItsOwnLines ->
-    closeLineUnlessAfterOpener (commentGapAbove c)
+    DCloseLineUnlessAfterOpener (commentGapAbove c)
       <> body
-      <> closeLine
+      <> DCloseLine
       <> gapBelow
   where
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
@@ -273,17 +273,3 @@ commentText margin c = note . align $ case NE.toList (commentBody c) of
     note
       | marginComment margin c = cppMarginNote
       | otherwise = id
-
--- | Put this text at the end of the line this position falls on.
-holdBack :: Spill -> Text -> Doc
-holdBack = DHoldBack
-
--- | End the current line and leave a mark so that a line break that follows
--- it immediately (if any) will have no effect.
-closeLine :: Doc
-closeLine = DCloseLine
-
--- | 'closeLine', with an empty line under it if told to, unless the line
--- ends with an opening bracket, a bar or an equals sign.
-closeLineUnlessAfterOpener :: Bool -> Doc
-closeLineUnlessAfterOpener = DCloseLineUnlessAfterOpener
