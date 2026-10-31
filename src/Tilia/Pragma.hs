@@ -11,7 +11,6 @@ module Tilia.Pragma
     lookupEdition,
     nameSwitch,
     flagSwitches,
-    optionFlags,
     pragmaFlags,
     languageNames,
     withoutSkippedComments,
