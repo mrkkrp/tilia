@@ -419,7 +419,10 @@ importDecl ctx ImportDecl{..} =
        in layoutWithin ctx listSpan parensSpan $
             hidden
               <> breakOrSpace
-              <> parens (insideBrackets listSpan (importExportItems ctx xs))
+              <> fenceWithin
+                ctx
+                parensSpan
+                (parens (insideBrackets listSpan (importExportItems ctx xs)))
 
 -- | The keyword an import's level is written with.
 declLevel :: ImportDeclLevel -> Doc
