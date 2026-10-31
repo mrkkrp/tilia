@@ -36,12 +36,13 @@ import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 import Tilia.Utils (tshow)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with
--- these extensions in force, and, without CPP, the lines GHC's lexer reads
--- past at the start of a line, but for the @#!@ lines a script begins with.
+-- these extensions in force, and the lines GHC's lexer reads past at the
+-- start of a line, but for the @#!@ lines a script begins with.
 --
 -- Those are the line markers cpp writes, such as @# 40 "M.hs"@, which move
 -- positions as a @LINE@ pragma does, and @#pragma@ and @#!@ lines, which
--- leave nothing behind for formatting to print.
+-- leave nothing behind for formatting to print. With CPP on, @#line@ and
+-- @#pragma@ lines are directives, which formatting keeps.
 movesPositions :: [Extension] -> Text -> Bool
 movesPositions extensions =
   or . scanPragmas positional (pastCode extensions) . T.cons '\n' . script
@@ -219,12 +220,12 @@ byFlagName flags =
 
 -- | Carry on past the code of a module with these extensions in force, over
 -- its strings, characters and quasi-quotations, up to a line that GHC's
--- lexer reads past, where CPP is off.
+-- lexer reads past and formatting would lose.
 pastCode :: [Extension] -> (Text -> [Bool]) -> Text -> [Bool]
 pastCode extensions = past
   where
     past go t = case T.uncons t of
-      Just ('\n', after) | withoutCpp, readPast after -> [True]
+      Just ('\n', after) | readPast after -> [True]
       Just ('"', after) -> go (skipString after)
       Just ('\'', after) -> go (skipCharacter after)
       _
@@ -236,7 +237,8 @@ pastCode extensions = past
     withoutCpp = Cpp `notElem` extensions
     readPast l = case T.uncons l of
       Just ('#', rest) ->
-        any (`T.isPrefixOf` rest) ["line", "pragma", "!"]
+        (withoutCpp && any (`T.isPrefixOf` rest) ["line", "pragma"])
+          || "!" `T.isPrefixOf` rest
           || T.any isDigit (T.take 1 (fromMaybe rest (T.stripPrefix " " rest)))
       Just (' ', rest) -> "#!" `T.isPrefixOf` rest
       _ -> False
