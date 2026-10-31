@@ -240,8 +240,7 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             space
           <> indent
             ( fold resultSig
-                <> space
-                <> foldMap (at_ ctx (injectivityAnn ctx)) fdInjectivityAnn
+                <> foldMap ((space <>) . at_ ctx (injectivityAnn ctx)) fdInjectivityAnn
             )
 
     resultSig = familyResultSig ctx fdResultSig
