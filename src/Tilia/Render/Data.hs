@@ -122,7 +122,10 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
                   (fmap (at_ ctx (conDecl ctx (Isn't #singleRecCon))) cons)
         | otherwise ->
             layoutFrom ctx (spanOf tyCon <> spansOf cons) . indent $
-              beforeEquals <> txt "=" <> space <> alternatives
+              beforeEquals
+                <> txt "="
+                <> space
+                <> fenceWithin ctx (fmap endOf equalsSpan <> spansOf cons) alternatives
         where
           singleRecCon = case cons of
             [L _ ConDeclH98{con_args = RecCon{}}] -> True
@@ -132,6 +135,8 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
           conNamesSpan = \case
             ConDeclGADT{..} -> spansOf (NE.toList con_names)
             ConDeclH98{..} -> spanOf con_name
+
+          equalsSpan = spanOf (andd_equal dd_ext)
 
           lineHaddocks = any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
 
