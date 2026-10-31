@@ -17,6 +17,7 @@ where
 
 import Control.Applicative ((<|>))
 import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
+import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -161,7 +162,7 @@ exprBody ctx site here = \case
         <> joinedBy "::"
         <> indent (hsSigType ctx hswc_body)
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
-  HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" (hsExpr ctx e)
+  HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" e (hsExpr ctx e)
     where
       opener = case bracketAnn of
         BracketNoE{} -> "[||"
@@ -1207,48 +1208,51 @@ spliceTH ctx typed e = \case
 -- | A Template Haskell quotation.
 quotation :: Ctx -> Maybe Span -> HsQuote GhcPs -> Doc
 quotation ctx here = \case
-  ExpBr (bracketAnn, _) e -> quotedAs (flavour bracketAnn) (hsExpr ctx e)
+  ExpBr (bracketAnn, _) e -> quotedAs (flavour bracketAnn) e (hsExpr ctx e)
     where
       flavour = \case
         BracketNoE{} -> ""
         BracketHasE{} -> "e"
-  PatBr _ p -> quotedAs "p" (hsPat ctx p)
-  DecBrL _ decls ->
-    quotedAs "d" (starGuard decls (knotDecls (ctxKnot ctx) ctx decls))
+  PatBr _ p -> quotedAs "p" p (hsPat ctx p)
+  DecBrL _ decls -> quotedAs "d" decls (knotDecls (ctxKnot ctx) ctx decls)
   DecBrG _ _ -> error "Tilia: DecBrG is produced by the renamer"
-  TypBr _ ty -> quotedAs "t" (starGuard ty (hsType ctx ty))
+  TypBr _ ty -> quotedAs "t" ty (hsType ctx ty)
   VarBr _ isSingle n -> txt (if isSingle then "'" else "''") <> name ctx n
   where
+    quotedAs :: (Data a) => Text -> a -> Doc -> Doc
     quotedAs flavour = quoted here ("[" <> flavour <> "|") "|]"
-    starGuard x body
-      | risky = space <> body <> space
-      | otherwise = body
-      where
-        risky =
-          any isStar (listify (const True :: HsType GhcPs -> Bool) x)
-            || any isAbstract (listify (const True :: FamilyInfo GhcPs -> Bool) x)
-    isStar = \case
-      HsStarTy{} -> True
-      _ -> False
-    isAbstract = \case
-      ClosedTypeFamily Nothing -> True
-      _ -> False
 
--- | The body of a quotation between its brackets, indented where it breaks.
+-- | The body of a quotation between its brackets, indented where it breaks,
+-- and spaced from them where it may end with a symbol character.
 quoted ::
+  (Data a) =>
   -- | Where the quotation is written.
   Maybe Span ->
   -- | The opening bracket.
   Text ->
   -- | The closing bracket.
   Text ->
+  -- | What is quoted.
+  a ->
   -- | The body.
   Doc ->
   Doc
-quoted here opener closer body =
+quoted here opener closer x body =
   txt opener
-    <> breakOrNothing
-    <> indent (insideBrackets here body <> breakOrNothing <> txt closer)
+    <> gap
+    <> indent (insideBrackets here body <> gap <> txt closer)
+  where
+    gap = if risky then breakOrSpace else breakOrNothing
+    risky =
+      any isStar (listify (const True :: HsType GhcPs -> Bool) x)
+        || any isAbstract (listify (const True :: FamilyInfo GhcPs -> Bool) x)
+        || not (null (listify (const True :: FixitySig GhcPs -> Bool) x))
+    isStar = \case
+      HsStarTy{} -> True
+      _ -> False
+    isAbstract = \case
+      ClosedTypeFamily Nothing -> True
+      _ -> False
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.
