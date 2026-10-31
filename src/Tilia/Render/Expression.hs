@@ -158,8 +158,11 @@ exprBody ctx site here = \case
   HsProjection{..} -> parens (txt "." <> dotFields ctx proj_flds)
   ExprWithTySig _ x HsWC{hswc_body} ->
     align $
-      hsExpr ctx x
-        <> joinedBy "::"
+      hsExprIn ctx (withBracing MayBrace plainSite) x
+        <> ( if endsWithBlock (unLoc x)
+               then breakOrSpace <> txt "::" <> space
+               else joinedBy "::"
+           )
         <> indent (hsSigType ctx hswc_body)
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
   HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" e (hsExpr ctx e)
@@ -1323,6 +1326,19 @@ exprHangs = \case
         exprHangs (unLoc y)
     | otherwise -> exprHangs (unLoc x)
   _ -> Normal
+
+-- | Does this expression end with a layout block, which takes in what is
+-- printed after it on its last line?
+endsWithBlock :: HsExpr GhcPs -> Bool
+endsWithBlock = \case
+  HsDo _ (DoExpr _) _ -> True
+  HsDo _ (MDoExpr _) _ -> True
+  HsCase{} -> True
+  HsLam _ LamCase _ -> True
+  HsLam _ LamCases _ -> True
+  HsApp _ _ y -> endsWithBlock (unLoc y)
+  OpApp _ _ _ y -> endsWithBlock (unLoc y)
+  _ -> False
 
 -- | Does this command absorb the line break that introduces it?
 cmdHangs :: HsCmd GhcPs -> Placement
