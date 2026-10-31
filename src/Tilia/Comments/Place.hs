@@ -133,7 +133,7 @@ placeComments regions leads fences comments =
         wider a b = if endPoint a >= endPoint b then a else b
 
     against c
-      | Just placed@(_, After _) <- asCommentBefore = Just placed
+      | Just placed <- asCommentBefore = Just placed
       | commentTrailing c,
         Just r <- trailed =
           Just (r, After SpillAtIndentation)
