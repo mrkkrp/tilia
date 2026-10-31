@@ -33,10 +33,12 @@ where
 
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Set qualified as Set
 import Data.Text qualified as T
 import GHC.Hs
-import GHC.Types.Name.Occurrence (isTvOcc)
-import GHC.Types.Name.Reader (RdrName, rdrNameOcc)
+import GHC.LanguageExtensions.Type (Extension (Cpp))
+import GHC.Types.Name.Occurrence (isTvOcc, occNameString)
+import GHC.Types.Name.Reader (RdrName, isUnqual, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import GHC.Types.Var (Specificity (..))
@@ -47,6 +49,7 @@ import Tilia.Render.Haddock
 import Tilia.Render.Literal (stringLiteral)
 import Tilia.Render.Name
 import Tilia.Render.Operator
+import Tilia.Source (definedMacros, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -266,11 +269,21 @@ spine t =
 
 -- | A class context, as it appears before a @=>@.
 context :: Ctx -> LHsContext GhcPs -> Doc
-context ctx = at_ ctx (contextOf loneVariable (hsType ctx) . fmap unbracket)
+context ctx = at_ ctx (contextOf bare (hsType ctx) . fmap unbracket)
   where
-    loneVariable t = case unLoc t of
-      HsTyVar _ _ (L _ n) -> isTvOcc (rdrNameOcc n)
+    bare t = case unLoc t of
+      HsTyVar _ _ (L _ n) | isTvOcc (rdrNameOcc n) -> True
+      _ -> headedByMacro t
+    headedByMacro t = case unLoc t of
+      HsTyVar _ _ (L _ n) -> macro n
+      HsAppTy _ f _ -> headedByMacro f
       _ -> False
+    macro n =
+      extensionOn ctx Cpp
+        && isUnqual n
+        && Set.member
+          (T.pack (occNameString (rdrNameOcc n)))
+          (definedMacros (sourceLines (ctxSource ctx)))
     unbracket t = case unLoc t of
       HsParTy _ inner -> unbracket inner
       _ -> t
@@ -282,16 +295,16 @@ leftContext ctx ctxt = context ctx ctxt <> joinedBy "=>"
 
 -- | A context over anything that can stand as a constraint.
 contextOf ::
-  -- | Is this constraint nothing but a variable?
+  -- | Can this constraint, when it is the only one, go without parentheses?
   (a -> Bool) ->
   -- | How to print one.
   (a -> Doc) ->
   -- | The constraints.
   [a] ->
   Doc
-contextOf lone render = \case
+contextOf bare render = \case
   [] -> txt "()"
-  [x] | lone x -> render x
+  [x] | bare x -> render x
   xs -> parens (commaSep (fmap (align . render) xs))
 
 -- | The flags a type variable binder may carry.
