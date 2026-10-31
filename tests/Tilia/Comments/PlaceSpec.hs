@@ -134,10 +134,10 @@ spec = do
                      ("{- c -}", Just (After SpillAtIndentation, fName))
                    ]
 
-    it "goes its own way where that comment goes before what follows" $
-      placedIn [xOnLineTwo] [] "{- a -} -- b\nx = 1\n"
-        `shouldBe` [ ("{- a -}", Just (Before, xOnLineTwo)),
-                     ("-- b", Just (Before, xOnLineTwo))
+    it "goes before what follows where that comment does" $
+      placedIn [foo, oneOnLineTwo] [] "foo = {- a -} -- b\n  1\n"
+        `shouldBe` [ ("{- a -}", Just (Before, oneOnLineTwo)),
+                     ("-- b", Just (Before, oneOnLineTwo))
                    ]
 
   describe "a comment with nothing written against it" $ do
@@ -244,9 +244,9 @@ fName = mkSpan (1, 1) (1, 2)
 fBody = mkSpan (1, 21) (1, 22)
 fBodyPastThree = mkSpan (1, 29) (1, 30)
 
--- | The @x@ on the second line.
-xOnLineTwo :: Span
-xOnLineTwo = mkSpan (2, 1) (2, 2)
+-- | The @1@ on the second line of @foo = {- a -} -- b@.
+oneOnLineTwo :: Span
+oneOnLineTwo = mkSpan (2, 3) (2, 4)
 
 ----------------------------------------------------------------------------
 -- The snippets that take more than one line
