@@ -121,6 +121,12 @@ spec = do
         Nothing -> expectationFailure "let the pragma through"
         Just why -> why `shouldSatisfy` T.isInfixOf "invented the pragma"
 
+    it "notices a pragma holding a comment that went missing" $
+      differsBecause
+        "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE LambdaCase -- for f\n  #-}\nmodule M where\n"
+        "{-# LANGUAGE LambdaCase #-}\nmodule M where\n"
+        "-- for f"
+
     it "does not mind the order of what stands above the module header" $
       "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE TupleSections #-}\nmodule M where\nf = 1\n"
         `keepsTheCommentsOf` "{-# LANGUAGE TupleSections #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n"
