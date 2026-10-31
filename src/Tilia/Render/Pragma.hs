@@ -28,7 +28,7 @@ import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Module.Warnings
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
-import Tilia.Render.Literal (writtenString)
+import Tilia.Render.Literal (stringLiteral, writtenString)
 import Tilia.Render.Name
 
 -- | Wrap a body in pragma braces.
@@ -127,7 +127,9 @@ warningParts = \case
   where
     said = fmap (fmap hsDocString)
     named (unLoc -> InWarningCategory{..}) =
-      txt ("in \"" <> showGhc (unLoc iwc_wc) <> "\"") <> space
+      txt "in" <> space <> written iwc_st iwc_wc <> space
+    written (SourceText s) _ = stringLiteral s
+    written NoSourceText wc = txt ("\"" <> showGhc (unLoc wc) <> "\"")
 
 -- | One message is written bare; several go in a list.
 literalList :: [LocatedE StringLiteral] -> Doc
