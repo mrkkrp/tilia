@@ -11,7 +11,6 @@ module Tilia.Fixity.Debug
 where
 
 import Data.Choice (Choice)
-import Data.List (nub, sortOn)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -25,15 +24,18 @@ import Tilia.Fixity
     Fixity (..),
     Import (..),
     ModuleChain (..),
+    Namespace (..),
     OpName (..),
     Provenance (..),
     Resolution (..),
     Scope (..),
     disagreement,
+    fixityInScope,
     lookupFixity,
     moduleImports,
     operatorSpelling,
     operatorsUsed,
+    reachIn,
     reachUnqualified,
     spellDisagreement,
     spellFixity,
@@ -48,10 +50,11 @@ import Tilia.Utils (indent, tshow, wrappedUnder)
 data FixityNotes = FixityNotes
   { -- | What each import brought, in the order the module writes them.
     notedImports :: [ImportNote],
-    -- | Resolutions per operator.
-    notedOperators :: [OperatorNote],
-    -- | What operators the module declares.
-    notedDeclarations :: [(Text, Fixity)]
+    -- | Resolutions per operator, with the namespaces each holds in.
+    notedOperators :: [(Namespaces, OperatorNote)],
+    -- | What operators the module declares, with the namespaces each
+    -- declaration is in.
+    notedDeclarations :: [(Namespaces, (Text, Fixity))]
   }
   deriving (Eq, Show)
 
@@ -85,6 +88,10 @@ data OperatorNote = OperatorNote
   }
   deriving (Eq, Show)
 
+-- | The namespaces an entry holds in.
+data Namespaces = One Namespace | Both
+  deriving (Eq, Show)
+
 -- | Record everything that decided one module's fixities.
 fixityNotes ::
   -- | Whether @ImplicitPrelude@ is on, so that the Prelude is listed among
@@ -103,7 +110,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
   pure
     FixityNotes
       { notedImports = importNotes,
-        notedOperators = fmap aboutOperator used,
+        notedOperators = used,
         notedDeclarations = here
       }
   where
@@ -131,27 +138,37 @@ fixityNotes implicitPrelude resolve scope configurations = do
           }
 
     used =
-      Map.elems
-        ( Map.fromList
-            [ ((namespace, uncurry operatorSpelling u), (namespace, u))
-            | (namespace, u) <- concatMap (operatorsUsed . pmGathered) configurations
-            ]
-        )
+      joined . Map.elems $
+        Map.fromList
+          [ ((noteSpelling note, answering), (One answering, note))
+          | (answering, note) <-
+              fmap aboutOperator (concatMap (operatorsUsed . pmGathered) configurations)
+          ]
 
     here =
-      nub . sortOn fst $
-        [ (op, fixity)
-        | reach <- [scopeInTerms scope, scopeInTypes scope],
-          (OpName op, (fixity, DeclaredHere)) <-
-            Map.toList (reachUnqualified reach)
-        ]
+      joined . Map.elems $
+        Map.fromList
+          [ ((op, namespace), (One namespace, (op, fixity)))
+          | namespace <- [InTypes, InTerms],
+            (OpName op, (fixity, DeclaredHere)) <-
+              Map.toList (reachUnqualified (reachIn namespace scope))
+          ]
 
     aboutOperator (namespace, (qualifier, op)) =
-      OperatorNote
-        { noteSpelling = operatorSpelling qualifier op,
-          noteResolution = lookupFixity scope namespace qualifier op,
-          noteDisagreement = disagreement scope namespace qualifier op
-        }
+      ( maybe namespace fst (fixityInScope scope namespace qualifier op),
+        OperatorNote
+          { noteSpelling = operatorSpelling qualifier op,
+            noteResolution = lookupFixity scope namespace qualifier op,
+            noteDisagreement = disagreement scope namespace qualifier op
+          }
+      )
+
+-- | Join adjacent entries that differ only in their namespaces.
+joined :: (Eq a) => [(Namespaces, a)] -> [(Namespaces, a)]
+joined = \case
+  (_, a) : (_, b) : rest | a == b -> (Both, a) : joined rest
+  entry : rest -> entry : joined rest
+  [] -> []
 
 -- | Set out all the 'FixityNotes' per file.
 renderFixityNotes :: Palette -> Map FilePath FixityNotes -> [Text]
@@ -202,16 +219,30 @@ aboutFile palette notes =
       (False, Just alias) -> " as " <> named alias
       (False, Nothing) -> ""
 
-    fromOwn (op, fixity) = operator op <> " " <> spellFixity fixity
+    fromOwn (namespaces, (op, fixity)) =
+      operator op <> " " <> spellFixity fixity <> " " <> spellNamespaces namespaces
 
-    fromOperator o =
+    fromOperator (namespaces, o) =
       operator (noteSpelling o)
         <> " "
         <> case noteResolution o of
           Resolved fixity provenance ->
-            spellFixity fixity <> ", " <> from provenance <> ambiguously o
+            spellFixity fixity
+              <> " "
+              <> spellNamespaces namespaces
+              <> ", "
+              <> from provenance
+              <> ambiguously o
           Unresolved missing ->
-            "unknown: may be declared in " <> spellUnreadIn palette missing
+            "unknown "
+              <> spellNamespaces namespaces
+              <> ": may be declared in "
+              <> spellUnreadIn palette missing
+
+    spellNamespaces = \case
+      One InTypes -> "(type)"
+      One InTerms -> "(term)"
+      Both -> "(type & term)"
 
     from = \case
       DeclaredHere -> "declared in this module"

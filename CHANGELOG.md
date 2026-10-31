@@ -168,6 +168,10 @@
 * `--debug-fixity` lists a fixity a module declares for a type beside the
   one it declares for a constructor of the same name, rather than the
   constructor's alone. [PR 348](https://github.com/mrkkrp/tilia/pull/348).
+* `--debug-fixity` says which namespace each fixity it lists is for, as in
+  `:. infixr 5 (term)`, and gives an operator one line where its fixity is
+  the same among types and among terms, as in `:- infix 8 (type & term)`.
+  [PR 354](https://github.com/mrkkrp/tilia/pull/354).
 
 ## Tilia 0.1.3.0
 
