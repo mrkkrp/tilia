@@ -392,13 +392,8 @@ ruledOutBranch source = do
         | gs <- forest
         ]
 
--- | Read both spellings under the same CPP choices.
---
--- Sorting or deduplicating the resulting source text separately loses the
--- association with the guards: formatting can change that order or make two
--- formerly different strings identical. Cover every branch of either
--- spelling, including its ancestors. 'Nothing' denotes a configuration
--- deliberately rejected by @#error@.
+-- | Each configuration either module has, as the one and the other read in
+-- it, with 'Nothing' where an @#error@ rules it out.
 correspondingBranches ::
   -- | Before.
   Text ->

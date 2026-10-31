@@ -685,7 +685,7 @@ adjustTrailingWhitespace = \case
   KeepWhitespace -> id
 
 -- | Assemble the final text: one trailing newline, no blank lines at the
--- end, no trailing whitespace anywhere.
+-- end, and trailing whitespace only where a verbatim line keeps it.
 finish :: Out -> Text
 finish out =
   case dropWhile (T.null . lineBody) (outLines (breakLine 0 out)) of

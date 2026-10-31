@@ -432,7 +432,8 @@ numberedVersion = traverse number . T.splitOn "."
 data PlanComponent = PlanComponent
   { -- | The package it belongs to.
     pcPackage :: Text,
-    -- | @lib@, @exe:name@, @test:name@, @bench:name@.
+    -- | @lib@ for the main library, or else the kind and the name, as in
+    -- @lib:name@, @flib:name@, @exe:name@, @test:name@ or @bench:name@.
     pcName :: Text
   }
   deriving (Eq, Ord, Show)

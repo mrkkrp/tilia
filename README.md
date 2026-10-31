@@ -37,7 +37,8 @@ $ tilia check   [COMPONENT] # check that all files of COMPONENT are formatted
 
 `COMPONENT` may be omitted and in that case it defaults to `all`. To be
 precise, the kind of component we are talking about is exactly Cabal's
-notion of component: libraries, executables, test suites, and benchmarks.
+notion of component: libraries, foreign libraries, executables, test
+suites, and benchmarks.
 For example, in the case of Tilia itself the valid choices are:
 
 * `all`
@@ -67,16 +68,18 @@ not part of the project and will not be visited. Within a package, only the
 modules a component declares get formatted: its `exposed-modules`,
 `other-modules`, `signatures`, and `main-is`, in every conditional branch,
 found under its `hs-source-dirs` as `.hs`, `.hs-boot`, or `.hsig` files.
+A `Setup.hs` next to a package's `.cabal` file is formatted too.
 
 If there is no build plan yet, or it is older than the `.cabal` and
 `cabal.project` files, or it says nothing about a component you asked for,
 Tilia has Cabal solve it with `cabal build :all --dry-run`. If the plan is
 fine but some dependencies have been neither downloaded nor built, it
 fetches them with `cabal build :all --only-download`. These commands do not
-build anything, and both are one-time costs, since Cabal's package cache is
-shared between projects. So do not worry if the first run in a project
-prints a few lines from Cabal before Tilia starts formatting. Later runs
-check the plan with a read and a `stat` per package.
+build anything. A download is made once, since Cabal's package cache is
+shared between projects, and a solve is made again only when the plan goes
+out of date. So do not worry if the first run in a project prints a few
+lines from Cabal before Tilia starts formatting. Later runs check the plan
+with a read and a `stat` per package.
 
 Both of those calls also pass `--enable-tests` and `--enable-benchmarks`,
 because test suites and benchmarks are components Tilia formats, but they
@@ -166,7 +169,9 @@ repos, or the modules of the project you are formatting.
 CPP is a first-class formattable object to Tilia. Any Haskell syntactically
 enclosed in a conditional branch will format, and it does not even need to
 be self-contained valid Haskell on its own, as long as every configuration
-of the module is a valid Haskell module.
+of the module is a valid Haskell module. A module with too many
+configurations to format, or with something cpp passes on to GHC, such as a
+line marker, is declined and left as it is.
 
 ## Comparison with other formatters
 

@@ -90,7 +90,7 @@ data Ctx = Ctx
     -- | The uses of an operator a local binding captures, by where the
     -- operator is written, with their fixities.
     ctxCaptured :: Map Span Fixity,
-    -- | The comments that take whole lines, by starting position.
+    -- | The comments that end their line, by starting position.
     ctxLineComments :: Map (Int, Int) Comment,
     -- | The column of the trailing comment each comment that carries one on
     -- begins at, by where that comment begins.
@@ -375,7 +375,7 @@ writtenOnOneLine ctx s = from (spanStartLine s)
       n >= spanEndLine s
         || maybe False from (quoteEndingFrom n (ctxSource ctx))
 
--- | Does a comment that takes whole lines begin inside this span?
+-- | Does a comment that ends its line begin inside this span?
 holdsLineComment :: Ctx -> Span -> Bool
 holdsLineComment ctx s =
   case Map.lookupGE (startPoint s) (ctxLineComments ctx) of
