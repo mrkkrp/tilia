@@ -288,6 +288,12 @@
   than being indented with the Haddock's lines, where cpp no longer reads
   them and every configuration gets both branches of the Haddock.
   [Issue 116](https://github.com/mrkkrp/tilia/issues/116).
+* In a module with CPP, a constraint headed by a macro the module defines,
+  as in `HasCallStack_ (Eq a, Show a) =>` where `HasCallStack_` stands for
+  `HasCallStack =>`, gets no parentheses around it, rather than ones that
+  closed in what the macro stands for, which cpp turned into a qualified
+  type or a pragma inside a context that GHC rejects.
+  [PR 357](https://github.com/mrkkrp/tilia/pull/357).
 
 ## Tilia 0.1.3.0
 

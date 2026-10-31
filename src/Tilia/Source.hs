@@ -18,6 +18,7 @@ module Tilia.Source
     offsetOf,
     directivePresentOnLine,
     directiveOnLine,
+    definedMacros,
 
     -- * Its comments
     comments,

@@ -446,8 +446,8 @@ formatted       acb74e0db7a5  Agda-2.8.0/src/setup/Agda/Version.hs
 formatted       5164a4006c26  Agda-2.8.0/src/setup/Agda/VersionCommit.hs
 formatted       90cd663d9426  HUnit-1.6.2.0/examples/Example.hs
 formatted       9b1cac4b6c09  HUnit-1.6.2.0/src/Test/HUnit.hs
-formatted       0971b82d0690  HUnit-1.6.2.0/src/Test/HUnit/Base.hs
-formatted       259f46f80849  HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
+formatted       e35d465aa045  HUnit-1.6.2.0/src/Test/HUnit/Base.hs
+formatted       cb7ff16c7dc4  HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
 formatted       f9959d10adae  HUnit-1.6.2.0/src/Test/HUnit/Terminal.hs
 formatted       c1c1d4fdc273  HUnit-1.6.2.0/src/Test/HUnit/Text.hs
 formatted       358e8e211fe4  HUnit-1.6.2.0/tests/HUnitTestExtended.hs
@@ -617,7 +617,7 @@ formatted       1cc713a3f254  ansi-terminal-1.1.5/win/System/Console/ANSI/Intern
 formatted       1aaa3e2316a9  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
 formatted       e763680dce5b  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
 formatted       9e25d9947df5  async-2.2.6/Control/Concurrent/Async.hs
-partly-checked  f088ecc2c2e1  async-2.2.6/Control/Concurrent/Async/Internal.hs
+partly-checked  a1029cf51bc3  async-2.2.6/Control/Concurrent/Async/Internal.hs
 formatted       68777666410b  async-2.2.6/Control/Concurrent/Async/Warden.hs
 formatted       a0f5a7bd29cb  async-2.2.6/Control/Concurrent/Stream.hs
 formatted       e865ae48f11b  async-2.2.6/Setup.hs
@@ -3414,7 +3414,7 @@ formatted       87ebe529440f  pandoc-types-1.23.1.2/src/Text/Pandoc/Builder.hs
 formatted       2f99ad7040cc  pandoc-types-1.23.1.2/src/Text/Pandoc/Definition.hs
 formatted       42a13347f367  pandoc-types-1.23.1.2/src/Text/Pandoc/Generic.hs
 formatted       8fad29f2adc4  pandoc-types-1.23.1.2/src/Text/Pandoc/JSON.hs
-formatted       521e0dcaf505  pandoc-types-1.23.1.2/src/Text/Pandoc/Walk.hs
+formatted       a6d367888d28  pandoc-types-1.23.1.2/src/Text/Pandoc/Walk.hs
 formatted       dcf10d45e788  pandoc-types-1.23.1.2/test/Data/String/QQ.hs
 formatted       aa803b05c956  pandoc-types-1.23.1.2/test/test-pandoc-types.hs
 formatted       7474b7e1d4f5  parsec3-1.0.1.8/Setup.hs
@@ -4020,7 +4020,7 @@ formatted       94b4a78445b3  retry-0.9.3.1/test/Main.hs
 formatted       08af947c789a  retry-0.9.3.1/test/Tests/Control/Retry.hs
 formatted       0b770fc83ef2  retry-0.9.3.1/test/Tests/UnliftIO/Retry.hs
 formatted       e865ae48f11b  safe-exceptions-0.1.7.4/Setup.hs
-formatted       bfa9329aa42a  safe-exceptions-0.1.7.4/src/Control/Exception/Safe.hs
+formatted       71750c378530  safe-exceptions-0.1.7.4/src/Control/Exception/Safe.hs
 formatted       d65c0e991a57  safe-exceptions-0.1.7.4/test/Control/Exception/SafeSpec.hs
 formatted       2fbd14b119a4  safe-exceptions-0.1.7.4/test/Spec.hs
 formatted       e865ae48f11b  scientific-0.3.8.1/Setup.hs
