@@ -15,6 +15,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM)
+import Data.Char (isSpace)
 import Data.List (sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -61,7 +62,7 @@ import Tilia.Doc.Internal
     unwrap,
     wrap,
   )
-import Tilia.Source (Lines, Written (..), blankAt, lineAt, linesOf)
+import Tilia.Source (Lines, Written (..), blankAt, lineAt, lineTexts, linesOf)
 import Tilia.Span (Span (..), mkSpan, startPoint)
 
 -- | What the configurations of a module had besides their code.
@@ -418,6 +419,9 @@ restoreConditional written doc gs =
 putDirective :: Lines -> Doc -> Directive -> Either CppError Doc
 putDirective written doc d
   | quotedAt doc (dLine d) = Left (DirectiveInQuotedText (dLine d) (dKeyword d))
+  | dKeyword d == "include",
+    commaUnder written (dLastLine d) =
+      Left (BeforeLeadingComma (dLine d) ("#" <> dText d))
   | otherwise = Right (placeAt (const False) (Just written) (dLine d) body id doc)
   where
     body =
@@ -429,11 +433,22 @@ putDirective written doc d
 putMacroLine :: Lines -> Doc -> (Int, Text) -> Either CppError Doc
 putMacroLine written doc (n, t)
   | quotedAt doc n = Left (MacroInQuotedText n t)
+  | commaUnder written n = Left (BeforeLeadingComma n t)
   | otherwise = Right (placeAt (const False) (Just written) n body indent doc)
   where
     body =
       DLocated (mkSpan (n, 1) (n, 1)) (DCloseLine <> DText t <> DCloseLine)
         <> includeWhen (blankAt (n + 1) written) blankLine
+
+-- | Does the code under a line open with a comma, which the printer puts at
+-- the end of the item above the line instead?
+commaUnder :: Lines -> Int -> Bool
+commaUnder written n = case dropWhile passed (drop n (lineTexts written)) of
+  l : _ -> T.isPrefixOf "," (T.stripStart l)
+  [] -> False
+  where
+    passed l =
+      T.all isSpace l || isDirective l || T.isPrefixOf "--" (T.stripStart l)
 
 -- | Is this line inside something the document reproduces verbatim, such
 -- as a quasi-quotation, where a line cannot be put back?

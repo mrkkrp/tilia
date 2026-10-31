@@ -129,6 +129,7 @@ vendoredExamples =
                   "other" </> "cpp" </> "unbalanced.hs",
                   "other" </> "cpp" </> "define-in-a-quasiquote.hs",
                   "other" </> "cpp" </> "macro-standing-for-a-bracket.hs",
+                  "other" </> "cpp" </> "macro-before-a-leading-comma.hs",
                   "other" </> "cpp" </> "branch-opening-a-bracket-it-does-not-close.hs"
                 ]
             },
