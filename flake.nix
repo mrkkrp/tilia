@@ -23,9 +23,9 @@
       sourceDirs = [ "src" "app" "tests" "bench" "corpora" ];
       sourceFiles = [ "cabal.project" "tilia.cabal" ];
 
-      # Cabal insists these exist, but their contents never affect the
-      # build, so they are staged as empty placeholders.
-      placeholders = [ "LICENSE.md" "CHANGELOG.md" "README.md" ];
+      # Cabal insists the license file exists, but its contents never affect
+      # the build, so it is staged as an empty placeholder.
+      placeholders = [ "LICENSE.md" ];
     in
     flake-utils.lib.eachDefaultSystem (system:
       let
