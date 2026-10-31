@@ -19,15 +19,18 @@ import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
+import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import Tilia.Comments (Comment (..), afterOpener, bracketed, singleLine, triggerOn)
+import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
+import Tilia.Source (directiveOnLine)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -75,9 +78,7 @@ docBody :: Ctx -> DocStyle -> LHsDoc GhcPs -> (Doc, Bool)
 docBody ctx style doc@(L l str) =
   case reusableText ctx style doc of
     Just c ->
-      ( maybe id located (spanOfSrcSpan l)
-          $ align
-          $ verbatimLines AtIndent TrimWhitespace (NE.toList (commentBody c)),
+      ( maybe id located (spanOfSrcSpan l) (commentText margin c),
         selfClosing c
       )
     Nothing
@@ -85,6 +86,8 @@ docBody ctx style doc@(L l str) =
       | blockForm -> (writtenAt rebuiltBlock, False)
       | otherwise -> (writtenAt rebuilt, False)
   where
+    margin = Margin directive (const False)
+    directive t = extensionOn ctx Cpp && isJust (directiveOnLine t)
     writtenAt = fenceWithin ctx (spanOfSrcSpan l)
     emptyBlock = txt (blockOpener style) <> space <> txt "-}"
     rebuilt =

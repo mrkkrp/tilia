@@ -283,6 +283,11 @@
   [PR 355](https://github.com/mrkkrp/tilia/pull/355).
 * The category of a `WARNING` pragma is kept as written rather than rebuilt
   from its value. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* In a module with CPP, the directives written at the margin of a block
+  Haddock stay there, as they already did in other block comments, rather
+  than being indented with the Haddock's lines, where cpp no longer reads
+  them and every configuration gets both branches of the Haddock.
+  [Issue 116](https://github.com/mrkkrp/tilia/issues/116).
 
 ## Tilia 0.1.3.0
 

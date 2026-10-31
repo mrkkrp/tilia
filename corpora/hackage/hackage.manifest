@@ -2893,7 +2893,7 @@ formatted       6016ef723b2e  lens-5.3.6/examples/Pong.hs
 formatted       1e7ca6c2bac4  lens-5.3.6/examples/Turtle.hs
 formatted       e865ae48f11b  lens-5.3.6/lens-properties/Setup.hs
 formatted       03d5b652be06  lens-5.3.6/lens-properties/src/Control/Lens/Properties.hs
-broken          fb677a8ca744  lens-5.3.6/src/Control/Exception/Lens.hs
+formatted       458d82357e04  lens-5.3.6/src/Control/Exception/Lens.hs
 formatted       4fb8b462c692  lens-5.3.6/src/Control/Lens.hs
 formatted       dab5fde53fc2  lens-5.3.6/src/Control/Lens/At.hs
 formatted       1a555e9740b2  lens-5.3.6/src/Control/Lens/Combinators.hs
@@ -3025,7 +3025,7 @@ formatted       e865ae48f11b  microlens-0.5.0.0/Setup.hs
 partly-checked  37206fb8e023  microlens-0.5.0.0/src/Lens/Micro.hs
 formatted       a33fe5ffd3d9  microlens-0.5.0.0/src/Lens/Micro/Extras.hs
 formatted       3608b82ef46d  microlens-0.5.0.0/src/Lens/Micro/FieldN.hs
-partly-checked  a6c752419362  microlens-0.5.0.0/src/Lens/Micro/Internal.hs
+partly-checked  e7bef62398e7  microlens-0.5.0.0/src/Lens/Micro/Internal.hs
 formatted       de09492cc927  microlens-0.5.0.0/src/Lens/Micro/Type.hs
 formatted       9fd4d8759261  mtl-2.3.2/Control/Monad/Accum.hs
 formatted       1c966453ae10  mtl-2.3.2/Control/Monad/Cont.hs
