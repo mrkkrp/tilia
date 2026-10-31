@@ -1,4 +1,4 @@
-## Unreleased
+## Tilia 0.1.4.0
 
 * An import is resolved first among the modules of the importing file's own
   component, as GHC resolves it, so a test suite's own `Utils` gives its
