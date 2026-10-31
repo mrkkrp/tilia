@@ -85,6 +85,7 @@ exprBody ctx site here = \case
   NegApp _ e _ ->
     txt "-"
       <> includeWhen (isLiteral e) (negativeLiteralGap ctx)
+      <> includeWhen (startsWithSymbol e) space
       <> hsExpr ctx e
   HsPar _ e ->
     layoutWithin ctx here (spanOf e) $
@@ -217,6 +218,21 @@ isLiteral :: LHsExpr GhcPs -> Bool
 isLiteral e = case unLoc e of
   HsLit{} -> True
   HsOverLit{} -> True
+  _ -> False
+
+-- | Does this expression begin with a symbol character, which an operator
+-- written right before it would take into its name?
+startsWithSymbol :: LHsExpr GhcPs -> Bool
+startsWithSymbol e = case unLoc e of
+  HsIPVar{} -> True
+  HsOverLabel{} -> True
+  HsLam{} -> True
+  HsUntypedSplice _ HsUntypedSpliceExpr{} -> True
+  HsTypedSplice{} -> True
+  HsApp _ f _ -> startsWithSymbol f
+  HsAppType _ f _ -> startsWithSymbol f
+  RecordUpd{rupd_expr} -> startsWithSymbol rupd_expr
+  HsGetField{gf_expr} -> startsWithSymbol gf_expr
   _ -> False
 
 -- | A function applied to arguments.
@@ -973,12 +989,16 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
         rendered = fmap (hsPat ctx) pats
 
     lambdaGap p = includeWhen (needsGap (unLoc p)) space
-    needsGap = \case
+    needsGap p = case p of
       LazyPat{} -> True
       BangPat{} -> True
       SplicePat{} -> True
       InvisPat{} -> True
+      NPat{} -> negative
+      LitPat{} -> negative
       _ -> False
+      where
+        negative = T.isPrefixOf "-" (showGhc p)
 
     endOfPats = case pats of
       [] -> case style of
