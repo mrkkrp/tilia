@@ -163,7 +163,8 @@ pragmaBlock =
     key p = (hpRun p, orderOf p, hpBody p)
     orderOf p = pragmaOrder (hpName p) (hpBody p)
     dedupe = fmap NE.head . NE.groupBy repeated
-    repeated a b = hpName a == "LANGUAGE" && key a == key b
+    repeated a b =
+      hpName a == "LANGUAGE" && isNothing (hpWritten b) && key a == key b
     split p
       | hpName p == "LANGUAGE",
         isNothing (hpWritten p) =
