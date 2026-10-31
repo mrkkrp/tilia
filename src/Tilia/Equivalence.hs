@@ -68,7 +68,7 @@ import Tilia.Parser (ParsedModule (..), writtenInHeader)
 import Tilia.Pragma (languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
-import Tilia.Span (Span (..))
+import Tilia.Span (Span (..), covers)
 import Tilia.Span.Ghc (spanOf, spansOf)
 import Tilia.Utils (tshow)
 
@@ -434,7 +434,8 @@ typeNameOf = dataTypeName . dataTypeOf
 -- travels with it, so the two streams are put in a settled order there
 -- before being compared, with the pragmas of the header that hold a
 -- comment. What is still asked of that stretch is that the same comments
--- come out of it.
+-- come out of it, and those inside the export list, which nothing sorts,
+-- in order.
 --
 -- Documentation comments are counted rather than compared. The printer may
 -- legitimately rewrite one—a @-- ^ x@ that moves in front of what it
@@ -478,14 +479,17 @@ commentDifference parsedBefore parsedAfter
           <> tshow docsAfter
   | otherwise =
       diverge (belowHeader moduleBefore before) (belowHeader moduleAfter after)
+        <|> diverge (settled headerCommentsBefore) (settled headerCommentsAfter)
         <|> diverge
-          (settled (withinHeader parsedBefore before))
-          (settled (withinHeader parsedAfter after))
+          (exported moduleBefore headerCommentsBefore)
+          (exported moduleAfter headerCommentsAfter)
   where
     moduleBefore = pmModule parsedBefore
     moduleAfter = pmModule parsedAfter
     before = asRead parsedBefore
     after = asRead parsedAfter
+    headerCommentsBefore = withinHeader parsedBefore before
+    headerCommentsAfter = withinHeader parsedAfter after
     asRead m =
       concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
@@ -494,6 +498,8 @@ commentDifference parsedBefore parsedAfter
       filter (inHeader (pmModule m) cs) (ordinary cs)
         <> filter commented (takeWhile (pragmaWritten m . commentSpan) cs)
     pragmaWritten = writtenInHeader . pmHeaderEnd
+    exported m =
+      filter (\c -> any (`covers` commentSpan c) (spanOf =<< hsmodExports m))
     settled = sortOn bodyKey
 
     inHeader m cs = case lastRearrangedLine m cs of

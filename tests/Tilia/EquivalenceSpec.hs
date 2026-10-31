@@ -131,6 +131,12 @@ spec = do
       "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE TupleSections #-}\nmodule M where\nf = 1\n"
         `keepsTheCommentsOf` "{-# LANGUAGE TupleSections #-}\n{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n"
 
+    it "notices comments inside the export list coming out in another order" $
+      differsBecause
+        "module M\n  ( a, {- e -} -- f\n    b,\n  )\nwhere\n"
+        "module M\n  ( a, -- f\n    {- e -} b,\n  )\nwhere\n"
+        "`{- e -}` became `-- f`"
+
     it "does not mind a comment that moved with the import it belongs to" $
       "module M where\n\n-- about Set\nimport Data.Set\n\n-- about Map\nimport Data.Map\n"
         `keepsTheCommentsOf` "module M where\n\n-- about Map\nimport Data.Map\n\n-- about Set\nimport Data.Set\n"
