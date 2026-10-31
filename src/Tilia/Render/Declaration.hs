@@ -56,18 +56,16 @@ data Grouping
 -- | Render a declaration run while applying the requested 'Grouping'.
 declRun :: Grouping -> Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
 declRun grouping ctx style ds =
-  items NoBrace $ case groups of
-    [] -> []
-    (firstGroup : rest) ->
-      render firstGroup <> concat (zipWith withGap groups rest)
+  items
+    NoBrace
+    [ includeWhen gap breakOrSpace <> at_ ctx (hsDecl ctx style) d
+    | (previous, current) <- zip (Nothing : fmap Just groups) groups,
+      let gaps = any (`separate` current) previous : repeat False,
+      (gap, d) <- zip gaps (NE.toList current)
+    ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
     groups = groupDecls ctx isSignatureFile ds
-    render = NE.toList . fmap (at_ ctx (hsDecl ctx style))
-
-    withGap previous current
-      | separate previous current = breakOrSpace : render current
-      | otherwise = render current
 
     separate previous current =
       not (remarkUnder ctx ended began || underHeading) && case grouping of
