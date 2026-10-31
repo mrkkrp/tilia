@@ -1,6 +1,5 @@
 module Survey.Tally
-  ( count,
-    {- the total -} -- so far
+  ( count, {- the total -} -- so far
     reset,
   )
 where

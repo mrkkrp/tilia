@@ -146,7 +146,7 @@ placeComments regions leads fences comments =
         here = commentSpan c
         asCommentBefore = against =<< (`Map.lookup` commentsByEndPoint) =<< stopsAt
         trailed
-          | writtenAgainst || not (commentFollowed c) =
+          | writtenAgainst || endsItsLine c =
               linedUpUnder <|> endingOn (spanStartLine here)
           | otherwise = Nothing
         linedUpUnder = do
@@ -226,6 +226,20 @@ placeComments regions leads fences comments =
             larger r o = startPoint o < startPoint r && endPoint o == lineEnd
 
     commentsByEndPoint = Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
+
+    endsItsLine c =
+      not (commentFollowed c)
+        || maybe
+          False
+          endsItsLine
+          (Map.lookup (endPoint (commentSpan c)) commentsByStopPoint)
+
+    commentsByStopPoint =
+      Map.fromList
+        [ ((spanStartLine (commentSpan c), n), c)
+        | c <- comments,
+          Just n <- [commentCodeBeforeStopsAt c]
+        ]
 
     runs =
       IntMap.fromList
