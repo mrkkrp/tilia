@@ -94,10 +94,12 @@ docBody ctx style doc@(L l str) =
       Nothing -> 0
       Just c -> length (takeWhile isBlankLine (reverse (NE.toList (commentBody c))))
     isBlankLine t = T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
-    line' isFirst t =
-      (if isFirst then txt (opener style) else txt "--")
-        <> space
-        <> txt t
+    line' isFirst t
+      | isFirst = txt (opener style) <> space <> txt t
+      | otherwise = txt "--" <> space <> txt (guardDollar t)
+    guardDollar t
+      | "$" `T.isPrefixOf` t = T.cons '\\' t
+      | otherwise = t
     rebuiltBlock =
       align $
         txt (blockOpener style)
@@ -221,7 +223,7 @@ docLines ::
   [Text]
 docLines blockForm str
   | null body = []
-  | otherwise = fmap guardDollar (dedent (fmap unpad body))
+  | otherwise = dedent (fmap unpad body)
   where
     body =
       dropWhileEnd T.null
@@ -244,6 +246,3 @@ docLines blockForm str
       [] -> 0
       ns -> minimum ns
     indentation = T.length . T.takeWhile (== ' ')
-    guardDollar t
-      | "$" `T.isPrefixOf` t = T.cons '\\' t
-      | otherwise = t
