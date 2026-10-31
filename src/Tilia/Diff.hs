@@ -73,11 +73,8 @@ unified ::
   -- | After.
   Text ->
   Text
-unified palette above (beforeName, afterName) before after
-  | null hunks =
-      "(the two are identical as text, so the difference is in something\
-      \ the text does not show)"
-  | otherwise = T.intercalate "\n" (above <> heading <> body)
+unified palette above (beforeName, afterName) before after =
+  T.intercalate "\n" (above <> heading <> body)
   where
     heading =
       [ paint palette (Header Gone) ("--- " <> beforeName),
@@ -97,8 +94,8 @@ unified palette above (beforeName, afterName) before after
           <> " @@"
       where
         span' which n = case slice range of
-          (l : _) -> tshow (which l) <> "," <> tshow n
-          [] -> "0,0"
+          l : _ | n > 0 -> tshow (which l) <> "," <> tshow n
+          _ -> "0,0"
 
     line (Line mark _ _ text) = case T.stripSuffix "\n" text of
       Just ended -> [marked ended]
