@@ -1,6 +1,76 @@
 Hackage modules that currently do not format cleanly.
 
-5275 examples, 5223 formatted.
+5275 examples, 5222 formatted.
+
+==========================================================================
+broken (1)
+==========================================================================
+
+lens-5.3.6/src/Control/Exception/Lens.hs
+    a different program, in one configuration: (:) > L > DocCommentNext > L > WithHsDocIdentifiers > a documentation comment changed
+    --- input
+    +++ output
+    @@ -1,12 +1,11 @@
+     {-# LANGUAGE CPP #-}
+    -{-# LANGUAGE Rank2Types #-}
+     {-# LANGUAGE FlexibleInstances #-}
+    -{-# LANGUAGE ScopedTypeVariables #-}
+     {-# LANGUAGE MultiParamTypeClasses #-}
+     {-# LANGUAGE NoMonomorphismRestriction #-}
+     {-# LANGUAGE PatternSynonyms #-}
+    +{-# LANGUAGE Rank2Types #-}
+    +{-# LANGUAGE ScopedTypeVariables #-}
+     {-# LANGUAGE ViewPatterns #-}
+    -
+     #ifdef TRUSTWORTHY
+     {-# LANGUAGE Trustworthy #-}
+     #endif
+    @@ -14,6 +13,7 @@
+     #include "lens-common.h"
+     
+     -----------------------------------------------------------------------------
+    +
+     -- |
+     -- Module      :  Control.Exception.Lens
+     -- Copyright   :  (C) 2012-16 Edward Kmett
+    @@ -31,139 +31,177 @@
+     -- The combinators in this module have been generalized to work with
+     -- 'MonadCatch' instead of just 'Prelude.IO'. This enables them to be used
+     -- more easily in 'Monad' transformer stacks.
+    +
+     ----------------------------------------------------------------------------
+     module Control.Exception.Lens
+    -  (
+    -  -- * Handling
+    -    catching, catching_
+    -  , handling, handling_
+    -  -- * Trying
+    -  , trying, trying_
+    -  -- * Throwing
+    -  , throwing
+    -  , throwing_
+    -  , throwingM
+    -  , throwingTo
+    -  -- * Mapping
+    -  , mappedException, mappedException'
+    -  -- * Exceptions
+    -  , exception
+    -  , pattern Exception
+    -  -- * Exception Handlers
+    -  , Handleable(..)
+    -  -- ** IOExceptions
+    -  , AsIOException(..)
+    -  , pattern IOException_
+    -  -- ** Arithmetic Exceptions
+    -  , AsArithException(..)
+    -  , _Overflow, _Underflow, _LossOfPrecision, _DivideByZero, _Denormal
+    -  , _RatioZeroDenominator
+    -  , pattern ArithException_
+    -  , pattern Overflow_
+    -  , pattern Underflow_
+    -  , pattern LossOfPrecision_
+    -  , pattern DivideByZero_
+    … and 1227 more lines
 
 ==========================================================================
 does-not-parse (1)

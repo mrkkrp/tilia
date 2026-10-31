@@ -298,10 +298,13 @@ spec = do
 
   describe "telling a directive line from code" $ do
     it "reads the keyword and everything after the hash" $
-      directiveOnLine "  # if FOO" `shouldBe` Just ("if", "if FOO")
+      directiveOnLine "# if FOO" `shouldBe` Just ("if", "if FOO")
 
     it "does not take a label at the start of a line for a directive" $
       directiveOnLine "    #field" `shouldBe` Nothing
+
+    it "does not take an indented line for one, as cpp does not" $
+      directiveOnLine "    #if FOO" `shouldBe` Nothing
 
 ----------------------------------------------------------------------------
 -- The modules the question is asked of

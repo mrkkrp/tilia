@@ -2893,7 +2893,7 @@ formatted       6016ef723b2e  lens-5.3.6/examples/Pong.hs
 formatted       1e7ca6c2bac4  lens-5.3.6/examples/Turtle.hs
 formatted       e865ae48f11b  lens-5.3.6/lens-properties/Setup.hs
 formatted       03d5b652be06  lens-5.3.6/lens-properties/src/Control/Lens/Properties.hs
-formatted       fb677a8ca744  lens-5.3.6/src/Control/Exception/Lens.hs
+broken          fb677a8ca744  lens-5.3.6/src/Control/Exception/Lens.hs
 formatted       4fb8b462c692  lens-5.3.6/src/Control/Lens.hs
 formatted       dab5fde53fc2  lens-5.3.6/src/Control/Lens/At.hs
 formatted       1a555e9740b2  lens-5.3.6/src/Control/Lens/Combinators.hs
