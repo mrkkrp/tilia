@@ -42,7 +42,16 @@ spec = do
           ),
           ( "one after a quasi-quotation",
             "module M where\nx = [q|a|]\n{-# LINE 9 \"O.hs\" #-}\n"
-          )
+          ),
+          ("a line marker", "module M where\nx = 1\n# 40 \"O.hs\"\ny = x\n"),
+          ("one written without a space", "module M where\n#40 \"O.hs\"\n"),
+          ("one written as a #line", "module M where\n#line 40 \"O.hs\"\n"),
+          ("one on the first line", "# 1 \"M.hs\"\nmodule M where\n"),
+          ("one under a script's #! line", "#!/bin/runghc\n# 1 \"M.hs\"\n"),
+          ("one after a comment", "module M where\n-- x\n# 9 \"O.hs\"\n"),
+          ("a #pragma line", "module M where\n#pragma once\n"),
+          ("a #! line below the top", "module M where\n#!/bin/sh\n"),
+          ("a #! line after a space", " #!/bin/sh\nmodule M where\n")
         ]
         (\source -> movesPositions [QuasiQuotes] source `shouldBe` True)
 
@@ -75,9 +84,19 @@ spec = do
           ),
           ( "one in a qualified quasi-quotation",
             "module M where\nx = [Q.q|{-# LINE 1 \"O.hs\" #-}|]\n"
-          )
+          ),
+          ("the #! lines a script begins with", "#!/bin/sh\n#!x\n-- stack\n"),
+          ( "lines GHC reads past, in a quasi-quotation",
+            "module M where\nx = [q|\n# 9 \"O.hs\"\n#pragma once\n#!/bin/sh\n|]\n"
+          ),
+          ("a hash and a number in a block comment", "{-\n#15888 says\n-}\n"),
+          ("a label opening an indented line", "module M where\nf = g\n  #line\n")
         ]
         (\source -> movesPositions [QuasiQuotes] source `shouldBe` False)
+
+      it "a line marker where CPP is on, which cpp reads" $
+        movesPositions [Cpp] "module M where\n#line 9 \"O.hs\"\n"
+          `shouldBe` False
   describe "the extensions in force" $ do
     it "keeps what the package puts in force" $
       inForceUnder [ImplicitPrelude, GADTs] "module M where\n"

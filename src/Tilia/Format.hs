@@ -108,7 +108,8 @@ data FormatError
     NoPackage FilePath PackageProblem
   | -- | The file is not Haskell we can parse.
     NotParsed ParseError
-  | -- | The file carries @{-# LINE #-}@ or @{-# COLUMN #-}@ pragmas.
+  | -- | The file carries @{-# LINE #-}@ or @{-# COLUMN #-}@ pragmas, or lines
+    -- GHC's lexer reads past, such as @#line@ ones.
     PositionPragmas FilePath
   | -- | The file uses the preprocessor in a way we cannot handle.
     CppUnsupported FilePath CppError
@@ -142,8 +143,8 @@ describeFormatError palette = \case
   PositionPragmas path ->
     "will not format "
       <> file path
-      <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas, and no"
-      <> " reformatting can leave those true"
+      <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas or #line, #pragma"
+      <> " or #! lines, and no reformatting can leave those true"
   CppUnsupported path why -> case why of
     ConfigurationNotParsed{} ->
       "will not format " <> located (describeCppError why)

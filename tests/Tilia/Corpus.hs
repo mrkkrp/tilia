@@ -126,6 +126,7 @@ vendoredExamples =
               expectUnreadable = [],
               expectDeclined =
                 [ "other" </> "position-pragmas.hs",
+                  "other" </> "line-markers.hs",
                   "other" </> "cpp" </> "unbalanced.hs",
                   "other" </> "cpp" </> "define-in-a-quasiquote.hs",
                   "other" </> "cpp" </> "macro-standing-for-a-bracket.hs",
@@ -197,6 +198,7 @@ ghcDeclined :: [FilePath]
 ghcDeclined =
   [ "driver" </> "T17786.hs",
     "ghci.debugger" </> "HappyTest.hs",
+    "overloadedrecflds" </> "should_run" </> "overloadedlabelsrun04.hs",
     "parser" </> "should_compile" </> "ColumnPragma.hs",
     "parser" </> "should_compile" </> "T7118.hs",
     "perf" </> "compiler" </> "T20261.hs",

@@ -20,11 +20,11 @@ module Tilia.Pragma
 where
 
 import Control.Monad (guard, (<=<))
-import Data.Char (isAlphaNum, isLower, isSpace, isUpper)
+import Data.Char (isAlphaNum, isDigit, isLower, isSpace, isUpper)
 import Data.List (unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -36,12 +36,21 @@ import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 import Tilia.Utils (tshow)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with
--- these extensions in force.
+-- these extensions in force, and, without CPP, the lines GHC's lexer reads
+-- past at the start of a line, but for the @#!@ lines a script begins with.
+--
+-- Those are the line markers cpp writes, such as @# 40 "M.hs"@, which move
+-- positions as a @LINE@ pragma does, and @#pragma@ and @#!@ lines, which
+-- leave nothing behind for formatting to print.
 movesPositions :: [Extension] -> Text -> Bool
-movesPositions extensions = any positional . pragmaBodies extensions
+movesPositions extensions =
+  or . scanPragmas positional (pastCode extensions) . T.cons '\n' . script
   where
     positional body =
       T.toUpper (T.takeWhile (/= ' ') body) `elem` ["LINE", "COLUMN"]
+    script t
+      | "#!" `T.isPrefixOf` t = script (T.drop 1 (T.dropWhile (/= '\n') t))
+      | otherwise = t
 
 -- | What a component puts in force before the pragmas of a module: its
 -- @default-language@ and its @default-extensions@.
@@ -208,12 +217,14 @@ byFlagName :: [GHC.FlagSpec Extension] -> Map Text Extension
 byFlagName flags =
   Map.fromList [(T.pack (GHC.flagSpecName f), GHC.flagSpecFlag f) | f <- flags]
 
--- | What every @{-# … #-}@ in a module with these extensions in force has
--- between its braces, each on one line.
-pragmaBodies :: [Extension] -> Text -> [Text]
-pragmaBodies extensions = scanPragmas past
+-- | Carry on past the code of a module with these extensions in force, over
+-- its strings, characters and quasi-quotations, up to a line that GHC's
+-- lexer reads past, where CPP is off.
+pastCode :: [Extension] -> (Text -> [Bool]) -> Text -> [Bool]
+pastCode extensions = past
   where
     past go t = case T.uncons t of
+      Just ('\n', after) | withoutCpp, readPast after -> [True]
       Just ('"', after) -> go (skipString after)
       Just ('\'', after) -> go (skipCharacter after)
       _
@@ -221,6 +232,14 @@ pragmaBodies extensions = scanPragmas past
           Just body <- quasiQuotation t ->
             go (T.drop 2 (snd (T.breakOn "|]" body)))
         | otherwise -> go (skipCode t)
+
+    withoutCpp = Cpp `notElem` extensions
+    readPast l = case T.uncons l of
+      Just ('#', rest) ->
+        any (`T.isPrefixOf` rest) ["line", "pragma", "!"]
+          || T.any isDigit (T.take 1 (fromMaybe rest (T.stripPrefix " " rest)))
+      Just (' ', rest) -> "#!" `T.isPrefixOf` rest
+      _ -> False
 
     quasiQuotation t = do
       (quoter, rest) <- T.span inQuoter <$> T.stripPrefix "[" t
@@ -248,14 +267,15 @@ pragmaBodies extensions = scanPragmas past
       let (plain, rest) = T.break opens (T.drop 1 t)
           before = maybe (T.head t) snd (T.unsnoc plain)
        in if "'" `T.isPrefixOf` rest && inName before then skipCode rest else rest
-    opens c = c == '{' || c == '-' || c == '"' || c == '\'' || c == '['
+    opens c =
+      c == '{' || c == '-' || c == '"' || c == '\'' || c == '[' || c == '\n'
     inName c = isAlphaNum c || c == '_' || c == '\''
 
 -- | What the @{-# … #-}@ of a module's header have between their braces, each
 -- on one line: those above the first thing that is neither a comment, a
 -- directive nor a pragma, which are all GHC reads.
 headerPragmaBodies :: Text -> [Text]
-headerPragmaBodies = scanPragmas past
+headerPragmaBodies = scanPragmas id past
   where
     past go t = case T.uncons t of
       Just (c, _)
@@ -263,17 +283,18 @@ headerPragmaBodies = scanPragmas past
         | c == '#' -> go (T.dropWhile (/= '\n') t)
       _ -> []
 
--- | The bodies of the pragmas of a module, each on one line, carrying on past
--- what is neither a comment nor a pragma as the given function does.
-scanPragmas :: ((Text -> [Text]) -> Text -> [Text]) -> Text -> [Text]
-scanPragmas past = go
+-- | What the given function makes of the bodies of the pragmas of a module,
+-- each on one line, carrying on past what is neither a comment nor a pragma
+-- as the other given function does.
+scanPragmas :: (Text -> a) -> ((Text -> [a]) -> Text -> [a]) -> Text -> [a]
+scanPragmas pragma past = go
   where
     go t
       | T.null t = []
       | Just body <- T.stripPrefix "{-#" t = case T.breakOn "#-}" body of
           (_, after) | T.null after -> []
           (inner, after) ->
-            T.unwords (T.words (withoutSkippedComments inner))
+            pragma (T.unwords (T.words (withoutSkippedComments inner)))
               : go (T.drop 3 after)
       | Just after <- T.stripPrefix "{-" t = go (skipBlock (1 :: Int) after)
       | opensLineComment t = go (T.dropWhile (/= '\n') t)
