@@ -5,7 +5,7 @@
 --
 -- Each configuration is printed on its own and the documents are merged.
 -- Working out what the configurations are is "Tilia.Cpp.Directives", whose
--- vocabulary this module re-exports so that callers need only one import.
+-- vocabulary this module re-exports.
 module Tilia.Cpp
   ( -- * Formatting
     formatWithCpp,
@@ -546,11 +546,8 @@ together formatter reached c
             . unconditionalErrors
             $ t
 
--- | Preserve an error-only alternative without asking the Haskell parser to
--- parse its missing expression or declaration. A successful sibling supplies
--- the surrounding syntax, with the nodes wholly inside the conditional taken
--- out; the @#error@ is put back into the space they leave with every other
--- directive. More complicated aborting alternatives are left unsupported.
+-- | The document of a configuration whose varied lines hold nothing but an
+-- @#error@: a sibling's, with what it printed from those lines taken out.
 errorBranch :: Varied -> Text -> Doc -> Maybe Doc
 errorBranch (Varied ranges) source reference = foldl step (Just reference) ranges
   where

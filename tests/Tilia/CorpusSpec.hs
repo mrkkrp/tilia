@@ -274,7 +274,9 @@ verdict False declines (Result outcome why _) = case outcome of
   where
     wasNotDeclined = "the corpus says this should be declined, and it was not"
     unlisted what =
-      "this " <> what <> ", and the corpus does not list it under expectSkip"
+      "this "
+        <> what
+        <> ", and the corpus does not list it under expectUnreadable"
 
 check :: Palette -> Example -> IO Result
 check palette example = do
