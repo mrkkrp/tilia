@@ -96,10 +96,8 @@ docBody ctx style doc@(L l str) =
     isBlankLine t = T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
     line' isFirst t
       | isFirst = txt (opener style) <> space <> txt t
-      | otherwise = txt "--" <> space <> txt (guardDollar t)
-    guardDollar t
-      | "$" `T.isPrefixOf` t = T.cons '\\' t
-      | otherwise = t
+      | "$" `T.isPrefixOf` t = txt "--" <> txt t
+      | otherwise = txt "--" <> space <> txt t
     rebuiltBlock =
       align $
         txt (blockOpener style)
