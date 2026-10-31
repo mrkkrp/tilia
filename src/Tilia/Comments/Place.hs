@@ -167,13 +167,13 @@ placeComments regions leads fences comments =
 
         fencedOff r =
           outside (Map.lookup here enclosingRegions)
-            || (printedInPlace && outside (Map.lookup here enclosingFences))
+            || (not heldBack && outside (Map.lookup here enclosingFences))
           where
             outside = maybe False (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
 
-        printedInPlace = case shapeOf (After SpillAtIndentation) c of
-          HeldBack _ -> False
-          _ -> True
+        heldBack = case shapeOf (After SpillAtIndentation) c of
+          HeldBack _ -> True
+          _ -> False
 
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
