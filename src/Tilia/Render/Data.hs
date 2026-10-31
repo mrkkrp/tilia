@@ -280,7 +280,7 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
         | otherwise =
             conDeclField ctx x
               <> case cdf_doc x of
-                Just d -> space <> haddock ctx Caret Closed d
+                Just d -> space <> haddockInline ctx Caret d
                 Nothing -> breakOrSpace
       rightDoc x = case cdf_doc x of
         Just d -> hardBreak <> haddock ctx Pipe Closed d
