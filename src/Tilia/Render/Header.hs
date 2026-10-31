@@ -325,7 +325,9 @@ ieItem ctx here withComma = \case
           let (before, after) = splitAt n' rendered
            in before <> [keywordAt ctx (spanOf dots) ".."] <> after
   IEModuleContents (warning, _) m ->
-    exportWarning warning <> at ctx m (moduleHeadName ctx) <> comma'
+    exportWarning warning
+      <> at ctx m (\n -> txt "module" <> space <> outputable n)
+      <> comma'
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
