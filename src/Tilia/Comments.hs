@@ -139,7 +139,7 @@ commentAt ls spn style raw =
       commentFirstInBrackets = any ((`T.elem` "([{") . snd) (T.unsnoc before'),
       commentFollowed = followed,
       commentGapAbove = above == BlankLine,
-      commentGapBelow = blankAt (spanEndLine spn + 1) ls,
+      commentGapBelow = not followed && blankAt (spanEndLine spn + 1) ls,
       commentNextLine = nextLine
     }
   where
