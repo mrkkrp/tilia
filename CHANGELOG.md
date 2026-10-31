@@ -294,6 +294,9 @@
   closed in what the macro stands for, which cpp turned into a qualified
   type or a pragma inside a context that GHC rejects.
   [PR 357](https://github.com/mrkkrp/tilia/pull/357).
+* Where formatting leaves a module with no lines, as one holding only empty
+  lines, `check` heads its hunk with `+0,0`, as `git diff` does, rather
+  than `+1,0`. [PR 358](https://github.com/mrkkrp/tilia/pull/358).
 
 ## Tilia 0.1.3.0
 
