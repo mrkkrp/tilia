@@ -148,6 +148,9 @@ data CppError
   | -- | A line using a macro written inside a quasi-quote or a multi-line
     -- string, its line, and what is written on it.
     MacroInQuotedText Int Text
+  | -- | A line using a macro or an @#include@ written before a leading
+    -- comma, its line, and what is written on it.
+    BeforeLeadingComma Int Text
   | -- | A branch holding something that a conditional around it, asking the
     -- same question, rules out, and the line of the directive opening it.
     RuledOutBranch Int
@@ -178,6 +181,11 @@ describeCppError = \case
     "the #" <> k <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
   MacroInQuotedText n t ->
     t <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
+  BeforeLeadingComma n t ->
+    t
+      <> " at line "
+      <> tshow n
+      <> " comes before a leading comma, which formatting moves above it"
   RuledOutBranch n ->
     "the branch at line "
       <> tshow n

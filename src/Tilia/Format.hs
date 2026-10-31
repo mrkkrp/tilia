@@ -204,6 +204,7 @@ formatErrorExitCode = \case
     ConfigurationNotParsed{} -> 11
     DirectiveInQuotedText{} -> 12
     MacroInQuotedText{} -> 12
+    BeforeLeadingComma{} -> 12
     RuledOutBranch{} -> 13
     AbortingAlternative{} -> 14
 

@@ -280,6 +280,10 @@ spec = do
       formatCpp includeInQuasiquote
         `shouldBe` Left "the #include at line 7 is inside a quasi-quote or a multi-line string"
 
+    it "refuses an #include before a leading comma" $
+      formatCpp includeBeforeLeadingComma
+        `shouldBe` Left "#include \"colors.h\" at line 5 comes before a leading comma, which formatting moves above it"
+
     it "refuses an alternative aborting with #error that it cannot format" $
       formatCpp abortingAlternative
         `shouldBe` Left "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
@@ -648,6 +652,20 @@ includeInQuasiquote =
       "  [template|",
       "#include \"banner.txt\"",
       "|]"
+    ]
+
+-- | An @#include@ standing for items of a list, written above the comma
+-- that separates them from the next.
+includeBeforeLeadingComma :: Text
+includeBeforeLeadingComma =
+  T.unlines
+    [ "module M where",
+      "",
+      "colors =",
+      "  [ \"red\"",
+      "#include \"colors.h\"",
+      "  , \"blue\"",
+      "  ]"
     ]
 
 -- | An alternative that aborts with @#error@ and leaves an expression
