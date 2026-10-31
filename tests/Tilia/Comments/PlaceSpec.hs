@@ -135,7 +135,7 @@ spec = do
                    ]
 
     it "goes before what follows where that comment does" $
-      placedIn [foo, oneOnLineTwo] [] "foo = {- a -} -- b\n  1\n"
+      placedIn [foo, oneOnLineTwo] [mkSpan (1, 6) (2, 4)] "foo = {- a -} -- b\n  1\n"
         `shouldBe` [ ("{- a -}", Just (Before, oneOnLineTwo)),
                      ("-- b", Just (Before, oneOnLineTwo))
                    ]
