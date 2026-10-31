@@ -97,7 +97,9 @@ typeBody ctx documented here = \case
       <> space
       <> txt "->"
       <> betweenArgs
-      <> case unLoc y of
+      <> fenceWithin ctx (fmap endOf (arrowSpan multAnn) <> spanOf y) result
+    where
+      result = case unLoc y of
         HsFunTy{} -> recur (unLoc y)
         _ -> at ctx y recur
   HsListTy _ t ->
@@ -363,6 +365,18 @@ forallBndrs ctx visibility render bndrs =
     close = case visibility of
       Invisible -> txt "."
       Visible -> space <> txt "->"
+
+-- | Where the arrow of a function type is written.
+arrowSpan :: HsMultAnnOf mult GhcPs -> Maybe Span
+arrowSpan = \case
+  HsUnannotated a -> arrow a
+  HsLinearAnn (EpPct1 _ a) -> arrow a
+  HsLinearAnn (EpLolly t) -> spanOf t
+  HsExplicitMult (_, a) _ -> arrow a
+  where
+    arrow = \case
+      EpArrow t -> spanOf t
+      _ -> Nothing
 
 -- | The @forall@ that opens a type.
 forallTelescope :: Ctx -> HsForAllTelescope GhcPs -> Doc
