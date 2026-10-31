@@ -288,6 +288,7 @@ carriesOn remark comment after =
 -- | The line whose trailing comment a comment with the line to itself
 -- carries on, by being lined up under that line or that comment, or under
 -- comments that carry it on in turn, and the column that comment begins at.
+-- A trailing comment that closes itself is carried on by none.
 carriedOnFrom :: [Comment] -> Comment -> Maybe (Int, Int)
 carriedOnFrom cs = \c ->
   if commentTrailing c || commentFollowed c
@@ -304,6 +305,7 @@ carriedOnFrom cs = \c ->
         | c <- cs,
           commentTrailing c,
           not (commentFollowed c),
+          not (closesItself c),
           let s = commentSpan c
         ]
     ownLineComments =
