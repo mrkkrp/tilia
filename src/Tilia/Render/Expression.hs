@@ -1102,9 +1102,13 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   _ ->
     maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
       fenceWithin ctx headSpan guardHead
-        <> nest
-          (if parentPlacement == Normal then 1 else 0)
-          (attach placement (printBody bound))
+        <> fenceWithin
+          ctx
+          (fmap endOf separatorSpan <> spanOf body)
+          ( nest
+              (if parentPlacement == Normal then 1 else 0)
+              (attach placement (printBody bound))
+          )
   where
     GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
     guardHead =
