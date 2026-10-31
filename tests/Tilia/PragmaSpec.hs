@@ -61,6 +61,14 @@ spec = do
           "module M where\nxs = [x|x<-[1]]\n{-# LINE 9 \"O.hs\" #-}\n"
           `shouldBe` True
 
+      it "a line marker written with a number where CPP is on, which cpp passes on" $
+        movesPositions [Cpp] "module M where\n# 9 \"O.hs\"\n"
+          `shouldBe` True
+
+      it "a #! line below the top where CPP is on, which cpp passes on" $
+        movesPositions [Cpp] "module M where\n#!/bin/sh\n"
+          `shouldBe` True
+
     describe "says nothing of" $ do
       for_'
         [ ("a module with no pragma at all", "module M where\nx = 1\n"),
@@ -96,6 +104,10 @@ spec = do
 
       it "a line marker where CPP is on, which cpp reads" $
         movesPositions [Cpp] "module M where\n#line 9 \"O.hs\"\n"
+          `shouldBe` False
+
+      it "a #pragma line where CPP is on, which cpp reads" $
+        movesPositions [Cpp] "module M where\n#pragma once\n"
           `shouldBe` False
   describe "the extensions in force" $ do
     it "keeps what the package puts in force" $
