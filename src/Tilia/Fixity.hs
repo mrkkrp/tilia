@@ -16,7 +16,6 @@ module Tilia.Fixity
 
     -- * Module declarations
     declaredFixities,
-    moduleName,
 
     -- * Module exports
     ExportItem (..),
