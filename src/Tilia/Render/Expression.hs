@@ -172,15 +172,21 @@ exprBody ctx site here = \case
     txt "proc"
       <> layoutFrom ctx (spanOf p) (breakOrSpace <> indent (hsPat ctx p) <> breakOrSpace)
       <> txt "->"
-      <> attachBody (CmdTopBody ctx plainSite e)
-  HsStatic _ e -> txt "static" <> breakOrSpace <> indent (hsExpr ctx e)
+      <> attachBody
+        (CmdTopBody ctx (withBracing (siteBracing site) plainSite) e)
+  HsStatic _ e ->
+    txt "static"
+      <> breakOrSpace
+      <> indent (hsExprIn ctx (withBracing (siteBracing site) plainSite) e)
   HsPragE _ prag x -> case prag of
     HsPragSCC _ n ->
       txt "{-# SCC "
         <> writtenString n
         <> txt " #-}"
         <> breakOrSpace
-        <> nest (if siteInBlock site then 1 else 0) (hsExpr ctx x)
+        <> nest
+          (if siteInBlock site then 1 else 0)
+          (hsExprIn ctx (withBracing (siteBracing site) plainSite) x)
   HsEmbTy _ HsWC{hswc_body} -> txt "type" <> space <> hsType ctx hswc_body
   HsHole holeKind -> case holeKind of
     HoleVar n -> name ctx n
@@ -219,14 +225,15 @@ application ctx site f x =
   case placement of
     Normal ->
       mayBraceWhenFlat (siteBracing site) headAndInit
-        <> indent (breakOrSpace <> hsExpr ctx lastArg)
+        <> indent (breakOrSpace <> lastArgDoc)
     Hanging ->
       layoutFrom ctx initSpan (headAndInit MayBrace)
-        <> attach Hanging (hsExpr ctx lastArg)
+        <> attach Hanging lastArgDoc
   where
     (func, args) = gatherArgs f (x :| [])
     initArgs = NE.init args
     lastArg = NE.last args
+    lastArgDoc = hsExprIn ctx (withBracing (siteBracing site) plainSite) lastArg
     initSpan = spanOf f <> (startOf <$> spanOf lastArg)
     placement
       | maybe False (writtenOnOneLine ctx) initSpan = exprHangs (unLoc lastArg)
@@ -460,7 +467,7 @@ stmtBody ctx site mkBody = \case
         (fmap endOf (spanOf p) <> spanOf f)
         (attach placement (printBody bound))
     where
-      bound = mkBody plainSite f
+      bound = bodyIn mkBody (siteBracing site) f
       placement
         | sameLine (spanOf p) (spanOf f) = bodyPlacement bound
         | otherwise = Normal
@@ -744,7 +751,8 @@ cmdBody ctx site = \case
           <> breakOrSpace
           <> indent
             ( txt (arrowText arrow rightToLeft)
-                <> attachBody (ExprBody ctx plainSite writtenSecond)
+                <> attachBody
+                  (bodyIn (ExprBody ctx) (siteBracing site) writtenSecond)
             )
   HsCmdArrForm _ form Prefix cmds ->
     bananaWith (closingFor site) $
@@ -764,7 +772,7 @@ cmdBody ctx site = \case
   HsCmdApp _ cmd e ->
     hsCmd ctx site{siteApplicand = True} cmd
       <> breakOrSpace
-      <> indent (hsExpr ctx e)
+      <> indent (hsExprIn ctx (withBracing (siteBracing site) plainSite) e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
   HsCmdPar _ c -> parens (hsCmd ctx plainSite c)
   HsCmdCase anns e mg -> caseOf ctx site (CmdBody ctx) anns e mg
