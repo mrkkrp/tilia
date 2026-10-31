@@ -20,8 +20,6 @@ where
 
 import Control.Monad (filterM)
 import Data.Bifunctor (first)
-import Data.ByteString.Char8 qualified as BS8
-import Data.Char (toLower)
 import Data.List (isPrefixOf, isSuffixOf, sort, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -296,7 +294,7 @@ packagesInProjectConfig = concatMap entries . packagesIn
   where
     packagesIn = concatMap $ \case
       Field (Name _ name) ls
-        | BS8.map toLower name `elem` ["packages", "optional-packages"] ->
+        | name `elem` ["packages", "optional-packages"] ->
             [T.unwords [T.decodeUtf8Lenient value | FieldLine _ value <- ls]]
         | otherwise -> []
       Section _ _ inner -> packagesIn inner
@@ -305,10 +303,9 @@ packagesInProjectConfig = concatMap entries . packagesIn
 -- | Turn one entry of a @packages@ field into the @.cabal@ files it names.
 packageToCabalFile :: FilePath -> Text -> IO [FilePath]
 packageToCabalFile root entry = do
-  paths <- packageGlobToCabalFiles root (splitDirectories (T.unpack written))
+  paths <- packageGlobToCabalFiles root (splitDirectories (T.unpack entry))
   concat <$> traverse asPackage paths
   where
-    written = T.strip entry
     asPackage path
       | ".cabal" `isSuffixOf` path = do
           there <- quietly False (doesFileExist path)
