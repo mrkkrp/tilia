@@ -432,8 +432,9 @@ typeNameOf = dataTypeName . dataTypeOf
 -- Except in the header, where the order says nothing. The pragmas are
 -- sorted and so are the imports, and a comment written against either
 -- travels with it, so the two streams are put in a settled order there
--- before being compared. What is still asked of that stretch is that the
--- same comments come out of it.
+-- before being compared, with the pragmas of the header that hold a
+-- comment. What is still asked of that stretch is that the same comments
+-- come out of it.
 --
 -- Documentation comments are counted rather than compared. The printer may
 -- legitimately rewrite one—a @-- ^ x@ that moves in front of what it
@@ -478,8 +479,8 @@ commentDifference parsedBefore parsedAfter
   | otherwise =
       diverge (belowHeader moduleBefore before) (belowHeader moduleAfter after)
         <|> diverge
-          (settled (withinHeader moduleBefore before))
-          (settled (withinHeader moduleAfter after))
+          (settled (withinHeader parsedBefore before))
+          (settled (withinHeader parsedAfter after))
   where
     moduleBefore = pmModule parsedBefore
     moduleAfter = pmModule parsedAfter
@@ -489,7 +490,10 @@ commentDifference parsedBefore parsedAfter
       concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
     belowHeader m cs = filter (not . inHeader m cs) (ordinary cs)
-    withinHeader m cs = filter (inHeader m cs) (ordinary cs)
+    withinHeader m cs =
+      filter (inHeader (pmModule m) cs) (ordinary cs)
+        <> filter commented (takeWhile (pragmaWritten m . commentSpan) cs)
+    pragmaWritten = writtenInHeader . pmHeaderEnd
     settled = sortOn bodyKey
 
     inHeader m cs = case lastRearrangedLine m cs of
@@ -516,6 +520,7 @@ commentDifference parsedBefore parsedAfter
 
     ordinary =
       filter (\c -> not (isDocumentation c) && isNothing (commentPragma c))
+    commented = maybe False pragmaCommented . commentPragma
 
     diverge [] [] = Nothing
     diverge (b : _) [] = Just ("lost " <> quoted b)
