@@ -791,7 +791,7 @@ cmdBody ctx site = \case
       <> breakOrSpace
       <> indent (hsExprIn ctx (withBracing (siteBracing site) plainSite) e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
-  HsCmdPar _ c -> parens (hsCmd ctx plainSite c)
+  HsCmdPar _ c -> parensWith (closingFor site) (hsCmd ctx plainSite c)
   HsCmdCase anns e mg -> caseOf ctx site (CmdBody ctx) anns e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
