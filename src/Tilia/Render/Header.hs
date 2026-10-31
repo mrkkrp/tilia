@@ -32,6 +32,7 @@ import Tilia.Render.Context
 import Tilia.Render.Declaration (decls)
 import Tilia.Render.Haddock
 import Tilia.Render.Layout
+import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
 import Tilia.Render.Pragma (warningTxt)
 import Tilia.Source (Source, directivePresentOnLine, sourceLines)
@@ -403,7 +404,7 @@ importDecl ctx ImportDecl{..} =
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
       NoRawPkgQual -> mempty
-      RawPkgQual literal -> outputable literal
+      RawPkgQual literal -> writtenString literal
     levelBefore = case ideclLevelSpec of
       LevelStylePre l -> declLevel l
       _ -> mempty
