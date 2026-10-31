@@ -12,6 +12,7 @@ module Tilia.Format
     Session,
     sessionRoot,
     PlanSource (..),
+    planSourceFor,
     newSession,
     Compiled (..),
     compiledSession,
@@ -31,6 +32,7 @@ import Data.Foldable (traverse_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -54,7 +56,7 @@ import Tilia.Cabal.Plan
     versionMacros,
   )
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Cabal.Target (packageFilesOf)
+import Tilia.Cabal.Target (Component, componentInPlan, packageFilesOf)
 import Tilia.Cpp
   ( CppError (..),
     correspondingBranches,
@@ -252,6 +254,13 @@ data PlanSource
   | -- | A plan file trusted as up to date, so that we can avoid running
     -- Cabal to solve it.
     GivenPlan FilePath
+
+-- | Where a session's build plan comes from: the plan file given, if any,
+-- or else Cabal, solving for the components the action finds.
+planSourceFor :: Maybe FilePath -> IO [Component] -> IO PlanSource
+planSourceFor givenPlan components = case givenPlan of
+  Just plan -> pure (GivenPlan plan)
+  Nothing -> PlanFromCabal . mapMaybe componentInPlan <$> components
 
 -- | Settle everything that does not depend on the file being formatted.
 newSession ::
