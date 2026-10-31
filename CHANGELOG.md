@@ -172,6 +172,117 @@
   `:. infixr 5 (term)`, and gives an operator one line where its fixity is
   the same among types and among terms, as in `:- infix 8 (type & term)`.
   [PR 354](https://github.com/mrkkrp/tilia/pull/354).
+* A module with a line using a macro, or an `#include`, before a leading
+  comma is declined, since formatting moves the comma above that line,
+  where the preprocessor can then make code that does not parse, such as
+  `[1, 2, , 3 4]`. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A braced block written on one line keeps its braces where it ends a bind
+  or the last argument of an application and a `;` follows, as in
+  `do { x <- do { a }; pure x }`, rather than coming out as
+  `do x <- do a; pure x`, which takes `pure x` into the inner block. The
+  same holds for the body of a `proc`, what follows `-<` or `>-`, the
+  argument of a command application, and what `static` or an `SCC` pragma
+  applies to. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* Declarations written on one line, as in `x = 1; y = 2`, are separated by
+  one semicolon rather than by `; ;`.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A module without CPP that holds a line marker, as in `#line 40 "M.hs"` or
+  `# 40 "M.hs"`, or a `#pragma` or `#!` line other than those a script
+  begins with, is declined, as one with `{-# LINE #-}` pragmas is, rather
+  than having those lines dropped.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* An or-pattern written across lines inside parentheses keeps the
+  semicolons between its alternatives, rather than coming out as a
+  constructor applied to the rest.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A block comment of several lines written after the `->` or `=` that opens
+  a body goes after that token, on lines of its own, rather than before
+  it, where the token began the next line and the module no longer parsed.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A minus or a backslash is kept apart from an operand beginning with a
+  symbol character, as in `- ?x`, `- #x`, `- $(x)` and `\ -1 -> 0`, rather
+  than printed against it, where the two read as one operator.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A quotation whose body may end with a symbol character, as that of
+  `[d| infixl 6 +++ |]` or `[| x :: Proxy * |]` may, keeps the body apart
+  from its brackets, in typed quotations too, rather than coming out as
+  `[d|infixl 6 +++|]`, where `+++|` lexes as one operator.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A parenthesised command broken over several lines in an arrow `do` block
+  closes its bracket one step in, rather than at the column of the block,
+  where the module no longer parsed.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* An export list item naming a whole module keeps the keyword `module` in a
+  signature, rather than coming out as `signature Prelude`.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* In a module with CPP, an indented line opening with an `OverloadedLabels`
+  label named like a directive, such as `#line` or `#if`, stays as it is
+  written, since cpp takes a `#` for a directive only at the start of a
+  line, rather than being moved to the margin or having the module
+  declined. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A language pragma holding a comment is kept where a pragma before it
+  names the same extension, rather than dropped with its comment.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* `--check-ast` reports a language pragma holding a comment that went
+  missing. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* `--check-ast` reports comments of an export list that come out in
+  another order. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A line comment written after a block comment on its line stays after it,
+  as in `w = {- e -} -- f`, rather than coming out before it, after `w =`.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A comment on a line of its own under a trailing block comment, before a
+  closing bracket, stays on its line rather than being pulled up onto the
+  block comment's line, so formatting with leading commas is idempotent
+  there. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A block Haddock on the left field of an infix constructor, as in
+  `Int {- ^ x -} :+ Int`, stays on its line, so formatting is idempotent
+  there. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A `-- ^` Haddock whose text begins with `$` keeps it unescaped when it
+  moves in front of what it documents, rather than coming out as
+  `-- | \$…`, which `--check-ast` refused.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* The signature of an expression ending in a block, as in
+  `do { pure () } :: IO ()`, stays outside the block: the block keeps its
+  braces on one line, and across lines the `::` opens a line of its own at
+  the expression's column, rather than going after the block's last
+  statement, where the module no longer parsed.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A comment written at the end of the line after the `=` or `->` of a guard
+  goes after that token, as after the `=` of an equation without guards,
+  rather than before it. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A comment written at the end of the line after the `->` of a function
+  type goes after the arrow rather than before it.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A block comment written after the opening bracket of an import list, on
+  the line of the module's name, stays inside the brackets rather than
+  going after the module's name.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A block comment written after the `=` of a data declaration, on the line
+  of the type's name, stays after the `=` rather than going before it.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* In a list written with leading commas, a block comment and a line comment
+  written after an item stay after that item, rather than coming out after
+  its comma and then, on the next run, in front of the next item.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A block comment of several lines that code follows on its last line no
+  longer gets an empty line under it where the source has one under that
+  line. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A module with CPP holding a line marker written with a number, as in
+  `# 40 "M.hs"`, or a `#!` line below its top, both of which cpp passes on
+  to GHC, is declined, as one without CPP is, rather than having those
+  lines dropped. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A `-- ^` Haddock continued on a line written `--$`, with no space, keeps
+  that line as written when it moves in front of what it documents,
+  rather than coming out escaped as `-- \$`, which changed the
+  documentation. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* An associated family in a class body laid out on one line comes out with
+  no space before the `;` after it.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* A string gap in the package name of an import is lined up with the
+  opening quote where the name moves.
+  [PR 355](https://github.com/mrkkrp/tilia/pull/355).
+* The category of a `WARNING` pragma is kept as written rather than rebuilt
+  from its value. [PR 355](https://github.com/mrkkrp/tilia/pull/355).
 
 ## Tilia 0.1.3.0
 
