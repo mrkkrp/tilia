@@ -29,7 +29,7 @@ spec = do
   database
   describe "a cache not to be used" $
     it "remembers nothing, and nothing is made on disk for it" $
-      withIsolatedDirectory $ \dir -> do
+      withSystemTempDirectory "tilia-cache" $ \dir -> do
         cache <-
           withEnvironment [("XDG_CACHE_HOME", dir)] $
             openCache (Don't #useCache) (PlanToken "plan")
@@ -366,7 +366,7 @@ database = around withIsolatedCache $ do
     cachedInstalled cache `shouldReturn` Nothing
 
   it "gives back nothing to a token it was not written under" $ \_ ->
-    withIsolatedDirectory $ \dir ->
+    withSystemTempDirectory "tilia-cache" $ \dir ->
       withDatabase $ \db -> do
         before' <- open dir (PlanToken "one")
         storeInstalled before' (Installed [containers] [db])
@@ -374,7 +374,7 @@ database = around withIsolatedCache $ do
         cachedInstalled after' `shouldReturn` Nothing
 
   it "gives it back under the token it was written under" $ \_ ->
-    withIsolatedDirectory $ \dir ->
+    withSystemTempDirectory "tilia-cache" $ \dir ->
       withDatabase $ \db -> do
         before' <- open dir (PlanToken "one")
         storeInstalled before' (Installed [containers] [db])
@@ -382,7 +382,7 @@ database = around withIsolatedCache $ do
         cachedInstalled again `shouldReturn` Just [containers]
 
   it "keeps one token's answer when another writes its own" $ \_ ->
-    withIsolatedDirectory $ \dir ->
+    withSystemTempDirectory "tilia-cache" $ \dir ->
       withDatabase $ \db -> do
         one <- open dir (PlanToken "one")
         storeInstalled one (Installed [containers] [db])
@@ -449,7 +449,7 @@ withDatabase action =
 -- | What an answer that leaves names unsettled is tied to, and what it is
 -- not.
 tokens :: Spec
-tokens = around withIsolatedDirectory $ do
+tokens = around (withSystemTempDirectory "tilia-cache") $ do
   it "does not offer an unread answer written under another token" $ \dir -> do
     before' <- open dir (PlanToken "one")
     storeEstablished before' "thing-1.0" "M" unreadable
@@ -492,10 +492,7 @@ stoppedAt chain = mempty{establishedUntold = Set.singleton chain}
 -- or into the developer's real cache.
 withIsolatedCache :: (Cache -> IO ()) -> IO ()
 withIsolatedCache action =
-  withIsolatedDirectory (\dir -> open dir (PlanToken "plan") >>= action)
-
-withIsolatedDirectory :: (FilePath -> IO ()) -> IO ()
-withIsolatedDirectory = withSystemTempDirectory "tilia-cache"
+  withSystemTempDirectory "tilia-cache" (\dir -> open dir (PlanToken "plan") >>= action)
 
 -- | Open a cache in a given directory, under a given token.
 open :: FilePath -> PlanToken -> IO Cache

@@ -31,8 +31,8 @@ import Tilia.Format (FormatError (..), formatErrorExitCode, refused)
 import Tilia.Palette (Color (Bad), Palette (..), paletteFor)
 import Tilia.Parser (parseModule)
 import Tilia.Run
-import Tilia.TestUtils (defaultParserConfig, withEnvironment)
-import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo, writeUtf8File)
+import Tilia.TestUtils (defaultParserConfig, withEnvironment, withFiles)
+import Tilia.Utils (inParallel, lineWidth, visibleLength, wrapTo)
 
 spec :: Spec
 spec = do
@@ -522,11 +522,7 @@ otherFailure = Failed unclaimed
 
 -- | A file with the given contents, in a directory of its own.
 withSource :: Text -> (FilePath -> IO a) -> IO a
-withSource contents act =
-  withSystemTempDirectory "tilia-run" $ \directory -> do
-    let path = directory </> "A.hs"
-    writeUtf8File path contents
-    act path
+withSource contents act = withFiles [("A.hs", contents)] (act . (</> "A.hs"))
 
 -- | The same, for a file that has to hold exactly these bytes.
 withBytes :: BS.ByteString -> (FilePath -> IO a) -> IO a
