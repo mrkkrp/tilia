@@ -92,7 +92,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
           <> foldMap kindSignature dd_kindSig
 
     kindSignature k =
-      joinedBy "::" <> indent (hsType ctx k)
+      joinedBy (reserved ctx "::") <> indent (hsType ctx k)
 
     foreignType = case unLoc <$> dd_cType of
       Nothing -> mempty
@@ -196,14 +196,14 @@ conDecl ctx _ ConDeclGADT{..} =
         <> includeUnless
           (null cs)
           (indent (comma <> breakOrSpace <> commaSep (fmap (name ctx) cs)))
-        <> joinedBy "::"
+        <> joinedBy (reserved ctx "::")
         <> indent (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
 
     signature =
       outerBndrs ctx breakOrSpace (unLoc con_outer_bndrs)
         <> foldMap (\tele -> forallTelescope ctx tele <> breakOrSpace) con_inner_bndrs
         <> foldMap
-          (\qs -> context ctx qs <> joinedBy "=>")
+          (\qs -> context ctx qs <> joinedBy (reserved ctx "=>"))
           con_mb_cxt
         <> layoutFrom ctx argResSpan (brokenIfDocumented ctx documented argsAndResult)
 
@@ -226,12 +226,12 @@ conDecl ctx _ ConDeclGADT{..} =
     arguments = case con_g_args of
       PrefixConGADT NoExtField xs -> foldMap argument xs
       RecConGADT _ x ->
-        recordFieldsAt ctx x <> joinedBy "->"
+        recordFieldsAt ctx x <> joinedBy (reserved ctx "->")
     argument x =
       documentedConDeclField ctx x
         <> space
-        <> multiplicity (hsType ctx) (cdf_multiplicity x)
-        <> joinedBy "->"
+        <> functionArrow ctx (hsType ctx) (cdf_multiplicity x)
+        <> breakOrSpace
 
     declSpan = spansOf (NE.toList con_names) <> sigSpan
     sigSpan = spanOf con_outer_bndrs <> foldMap spanOf con_mb_cxt <> argResSpan

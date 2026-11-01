@@ -1,3 +1,13 @@
+## Unreleased
+
+* Where `UnicodeSyntax` is in force, through a module's own pragmas or its
+  component's `default-extensions`, the symbols that have Unicode forms come
+  out in them throughout the module: `∷`, `⇒`, `→`, `←` and `∀`, `⊸` for a
+  linear arrow, `★` for the kind `*`, `⤙`, `⤚`, `⤛`, `⤜`, `⦇` and `⦈` in
+  arrow notation, and `⟦` and `⟧` around an expression quote opened with
+  `[|`. Elsewhere they come out in ASCII, as before.
+  [Issue 350](https://github.com/mrkkrp/tilia/issues/350).
+
 ## Tilia 0.1.4.0
 
 * An import is resolved first among the modules of the importing file's own

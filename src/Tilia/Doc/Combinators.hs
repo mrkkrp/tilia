@@ -55,7 +55,7 @@ module Tilia.Doc.Combinators
     brackets,
     bracketsWith,
     braces,
-    bananaWith,
+    spacedBracket,
     unboxed,
     unboxedWith,
     backticks,
@@ -362,16 +362,6 @@ bracketsWith closing = bracketWith closing "[" "]"
 -- | @{@ and @}@.
 braces :: Doc -> Doc
 braces = bracket "{" "}"
-
--- | @(|@ and @|)@, from arrow notation, with a say in where the closing
--- bracket goes.
-bananaWith ::
-  -- | Where the closing banana goes.
-  ClosingIndent ->
-  -- | Body.
-  Doc ->
-  Doc
-bananaWith closing = spacedBracket closing "(|" "|)"
 
 -- | @(#@ and @#)@, for unboxed tuples and sums.
 unboxed :: Doc -> Doc

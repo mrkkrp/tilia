@@ -4,33 +4,33 @@
 
 plain = describe (Bool)
 
-arrow = describe (Char -> Bool)
+arrow = describe (Char → Bool)
 
-quantified = describe (forall k. Holder k)
+quantified = describe (∀ k. Holder k)
 
-constrained = describe ((Readable r) => r)
+constrained = describe ((Readable r) ⇒ r)
 
-constrainedTwice = describe ((Readable r, Countable r) => r)
+constrainedTwice = describe ((Readable r, Countable r) ⇒ r)
 
-linear = describe (Char %1 -> Bool)
+linear = describe (Char ⊸ Bool)
 
-linearUnicode = describe (Char %1 -> Bool)
+linearUnicode = describe (Char ⊸ Bool)
 
-multiplicity = describe (forall n. Char %n -> Bool)
+multiplicity = describe (∀ n. Char %n → Bool)
 
 wrapped =
   describe
-    ( ( forall k.
+    ( ( ∀ k.
         Holder k
       )
     )
 
 sprawling =
   describe
-    ( forall k n.
-      (Readable k, Countable k) =>
-      Holder k %n ->
+    ( ∀ k n.
+      (Readable k, Countable k) ⇒
+      Holder k %n →
       Maybe
-        (Char, Word) %1 ->
+        (Char, Word) ⊸
       Text
     )

@@ -157,7 +157,7 @@ specialiseSig ctx binders target types InlinePragma{..} =
             <> hsExpr ctx target
             <> includeUnless
               (null types)
-              (joinedBy "::" <> commaSep (fmap (hsSigType ctx) types))
+              (joinedBy (reserved ctx "::") <> commaSep (fmap (hsSigType ctx) types))
         )
   where
     -- A @NOINLINE@ written without a phase reads as never active, so that
@@ -218,7 +218,7 @@ completeSig ctx names ty =
   layoutAcross ctx names . pragma "COMPLETE" . indent $
     commaSep (fmap (name ctx) names)
       <> foldMap
-        (\t -> joinedBy "::" <> indent (name ctx t))
+        (\t -> joinedBy (reserved ctx "::") <> indent (name ctx t))
         ty
 
 -- | An @SCC@ pragma.
@@ -234,7 +234,7 @@ standaloneKindSig ctx (StandaloneKindSig _ n sigTy) =
     <> indent
       ( space
           <> name ctx n
-          <> joinedBy "::"
+          <> joinedBy (reserved ctx "::")
           <> hsSigType ctx sigTy
       )
 
