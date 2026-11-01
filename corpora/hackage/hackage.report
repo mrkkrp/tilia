@@ -145,7 +145,7 @@ cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
     cryptonite-0.30/Crypto/Random/Entropy/Windows.hs:64:16-28: parse error on input `WINDOWS_CCONV', in the configuration taking #if defined(ARCH_X86)
 
 hlint-3.10/data/HLint_TypeCheck.hs
-    a pragma that moves positions, which we do not rewrite
+    will not format hlint-3.10/data/HLint_TypeCheck.hs: it uses {-# LINE #-} or {-# COLUMN #-} pragmas or #line, #pragma or #! lines, and no reformatting can leave those true
 
 intero-0.1.40/src/InteractiveUI.hs
     too many configurations to format

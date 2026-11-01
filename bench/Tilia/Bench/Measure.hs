@@ -59,7 +59,7 @@ measure ::
   -- | How many runs to measure.
   Int ->
   -- | The work.
-  (Text -> a) ->
+  (Text -> IO a) ->
   -- | Force everything the work computed.
   (a -> Int) ->
   -- | Its input.
@@ -70,7 +70,7 @@ measure counter runs work forced input =
   where
     set = do
       fresh <- evaluate (T.copy input)
-      pure (evaluate (work fresh))
+      pure (work fresh)
 
 -- | Run a piece of work once to warm up and then the given number of times,
 -- each time as a setup that is not measured gives it, and give what the run

@@ -399,7 +399,10 @@ ormoluSkip =
     "other" </> "cpp" </> "separation-2b.hs",
     "other" </> "cpp" </> "shifted.hs",
     "other" </> "cpp" </> "simple-import.hs",
-    "declaration" </> "signature" </> "specialize" </> "specialize-2.hs"
+    "declaration" </> "signature" </> "specialize" </> "specialize-2.hs",
+    "declaration" </> "value" </> "function" </> "infix" </> "qualified-ops.hs",
+    "declaration" </> "value" </> "function" </> "operators-3.hs",
+    "declaration" </> "value" </> "function" </> "operators-4.hs"
   ]
     <> ormoluRecordBraces
     <> ormoluUnicodeSyntax

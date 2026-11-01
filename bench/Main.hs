@@ -104,7 +104,7 @@ main = do
       measuring Format s (subjectFormat s) (subjectSource s)
     checking <- case (subjectCheck s, out) of
       (Just check, Just printed) ->
-        pure . snd <$> measuring Check s check printed
+        pure . snd <$> measuring Check s (pure . check) printed
       _ -> pure []
     pure (formatting : checking)
   ended <- withFixityBenchmarks $ \(resolving, interfaces) -> do

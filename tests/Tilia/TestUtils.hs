@@ -9,9 +9,7 @@ module Tilia.TestUtils
     withOpsProject,
     switchedOn,
     underAsciiLocale,
-    parserConfigFor,
     defaultParserConfig,
-    effectiveExtensionsFor,
     parsed,
     parses,
     commentsIn,
@@ -41,13 +39,12 @@ import Data.List (isSuffixOf, sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
 import GHC.Driver.Session qualified as GHC
 import GHC.IO.Encoding (getLocaleEncoding, setLocaleEncoding)
-import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory
   ( canonicalizePath,
     createDirectoryIfMissing,
@@ -85,7 +82,7 @@ import Tilia.Parser
     describeParseError,
     parseModule,
   )
-import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
+import Tilia.Pragma (defaultsOf)
 import Tilia.Source (comments)
 import Tilia.Utils (quietly, writeUtf8File)
 
@@ -181,25 +178,10 @@ underAsciiLocale act = do
   bracket getLocaleEncoding setLocaleEncoding $ \_ ->
     setLocaleEncoding ascii >> act
 
--- | What to parse a module with, given what its package puts in force, or
--- 'Nothing' for a module of no package, which is read as GHC2021.
-parserConfigFor :: Maybe Defaults -> ParserConfig
-parserConfigFor =
-  ParserConfig . fromMaybe (defaultsOf (GHC.languageExtensions (Just GHC.GHC2021)) [])
-
--- | What to parse a module of no package with.
+-- | What to parse a module of no package with: GHC2021.
 defaultParserConfig :: ParserConfig
-defaultParserConfig = parserConfigFor Nothing
-
--- | The extensions in force in a module, given what its package puts in
--- force, or 'Nothing' for a module of no package, which starts from
--- @ImplicitPrelude@ alone.
---
--- That is less than 'parserConfigFor' reads such a module with, so that
--- what is printed, @import qualified@ for one, reads the same under every
--- edition.
-effectiveExtensionsFor :: Maybe Defaults -> Text -> [Extension]
-effectiveExtensionsFor = effectiveExtensions . fromMaybe (defaultsOf [ImplicitPrelude] [])
+defaultParserConfig =
+  ParserConfig (defaultsOf (GHC.languageExtensions (Just GHC.GHC2021)) [])
 
 -- | Parse a module, or stop the test saying why it does not parse.
 parsed :: Text -> ParsedModule
