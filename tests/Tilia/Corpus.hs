@@ -402,6 +402,7 @@ ormoluSkip =
     "declaration" </> "signature" </> "specialize" </> "specialize-2.hs"
   ]
     <> ormoluRecordBraces
+    <> ormoluUnicodeSyntax
 
 -- | Ormolu examples with a space between a record and its braces.
 ormoluRecordBraces :: [FilePath]
@@ -420,6 +421,16 @@ ormoluRecordBraces =
     "declaration" </> "value" </> "pattern-synonyms" </> "bidirectional.hs",
     "declaration" </> "value" </> "pattern-synonyms" </> "unidirectional.hs",
     "declaration" </> "value" </> "function" </> "pragmas.hs"
+  ]
+
+-- | Ormolu examples under @UnicodeSyntax@, which we print in its forms.
+ormoluUnicodeSyntax :: [FilePath]
+ormoluUnicodeSyntax =
+  [ "declaration" </> "data" </> "existential-unicode.hs",
+    "declaration" </> "data" </> "gadt" </> "unicode.hs",
+    "declaration" </> "signature" </> "type" </> "unicode.hs",
+    "declaration" </> "splice" </> "bracket-unicode.hs",
+    "other" </> "linear-arrows.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.

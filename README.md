@@ -173,6 +173,14 @@ of the module is a valid Haskell module. A module with too many
 configurations to format, or with something cpp passes on to GHC, such as a
 line marker, is declined and left as it is.
 
+## Unicode syntax
+
+Where `UnicodeSyntax` is in force, Tilia prints `∷`, `⇒`, `→`, `←`, `∀`,
+and the other Unicode forms GHC accepts, throughout the module, whichever
+form they were written in. Elsewhere it prints their ASCII forms. Turning
+the extension on in a component's `default-extensions` therefore rewrites
+every module of that component the next time it is formatted.
+
 ## Comparison with other formatters
 
 ### Ormolu

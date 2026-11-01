@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | What the syntax walk needs to know that the syntax tree does not say.
 module Tilia.Render.Context
   ( -- * The context
@@ -15,6 +17,7 @@ module Tilia.Render.Context
     -- * Extensions
     extensionOn,
     negativeLiteralGap,
+    reserved,
 
     -- * Fixities
     operatorFixity,
@@ -48,8 +51,8 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Hs hiding (Fixity)
-import GHC.LanguageExtensions.Type (Extension (NegativeLiterals))
+import GHC.Hs hiding (Fixity, UnicodeSyntax)
+import GHC.LanguageExtensions.Type (Extension (NegativeLiterals, UnicodeSyntax))
 import GHC.Types.Name.Reader (RdrName (..))
 import GHC.Types.SrcLoc (GenLocated (..))
 import GHC.Types.SrcLoc qualified as GHC
@@ -176,6 +179,27 @@ extensionOn ctx e = Set.member e (ctxExtensions ctx)
 -- in front of a literal has to keep its distance.
 negativeLiteralGap :: Ctx -> Doc
 negativeLiteralGap ctx = includeWhen (extensionOn ctx NegativeLiterals) space
+
+-- | A reserved symbol in its @UnicodeSyntax@ form, where that extension is
+-- in force and the symbol has one.
+reserved :: Ctx -> Text -> Text
+reserved ctx symbol
+  | extensionOn ctx UnicodeSyntax = case symbol of
+      "::" -> "∷"
+      "=>" -> "⇒"
+      "->" -> "→"
+      "<-" -> "←"
+      "forall" -> "∀"
+      "-<" -> "⤙"
+      ">-" -> "⤚"
+      "-<<" -> "⤛"
+      ">>-" -> "⤜"
+      "(|" -> "⦇"
+      "|)" -> "⦈"
+      "*" -> "★"
+      _ -> symbol
+  | otherwise = symbol
+{-# INLINE reserved #-}
 
 ----------------------------------------------------------------------------
 -- Fixities

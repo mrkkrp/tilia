@@ -90,7 +90,7 @@ patBody ctx inParens closing here = \case
   ViewPat _ e p ->
     align $
       knotExpr (ctxKnot ctx) ctx plainSite e
-        <> joinedBy "->"
+        <> joinedBy (reserved ctx "->")
         <> indent (recur p)
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   LitPat _ lit -> hsLit lit

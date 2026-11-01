@@ -26,7 +26,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
-import GHC.Hs hiding (Fixity)
+import GHC.Hs hiding (Fixity, UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.Basic (Boxity (..))
 import GHC.Types.Fixity (LexicalFixity (..))
@@ -160,8 +160,8 @@ exprBody ctx site here = \case
     align $
       hsExprIn ctx (withBracing MayBrace plainSite) x
         <> ( if endsWithBlock (unLoc x)
-               then breakOrSpace <> txt "::" <> space
-               else joinedBy "::"
+               then breakOrSpace <> txt (reserved ctx "::") <> space
+               else joinedBy (reserved ctx "::")
            )
         <> indent (hsSigType ctx hswc_body)
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
@@ -176,7 +176,7 @@ exprBody ctx site here = \case
   HsProc _ p e ->
     txt "proc"
       <> layoutFrom ctx (spanOf p) (breakOrSpace <> indent (hsPat ctx p) <> breakOrSpace)
-      <> txt "->"
+      <> txt (reserved ctx "->")
       <> attachBody
         (CmdTopBody ctx (withBracing (siteBracing site) plainSite) e)
   HsStatic _ e ->
@@ -199,13 +199,13 @@ exprBody ctx site here = \case
   HsForAll _ tele e -> forallTelescope ctx tele <> breakOrSpace <> hsExpr ctx e
   HsQual _ qs e ->
     at ctx qs (contextOf loneVariableExpr (hsExpr ctx) . fmap unbracketed)
-      <> joinedBy "=>"
+      <> joinedBy (reserved ctx "=>")
       <> hsExpr ctx e
   HsFunArr _ multAnn x y ->
     hsExpr ctx x
       <> space
-      <> multiplicity (hsExpr ctx) multAnn
-      <> joinedBy "->"
+      <> functionArrow ctx (hsExpr ctx) multAnn
+      <> breakOrSpace
       <> case unLoc y of
         HsFunArr{} -> exprBody ctx plainSite (spanOf y) (unLoc y)
         _ -> hsExpr ctx y
@@ -481,7 +481,7 @@ stmtBody ctx site mkBody = \case
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
-      <> nest 1 (space <> keywordAt ctx (spanOf arrow) "<-")
+      <> nest 1 (space <> keywordAt ctx (spanOf arrow) (reserved ctx "<-"))
       <> layoutFrom
         ctx
         (fmap endOf (spanOf p) <> spanOf f)
@@ -770,12 +770,12 @@ cmdBody ctx site = \case
      in hsExprIn ctx site{siteApplicand = False} writtenFirst
           <> breakOrSpace
           <> indent
-            ( txt (arrowText arrow rightToLeft)
+            ( txt (reserved ctx (arrowText arrow rightToLeft))
                 <> attachBody
                   (bodyIn (ExprBody ctx) (siteBracing site) writtenSecond)
             )
   HsCmdArrForm _ form Prefix cmds ->
-    bananaWith (closingFor site) $
+    spacedBracket (closingFor site) (reserved ctx "(|") (reserved ctx "|)") $
       hsExpr ctx form
         <> includeUnless
           (null cmds)
@@ -1030,7 +1030,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
       | otherwise = case style of
           FunctionStyle _ -> space <> indent (txt "=")
           PatternBindStyle -> space <> indent (txt "=")
-          _ -> space <> txt "->"
+          _ -> space <> txt (reserved ctx "->")
 
     body = sepBy breakOrSpace (fmap alternative (NE.toList grhssGRHSs))
 
@@ -1116,7 +1116,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         <> space
         <> align (commaSep (fmap (align . hsStmt ctx) guards))
         <> space
-        <> indent (txt separator)
+        <> indent (txt (reserved ctx separator))
     headSpan = (<>) <$> (spanOf =<< ga_vbar) <*> separatorSpan
     bound = bodyIn mkBody bracing body
     separator = case style of
@@ -1191,7 +1191,7 @@ patSynBind ctx PSB{..} =
       where
         rhs arrow =
           layoutFrom ctx (spanOf psb_id <> spanOf psb_def <> argSpans) $
-            txt arrow <> breakOrSpace <> hsPat ctx psb_def
+            txt (reserved ctx arrow) <> breakOrSpace <> hsPat ctx psb_def
 
 -- | An untyped splice, either @$x@ or a quasi-quotation.
 untypedSplice :: Ctx -> SpliceDecoration -> HsUntypedSplice GhcPs -> Doc
@@ -1215,7 +1215,11 @@ spliceTH ctx typed e = \case
 -- | A Template Haskell quotation.
 quotation :: Ctx -> Maybe Span -> HsQuote GhcPs -> Doc
 quotation ctx here = \case
-  ExpBr (bracketAnn, _) e -> quotedAs (flavour bracketAnn) e (hsExpr ctx e)
+  ExpBr (bracketAnn, _) e
+    | BracketNoE{} <- bracketAnn,
+      extensionOn ctx UnicodeSyntax ->
+        quoted here "⟦" "⟧" e (hsExpr ctx e)
+    | otherwise -> quotedAs (flavour bracketAnn) e (hsExpr ctx e)
     where
       flavour = \case
         BracketNoE{} -> ""

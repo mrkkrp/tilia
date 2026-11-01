@@ -114,7 +114,7 @@ funDep :: Ctx -> FunDep GhcPs -> Doc
 funDep ctx (FunDep _ before after) =
   hsep (fmap (name ctx) before)
     <> space
-    <> txt "->"
+    <> txt (reserved ctx "->")
     <> space
     <> hsep (fmap (name ctx) after)
 
@@ -261,7 +261,7 @@ familyResultSig :: Ctx -> LFamilyResultSig GhcPs -> Maybe Doc
 familyResultSig ctx (L _ sig) = case sig of
   NoSig NoExtField -> Nothing
   KindSig NoExtField k ->
-    Just (txt "::" <> breakOrSpace <> hsType ctx k)
+    Just (txt (reserved ctx "::") <> breakOrSpace <> hsType ctx k)
   TyVarSig NoExtField bndr ->
     Just (txt "=" <> breakOrSpace <> at ctx bndr (tyVarBndr ctx))
 
@@ -272,7 +272,7 @@ injectivityAnn ctx (InjectivityAnn _ from to) =
     <> space
     <> name ctx from
     <> space
-    <> txt "->"
+    <> txt (reserved ctx "->")
     <> space
     <> hsep (fmap (name ctx) to)
 

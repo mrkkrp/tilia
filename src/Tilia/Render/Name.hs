@@ -12,6 +12,7 @@ module Tilia.Render.Name
     moduleHeadName,
     wrappedName,
     namespaceSpec,
+    functionArrow,
     multiplicity,
     defHead,
   )
@@ -20,7 +21,7 @@ where
 import Data.Choice (Choice, isTrue)
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Hs
+import GHC.Hs hiding (UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.Name.Occurrence (OccName, occNameString)
 import GHC.Types.Name.Reader
@@ -116,6 +117,13 @@ namespaceSpec = \case
   NoNamespaceSpecifier -> mempty
   TypeNamespaceSpecifier _ -> txt "type" <> space
   DataNamespaceSpecifier _ -> txt "data" <> space
+
+-- | The arrow of a function type with the multiplicity written on it, which
+-- @UnicodeSyntax@ lets a linear arrow spell as one symbol.
+functionArrow :: Ctx -> (mult -> Doc) -> HsMultAnnOf mult GhcPs -> Doc
+functionArrow ctx render = \case
+  HsLinearAnn _ | extensionOn ctx UnicodeSyntax -> txt "⊸"
+  multAnn -> multiplicity render multAnn <> space <> txt (reserved ctx "->")
 
 -- | A multiplicity annotation on an arrow or a field.
 multiplicity :: (mult -> Doc) -> HsMultAnnOf mult GhcPs -> Doc

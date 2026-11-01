@@ -35,8 +35,8 @@ import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import GHC.Hs
-import GHC.LanguageExtensions.Type (Extension (Cpp))
+import GHC.Hs hiding (UnicodeSyntax)
+import GHC.LanguageExtensions.Type (Extension (Cpp, UnicodeSyntax))
 import GHC.Types.Name.Occurrence (isTvOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName, isUnqual, rdrNameOcc)
 import GHC.Types.SourceText
@@ -78,7 +78,7 @@ typeBody ctx documented here = \case
   HsQualTy _ qs t ->
     context ctx qs
       <> space
-      <> txt "=>"
+      <> txt (reserved ctx "=>")
       <> betweenArgs
       <> case unLoc t of
         HsQualTy{} -> recur (unLoc t)
@@ -96,9 +96,7 @@ typeBody ctx documented here = \case
   HsFunTy _ multAnn x y ->
     hsType ctx x
       <> space
-      <> multiplicity (at_ ctx recur) multAnn
-      <> space
-      <> txt "->"
+      <> functionArrow ctx (at_ ctx recur) multAnn
       <> betweenArgs
       <> fenceWithin ctx (fmap endOf (arrowSpan multAnn) <> spanOf y) result
     where
@@ -117,10 +115,10 @@ typeBody ctx documented here = \case
   HsParTy _ t ->
     layoutWithin ctx here (spanOf t) (parens (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
-    align (at ctx n outputable <> joinedBy "::" <> indent (hsType ctx t))
-  HsStarTy _ _ -> txt "*"
+    align (at ctx n outputable <> joinedBy (reserved ctx "::") <> indent (hsType ctx t))
+  HsStarTy _ _ -> txt (reserved ctx "*")
   HsKindSig _ t k ->
-    align (hsType ctx t <> joinedBy "::" <> indent (hsType ctx k))
+    align (hsType ctx t <> joinedBy (reserved ctx "::") <> indent (hsType ctx k))
   HsSpliceTy _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
   HsExplicitListTy _ promoted xs ->
@@ -291,7 +289,7 @@ context ctx = at_ ctx (contextOf bare (hsType ctx) . fmap unbracket)
 -- | A context standing to the left of a @=>@, with the arrow and the break
 -- after it.
 leftContext :: Ctx -> LHsContext GhcPs -> Doc
-leftContext ctx ctxt = context ctx ctxt <> joinedBy "=>"
+leftContext ctx ctxt = context ctx ctxt <> joinedBy (reserved ctx "=>")
 
 -- | A context over anything that can stand as a constraint.
 contextOf ::
@@ -341,7 +339,7 @@ tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
     (kind, kinded) = case tvb_kind of
       HsBndrNoKind _ -> (mempty, False)
       HsBndrKind _ k ->
-        (joinedBy "::" <> indent (hsType ctx k), True)
+        (joinedBy (reserved ctx "::") <> indent (hsType ctx k), True)
     enclosed
       | flagIsInferred tvb_flag = braces
       | kinded = parens
@@ -367,17 +365,21 @@ forallBndrs ::
   -- | The variables it binds.
   [GenLocated l a] ->
   Doc
-forallBndrs _ Invisible _ [] = txt "forall."
-forallBndrs _ Visible _ [] = txt "forall ->"
+forallBndrs ctx Invisible _ [] =
+  txt (reserved ctx "forall")
+    <> includeWhen (extensionOn ctx UnicodeSyntax) space
+    <> txt "."
+forallBndrs ctx Visible _ [] =
+  txt (reserved ctx "forall") <> space <> txt (reserved ctx "->")
 forallBndrs ctx visibility render bndrs =
   layoutAcross ctx bndrs $
-    txt "forall"
+    txt (reserved ctx "forall")
       <> breakOrSpace
       <> indent (align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs)) <> close)
   where
     close = case visibility of
       Invisible -> txt "."
-      Visible -> space <> txt "->"
+      Visible -> space <> txt (reserved ctx "->")
 
 -- | Where the arrow of a function type is written.
 arrowSpan :: HsMultAnnOf mult GhcPs -> Maybe Span
@@ -425,7 +427,7 @@ hsSigTypeBody ctx HsSig{..} =
 -- | The @:: t@ that follows a name.
 typeAscription :: Ctx -> LHsSigType GhcPs -> Doc
 typeAscription ctx sigType =
-  indent (space <> txt "::" <> separator <> hsSigType ctx sigType)
+  indent (space <> txt (reserved ctx "::") <> separator <> hsSigType ctx sigType)
   where
     separator = typeBreak (typeIsDocumented (unLoc (sig_body (unLoc sigType))))
 
@@ -450,7 +452,7 @@ recordField ctx HsConDeclRecField{..} =
     <> align (commaSep (fmap (at_ ctx (name ctx . foLabel)) cdrf_names))
     <> space
     <> multiplicity (hsType ctx) (cdf_multiplicity cdrf_spec)
-    <> joinedBy "::"
+    <> joinedBy (reserved ctx "::")
     <> align (indent (conDeclField ctx cdrf_spec))
 
 -- | A constructor field, without its documentation or its multiplicity.
