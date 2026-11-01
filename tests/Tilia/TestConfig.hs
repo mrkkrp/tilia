@@ -4,20 +4,23 @@
 
 -- | How every corpus example is formatted.
 module Tilia.TestConfig
-  ( printExample,
-    formatCppExample,
+  ( formatExample,
+    parserConfigFor,
+    effectiveExtensionsFor,
   )
 where
 
-import Data.Choice (pattern Is)
-import Data.List.NonEmpty (NonEmpty)
+import Data.Choice (pattern Don't)
+import Data.List (maximumBy, nub)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Set qualified as Set
+import Data.Maybe (fromMaybe)
+import Data.Ord (comparing)
 import Data.Text (Text)
+import GHC.Driver.Session qualified as GHC
+import GHC.LanguageExtensions.Type (Extension (ImportQualifiedPost))
 import Tilia.BootFixities (bootFixities)
-import Tilia.Cpp (CppError, everyBranch, formatWithCpp)
-import Tilia.Doc (printDoc)
+import Tilia.Cabal.Project (Marker (ProjectFile), ProjectRoot (..))
 import Tilia.Fixity
   ( Direction (..),
     Established (..),
@@ -25,97 +28,102 @@ import Tilia.Fixity
     Fixity (..),
     Namespace (..),
     OpName (..),
-    Provenance (..),
-    Reach (..),
-    Scope (..),
-    operatorsUsed,
-    resolveScope,
-    unreadable,
   )
-import Tilia.Parser (ParsedModule (..))
-import Tilia.Pragma (Defaults)
-import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
-import Tilia.TestUtils (effectiveExtensionsFor, inBothNamespaces, parserConfigFor)
+import Tilia.Fixity.Plan (Resolver (..))
+import Tilia.Format (FormatError, Session (..), formatSource)
+import Tilia.Parser (ParserConfig (..))
+import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
+import Tilia.TestUtils (inBothNamespaces)
 
--- | How to format one corpus example.
-exampleRenderConfig ::
-  -- | What the package around it puts in force, if it is a module of one.
-  Maybe Defaults ->
-  Text ->
-  -- | Its configurations, parsed.
-  NonEmpty ParsedModule ->
-  RenderConfig
-exampleRenderConfig package source parsed =
-  defaultRenderConfig
-    { rcExtensions =
-        Set.fromList (effectiveExtensionsFor package source),
-      rcScope =
-        Just
-          ( underEveryQualifier
-              (resolveScope (Is #implicitPrelude) known (fmap pmModule parsed))
-          )
-    }
-  where
-    known = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
-    underEveryQualifier scope =
-      scope
-        { scopeInTypes = alsoQualified (scopeInTypes scope),
-          scopeInTerms = alsoQualified (scopeInTerms scope)
-        }
-    alsoQualified reach =
-      reach
-        { reachQualified =
-            Map.union
-              (reachQualified reach)
-              ( Map.fromList
-                  [ ((qualifier, op), (fixity, DeclaredIn qualifier))
-                  | (_, (Just qualifier, op)) <- concatMap (operatorsUsed . pmGathered) parsed,
-                    Just exported <- [exportsOf qualifier],
-                    Just fixity <- [Map.lookup (InTerms, op) exported]
-                  ]
-              )
-        }
-
--- | Print a corpus example that does not use the preprocessor.
-printExample ::
-  -- | What the package around it puts in force, if it is a module of one.
-  Maybe Defaults ->
-  Text ->
-  -- | It, parsed.
-  ParsedModule ->
-  Text
-printExample package source parsed =
-  printDoc
-    (renderModule (exampleRenderConfig package source (pure parsed)) parsed)
-
--- | Format a corpus example that uses the preprocessor.
-formatCppExample ::
+-- | Format a corpus example with 'formatSource', in a project where only
+-- the boot packages can be read, leaving the checks to the caller.
+formatExample ::
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
   FilePath ->
   Text ->
-  Either CppError Text
-formatCppExample package path source =
-  formatWithCpp parser configured path source
-  where
-    parser = parserConfigFor package
-    configured =
-      maybe
-        defaultRenderConfig
-        (exampleRenderConfig package source)
-        (everyBranch parser path source)
+  IO (Either FormatError Text)
+formatExample package =
+  formatSource
+    Session
+      { sessionRoot = ProjectRoot "." ProjectFile,
+        sessionResolver =
+          Resolver $ \_ name ->
+            pure mempty{establishedFixities = exportsOf name},
+        sessionMacros = mempty,
+        sessionPackage = \_ -> pure (Right (defaultsFor package)),
+        sessionCheckAst = Don't #checkAst,
+        sessionCheckIdempotence = Don't #checkIdempotence,
+        sessionFixityNotes = Nothing
+      }
 
--- | What a module in scope exports, as far as the corpus is concerned.
-exportsOf :: Text -> Maybe Fixities
-exportsOf name = Just (Map.union ours (inBothNamespaces elsewhere))
+-- | What a corpus example's package puts in force, or 'Nothing' for an
+-- example of no package.
+--
+-- An example of no package is read as GHC2021 without
+-- @ImportQualifiedPost@, so that @import qualified@ is printed the same
+-- under every edition.
+defaultsFor :: Maybe Defaults -> Defaults
+defaultsFor = fromMaybe (defaultsOf edition [])
   where
-    ours = case Map.lookup name bootFixities of
-      Just exact -> exact
-      Nothing -> everythingKnown
+    edition = filter (/= ImportQualifiedPost) ghc2021
+    ghc2021 = GHC.languageExtensions (Just GHC.GHC2021)
 
--- | Every operator any boot module exports.
-everythingKnown :: Fixities
-everythingKnown = Map.unions (Map.elems bootFixities)
+-- | What to parse a corpus example with, given what its package puts in
+-- force.
+parserConfigFor :: Maybe Defaults -> ParserConfig
+parserConfigFor = ParserConfig . defaultsFor
+
+-- | The extensions in force in a corpus example, given what its package
+-- puts in force.
+effectiveExtensionsFor :: Maybe Defaults -> Text -> [Extension]
+effectiveExtensionsFor = effectiveExtensions . defaultsFor
+
+-- | What a module in scope exports, as far as the corpus is concerned: a
+-- boot module its own operators, any other every operator, standing for
+-- what it may re-export, and every module the ones from 'elsewhere'.
+exportsOf :: Text -> Fixities
+exportsOf name = case Map.lookup name bootFixities of
+  Just exact ->
+    Map.restrictKeys agreed (Map.keysSet exact <> Map.keysSet outside)
+  Nothing -> agreed
+  where
+    outside = inBothNamespaces elsewhere
+
+-- | One fixity for every operator, so that no two imports of an example
+-- disagree on one.
+--
+-- Where the boot packages give an operator different fixities, the one
+-- most of the modules exporting it give is taken, unless 'preferred' names
+-- another, and a boot package's is taken over one from 'elsewhere'.
+agreed :: Fixities
+agreed =
+  Map.unions [preferred, Map.map mostCommon offered, inBothNamespaces elsewhere]
+  where
+    offered = Map.unionsWith (<>) (fmap (fmap pure) (Map.elems bootFixities))
+    mostCommon fixities =
+      snd . maximumBy (comparing fst) $
+        [(length (filter (== f) fixities), f) | f <- nub fixities]
+
+-- | The fixities the examples mean where most of the boot modules
+-- exporting an operator give another.
+preferred :: Fixities
+preferred =
+  Map.fromList
+    [ ((InTerms, OpName op), fixity)
+    | (op, fixity) <-
+        [ -- base's, over parsec's
+          ("<|>", Fixity LeftAssoc 3),
+          -- base's, over pretty's and template-haskell's
+          ("<>", Fixity RightAssoc 6),
+          -- Data.List's, over containers', which is mostly written
+          -- qualified
+          ("\\\\", Fixity NoAssoc 5),
+          -- ReadP's, over ReadPrec's, which declares none
+          ("+++", Fixity RightAssoc 5),
+          ("<++", Fixity RightAssoc 5)
+        ]
+    ]
 
 -- | Operators the examples use that no boot package exports.
 --

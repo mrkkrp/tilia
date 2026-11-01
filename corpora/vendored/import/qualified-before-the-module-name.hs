@@ -1,3 +1,3 @@
 module M where
-import Data.Map qualified as M
+import qualified Data.Map as M
 import qualified Data.Set as S

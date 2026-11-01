@@ -25,8 +25,7 @@ import Tilia.Cpp (usesCpp)
 import Tilia.Format (rewritten)
 import Tilia.Parser (parseModule)
 import Tilia.Pragma (Defaults)
-import Tilia.TestConfig (formatCppExample, printExample)
-import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
+import Tilia.TestConfig (effectiveExtensionsFor, formatExample, parserConfigFor)
 
 -- | What part of a run a benchmark measures.
 data Stage
@@ -68,7 +67,7 @@ data Subject = Subject
     -- | The module.
     subjectSource :: Text,
     -- | Format it, or 'Nothing' where it is declined.
-    subjectFormat :: Text -> Maybe Text,
+    subjectFormat :: Text -> IO (Maybe Text),
     -- | Check what formatting it printed, giving what changed, where it is
     -- checked.
     subjectCheck :: Maybe (Text -> Maybe Text)
@@ -219,7 +218,8 @@ subjectOf package isChecked name source =
   Subject
     { subjectName = name,
       subjectSource = source,
-      subjectFormat = formatted package path,
+      subjectFormat =
+        fmap (either (const Nothing) Just) . formatExample package path,
       subjectCheck =
         if isChecked
           then Just (fst . rewritten parser cpp path (source, tree))
@@ -232,15 +232,3 @@ subjectOf package isChecked name source =
     tree
       | cpp = Nothing
       | otherwise = either (const Nothing) Just (parseModule parser path source)
-
--- | What formatting a module prints, as the corpus does it, or 'Nothing'
--- where it is declined.
-formatted :: Maybe Defaults -> FilePath -> Text -> Maybe Text
-formatted package path source
-  | usesCpp (effectiveExtensionsFor package source) source =
-      either (const Nothing) Just (formatCppExample package path source)
-  | otherwise =
-      either
-        (const Nothing)
-        (Just . printExample package source)
-        (parseModule (parserConfigFor package) path source)
