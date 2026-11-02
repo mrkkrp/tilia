@@ -13,11 +13,12 @@ import Test.Hspec hiding (after, before)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
 import Tilia.Cpp (formatWithCpp, withoutRuledOut)
+import Tilia.Cpp.Directives (answeredLeaves)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
-import Tilia.TestUtils (answeredLeaves, defaultParserConfig, parses)
+import Tilia.TestUtils (defaultParserConfig, parses)
 import Tilia.Utils (tshow)
 
 spec :: Spec

@@ -9,8 +9,8 @@ module Tilia.Format
     describeFormatError,
     formatErrorExitCode,
     refused,
-    Session,
-    sessionRoot,
+    Session (..),
+    AstCheck (..),
     PlanSource (..),
     planSourceFor,
     newSession,
@@ -26,7 +26,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
-import Data.Choice (Choice, fromBool, isTrue)
+import Data.Choice (Choice, fromBool, isFalse, isTrue)
 import Data.Either (fromRight)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
@@ -59,7 +59,10 @@ import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target (Component, componentInPlan, packageFilesOf)
 import Tilia.Cpp
   ( CppError (..),
+    answeredLeaves,
+    answeredLinearLeaves,
     correspondingBranches,
+    countLeaves,
     describeCppError,
     everyBranch,
     formatWithCpp,
@@ -238,14 +241,35 @@ data Session = Session
     sessionMacros :: Macros,
     -- | What each file's package puts in force.
     sessionPackage :: PackageReader,
-    -- | Whether to check AST equivalence.
-    sessionCheckAst :: Choice "checkAst",
+    -- | Whether to check AST equivalence, and in which configurations.
+    sessionCheckAst :: AstCheck,
     -- | Whether to check idempotence.
     sessionCheckIdempotence :: Choice "checkIdempotence",
     -- | An account of how each file's fixities were determined, or 'Nothing'
     -- where none was asked for.
     sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes))
   }
+
+-- | Whether to check AST equivalence, and in which configurations of a
+-- module that uses the preprocessor.
+data AstCheck
+  = -- | Not at all.
+    NoAstCheck
+  | -- | In one configuration for each branch of each conditional, as a run
+    -- does.
+    EachCppBranch
+  | -- | In every configuration, up to as many as given, and past that in
+    -- the ones varying a single conditional, once both sides have as many.
+    EachCppConfiguration Int
+  deriving (Eq, Show)
+
+-- | The AST check a run makes where it is asked for one.
+sessionProdAstCheck ::
+  -- | Whether to check AST equivalence.
+  Choice "checkAst" ->
+  AstCheck
+sessionProdAstCheck checkAst =
+  if isTrue checkAst then EachCppBranch else NoAstCheck
 
 -- | Where a session's build plan comes from.
 data PlanSource
@@ -306,7 +330,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
         sessionResolver = resolver,
         sessionMacros = macrosOf plan,
         sessionPackage = packageReader,
-        sessionCheckAst = checkAst,
+        sessionCheckAst = sessionProdAstCheck checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = notes
       }
@@ -353,7 +377,7 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
             (fmap numbers compiledPackages),
         sessionPackage =
           \_ -> pure (Right (defaultsOf [] (On <$> compiledExtensions))),
-        sessionCheckAst = checkAst,
+        sessionCheckAst = sessionProdAstCheck checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = Nothing
       }
@@ -414,7 +438,7 @@ formatSource session path source = runExceptT $ do
                 }
           unknown -> throwE (UnknownFixity path unknown)
       formatting (extensions, cpp) already text
-        | cpp = do
+        | isTrue cpp = do
             render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
               Nothing -> pure defaultRenderConfig{rcExtensions = extensions}
               Just branches -> renderConfigFor extensions branches
@@ -435,13 +459,10 @@ formatSource session path source = runExceptT $ do
   when (movesPositions (Set.toList extensions) source) $
     throwE (PositionPragmas path)
   (formatted, tree) <- formatting inForce Nothing source
-  printedTree <-
-    if isTrue (sessionCheckAst session)
-      then do
-        let (changed, parsed) = rewritten config cpp path (source, tree) formatted
-        traverse_ (throwE . NotEquivalent path) changed
-        pure parsed
-      else pure Nothing
+  let (changed, printedTree) =
+        rewritten config astCheck cpp path (source, tree) formatted
+      astCheck = sessionCheckAst session
+  traverse_ (throwE . NotEquivalent path) changed
   when (isTrue (sessionCheckIdempotence session)) $ do
     (settled, _) <- formatting (extensionsAndCpp formatted) printedTree formatted
     when (settled /= formatted) $
@@ -471,8 +492,11 @@ whyNotIdempotent before after =
 rewritten ::
   -- | How to parse both sides.
   ParserConfig ->
+  -- | Whether to compare the two, and in which configurations where the
+  -- file uses the preprocessor.
+  AstCheck ->
   -- | Whether the file uses the preprocessor.
-  Bool ->
+  Choice "cppUsed" ->
   -- | The file, for the parser's messages.
   FilePath ->
   -- | What was read, and the tree it was printed from where it has one.
@@ -481,8 +505,9 @@ rewritten ::
   Text ->
   -- | What formatting changed, and the tree of what was printed.
   (Maybe Text, Maybe ParsedModule)
-rewritten config cpp path (before, printedFrom') after
-  | not cpp = case parseModule config path after of
+rewritten config astCheck cppUsed path (before, printedFrom') after
+  | NoAstCheck <- astCheck = (Nothing, Nothing)
+  | isFalse cppUsed = case parseModule config path after of
       Left e ->
         ( Just ("the formatted output does not parse: " <> describeParseError e),
           Nothing
@@ -496,18 +521,62 @@ rewritten config cpp path (before, printedFrom') after
       syntaxDifference (pmModule b') (pmModule a')
         <|> commentDifference b' a'
     whatParsed = either (const Nothing) Just
-    underCpp = case correspondingBranches before after of
-      Left _ -> Just "the input or output could not be split into configurations"
-      Right pairs -> firstJust [compareBranch b a | (b, a) <- pairs]
+    underCpp = case astCheck of
+      NoAstCheck -> Nothing
+      EachCppBranch -> case correspondingBranches before after of
+        Left _ ->
+          Just "the input or output could not be split into configurations"
+        Right pairs -> firstJust [compareBranch b a | (b, a) <- pairs]
+      EachCppConfiguration limit ->
+        case (countLeaves before, countLeaves after) of
+          (Left why, _) -> unsplit "input" why
+          (_, Left why) -> unsplit "output" why
+          (Right went, Right came)
+            | went /= came ->
+                Just
+                  ( "formatting changed how many configurations there are,"
+                      <> " from "
+                      <> tshow went
+                      <> " to "
+                      <> tshow came
+                  )
+            | otherwise -> case (enumerate before, enumerate after) of
+                (Left why, _) -> unsplit "input" why
+                (_, Left why) -> unsplit "output" why
+                (Right b, Right a) -> alongside b a
+            where
+              enumerate
+                | went <= toInteger limit = answeredLeaves
+                | otherwise = answeredLinearLeaves
+    unsplit side why =
+      Just ("the " <> side <> "'s configurations: " <> describeCppError why)
+    alongside went came =
+      firstJust $
+        [ maybe
+            (Just "a configuration of the input the output does not have")
+            (compareBranch (Just b) . Just)
+            (Map.lookup answers output)
+        | (answers, b) <- went
+        ]
+          <> [ Just "a configuration of the output the input does not have"
+             | any ((`Map.notMember` input) . fst) came
+             ]
+      where
+        input = Map.fromList went
+        output = Map.fromList came
     compareBranch Nothing Nothing = Nothing
     compareBranch Nothing (Just _) = Just "a configuration no longer aborts preprocessing"
     compareBranch (Just _) Nothing = Just "a configuration now aborts preprocessing"
     compareBranch (Just b) (Just a) = ("in one configuration, " <>) <$> difference b a
     difference b a = case (parseModule config path b, parseModule config path a) of
-      (Left _, _) -> Nothing
+      (Left e, _) -> unread e
       (_, Left e) ->
         Just ("the formatted output does not parse: " <> describeParseError e)
       (Right b', Right a') -> comparing b' a'
+    unread e = case astCheck of
+      EachCppConfiguration _ ->
+        Just ("the input does not parse: " <> describeParseError e)
+      _ -> Nothing
     firstJust = foldr (<|>) Nothing
 
 -- | Give up with the given error where there is one to give up over.

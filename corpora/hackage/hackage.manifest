@@ -26,7 +26,7 @@ formatted       3102bb30026e  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Pragmas.
 formatted       76490fc3bd40  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Pretty.hs
 formatted       92ef6a29a48a  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Primitives.hs
 formatted       cd156da2fa25  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Strict.hs
-formatted       c378a2b833ad  Agda-2.8.0/src/full/Agda/Compiler/ToTreeless.hs
+formatted       c446fe49857d  Agda-2.8.0/src/full/Agda/Compiler/ToTreeless.hs
 formatted       0abe92b8f16f  Agda-2.8.0/src/full/Agda/Compiler/Treeless/AsPatterns.hs
 formatted       1ef5a4fa98a1  Agda-2.8.0/src/full/Agda/Compiler/Treeless/Builtin.hs
 formatted       ce128b9cab5e  Agda-2.8.0/src/full/Agda/Compiler/Treeless/Compare.hs
@@ -220,7 +220,7 @@ formatted       e7eb98a27abe  Agda-2.8.0/src/full/Agda/TypeChecking/IApplyConflu
 formatted       87b0399276b5  Agda-2.8.0/src/full/Agda/TypeChecking/Implicit.hs
 formatted       d835876f5a10  Agda-2.8.0/src/full/Agda/TypeChecking/Injectivity.hs
 formatted       32f96c636db2  Agda-2.8.0/src/full/Agda/TypeChecking/Inlining.hs
-formatted       38effe4219d6  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs
+formatted       fd93db7b1645  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs
 formatted       daede539773d  Agda-2.8.0/src/full/Agda/TypeChecking/InstanceArguments.hs-boot
 formatted       e3ca55cde230  Agda-2.8.0/src/full/Agda/TypeChecking/Irrelevance.hs
 formatted       f5e2359204d8  Agda-2.8.0/src/full/Agda/TypeChecking/Irrelevance.hs-boot
@@ -260,7 +260,7 @@ formatted       dbde98a0370f  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Option
 formatted       2b144a9f6ada  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Options.hs-boot
 formatted       a266ccade893  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Pure.hs
 formatted       f549f9160d1c  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Pure.hs-boot
-formatted       77c9a4fc8fbb  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Signature.hs
+formatted       5cded2b7b195  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Signature.hs
 formatted       691ffa6dc30c  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Signature.hs-boot
 formatted       93624d713c05  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/SizedTypes.hs
 formatted       ede0f3649b77  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/State.hs
@@ -2421,7 +2421,7 @@ formatted       099ade9775e8  hedgehog-1.7/src/Hedgehog/Internal/Property.hs
 formatted       144a39866885  hedgehog-1.7/src/Hedgehog/Internal/Queue.hs
 formatted       9d14d12ad0b0  hedgehog-1.7/src/Hedgehog/Internal/Range.hs
 formatted       e83fa4c27743  hedgehog-1.7/src/Hedgehog/Internal/Region.hs
-formatted       1f1c1a46ba31  hedgehog-1.7/src/Hedgehog/Internal/Report.hs
+formatted       8aa3f344f5bc  hedgehog-1.7/src/Hedgehog/Internal/Report.hs
 formatted       12a45329d79f  hedgehog-1.7/src/Hedgehog/Internal/Runner.hs
 formatted       fb3eda304e9f  hedgehog-1.7/src/Hedgehog/Internal/Seed.hs
 formatted       8b91f20c13a8  hedgehog-1.7/src/Hedgehog/Internal/Show.hs
@@ -2711,7 +2711,7 @@ formatted       2b9b1428a50f  idris-1.3.4/src/IRTS/Simplified.hs
 formatted       c149d514359b  idris-1.3.4/src/IRTS/System.hs
 formatted       0b84ce237bb8  idris-1.3.4/src/Idris/ASTUtils.hs
 formatted       a8f154205e55  idris-1.3.4/src/Idris/AbsSyntax.hs
-formatted       f6be69b820bf  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
+formatted       fbcff6ef7706  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
 formatted       9f032fa98b74  idris-1.3.4/src/Idris/Apropos.hs
 formatted       dc91bae3387b  idris-1.3.4/src/Idris/CaseSplit.hs
 formatted       887228791bf4  idris-1.3.4/src/Idris/Chaser.hs
@@ -2725,9 +2725,9 @@ formatted       32e1f1dc7a41  idris-1.3.4/src/Idris/Core/DeepSeq.hs
 formatted       3b956c85cb93  idris-1.3.4/src/Idris/Core/Elaborate.hs
 formatted       d0216dc5a258  idris-1.3.4/src/Idris/Core/Evaluate.hs
 formatted       5c128b375f3d  idris-1.3.4/src/Idris/Core/Execute.hs
-formatted       a0c632cd26d6  idris-1.3.4/src/Idris/Core/ProofState.hs
+formatted       226165ce24ee  idris-1.3.4/src/Idris/Core/ProofState.hs
 formatted       0ccd6a932fe8  idris-1.3.4/src/Idris/Core/ProofTerm.hs
-formatted       cd52f6495e8c  idris-1.3.4/src/Idris/Core/TT.hs
+formatted       d69d40cd2562  idris-1.3.4/src/Idris/Core/TT.hs
 formatted       86a2b33d069a  idris-1.3.4/src/Idris/Core/Typecheck.hs
 formatted       7872856d0301  idris-1.3.4/src/Idris/Core/Unify.hs
 formatted       01a710f67630  idris-1.3.4/src/Idris/Core/WHNF.hs
@@ -2735,13 +2735,13 @@ formatted       36e22c48009d  idris-1.3.4/src/Idris/Coverage.hs
 formatted       61677e52356c  idris-1.3.4/src/Idris/DSL.hs
 formatted       04b448aefa16  idris-1.3.4/src/Idris/DataOpts.hs
 formatted       591136fc0c25  idris-1.3.4/src/Idris/DeepSeq.hs
-formatted       2ece0ec01e3c  idris-1.3.4/src/Idris/Delaborate.hs
+formatted       0e44940cf3cb  idris-1.3.4/src/Idris/Delaborate.hs
 formatted       c0a210b99952  idris-1.3.4/src/Idris/Directives.hs
-formatted       d3d91df82106  idris-1.3.4/src/Idris/Docs.hs
+formatted       69f1b2620b45  idris-1.3.4/src/Idris/Docs.hs
 formatted       a485f5642886  idris-1.3.4/src/Idris/Docstrings.hs
 formatted       a1c474156864  idris-1.3.4/src/Idris/Elab/AsPat.hs
 formatted       fc2ff424b9e3  idris-1.3.4/src/Idris/Elab/Clause.hs
-formatted       9e5c2909e062  idris-1.3.4/src/Idris/Elab/Data.hs
+formatted       fb82e28547a1  idris-1.3.4/src/Idris/Elab/Data.hs
 formatted       8513eb951865  idris-1.3.4/src/Idris/Elab/Implementation.hs
 formatted       9349c5236898  idris-1.3.4/src/Idris/Elab/Interface.hs
 formatted       7c5f6b45e740  idris-1.3.4/src/Idris/Elab/Provider.hs
@@ -2783,9 +2783,9 @@ formatted       3f33ff4561d4  idris-1.3.4/src/Idris/Parser/Stack.hs
 formatted       d415f9474dc1  idris-1.3.4/src/Idris/PartialEval.hs
 formatted       58ad84ded5d8  idris-1.3.4/src/Idris/Primitives.hs
 formatted       03bf99a63aa4  idris-1.3.4/src/Idris/ProofSearch.hs
-formatted       168d70e142b3  idris-1.3.4/src/Idris/Prover.hs
+formatted       c1579161f338  idris-1.3.4/src/Idris/Prover.hs
 formatted       ad0ff1beaf54  idris-1.3.4/src/Idris/Providers.hs
-formatted       c47d07c305a7  idris-1.3.4/src/Idris/REPL.hs
+formatted       9c0dae744ae6  idris-1.3.4/src/Idris/REPL.hs
 formatted       d43671c3f627  idris-1.3.4/src/Idris/REPL/Browse.hs
 formatted       586418ee0cf6  idris-1.3.4/src/Idris/REPL/Commands.hs
 formatted       f36f6bde407f  idris-1.3.4/src/Idris/REPL/Parser.hs
@@ -2806,7 +2806,7 @@ formatted       e865ae48f11b  intero-0.1.40/Setup.hs
 formatted       621065d3b05d  intero-0.1.40/src/Completion.hs
 formatted       b0784cea4075  intero-0.1.40/src/GhciFind.hs
 partly-checked  c0aea4c4237d  intero-0.1.40/src/GhciInfo.hs
-formatted       e0fd727cd7cd  intero-0.1.40/src/GhciMonad.hs
+formatted       2f47a95dc6c5  intero-0.1.40/src/GhciMonad.hs
 formatted       43c5576cb10f  intero-0.1.40/src/GhciTags.hs
 formatted       72999d5c814e  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
@@ -3271,10 +3271,10 @@ formatted       74bebaa57c03  pandoc-3.10.2/src/Text/Pandoc/Writers/BibTeX.hs
 formatted       c3a3e99a6a7b  pandoc-3.10.2/src/Text/Pandoc/Writers/Blaze.hs
 formatted       fd730c859a35  pandoc-3.10.2/src/Text/Pandoc/Writers/ChunkedHTML.hs
 formatted       936b3d7e333a  pandoc-3.10.2/src/Text/Pandoc/Writers/CommonMark.hs
-formatted       4c3d328643fe  pandoc-3.10.2/src/Text/Pandoc/Writers/ConTeXt.hs
+formatted       a20a95dd9cde  pandoc-3.10.2/src/Text/Pandoc/Writers/ConTeXt.hs
 formatted       d9b0707d098c  pandoc-3.10.2/src/Text/Pandoc/Writers/CslJson.hs
 formatted       9f27f448bef2  pandoc-3.10.2/src/Text/Pandoc/Writers/Djot.hs
-formatted       a5d327fae7c4  pandoc-3.10.2/src/Text/Pandoc/Writers/DocBook.hs
+formatted       12deee082709  pandoc-3.10.2/src/Text/Pandoc/Writers/DocBook.hs
 formatted       7bf8f7c3beff  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx.hs
 formatted       61434c17e954  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/OpenXML.hs
 formatted       47c7fc1f3217  pandoc-3.10.2/src/Text/Pandoc/Writers/Docx/StyleMap.hs
@@ -3308,7 +3308,7 @@ formatted       c57101b9ec66  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Tab
 formatted       02c7eb593d88  pandoc-3.10.2/src/Text/Pandoc/Writers/Markdown/Types.hs
 formatted       3d9d722a4e7e  pandoc-3.10.2/src/Text/Pandoc/Writers/Math.hs
 formatted       b64a72014932  pandoc-3.10.2/src/Text/Pandoc/Writers/MediaWiki.hs
-formatted       6390452aa35b  pandoc-3.10.2/src/Text/Pandoc/Writers/Ms.hs
+formatted       1c7035f5fa51  pandoc-3.10.2/src/Text/Pandoc/Writers/Ms.hs
 formatted       80ea597c2f04  pandoc-3.10.2/src/Text/Pandoc/Writers/Muse.hs
 formatted       4acde5355993  pandoc-3.10.2/src/Text/Pandoc/Writers/Native.hs
 formatted       8ef435634695  pandoc-3.10.2/src/Text/Pandoc/Writers/ODT.hs
@@ -4170,7 +4170,7 @@ formatted       c68eea536d8f  servant-server-0.20.3.0/test/Servant/Server/UsingC
 formatted       7053087a930f  servant-server-0.20.3.0/test/Servant/ServerSpec.hs
 formatted       2fbd14b119a4  servant-server-0.20.3.0/test/Spec.hs
 formatted       e865ae48f11b  shake-0.19.9/Setup.hs
-formatted       1115d98036fa  shake-0.19.9/docs/manual/Shakefile.hs
+formatted       99d6aa77ded4  shake-0.19.9/docs/manual/Shakefile.hs
 formatted       9d11f22fc368  shake-0.19.9/src/Development/Ninja/All.hs
 formatted       3104f3ca6fe0  shake-0.19.9/src/Development/Ninja/Env.hs
 formatted       df84026a633e  shake-0.19.9/src/Development/Ninja/Lexer.hs
@@ -4277,7 +4277,7 @@ formatted       b1f4f9102098  shake-0.19.9/src/Test/Manual.hs
 formatted       0ea86eab061d  shake-0.19.9/src/Test/Match.hs
 formatted       3358afb343e9  shake-0.19.9/src/Test/Monad.hs
 formatted       30eaa5d85dba  shake-0.19.9/src/Test/Ninja.hs
-formatted       78f51e13afdb  shake-0.19.9/src/Test/Oracle.hs
+formatted       33fd069ec71b  shake-0.19.9/src/Test/Oracle.hs
 formatted       3a29cbe0f415  shake-0.19.9/src/Test/OrderOnly.hs
 formatted       11c7d4112a98  shake-0.19.9/src/Test/Parallel.hs
 formatted       af1e17f9eab1  shake-0.19.9/src/Test/Pool.hs
@@ -4286,8 +4286,8 @@ formatted       8f84d993fd5b  shake-0.19.9/src/Test/Random.hs
 formatted       2cbfb37c7d59  shake-0.19.9/src/Test/Rebuild.hs
 formatted       685ecba8ab37  shake-0.19.9/src/Test/Reschedule.hs
 formatted       a4beab4d5e04  shake-0.19.9/src/Test/Resources.hs
-formatted       721fa3aeb323  shake-0.19.9/src/Test/Self.hs
-formatted       f64db4b85e97  shake-0.19.9/src/Test/SelfMake.hs
+formatted       34565f97b7a7  shake-0.19.9/src/Test/Self.hs
+formatted       ccd0da43b663  shake-0.19.9/src/Test/SelfMake.hs
 formatted       ce7a14c40a6c  shake-0.19.9/src/Test/Tar.hs
 formatted       010efc5cef7a  shake-0.19.9/src/Test/Targets.hs
 formatted       2ada3fd9cfe5  shake-0.19.9/src/Test/Thread.hs

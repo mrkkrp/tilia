@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | What the benchmarks of formatting measure: formatting a fixed sample of
 -- the Hackage corpus and checking what that printed, and formatting modules
@@ -15,6 +17,7 @@ module Tilia.Bench.Cases
 where
 
 import Data.ByteString qualified as BS
+import Data.Choice (isTrue, pattern Don't)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -22,11 +25,10 @@ import Data.Text.Encoding (decodeUtf8')
 import Data.Traversable (for)
 import Tilia.Corpus (Example (..))
 import Tilia.Cpp (usesCpp)
-import Tilia.Format (rewritten)
-import Tilia.Parser (parseModule)
+import Tilia.Format (AstCheck (..), rewritten)
+import Tilia.Parser (ParserConfig (..), parseModule)
 import Tilia.Pragma (Defaults)
-import Tilia.TestConfig (formatCppExample, printExample)
-import Tilia.TestUtils (effectiveExtensionsFor, parserConfigFor)
+import Tilia.TestConfig (defaultsFor, effectiveExtensionsFor, formatExample)
 
 -- | What part of a run a benchmark measures.
 data Stage
@@ -68,7 +70,7 @@ data Subject = Subject
     -- | The module.
     subjectSource :: Text,
     -- | Format it, or 'Nothing' where it is declined.
-    subjectFormat :: Text -> Maybe Text,
+    subjectFormat :: Text -> IO (Maybe Text),
     -- | Check what formatting it printed, giving what changed, where it is
     -- checked.
     subjectCheck :: Maybe (Text -> Maybe Text)
@@ -214,33 +216,32 @@ syntheticSubjects =
 
 -- | A module to format, and to check what that printed where it is
 -- checked.
-subjectOf :: Maybe Defaults -> Bool -> Text -> Text -> Subject
+subjectOf ::
+  -- | What the package around it puts in force, if it is a module of one.
+  Maybe Defaults ->
+  -- | Whether to check what formatting it printed.
+  Bool ->
+  -- | Its name in the corpus, or the stress it makes.
+  Text ->
+  -- | The module.
+  Text ->
+  Subject
 subjectOf package isChecked name source =
   Subject
     { subjectName = name,
       subjectSource = source,
-      subjectFormat = formatted package path,
+      subjectFormat =
+        fmap (either (const Nothing) Just)
+          . formatExample (Don't #check) package path,
       subjectCheck =
         if isChecked
-          then Just (fst . rewritten parser cpp path (source, tree))
+          then Just (fst . rewritten parser EachCppBranch cpp path (source, tree))
           else Nothing
     }
   where
     path = T.unpack name
-    parser = parserConfigFor package
+    parser = ParserConfig (defaultsFor package)
     cpp = usesCpp (effectiveExtensionsFor package source) source
     tree
-      | cpp = Nothing
+      | isTrue cpp = Nothing
       | otherwise = either (const Nothing) Just (parseModule parser path source)
-
--- | What formatting a module prints, as the corpus does it, or 'Nothing'
--- where it is declined.
-formatted :: Maybe Defaults -> FilePath -> Text -> Maybe Text
-formatted package path source
-  | usesCpp (effectiveExtensionsFor package source) source =
-      either (const Nothing) Just (formatCppExample package path source)
-  | otherwise =
-      either
-        (const Nothing)
-        (Just . printExample package source)
-        (parseModule (parserConfigFor package) path source)

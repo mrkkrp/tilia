@@ -73,6 +73,7 @@ import Control.DeepSeq (NFData)
 import Data.Bifunctor (first)
 import Data.Char (isUpper)
 import Data.Choice (Choice, isTrue)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.List (nub, sortOn, tails)
 import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
@@ -382,7 +383,7 @@ data Import = Import
     -- what it brings in only once the module it comes from has been asked.
     importNames :: Maybe (Bool, [ImportItem])
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData Import
 
@@ -394,7 +395,7 @@ data ImportItem
     ImportedAll OpName
   | -- | @T(a, b)@: the name and the members written out beside it.
     ImportedSome OpName [OpName]
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData ImportItem
 
@@ -408,7 +409,7 @@ moduleImports ::
 moduleImports implicitPrelude configurations = prelude <> written
   where
     written =
-      nub (fmap (fromDecl . unLoc) (sortOn spanOf (concatMap hsmodImports configurations)))
+      nubOrd (fmap (fromDecl . unLoc) (sortOn spanOf (concatMap hsmodImports configurations)))
     prelude
       | not (isTrue implicitPrelude) = []
       | any ((== "Prelude") . importModule) written = []
