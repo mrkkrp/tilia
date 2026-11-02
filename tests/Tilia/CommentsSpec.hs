@@ -172,10 +172,7 @@ spec = do
     it "appends a comment that follows every node rather than dropping it" $
       let c = one "module M where\nx = 1\n-- after\n"
           d = located (mkSpan (2, 1) (2, 6)) (txt "x = 1")
-       in
-          -- The blank line is added: a comment after everything is about the
-          -- file rather than about the line it happens to follow.
-          render (attachComments [c] d) `shouldBe` "x = 1\n\n-- after\n"
+       in render (attachComments [c] d) `shouldBe` "x = 1\n-- after\n"
 
     it "reaches inside a variant, whichever branch renders" $
       let c = one "module M where\nx = 1 -- note\n"
