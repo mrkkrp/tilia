@@ -14,5 +14,4 @@ data Record = Record
 
 carriedOn = a + b -- said once
                   -- and never twice
-
 nextOne = 1

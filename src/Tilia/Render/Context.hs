@@ -28,6 +28,7 @@ module Tilia.Render.Context
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
+    directiveBetween,
 
     -- * Entering the tree
     at,
@@ -262,15 +263,20 @@ lineCommentWrittenBetween _ _ _ = False
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no
 -- preprocessor directive anywhere between?
-remarkUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
+remarkUnder ::
+  -- | The context.
+  Ctx ->
+  -- | What comes first.
+  Maybe Span ->
+  -- | What comes next.
+  Maybe Span ->
+  Bool
 remarkUnder ctx ma@(Just a) mb@(Just b) =
   not (separatedByBlank ctx ma mb)
-    && not (any directiveAt [spanEndLine a + 1 .. spanStartLine b - 1])
+    && not (directiveBetween ctx ma mb)
     && any
       (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
       (printedBetween ctx a b)
-  where
-    directiveAt n = directivePresentOnLine n (sourceLines (ctxSource ctx))
 remarkUnder _ _ _ = False
 
 -- | Does the first comment printed between the two spans begin on the line
@@ -287,6 +293,21 @@ separatedByBlank ctx ma@(Just a) mb = case nextPrinted ctx ma mb of
   Just s -> any (writtenBlank ctx) [spanEndLine a + 1 .. spanStartLine s - 1]
   Nothing -> False
 separatedByBlank _ _ _ = False
+
+-- | Is a preprocessor directive written between the two spans?
+directiveBetween ::
+  -- | The context.
+  Ctx ->
+  -- | What comes first.
+  Maybe Span ->
+  -- | What comes next.
+  Maybe Span ->
+  Bool
+directiveBetween ctx (Just a) (Just b) =
+  any
+    (`directivePresentOnLine` sourceLines (ctxSource ctx))
+    [spanEndLine a + 1 .. spanStartLine b - 1]
+directiveBetween _ _ _ = False
 
 -- | Did the author leave this line empty?
 --

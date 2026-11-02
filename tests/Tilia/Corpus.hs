@@ -409,6 +409,7 @@ ormoluSkip =
     <> ormoluRecordBraces
     <> ormoluUnicodeSyntax
     <> ormoluCommentsUnderTheLastDeclaration
+    <> ormoluOneLineRuns
 
 -- | Ormolu examples with a space between a record and its braces.
 ormoluRecordBraces :: [FilePath]
@@ -445,6 +446,35 @@ ormoluCommentsUnderTheLastDeclaration :: [FilePath]
 ormoluCommentsUnderTheLastDeclaration =
   [ "module-header" </> "stack-header-0.hs",
     "module-header" </> "stack-header-1.hs"
+  ]
+
+-- | Ormolu examples with one-line declarations of one kind written
+-- together, which we keep together.
+ormoluOneLineRuns :: [FilePath]
+ormoluOneLineRuns =
+  [ "declaration" </> "data" </> "kind-annotations.hs",
+    "declaration" </> "data" </> "required-type-arguments.hs",
+    "declaration" </> "default" </> "default.hs",
+    "declaration" </> "instance" </> "empty-instance.hs",
+    "declaration" </> "role-annotation" </> "single-line.hs",
+    "declaration" </> "signature" </> "fixity" </> "infixl.hs",
+    "declaration" </> "signature" </> "fixity" </> "infixr.hs",
+    "declaration" </> "signature" </> "specialize" </> "specialize-instance.hs",
+    "declaration" </> "type-families" </> "type-family" </> "injective.hs",
+    "declaration" </> "type-families" </> "type-family" </> "operator.hs",
+    "declaration" </> "type" </> "misc-kind-signatures.hs",
+    "declaration" </> "type" </> "promotion-1.hs",
+    "declaration" </> "value" </> "function" </> "arithmetic-sequences.hs",
+    "declaration" </> "value" </> "function" </> "do" </> "blocks.hs",
+    "declaration" </> "value" </> "function" </> "multiline-strings-0.hs",
+    "declaration" </> "value" </> "function" </> "multiline-strings-3.hs",
+    "declaration" </> "value" </> "function" </> "operator-sections.hs",
+    "declaration" </> "value" </> "function" </> "overloaded-labels.hs",
+    "declaration" </> "value" </> "function" </> "pattern" </> "strictness.hs",
+    "declaration" </> "value" </> "function" </> "required-type-arguments.hs",
+    "declaration" </> "value" </> "function" </> "simple.hs",
+    "declaration" </> "value" </> "function" </> "strings.hs",
+    "declaration" </> "value" </> "function" </> "tuple-sections.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.

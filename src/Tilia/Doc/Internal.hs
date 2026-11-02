@@ -7,6 +7,7 @@ module Tilia.Doc.Internal
     Doc (..),
     Spill (..),
     printsNothing,
+    printsOnOneLine,
     foldChildren,
     mapChildren,
     spine,
@@ -133,6 +134,26 @@ printsNothing = \case
   DFence _ d -> printsNothing d
   DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
   _ -> False
+
+-- | Does this document print on one line, holding neither a line break nor
+-- a choice?
+printsOnOneLine ::
+  -- | The layout of the group it is printed in.
+  Layout ->
+  -- | The document.
+  Doc ->
+  Bool
+printsOnOneLine layout = all single . spineAt layout
+  where
+    single x = case unwrap x of
+      Just (w, y) -> printsOnOneLine (layoutInside layout w) y
+      Nothing -> case x of
+        DHardBreak -> False
+        DBreak -> layout == Flat
+        DSoftBreak -> layout == Flat
+        DVerbatimBreak{} -> False
+        DCppChoice{} -> False
+        _ -> True
 
 -- | Combine what a function makes of each document directly inside this
 -- one, a variant's broken layout standing for the variant.

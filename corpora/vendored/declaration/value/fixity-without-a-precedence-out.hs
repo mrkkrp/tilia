@@ -4,11 +4,8 @@
 module Rope.Join where
 
 infixr `joinedTo`
-
 infixl 5 `besides`
-
 infix <~>, `against`
-
 infixr type :~
 
 class Splice r where

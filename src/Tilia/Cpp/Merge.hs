@@ -38,6 +38,7 @@ import Tilia.Doc.Internal
     onlySpacing,
     printedFrom,
     printsNothing,
+    printsOnOneLine,
     spine,
     spineAt,
     unwrap,
@@ -150,7 +151,8 @@ merge written conditionals guards varied settledOthers = go Broken
             column = spanStartColumn <$> listToMaybe (drop inside spans)
 
     factored within layout ss =
-      let same (x, _) (y, _) = agree varied layout x y
+      let same (x, _) (y, _) =
+            agree varied layout x y || sameChoice varied layout x y
           common as bs =
             [ (x, is <> js)
             | ((x, is), (_, js)) <- lcs (anchoring . fst) same as bs
@@ -269,7 +271,7 @@ merge written conditionals guards varied settledOthers = go Broken
     whole layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
       | Just splits <- traverse firstPart ss,
-        not (any (\(_, x, _) -> onOneLine layout x) splits) =
+        not (any (\(_, x, _) -> printsOnOneLine layout x) splits) =
           go layout [mconcat (spacing <> [x]) | (spacing, x, _) <- splits]
             <> whole layout [more | (_, _, more) <- splits]
       | otherwise = choice (fmap mconcat ss)
@@ -480,6 +482,36 @@ agreeOn varied layout x y = case (x, y) of
     _ -> x == y
   where
     inside = agree varied layout
+
+-- | Are these two choices, in the same wrappers, between alternatives of the
+-- same conditionals that print alike but for the space in them?
+sameChoice ::
+  -- | The lines the answer can change.
+  Varied ->
+  -- | The layout of the group they are printed in.
+  Layout ->
+  -- | The first.
+  Doc ->
+  -- | The second.
+  Doc ->
+  Bool
+sameChoice varied layout x y = case (x, y) of
+  (DCppChoice ws bs e, DCppChoice ws' cs e') ->
+    ws == ws'
+      && fmap fst bs == fmap fst cs
+      && and (zipWith alike (e : fmap snd bs) (e' : fmap snd cs))
+  _ -> case (unwrap x, unwrap y) of
+    (Just (w, x'), Just (v, y')) ->
+      w == v && sameChoice varied (layoutInside layout w) x' y'
+    _ -> False
+  where
+    alike a b =
+      length as == length bs'
+        && and (zipWith (agreeOn varied layout) as bs')
+      where
+        as = printed a
+        bs' = printed b
+    printed = filter (not . onlySpacing) . spineAt layout
 
 -- | Is this document one choice, in nothing but wrappers?
 onlyChoice :: Doc -> Bool
@@ -777,21 +809,6 @@ printedLines :: Layout -> [Doc] -> ([Doc], Bool)
 printedLines layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
   where
     (ps, _, cut) = partsOf layout Within xs
-
--- | Does this document print on one line, holding neither a line break nor
--- a choice?
-onOneLine :: Layout -> Doc -> Bool
-onOneLine layout = all single . spineAt layout
-  where
-    single x = case unwrap x of
-      Just (w, y) -> onOneLine (layoutInside layout w) y
-      Nothing -> case x of
-        DHardBreak -> False
-        DBreak -> layout == Flat
-        DSoftBreak -> layout == Flat
-        DVerbatimBreak{} -> False
-        DCppChoice{} -> False
-        _ -> True
 
 -- | A line less the wrappers that make no difference to it: a group around
 -- what does not depend on the layout, and a region around regions and

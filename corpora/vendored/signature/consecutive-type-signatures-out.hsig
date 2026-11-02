@@ -3,5 +3,4 @@ signature Store where
 data Handle
 
 open :: FilePath -> IO Handle
-
 close :: Handle -> IO ()

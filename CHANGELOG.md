@@ -16,6 +16,16 @@
   [Issue 310](https://github.com/mrkkrp/tilia/issues/310).
 * A comment written right under the last declaration of a module stays
   right under it, rather than getting an empty line above it.
+* Top-level declarations of one kind written one after another, each on
+  one line and with no Haddock, stay together rather than getting an empty
+  line between each two: a run of fixity declarations, of bindings, of type
+  synonyms, of instances without a body, and so on. Declarations of
+  different kinds, a declaration over several lines or with a Haddock, and
+  two declarations with a preprocessor directive between them still get an
+  empty line between them, and an empty line the author left stays. A
+  binding no longer joins a signature further up across an empty line the
+  author left above it, so under a run of signatures that empty line stays.
+  [Issue 347](https://github.com/mrkkrp/tilia/issues/347).
 
 ## Tilia 0.1.4.0
 
