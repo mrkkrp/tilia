@@ -132,7 +132,9 @@ vendoredExamples =
                   "other" </> "cpp" </> "macro-standing-for-a-bracket.hs",
                   "other" </> "cpp" </> "macro-before-a-leading-comma.hs",
                   "other" </> "cpp" </> "branch-opening-a-bracket-it-does-not-close.hs",
-                  "other" </> "cpp" </> "line-marker-passed-on-by-cpp.hs"
+                  "other" </> "cpp" </> "line-marker-passed-on-by-cpp.hs",
+                  "other" </> "magic-comment-inside-a-declaration.hs",
+                  "other" </> "cpp" </> "directive-left-as-written.hs"
                 ]
             },
       corpusInPackages = False

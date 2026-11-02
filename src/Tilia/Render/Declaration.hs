@@ -7,6 +7,7 @@
 -- | Declarations: dispatching to the right printer, and grouping.
 module Tilia.Render.Declaration
   ( decls,
+    topLevelDecls,
     declsKeepingGroups,
   )
 where
@@ -15,6 +16,8 @@ import Data.Choice (pattern Don't)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (mapMaybe)
+import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
 import GHC.Hs
 import GHC.Types.ForeignCall (CExportSpec (..))
@@ -34,13 +37,73 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Signature
 import Tilia.Render.Type
-import Tilia.Source (SourceType (..))
+import Tilia.Source (SourceType (..), blankAt, lineAt, sourceLines)
+import Tilia.Span
 import Tilia.Span.Ghc
 
 -- | A run of declarations standing on their own, with blank lines wherever
 -- we think they belong.
 decls :: Ctx -> [LHsDecl GhcPs] -> Doc
 decls ctx = declRun Disregard ctx Free
+
+-- | The top-level declarations of a module, with the lines a
+-- @{- TILIA_OFF -}@ leaves as written printed as written.
+topLevelDecls ::
+  -- | The context.
+  Ctx ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  Doc
+topLevelDecls ctx ds = case ctxMagicCommentRanges ctx of
+  [] -> decls ctx ds
+  kept -> sepBy hardBreak (zipWith joined (Nothing : fmap Just ps) ps)
+    where
+      ps = pieces kept ds
+  where
+    ls = sourceLines (ctxSource ctx)
+    joined previous piece = includeWhen gap hardBreak <> printed piece
+      where
+        gap = any (`blankAt` ls) (gapAbove piece <> foldMap gapBelow previous)
+    gapAbove = \case
+      Preserved from _ -> [from - 1]
+      Formatted _ -> []
+    gapBelow = \case
+      Preserved _ to -> [to + 1]
+      Formatted _ -> []
+    printed = \case
+      Formatted run -> decls ctx (NE.toList run)
+      Preserved from to ->
+        located
+          (mkSpan (from, 1) (to, maybe 1 ((+ 1) . T.length) (lineAt to ls)))
+          ( verbatimLines AtMargin KeepWhitespace $
+              mapMaybe (`lineAt` ls) [from .. to]
+          )
+
+-- | A part of the top-level declarations: those formatted together, or the
+-- lines a @{- TILIA_OFF -}@ leaves as written.
+data Piece
+  = -- | Declarations formatted together.
+    Formatted (NonEmpty (LHsDecl GhcPs))
+  | -- | The first and last line of a stretch left as written.
+    Preserved Int Int
+
+-- | Cut the top-level declarations at the lines left as written.
+pieces ::
+  -- | The first and last line of each stretch left as written.
+  [(Int, Int)] ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  [Piece]
+pieces kept ds = case kept of
+  [] -> run ds
+  (from, to) : rest ->
+    let (before, after) = span (startsBefore from) ds
+     in run before
+          <> [Preserved from to]
+          <> pieces rest (dropWhile (startsBefore (to + 1)) after)
+  where
+    run = foldMap (pure . Formatted) . NE.nonEmpty
+    startsBefore n d = maybe False ((< n) . spanStartLine) (spanOf d)
 
 -- | A run of declarations in a class or an instance, which keeps the
 -- author's grouping.

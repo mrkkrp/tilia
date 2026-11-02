@@ -97,6 +97,7 @@ library
     Tilia.Gathered
     Tilia.Ignore
     Tilia.Imports
+    Tilia.MagicComments
     Tilia.Memo
     Tilia.Newline
     Tilia.Palette

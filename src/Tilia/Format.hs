@@ -89,6 +89,11 @@ import Tilia.Fixity.Plan
     newResolverVia,
     scopeFor,
   )
+import Tilia.MagicComments
+  ( Misplacement (..),
+    misplacedMagicComment,
+    turnedOffThroughout,
+  )
 import Tilia.Palette (Color (Operator, Place), Palette, paint)
 import Tilia.Parser
   ( ParseError,
@@ -118,6 +123,9 @@ data FormatError
     PositionPragmas FilePath
   | -- | The file uses the preprocessor in a way we cannot handle.
     CppUnsupported FilePath CppError
+  | -- | A @{- TILIA_OFF -}@ or @{- TILIA_ON -}@ at this line cannot be
+    -- honoured, and why.
+    MisplacedMagicComment FilePath Int Misplacement
   | -- | An operator the file uses has a fixity we could not establish, as
     -- the file writes it.
     UnknownFixity FilePath [((Maybe Text, OpName), Unknown)]
@@ -154,6 +162,19 @@ describeFormatError palette = \case
     ConfigurationNotParsed{} ->
       "will not format " <> located (describeCppError why)
     _ -> "will not format " <> file path <> ": " <> describeCppError why
+  MisplacedMagicComment path n why ->
+    "will not format "
+      <> file path
+      <> ": "
+      <> case why of
+        NotBetweenDeclarations ->
+          "the {- TILIA_OFF -} or {- TILIA_ON -} at line "
+            <> tshow n
+            <> " is not on a line of its own between top-level declarations"
+        AroundDirective ->
+          "the region that {- TILIA_OFF -} starts at line "
+            <> tshow n
+            <> " includes a CPP directive which is not supported"
   Unreadable path why -> "cannot read " <> file path <> ": " <> why
   Unwritable path why -> "cannot write " <> file path <> ": " <> why
   NotEquivalent path why ->
@@ -204,6 +225,7 @@ formatErrorExitCode = \case
   NotIdempotent{} -> 18
   Threw{} -> 19
   Unwritable{} -> 20
+  MisplacedMagicComment{} -> 21
   CppUnsupported _ why -> case why of
     MalformedConditional{} -> 9
     TooManyConfigurations -> 10
@@ -219,6 +241,7 @@ refused :: FormatError -> Bool
 refused = \case
   PositionPragmas{} -> True
   CppUnsupported{} -> True
+  MisplacedMagicComment{} -> True
   UnknownFixity{} -> True
   NotParsed{} -> False
   NoPackage{} -> False
@@ -401,11 +424,25 @@ formatSource ::
   Text ->
   -- | Result.
   IO (Either FormatError Text)
-formatSource session path source = runExceptT $ do
+formatSource session path source
+  | turnedOffThroughout source = pure (Right source)
+  | otherwise = formatTurnedOn session path source
+
+-- | 'formatSource' for a module no @{- TILIA_OFF -}@ turns off throughout.
+formatTurnedOn ::
+  -- | What the run has worked out already.
+  Session ->
+  -- | The file the source came from.
+  FilePath ->
+  -- | The source.
+  Text ->
+  IO (Either FormatError Text)
+formatTurnedOn session path source = runExceptT $ do
   package <- orElse (NoPackage path) =<< liftIO (sessionPackage session path)
   importer <- liftIO (canonicalizePath path)
   let resolver = sessionResolver session
       config = ParserConfig package
+      misplaced (n, why) = throwE (MisplacedMagicComment path n why)
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
          in (Set.fromList declared, usesCpp declared text)
@@ -441,7 +478,9 @@ formatSource session path source = runExceptT $ do
         | isTrue cpp = do
             render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
               Nothing -> pure defaultRenderConfig{rcExtensions = extensions}
-              Just branches -> renderConfigFor extensions branches
+              Just branches -> do
+                traverse_ misplaced (misplacedMagicComment text branches)
+                renderConfigFor extensions branches
             printed <-
               orElse
                 (CppUnsupported path)
@@ -450,6 +489,7 @@ formatSource session path source = runExceptT $ do
         | otherwise = do
             parsed <-
               maybe (orElse NotParsed (parseModule config path text)) pure already
+            traverse_ misplaced (misplacedMagicComment text (pure parsed))
             render <- renderConfigFor extensions (pure parsed)
             pure
               ( printDoc (renderModule render parsed),

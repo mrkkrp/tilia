@@ -102,6 +102,9 @@ data Ctx = Ctx
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
     ctxHaddocks :: Map (Int, Int) Comment,
+    -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves
+    -- as written.
+    ctxMagicCommentRanges :: [(Int, Int)],
     -- | The knot.
     ctxKnot :: Knot
   }
