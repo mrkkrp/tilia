@@ -35,10 +35,11 @@ shelves = 4 -- of silicon carbide
 posts :: Int
 posts = 12
 
--- With no empty line under it, a comment is about what follows, and an
--- empty line still goes between the two declarations.
+-- With no empty line under it, a comment is about what follows, and the
+-- empty line around a declaration over several lines goes above it.
 cones :: Int
-cones = 3
+cones =
+  3
 
 -- Witness cones, one per shelf.
 coneHeight :: Int
@@ -47,7 +48,6 @@ coneHeight = 2
 -- An empty line inside a block comment is no empty line between them.
 reduction :: Bool
 reduction = True
-
 {- Reduction starts at cone 010,
 
    and ends with the firing. -}

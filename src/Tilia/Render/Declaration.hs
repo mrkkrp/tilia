@@ -16,7 +16,7 @@ import Data.Choice (pattern Don't)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
 import GHC.Hs
@@ -26,6 +26,7 @@ import GHC.Types.Name.Reader (RdrName, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), isGoodSrcSpan, unLoc)
 import Tilia.Doc.Combinators
+import Tilia.Doc.Internal (printsOnOneLine)
 import Tilia.Render.Class
 import Tilia.Render.Context
 import Tilia.Render.Data
@@ -41,10 +42,33 @@ import Tilia.Source (SourceType (..), blankAt, lineAt, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
--- | A run of declarations standing on their own, with blank lines wherever
--- we think they belong.
-decls :: Ctx -> [LHsDecl GhcPs] -> Doc
-decls ctx = declRun Disregard ctx Free
+-- | A run of declarations standing on their own, which keeps together the
+-- one-line declarations of one kind the author wrote together.
+decls ::
+  -- | The context.
+  Ctx ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  Doc
+decls ctx = declRun apart ctx Free
+  where
+    apart previous current =
+      kindOf previous /= kindOf current
+        || any standsApart previous
+        || any standsApart current
+        || directiveBetween
+          ctx
+          (spanOf (fst (NE.last previous)))
+          (spanOf (fst (NE.head current)))
+    standsApart (d, printed) =
+      isDoc (unLoc d) || not (printsOnOneLine Broken printed)
+    kindOf group =
+      listToMaybe
+        [ k
+        | (d, _) <- reverse (NE.toList group),
+          let k = fst (declKind (unLoc d)),
+          k /= PragmaDeclaration
+        ]
 
 -- | The top-level declarations of a module, with the lines a
 -- @{- TILIA_OFF -}@ leaves as written printed as written.
@@ -107,54 +131,73 @@ pieces kept ds = case kept of
 
 -- | A run of declarations in a class or an instance, which keeps the
 -- author's grouping.
-declsKeepingGroups :: Ctx -> [LHsDecl GhcPs] -> Doc
-declsKeepingGroups ctx = declRun Respect ctx Associated
-
--- | Whether the author's own blank lines are consulted.
-data Grouping
-  = Disregard
-  | Respect
-  deriving (Eq, Show)
-
--- | Render a declaration run while applying the requested 'Grouping'.
-declRun :: Grouping -> Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
-declRun grouping ctx style ds =
-  items
-    NoBrace
-    [ includeWhen gap breakOrSpace <> at_ ctx (hsDecl ctx style) d
-    | (previous, current) <- zip (Nothing : fmap Just groups) groups,
-      let gaps = any (`separate` current) previous : repeat False,
-      (gap, d) <- zip gaps (NE.toList current)
-    ]
+declsKeepingGroups ::
+  -- | The context.
+  Ctx ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  Doc
+declsKeepingGroups ctx = declRun apart ctx Associated
   where
-    isSignatureFile = ctxSourceType ctx == SignatureSource
-    groups = groupDecls ctx isSignatureFile ds
-
-    separate previous current =
-      not (remarkUnder ctx ended began || underHeading) && case grouping of
-        Disregard -> True
-        Respect ->
-          separatedByBlank ctx ended began
-            || isDocumented previous
-            || isDocumented current
-      where
-        ended = spanOf (NE.last previous)
-        began = spanOf (NE.head current)
-        underHeading =
-          isHeading (unLoc (NE.last previous))
-            && commentRightUnder ctx ended began
-
-    isDocumented = any (isDocComment . unLoc)
-    isDocComment = \case
+    apart previous current = any documented previous || any documented current
+    documented (d, _) = case unLoc d of
       DocD _ (DocCommentNext _) -> True
       DocD _ (DocCommentPrev _) -> True
       _ -> False
+
+-- | Render a run of declarations, with an empty line wherever the author
+-- left one and between groups kept apart.
+declRun ::
+  -- | Do these neighbouring groups, printed like this, get an empty line
+  -- between them even where the author left none?
+  ( NonEmpty (LHsDecl GhcPs, Doc) ->
+    NonEmpty (LHsDecl GhcPs, Doc) ->
+    Bool
+  ) ->
+  -- | The context.
+  Ctx ->
+  -- | How to print the families among the declarations.
+  FamilyStyle ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  Doc
+declRun apart ctx style ds =
+  items
+    NoBrace
+    [ includeWhen gap breakOrSpace <> printed
+    | (previous, current) <- zip (Nothing : fmap Just groups) groups,
+      let gaps = any (`separate` current) previous : repeat False,
+      (gap, (_, printed)) <- zip gaps (NE.toList current)
+    ]
+  where
+    isSignatureFile = ctxSourceType ctx == SignatureSource
+    groups =
+      fmap (\d -> (d, at_ ctx (hsDecl ctx style) d))
+        <$> groupDecls ctx isSignatureFile ds
+
+    separate previous current =
+      not (remarkUnder ctx ended began || underHeading)
+        && (separatedByBlank ctx ended began || apart previous current)
+      where
+        ended = spanOf (fst (NE.last previous))
+        began = spanOf (fst (NE.head current))
+        underHeading =
+          isHeading (unLoc (fst (NE.last previous)))
+            && commentRightUnder ctx ended began
+
     isHeading = \case
       DocD _ DocGroup{} -> True
       _ -> False
 
 -- | Gather declarations that belong together.
-groupDecls :: Ctx -> Bool -> [LHsDecl GhcPs] -> [NonEmpty (LHsDecl GhcPs)]
+groupDecls ::
+  -- | The context.
+  Ctx ->
+  -- | Are these the declarations of a signature file?
+  Bool ->
+  -- | The declarations.
+  [LHsDecl GhcPs] ->
+  [NonEmpty (LHsDecl GhcPs)]
 groupDecls _ _ [] = []
 groupDecls ctx isSignatureFile (d : ds)
   | isDocNext (unLoc d) = case groupDecls ctx isSignatureFile ds of
@@ -175,13 +218,12 @@ groupDecls ctx isSignatureFile (d : ds)
     isDocNext = \case
       DocD _ (DocCommentNext _) -> True
       _ -> False
-    isDoc = \case
-      DocD _ _ -> True
-      _ -> False
     belongs previous current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
         || isSeries ctx previous current
-        || relatedDecls d current
+        || ( relatedDecls d current
+               && not (separatedByBlank ctx (spanOf previous) (spanOf current))
+           )
         || relatedDecls previous current
 
 -- | A run of type signatures with nothing between them is a list, and a
@@ -215,12 +257,24 @@ data Kind
   | FamilyDeclaration
   | TypeSynonym
   | PragmaDeclaration
+  | FixityDeclaration
+  | InstanceDeclaration
+  | TypeInstance
+  | DataInstance
+  | DerivingDeclaration
+  | SpliceDeclaration
+  | ForeignDeclaration
+  | RoleAnnotation
+  | DefaultDeclaration
   | DocumentsPrevious
   | Unremarkable
   deriving (Eq, Show)
 
 -- | What a declaration is, and what it names.
-declKind :: HsDecl GhcPs -> (Kind, [RdrName])
+declKind ::
+  -- | The declaration.
+  HsDecl GhcPs ->
+  (Kind, [RdrName])
 declKind = \case
   SigD _ (TypeSig _ ns _) -> (TypeSignature, fmap unLoc ns)
   SigD _ (ClassOpSig _ True ns _) -> (DefaultSignature, fmap unLoc ns)
@@ -230,11 +284,15 @@ declKind = \case
   SigD _ (SCCFunSig _ (L _ n) _) -> (PragmaDeclaration, [n])
   SigD _ sig
     | Just n <- specialisedName sig -> (PragmaDeclaration, [n])
+  SigD _ CompleteMatchSig{} -> (PragmaDeclaration, [])
+  SigD _ (FixSig _ (FixitySig _ ns _)) -> (FixityDeclaration, fmap unLoc ns)
   ValD _ (FunBind _ (L _ n) _) -> (FunctionBody, [n])
   ValD _ (PatBind _ p _ _) -> (FunctionBody, collectPatBinders CollNoDictBinders p)
   ValD _ (PatSynBind _ (PSB _ (L _ n) _ _ _)) -> (PatternDefinition, [n])
   AnnD _ (HsAnnotation _ (ValueAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
   AnnD _ (HsAnnotation _ (TypeAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
+  AnnD _ (HsAnnotation _ ModuleAnnProvenance _) -> (PragmaDeclaration, [])
+  RuleD{} -> (PragmaDeclaration, [])
   WarningD _ (Warnings _ ws) ->
     (PragmaDeclaration, [unLoc n | L _ (Warning _ ns _) <- ws, n <- ns])
   TyClD _ (DataDecl _ (L _ n) _ _ _) -> (DataDeclaration, [n])
@@ -242,8 +300,25 @@ declKind = \case
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) -> (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
+  InstD _ ClsInstD{} -> (InstanceDeclaration, [])
+  InstD _ TyFamInstD{} -> (TypeInstance, [])
+  InstD _ DataFamInstD{} -> (DataInstance, [])
+  DerivD{} -> (DerivingDeclaration, [])
+  SpliceD{} -> (SpliceDeclaration, [])
+  ForD{} -> (ForeignDeclaration, [])
+  RoleAnnotD{} -> (RoleAnnotation, [])
+  DefD{} -> (DefaultDeclaration, [])
   DocD _ (DocCommentPrev _) -> (DocumentsPrevious, [])
   _ -> (Unremarkable, [])
+
+-- | Is this a Haddock?
+isDoc ::
+  -- | The declaration.
+  HsDecl GhcPs ->
+  Bool
+isDoc = \case
+  DocD{} -> True
+  _ -> False
 
 -- | Should these two declarations be printed with no blank line between
 -- them?
