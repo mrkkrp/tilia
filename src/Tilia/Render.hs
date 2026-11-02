@@ -35,6 +35,7 @@ import Tilia.Doc.Combinators
 import Tilia.Fixity (Scope, capturedUses)
 import Tilia.Gathered (Gathered)
 import Tilia.Imports (normalizeImports)
+import Tilia.MagicComments (preservedLines)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls, declsKeepingGroups)
@@ -77,7 +78,12 @@ renderModule settings parsed = attachComments loose doc
 
 -- | Render one configuration of a module, and return the comments the
 -- syntax tree does not carry rather than attach them.
-renderConfiguration :: RenderConfig -> ParsedModule -> (Doc, [Comment])
+renderConfiguration ::
+  -- | How to render it.
+  RenderConfig ->
+  -- | The configuration, parsed.
+  ParsedModule ->
+  (Doc, [Comment])
 renderConfiguration settings parsed =
   ( prologue (pmPrologue parsed)
       <> stackHeader
@@ -96,7 +102,10 @@ renderConfiguration settings parsed =
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
     opening = importsOpening (sourceLines (pmSource parsed)) held hsMod
-    loose = fmap (belowOpening opening) held
+    loose = [belowOpening opening c | c <- held, not (leftAlone c)]
+    leftAlone c = any (holds (spanStartLine (commentSpan c))) magicCommentRanges
+    holds n (from, to) = from <= n && n <= to
+    magicCommentRanges = preservedLines (pmSource parsed)
     implicitPrelude =
       fromBool (Set.member ImplicitPrelude (rcExtensions settings))
     sorted m =
@@ -125,6 +134,7 @@ renderConfiguration settings parsed =
                 Just (_, remark) <- [carryingOn c]
               ],
           ctxHaddocks = indexOn haddocks,
+          ctxMagicCommentRanges = magicCommentRanges,
           ctxKnot = knot
         }
 

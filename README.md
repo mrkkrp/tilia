@@ -5,6 +5,8 @@
 * [Excluding files](#excluding-files)
 * [Formatting operator chains](#formatting-operator-chains)
 * [Formatting CPP](#formatting-cpp)
+* [Magic comments](#magic-comments)
+* [Unicode syntax](#unicode-syntax)
 * [Comparison with other formatters](#comparison-with-other-formatters)
 * [Suggested setup per use-case](#suggested-setup-per-use-case)
 * [Contribution](#contribution)
@@ -172,6 +174,33 @@ be self-contained valid Haskell on its own, as long as every configuration
 of the module is a valid Haskell module. A module with too many
 configurations to format, or with something cpp passes on to GHC, such as a
 line marker, is declined and left as it is.
+
+## Magic comments
+
+The lines from a `{- TILIA_OFF -}` to the next `{- TILIA_ON -}` are left
+exactly as written, and so is everything below a `{- TILIA_OFF -}` which is
+not followed by `{- TILIA_ON -}`. Each of these magic comments can only be
+placed on a line of its own between top-level declarations, and the code
+around them is formatted as usual. A `{- TILIA_OFF -}` above all of a
+module's code, with no `{- TILIA_ON -}` after it, leaves the whole module as
+written, whether or not Tilia could format it. Tilia declines a module whose
+magic comments stand anywhere else, or when the regions of code they
+encompass contain a CPP directive.
+
+Because Tilia respects grouping of declarations and can format CPP just like
+ordinary Haskell, you normally should not need magic comments at all. They
+are only useful for exceptional cases, e.g. if you deal with in-code tabular
+data and want to preserve an arrangement such as this:
+
+```haskell
+{- TILIA_OFF -}
+patterns =
+    -- name          warp  weft  twist
+    [ ("herringbone", [ 3,    2,    4 ])
+    , ("houndstooth", [ 2,    3,    5 ])
+    ]
+{- TILIA_ON -}
+```
 
 ## Unicode syntax
 

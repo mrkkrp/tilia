@@ -7,6 +7,13 @@
   arrow notation, and `⟦` and `⟧` around an expression quote opened with
   `[|`. Elsewhere they come out in ASCII, as before.
   [Issue 350](https://github.com/mrkkrp/tilia/issues/350).
+* The lines from a `{- TILIA_OFF -}` to the next `{- TILIA_ON -}` are left
+  exactly as written, and so is everything below a `{- TILIA_OFF -}` with no
+  `{- TILIA_ON -}` after it. These magic comments go on lines of their own
+  between top-level declarations, and one above all of a module's code
+  leaves the whole module as written. A module with a magic comment anywhere
+  else, or with a directive among the lines left as written, is declined.
+  [Issue 310](https://github.com/mrkkrp/tilia/issues/310).
 
 ## Tilia 0.1.4.0
 

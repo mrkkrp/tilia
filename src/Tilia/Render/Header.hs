@@ -29,7 +29,7 @@ import Tilia.Doc.Combinators
 import Tilia.Parser (writtenInHeader)
 import Tilia.Pragma (languageNames, lookupEdition, sameInForce)
 import Tilia.Render.Context
-import Tilia.Render.Declaration (decls)
+import Tilia.Render.Declaration (topLevelDecls)
 import Tilia.Render.Haddock
 import Tilia.Render.Layout
 import Tilia.Render.Literal (writtenString)
@@ -208,10 +208,10 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
     <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
     <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
     <> includeUnless
-      (null hsmodDecls)
+      (null hsmodDecls && null (ctxMagicCommentRanges ctx))
       ( hardBreak
           <> declarationsStart
-          <> declarationLayout (decls ctx hsmodDecls)
+          <> declarationLayout (topLevelDecls ctx hsmodDecls)
       )
   where
     declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of
