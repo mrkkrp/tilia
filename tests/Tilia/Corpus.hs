@@ -408,6 +408,7 @@ ormoluSkip =
   ]
     <> ormoluRecordBraces
     <> ormoluUnicodeSyntax
+    <> ormoluCommentsUnderTheLastDeclaration
 
 -- | Ormolu examples with a space between a record and its braces.
 ormoluRecordBraces :: [FilePath]
@@ -436,6 +437,14 @@ ormoluUnicodeSyntax =
     "declaration" </> "signature" </> "type" </> "unicode.hs",
     "declaration" </> "splice" </> "bracket-unicode.hs",
     "other" </> "linear-arrows.hs"
+  ]
+
+-- | Ormolu examples with a comment written right under the last
+-- declaration, which we keep there.
+ormoluCommentsUnderTheLastDeclaration :: [FilePath]
+ormoluCommentsUnderTheLastDeclaration =
+  [ "module-header" </> "stack-header-0.hs",
+    "module-header" </> "stack-header-1.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.

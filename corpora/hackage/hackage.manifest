@@ -146,7 +146,7 @@ formatted       38e524b350d0  Agda-2.8.0/src/full/Agda/Syntax/Parser/Alex.hs
 formatted       b58b3e60f482  Agda-2.8.0/src/full/Agda/Syntax/Parser/Comments.hs
 formatted       7fe22339886b  Agda-2.8.0/src/full/Agda/Syntax/Parser/Helpers.hs
 formatted       0131f3ce9187  Agda-2.8.0/src/full/Agda/Syntax/Parser/Layout.hs
-formatted       700549be6fd6  Agda-2.8.0/src/full/Agda/Syntax/Parser/Layout.hs-boot
+formatted       b3fb36074827  Agda-2.8.0/src/full/Agda/Syntax/Parser/Layout.hs-boot
 formatted       2e1b70194e94  Agda-2.8.0/src/full/Agda/Syntax/Parser/LexActions.hs
 formatted       a5d57cb1b6b9  Agda-2.8.0/src/full/Agda/Syntax/Parser/LexActions.hs-boot
 formatted       cf610e4bbf57  Agda-2.8.0/src/full/Agda/Syntax/Parser/Literate.hs
@@ -174,7 +174,7 @@ formatted       acff803c8b23  Agda-2.8.0/src/full/Agda/Termination/Monad.hs
 formatted       64b40e96a86a  Agda-2.8.0/src/full/Agda/Termination/Order.hs
 formatted       3d6943fd6805  Agda-2.8.0/src/full/Agda/Termination/RecCheck.hs
 formatted       5d2396bcde51  Agda-2.8.0/src/full/Agda/Termination/Semiring.hs
-formatted       3e1e5a066751  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.hs
+formatted       4f6a313c6d8a  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.hs
 formatted       109612b2572f  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
 formatted       ed0ea780ef94  Agda-2.8.0/src/full/Agda/Termination/Termination.hs
 formatted       9ce4d907acfa  Agda-2.8.0/src/full/Agda/TheTypeChecker.hs
@@ -250,11 +250,11 @@ formatted       aa421afb353b  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Contex
 formatted       93f76be51b99  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Debug.hs
 formatted       07c8440dbd10  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Debug.hs-boot
 formatted       2b0eabe8c79e  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Env.hs
-formatted       46512cb4f780  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Imports.hs
+formatted       14e8cc7080aa  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Imports.hs
 formatted       7d9f46715dba  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/MetaVars.hs
 formatted       894d39f81e58  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/MetaVars.hs-boot
 formatted       a46ae335e8c2  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Modality.hs
-formatted       bbf8f13a117e  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Mutual.hs
+formatted       c45933146dbf  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Mutual.hs
 formatted       75455d5fea54  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Open.hs
 formatted       dbde98a0370f  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Options.hs
 formatted       2b144a9f6ada  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Options.hs-boot
@@ -327,7 +327,7 @@ formatted       5291aa3ee0df  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS.hs
 formatted       6773a3880c72  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Implicit.hs
 formatted       da382d16a0bc  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Problem.hs
 formatted       faf2b455193b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/ProblemRest.hs
-formatted       6a42cd7f2ae2  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify.hs
+formatted       5547efd0889b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify.hs
 formatted       d3a352c1c4d9  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
 formatted       dea533ec809b  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/Types.hs
 formatted       2fe7b7e43894  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record.hs
@@ -368,7 +368,7 @@ formatted       19e137bd74e4  Agda-2.8.0/src/full/Agda/Utils/BiMap.hs
 formatted       09925de009a1  Agda-2.8.0/src/full/Agda/Utils/BoolSet.hs
 formatted       66c20e52ae54  Agda-2.8.0/src/full/Agda/Utils/Boolean.hs
 formatted       880aa8847616  Agda-2.8.0/src/full/Agda/Utils/CallStack.hs
-formatted       c39e106918fe  Agda-2.8.0/src/full/Agda/Utils/CallStack/Base.hs
+formatted       c80ffb07e2eb  Agda-2.8.0/src/full/Agda/Utils/CallStack/Base.hs
 formatted       dfecf0fc01d4  Agda-2.8.0/src/full/Agda/Utils/CallStack/Pretty.hs
 formatted       eeedf1a4e3da  Agda-2.8.0/src/full/Agda/Utils/Char.hs
 formatted       2b8eb290abc6  Agda-2.8.0/src/full/Agda/Utils/Cluster.hs
@@ -413,7 +413,7 @@ formatted       fde8defcff6d  Agda-2.8.0/src/full/Agda/Utils/Memo.hs
 formatted       ae784faa4e52  Agda-2.8.0/src/full/Agda/Utils/Monad.hs
 formatted       4f8109a5fa85  Agda-2.8.0/src/full/Agda/Utils/Monoid.hs
 formatted       92bb2192c3b2  Agda-2.8.0/src/full/Agda/Utils/Null.hs
-formatted       4fd8ca5748d3  Agda-2.8.0/src/full/Agda/Utils/POMonoid.hs
+formatted       de0ff498caf9  Agda-2.8.0/src/full/Agda/Utils/POMonoid.hs
 formatted       bb186d0604db  Agda-2.8.0/src/full/Agda/Utils/Parser/MemoisedCPS.hs
 formatted       c2d2ccfc3558  Agda-2.8.0/src/full/Agda/Utils/PartialOrd.hs
 formatted       e9d2279e6e65  Agda-2.8.0/src/full/Agda/Utils/Permutation.hs
@@ -679,8 +679,8 @@ formatted       ed6a9f21b67c  attoparsec-0.14.4/tests/QC/Text/Regressions.hs
 formatted       e1ef503cd64b  aws-0.25.3/Aws.hs
 formatted       a3a163b31c63  aws-0.25.3/Aws/Aws.hs
 formatted       316b8d029dee  aws-0.25.3/Aws/Core.hs
-formatted       526f7494fea1  aws-0.25.3/Aws/DynamoDb.hs
-formatted       11c5a36e6111  aws-0.25.3/Aws/DynamoDb/Commands.hs
+formatted       73c83b1eab6f  aws-0.25.3/Aws/DynamoDb.hs
+formatted       139088f99ac8  aws-0.25.3/Aws/DynamoDb/Commands.hs
 formatted       f3cc0daec291  aws-0.25.3/Aws/DynamoDb/Commands/BatchGetItem.hs
 formatted       d547ef2d0b43  aws-0.25.3/Aws/DynamoDb/Commands/BatchWriteItem.hs
 formatted       677a7cdf1061  aws-0.25.3/Aws/DynamoDb/Commands/DeleteItem.hs
@@ -760,7 +760,7 @@ formatted       4115c76b6f3d  aws-0.25.3/Aws/SimpleDb.hs
 formatted       0b6040677d6d  aws-0.25.3/Aws/SimpleDb/Commands.hs
 formatted       30e4762ca046  aws-0.25.3/Aws/SimpleDb/Commands/Attributes.hs
 formatted       2f311cda5b86  aws-0.25.3/Aws/SimpleDb/Commands/Domain.hs
-formatted       d6accda5efc3  aws-0.25.3/Aws/SimpleDb/Commands/Select.hs
+formatted       e6c5bbd03fca  aws-0.25.3/Aws/SimpleDb/Commands/Select.hs
 formatted       75d5726cf334  aws-0.25.3/Aws/SimpleDb/Core.hs
 formatted       412e7ea774c8  aws-0.25.3/Aws/Sqs.hs
 formatted       346f822a2760  aws-0.25.3/Aws/Sqs/Commands.hs
@@ -1214,7 +1214,7 @@ formatted       15308dc2dd01  brittany-0.14.0.2/data/Test360.hs
 formatted       0b2ad491920b  brittany-0.14.0.2/data/Test361.hs
 formatted       d9da88c7cdef  brittany-0.14.0.2/data/Test362.hs
 formatted       d9831cd6816b  brittany-0.14.0.2/data/Test363.hs
-formatted       1ae4a98bcc4a  brittany-0.14.0.2/data/Test364.hs
+formatted       ed8a4a471a67  brittany-0.14.0.2/data/Test364.hs
 formatted       ce4109a16e55  brittany-0.14.0.2/data/Test365.hs
 formatted       d16eae4aad20  brittany-0.14.0.2/data/Test366.hs
 formatted       b07954dfc9bf  brittany-0.14.0.2/data/Test367.hs
@@ -1231,7 +1231,7 @@ formatted       14e2ed1f0f63  brittany-0.14.0.2/data/Test376.hs
 formatted       f5a4e0c1e34f  brittany-0.14.0.2/data/Test377.hs
 formatted       bddefc49765b  brittany-0.14.0.2/data/Test378.hs
 formatted       ea19c516bcbf  brittany-0.14.0.2/data/Test379.hs
-formatted       7335e7ca5bd3  brittany-0.14.0.2/data/Test38.hs
+formatted       6a3e7da4119d  brittany-0.14.0.2/data/Test38.hs
 formatted       d2ee555751f5  brittany-0.14.0.2/data/Test380.hs
 formatted       3823e3c2d919  brittany-0.14.0.2/data/Test381.hs
 formatted       80271da1e835  brittany-0.14.0.2/data/Test382.hs
@@ -1419,7 +1419,7 @@ formatted       007b3f5499fb  brittany-0.14.0.2/data/Test59.hs
 formatted       d9ed4ebe21ed  brittany-0.14.0.2/data/Test6.hs
 formatted       87e8860858b2  brittany-0.14.0.2/data/Test60.hs
 formatted       7bba808f3304  brittany-0.14.0.2/data/Test61.hs
-formatted       7e7c53e8f5f9  brittany-0.14.0.2/data/Test62.hs
+formatted       85924b5f9018  brittany-0.14.0.2/data/Test62.hs
 formatted       38957227fb18  brittany-0.14.0.2/data/Test63.hs
 formatted       d1d477cbcd19  brittany-0.14.0.2/data/Test64.hs
 formatted       abec5eceeaf7  brittany-0.14.0.2/data/Test65.hs
@@ -1427,7 +1427,7 @@ formatted       7e83cb328466  brittany-0.14.0.2/data/Test66.hs
 formatted       08c924dc75db  brittany-0.14.0.2/data/Test67.hs
 formatted       cb0434807247  brittany-0.14.0.2/data/Test68.hs
 formatted       0edc4bf88879  brittany-0.14.0.2/data/Test69.hs
-formatted       6e4a80a16587  brittany-0.14.0.2/data/Test7.hs
+formatted       1310b68b6704  brittany-0.14.0.2/data/Test7.hs
 formatted       c26c8d4af0d4  brittany-0.14.0.2/data/Test70.hs
 formatted       7f9b2bb1df69  brittany-0.14.0.2/data/Test71.hs
 formatted       9d549df4742d  brittany-0.14.0.2/data/Test72.hs
@@ -1622,7 +1622,7 @@ formatted       2240267dad51  cryptonite-0.30/Crypto/Cipher/AES/Primitive.hs
 formatted       5694da9617bf  cryptonite-0.30/Crypto/Cipher/AESGCMSIV.hs
 formatted       17a919edeac4  cryptonite-0.30/Crypto/Cipher/Blowfish.hs
 formatted       98e1845904ad  cryptonite-0.30/Crypto/Cipher/Blowfish/Box.hs
-formatted       23c195272bfd  cryptonite-0.30/Crypto/Cipher/Blowfish/Primitive.hs
+formatted       b23e1a477a53  cryptonite-0.30/Crypto/Cipher/Blowfish/Primitive.hs
 formatted       7ece5bd42232  cryptonite-0.30/Crypto/Cipher/CAST5.hs
 formatted       d0210ba9a96f  cryptonite-0.30/Crypto/Cipher/CAST5/Primitive.hs
 formatted       c818f5ccfd4a  cryptonite-0.30/Crypto/Cipher/Camellia.hs
@@ -1640,7 +1640,7 @@ formatted       4e71a359f37d  cryptonite-0.30/Crypto/Cipher/Types.hs
 formatted       9872fb82a680  cryptonite-0.30/Crypto/Cipher/Types/AEAD.hs
 formatted       ea04a762895f  cryptonite-0.30/Crypto/Cipher/Types/Base.hs
 formatted       edc073cff2df  cryptonite-0.30/Crypto/Cipher/Types/Block.hs
-formatted       7c2782316618  cryptonite-0.30/Crypto/Cipher/Types/GF.hs
+formatted       70cbd8d50493  cryptonite-0.30/Crypto/Cipher/Types/GF.hs
 formatted       17ceaf6e3360  cryptonite-0.30/Crypto/Cipher/Types/Stream.hs
 formatted       6cdb1c7bd28d  cryptonite-0.30/Crypto/Cipher/Types/Utils.hs
 formatted       f1893d3edfa7  cryptonite-0.30/Crypto/Cipher/Utils.hs
@@ -2374,7 +2374,7 @@ formatted       c0648ec8a2c7  haxl-2.5.1.1/Haxl/Core/Run.hs
 formatted       a8e73c380c33  haxl-2.5.1.1/Haxl/Core/ShowP.hs
 formatted       f2cb25c4ae73  haxl-2.5.1.1/Haxl/Core/StateStore.hs
 formatted       fa6eb029c52a  haxl-2.5.1.1/Haxl/Core/Stats.hs
-formatted       bd368a5862fd  haxl-2.5.1.1/Haxl/Core/Util.hs
+formatted       2bc09e93414a  haxl-2.5.1.1/Haxl/Core/Util.hs
 formatted       4d201ce15d28  haxl-2.5.1.1/Haxl/DataSource/ConcurrentIO.hs
 formatted       cf38b55569d1  haxl-2.5.1.1/Haxl/Prelude.hs
 formatted       0bf115c25c25  haxl-2.5.1.1/Setup.hs
@@ -2465,7 +2465,7 @@ formatted       3999deea0979  hledger-1.52.1/Hledger/Cli/Commands/Diff.hs
 formatted       b51410797a83  hledger-1.52.1/Hledger/Cli/Commands/Files.hs
 formatted       15d50a6cb01a  hledger-1.52.1/Hledger/Cli/Commands/Help.hs
 formatted       6f60ce8d90d0  hledger-1.52.1/Hledger/Cli/Commands/Import.hs
-formatted       3fc4bde8aaae  hledger-1.52.1/Hledger/Cli/Commands/Incomestatement.hs
+formatted       c98ba369e90e  hledger-1.52.1/Hledger/Cli/Commands/Incomestatement.hs
 formatted       e795242e76e2  hledger-1.52.1/Hledger/Cli/Commands/Notes.hs
 formatted       7868c26f6945  hledger-1.52.1/Hledger/Cli/Commands/Payees.hs
 formatted       fe56fd581b75  hledger-1.52.1/Hledger/Cli/Commands/Prices.hs
@@ -2501,7 +2501,7 @@ formatted       36ef2b52eee9  hlint-3.10/src/Config/Type.hs
 formatted       2318c0eeb167  hlint-3.10/src/Config/Yaml.hs
 formatted       871e24292ba2  hlint-3.10/src/EmbedData.hs
 formatted       17b761cb46a0  hlint-3.10/src/Extension.hs
-formatted       232c5ddbbb9b  hlint-3.10/src/Fixity.hs
+formatted       d2e78f7166f8  hlint-3.10/src/Fixity.hs
 formatted       1c82631c3859  hlint-3.10/src/GHC/All.hs
 formatted       63d81c2c405a  hlint-3.10/src/GHC/Util.hs
 formatted       f8ab552f2009  hlint-3.10/src/GHC/Util/ApiAnnotation.hs
@@ -2714,7 +2714,7 @@ formatted       a8f154205e55  idris-1.3.4/src/Idris/AbsSyntax.hs
 formatted       fbcff6ef7706  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
 formatted       9f032fa98b74  idris-1.3.4/src/Idris/Apropos.hs
 formatted       dc91bae3387b  idris-1.3.4/src/Idris/CaseSplit.hs
-formatted       887228791bf4  idris-1.3.4/src/Idris/Chaser.hs
+formatted       e3b7df1dabbd  idris-1.3.4/src/Idris/Chaser.hs
 formatted       a47646c618f2  idris-1.3.4/src/Idris/CmdOptions.hs
 formatted       4da7f931a59f  idris-1.3.4/src/Idris/Colours.hs
 formatted       6890f5a88278  idris-1.3.4/src/Idris/Completion.hs
@@ -3981,7 +3981,7 @@ formatted       62f66214a824  raaz-0.3.11/tests/core/Tests/Core/Utils.hs
 formatted       bcc780e22f03  raaz-0.3.11/tests/message-digest/Implementation.hsig
 formatted       2bb252395b85  raaz-0.3.11/tests/message-digest/Tests/Digest.hs
 formatted       4a8ac51676df  random-1.3.1/Setup.hs
-formatted       f81df0c89774  random-1.3.1/bench-legacy/BinSearch.hs
+formatted       fa8866594fe5  random-1.3.1/bench-legacy/BinSearch.hs
 formatted       ec53458f4d57  random-1.3.1/bench-legacy/SimpleRNGBench.hs
 formatted       0584292cc54f  random-1.3.1/bench/Main.hs
 formatted       fc5450bd346c  random-1.3.1/src/System/Random.hs
@@ -4159,7 +4159,7 @@ formatted       7a929eb5f6c6  servant-server-0.20.3.0/src/Servant/Server/UVerb.h
 formatted       d43150f68994  servant-server-0.20.3.0/src/Servant/Utils/StaticFiles.hs
 formatted       4d91407009da  servant-server-0.20.3.0/test/Servant/ArbitraryMonadServerSpec.hs
 formatted       d6971ea1d324  servant-server-0.20.3.0/test/Servant/HoistSpec.hs
-formatted       91b965c983ef  servant-server-0.20.3.0/test/Servant/Server/ErrorSpec.hs
+formatted       6626557d9e8b  servant-server-0.20.3.0/test/Servant/Server/ErrorSpec.hs
 formatted       6e725d0bb23c  servant-server-0.20.3.0/test/Servant/Server/Internal/ContextSpec.hs
 formatted       06840e723cbc  servant-server-0.20.3.0/test/Servant/Server/Internal/RoutingApplicationSpec.hs
 formatted       ed1fb686c7f4  servant-server-0.20.3.0/test/Servant/Server/RouterSpec.hs
@@ -4167,7 +4167,7 @@ formatted       217323758702  servant-server-0.20.3.0/test/Servant/Server/Static
 formatted       a48e6f9f028f  servant-server-0.20.3.0/test/Servant/Server/StreamingSpec.hs
 formatted       ffec1b355a67  servant-server-0.20.3.0/test/Servant/Server/UsingContextSpec.hs
 formatted       c68eea536d8f  servant-server-0.20.3.0/test/Servant/Server/UsingContextSpec/TestCombinators.hs
-formatted       7053087a930f  servant-server-0.20.3.0/test/Servant/ServerSpec.hs
+formatted       3568187590af  servant-server-0.20.3.0/test/Servant/ServerSpec.hs
 formatted       2fbd14b119a4  servant-server-0.20.3.0/test/Spec.hs
 formatted       e865ae48f11b  shake-0.19.9/Setup.hs
 formatted       99d6aa77ded4  shake-0.19.9/docs/manual/Shakefile.hs
@@ -4757,7 +4757,7 @@ formatted       a8fca7835f0d  tls-2.4.3/Network/TLS/Crypto/DH.hs
 formatted       446c8c8a07ed  tls-2.4.3/Network/TLS/Crypto/IES.hs
 formatted       b7e6a0d5aaac  tls-2.4.3/Network/TLS/Crypto/Types.hs
 formatted       025f72c75341  tls-2.4.3/Network/TLS/ErrT.hs
-formatted       427d32e6cdf8  tls-2.4.3/Network/TLS/Error.hs
+formatted       091ac798a00b  tls-2.4.3/Network/TLS/Error.hs
 formatted       25c2c4064c31  tls-2.4.3/Network/TLS/Extension.hs
 formatted       2be304b6f83e  tls-2.4.3/Network/TLS/Extension.hs-boot
 formatted       49db661a445a  tls-2.4.3/Network/TLS/Extra.hs
@@ -4790,7 +4790,7 @@ formatted       6a8388c49af7  tls-2.4.3/Network/TLS/Handshake/Signature.hs
 formatted       4d5c61b9dc3d  tls-2.4.3/Network/TLS/Handshake/State.hs
 formatted       f55d027db091  tls-2.4.3/Network/TLS/Handshake/State13.hs
 formatted       f907190b60ed  tls-2.4.3/Network/TLS/Handshake/TranscriptHash.hs
-formatted       5e1320c4c161  tls-2.4.3/Network/TLS/HashAndSignature.hs
+formatted       7deaf48cafdc  tls-2.4.3/Network/TLS/HashAndSignature.hs
 formatted       7be5df148925  tls-2.4.3/Network/TLS/Hooks.hs
 formatted       b606b0451a2f  tls-2.4.3/Network/TLS/IO.hs
 formatted       4288557274dd  tls-2.4.3/Network/TLS/IO/Decode.hs

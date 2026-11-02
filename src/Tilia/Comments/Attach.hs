@@ -92,16 +92,12 @@ closingComments ::
   -- | The comments.
   [Comment] ->
   Doc
-closingComments margin = \case
-  [] -> mempty
-  (opening : rest) -> placeOne True opening <> foldMap (placeOne False) rest
-  where
-    placeOne opensTheRun c =
-      commentDoc c $
-        DCloseLine
-          <> includeWhen (opensTheRun || commentGapAbove c) blankLine
-          <> commentText margin c
-          <> DCloseLine
+closingComments margin = foldMap $ \c ->
+  commentDoc c $
+    DCloseLine
+      <> includeWhen (commentGapAbove c) blankLine
+      <> commentText margin c
+      <> DCloseLine
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
 -- in that order.

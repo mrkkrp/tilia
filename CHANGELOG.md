@@ -14,6 +14,8 @@
   leaves the whole module as written. A module with a magic comment anywhere
   else, or with a directive among the lines left as written, is declined.
   [Issue 310](https://github.com/mrkkrp/tilia/issues/310).
+* A comment written right under the last declaration of a module stays
+  right under it, rather than getting an empty line above it.
 
 ## Tilia 0.1.4.0
 
