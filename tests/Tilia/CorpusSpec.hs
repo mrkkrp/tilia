@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Formatting other people's Haskell.
 module Tilia.CorpusSpec (spec) where
@@ -7,6 +9,7 @@ module Tilia.CorpusSpec (spec) where
 import Control.Exception (SomeException, evaluate, try)
 import Control.Monad (join, unless)
 import Data.ByteString qualified as BS
+import Data.Choice (isTrue, pattern Do, pattern Don't)
 import Data.Foldable (for_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
@@ -21,26 +24,21 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec hiding (Example, after, before, example)
 import Tilia.Corpus
 import Tilia.Corpus.Manifest
-import Tilia.Cpp (describeCppError, usesCpp)
+import Tilia.Cpp (countLeaves, describeCppError, usesCpp)
 import Tilia.Diff qualified as Diff
-import Tilia.Equivalence (commentDifference, syntaxDifference)
+import Tilia.Format (FormatError (..), describeFormatError, refused)
 import Tilia.Palette (Color (Meta), Palette (Plain), paint, paletteFor)
-import Tilia.Parser
-  ( ParseError (..),
-    ParsedModule (..),
-    parseModule,
-  )
-import Tilia.Pragma (Defaults, movesPositions)
+import Tilia.Parser (ParseError (..))
+import Tilia.Pragma (Defaults)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
-import Tilia.TestConfig (formatCppExample, printExample)
-import Tilia.TestUtils
-  ( answeredLeaves,
-    answeredLinearLeaves,
-    countLeaves,
+import Tilia.TestConfig
+  ( configurationsToCheck,
     effectiveExtensionsFor,
-    parserConfigFor,
-    switchedOn,
+    formatExample,
+  )
+import Tilia.TestUtils
+  ( switchedOn,
     withEnvironment,
   )
 
@@ -278,14 +276,30 @@ verdict False declines (Result outcome why _) = case outcome of
         <> what
         <> ", and the corpus does not list it under expectUnreadable"
 
-check :: Palette -> Example -> IO Result
+-- | What formatting one example, with every check, establishes.
+check ::
+  -- | How to color the diffs it reports.
+  Palette ->
+  -- | The example.
+  Example ->
+  IO Result
 check palette example = do
   source <- readUtf8 (exampleInput example)
   expected <- traverse readUtf8 (exampleReference example)
   case source of
     Nothing -> pure (Result NotUtf8 "" noDigest)
-    Just text ->
-      guarded (checkPure palette (exampleName example) (exampleExtensions example) text (join expected))
+    Just text -> guarded $ do
+      let package = exampleExtensions example
+          format checking = formatExample checking package (exampleName example)
+          unchecked = do
+            printed <- format (Don't #check) text
+            (printed,) <$> either (pure . Left) (format (Don't #check)) printed
+      checked <- format (Do #check) text
+      passes <- case checked of
+        Left NotEquivalent{} -> Just <$> unchecked
+        Left NotIdempotent{} -> Just <$> unchecked
+        _ -> pure Nothing
+      pure (checkPure palette package text (join expected) checked passes)
 
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)
@@ -307,9 +321,12 @@ diff palette names before after
 
 -- | Run a check, turning a crash into a failure rather than into a dead test
 -- run.
-guarded :: Result -> IO Result
-guarded result =
-  try (evaluate (forced result)) >>= \case
+guarded ::
+  -- | The check.
+  IO Result ->
+  IO Result
+guarded run =
+  try (run >>= evaluate . forced) >>= \case
     Left (e :: SomeException) ->
       pure (Result Broken ("the formatter raised an error: " <> firstLine (T.pack (show e))) noDigest)
     Right settled -> pure settled
@@ -321,176 +338,84 @@ guarded result =
         `seq` r
     firstLine = T.strip . T.takeWhile (/= '\n')
 
--- | Everything that can be established about one example without doing any
--- more input or output.
-checkPure :: Palette -> FilePath -> Maybe Defaults -> Text -> Maybe Text -> Result
-checkPure palette path package source expected
-  | movesPositions inForce source =
-      Result Declined "a pragma that moves positions, which we do not rewrite" noDigest
-  | usesCpp inForce source = checkCpp palette path package source expected
-  | otherwise = case parseModule config path source of
-      Left problem -> Result DoesNotParse (parseProblem problem) noDigest
-      Right before ->
-        let formatted = render before
-            against name = diff palette ("input", name) source formatted
-         in case parse formatted of
-              Nothing ->
-                told
-                  formatted
-                  Broken
-                  ( "the formatted output does not parse\n"
-                      <> against "output (does not parse)"
-                  )
-              Just after
-                | Just difference <- syntaxDifference (pmModule before) (pmModule after) ->
-                    told
-                      formatted
-                      Broken
-                      ( "a different program: "
-                          <> difference
-                          <> "\n"
-                          <> against "output"
-                      )
-                | Just difference <- commentDifference before after ->
-                    told
-                      formatted
-                      Broken
-                      ( "comments: "
-                          <> difference
-                          <> "\n"
-                          <> against "output"
-                      )
-                | settled <- render after,
-                  settled /= formatted ->
-                    told
-                      formatted
-                      Broken
-                      ( "formatting is non-idempotent\n"
-                          <> diff palette ("first pass", "second pass") formatted settled
-                      )
-                | Just reference <- expected,
-                  reference /= formatted ->
-                    told
-                      formatted
-                      Broken
-                      ( "does not match the corpus's expected output\n"
-                          <> diff palette ("expected", "ours") reference formatted
-                      )
-                | otherwise -> told formatted Formatted ""
-  where
-    told formatted outcome why = Result outcome why (digestOf formatted)
-    config = parserConfigFor package
-    inForce = effectiveExtensionsFor package source
-    parse = either (const Nothing) Just . parseModule config path
-    render = printExample package source
+-- | What a refusal or a failure to format an example comes to.
+gaveUp ::
+  -- | Why formatting gave up.
+  FormatError ->
+  Result
+gaveUp = \case
+  NotParsed problem -> Result DoesNotParse (parseProblem problem) noDigest
+  CppUnsupported _ why -> Result Declined (describeCppError why) noDigest
+  e
+    | refused e -> Result Declined (describeFormatError Plain e) noDigest
+    | otherwise -> Result Broken (describeFormatError Plain e) noDigest
 
-----------------------------------------------------------------------------
--- Checking an example that involved the preprocessor
-
--- | Everything that can be established about an example with conditionals in
--- it.
-checkCpp :: Palette -> FilePath -> Maybe Defaults -> Text -> Maybe Text -> Result
-checkCpp palette path package source expected = case formatCppExample package path source of
-  Left why -> Result Declined (describeCppError why) noDigest
-  Right formatted -> case (countLeaves source, countLeaves formatted) of
-    (Left why, _) ->
-      told formatted Broken ("the input's configurations: " <> describeCppError why)
-    (_, Left why) ->
-      told formatted Broken ("the output's configurations: " <> describeCppError why <> "\n" <> against formatted)
-    (Right went, Right came)
-      | went /= came ->
+-- | Everything that can be established about one example from formatting
+-- it with every check.
+checkPure ::
+  -- | How to color the diffs it reports.
+  Palette ->
+  -- | What the package around it puts in force, if it is a module of one.
+  Maybe Defaults ->
+  -- | The example.
+  Text ->
+  -- | The expected output, if the corpus has one.
+  Maybe Text ->
+  -- | Formatting the example, checked.
+  Either FormatError Text ->
+  -- | Where a check failed, formatting the example and then what that
+  -- printed, unchecked.
+  Maybe (Either FormatError Text, Either FormatError Text) ->
+  Result
+checkPure palette package source expected checked unchecked =
+  case (checked, unchecked) of
+    (Right formatted, _)
+      | Just reference <- expected,
+        reference /= formatted ->
           told
             formatted
             Broken
-            ( "formatting changed how many configurations there are, from "
-                <> count went
-                <> " to "
-                <> count came
-                <> "\n"
-                <> against formatted
+            ( "does not match the corpus's expected output\n"
+                <> diff palette ("expected", "ours") reference formatted
             )
-      | went <= configurationsToCheck -> quantified answeredLeaves Nothing formatted
-      | otherwise ->
-          quantified
-            answeredLinearLeaves
-            ( Just
-                ( count went
-                    <> " configurations is more than the "
-                    <> count configurationsToCheck
-                    <> " this checks, so only the ones varying a single"
-                    <> " conditional were compared"
-                )
-            )
+      | Just went <- beyond ->
+          told
             formatted
+            PartlyChecked
+            ( count went
+                <> " configurations is more than the "
+                <> count (toInteger configurationsToCheck)
+                <> " this checks, so only the ones varying a single"
+                <> " conditional were compared"
+            )
+      | otherwise -> told formatted Formatted ""
+    (Left e@NotEquivalent{}, Just (Right printed, _)) ->
+      told
+        printed
+        Broken
+        ( describeFormatError Plain e
+            <> "\n"
+            <> diff palette ("input", "output") source printed
+        )
+    (Left e@NotIdempotent{}, Just (Right printed, Right settled)) ->
+      told
+        printed
+        Broken
+        ( describeFormatError Plain e
+            <> "\n"
+            <> diff palette ("first pass", "second pass") printed settled
+        )
+    (Left e, _) -> gaveUp e
   where
     told formatted outcome why = Result outcome why (digestOf formatted)
     count :: Integer -> Text
     count = T.pack . show
-    against formatted = diff palette ("input", "output") source formatted
-    quantified enumerate reservation formatted =
-      case (enumerate source, enumerate formatted) of
-        (Left why, _) ->
-          told formatted Broken ("the input's configurations: " <> describeCppError why)
-        (_, Left why) ->
-          told formatted Broken ("the output's configurations: " <> describeCppError why <> "\n" <> against formatted)
-        (Right went, Right came)
-          | (why : _) <- alongside went came ->
-              told formatted Broken (why <> "\n" <> against formatted)
-          | otherwise -> case formatCppExample package path formatted of
-              Left why ->
-                told formatted Broken ("the output cannot be formatted again: " <> describeCppError why)
-              Right settled
-                | settled /= formatted ->
-                    told
-                      formatted
-                      Broken
-                      ( "formatting is non-idempotent\n"
-                          <> diff palette ("first pass", "second pass") formatted settled
-                      )
-                | Just reference <- expected,
-                  reference /= formatted ->
-                    told
-                      formatted
-                      Broken
-                      ( "does not match the corpus's expected output\n"
-                          <> diff palette ("expected", "ours") reference formatted
-                      )
-                | otherwise ->
-                    maybe (told formatted Formatted "") (told formatted PartlyChecked) reservation
-    alongside went came =
-      [ why
-      | (answers, before) <- went,
-        why <- case Map.lookup answers output of
-          Nothing -> ["a configuration of the input the output does not have"]
-          Just after -> maybe [] pure (sameProgram before after)
-      ]
-        <> [ "a configuration of the output the input does not have"
-           | any (\(answers, _) -> not (Map.member answers input)) came
-           ]
-      where
-        output = Map.fromList came
-        input = Map.fromList went
-
-    sameProgram went came = case (parse went, parse came) of
-      (Left problem, _) ->
-        Just ("a configuration of the input does not parse: " <> parseProblem problem)
-      (_, Left problem) ->
-        Just
-          ( "a configuration of the output does not parse: "
-              <> parseProblem problem
-              <> "\n"
-              <> linesAround came problem
-          )
-      (Right before, Right after)
-        | Just difference <- syntaxDifference (pmModule before) (pmModule after) ->
-            Just ("a different program, in one configuration: " <> difference)
-        | Just difference <- commentDifference before after ->
-            Just ("comments, in one configuration: " <> difference)
-        | otherwise -> Nothing
-
-    parse = parseModule parser path
-
-    parser = parserConfigFor package
+    beyond = case countLeaves source of
+      Right went
+        | isTrue (usesCpp (effectiveExtensionsFor package source) source),
+          went > toInteger configurationsToCheck ->
+            Just went
+      _ -> Nothing
 
 -- | Why a parse failed, and where in the file, but not which file.
 --
@@ -506,18 +431,3 @@ parseProblem problem = at <> peProblem problem
           <> ":"
           <> T.pack (show (spanStartColumn s))
           <> ": "
-
--- | The lines of a configuration around the one a parse error names.
-linesAround :: Text -> ParseError -> Text
-linesAround text problem = case spanStartLine <$> spanOfSrcSpan (peSpan problem) of
-  Nothing -> T.empty
-  Just line ->
-    T.unlines
-      [ (if n == line then "> " else "  ") <> T.pack (show n) <> "  " <> l
-      | (n, l) <- zip [1 :: Int ..] (T.lines text),
-        abs (n - line) <= 4
-      ]
-
--- | How many configurations one example gets compared over.
-configurationsToCheck :: Integer
-configurationsToCheck = 64

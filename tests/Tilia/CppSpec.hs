@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
 import Tilia.Cpp
-import Tilia.Cpp.Directives (implied)
+import Tilia.Cpp.Directives (configurations, implied)
 import Tilia.Cpp.Place (regionsIn)
 import Tilia.Doc.Internal (Doc)
 import Tilia.Equivalence (syntaxDifference)
@@ -21,11 +21,7 @@ import Tilia.Render (defaultRenderConfig, renderModule)
 import Tilia.Source (directiveOnLine)
 import Tilia.Span (Span)
 import Tilia.TestUtils
-  ( answeredLeaves,
-    answeredLinearLeaves,
-    configurations,
-    countLeaves,
-    defaultParserConfig,
+  ( defaultParserConfig,
     leaves,
     linearLeaves,
     parses,

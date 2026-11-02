@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -25,6 +26,10 @@ module Tilia.Cpp.Directives
     ruledOutBranch,
     unconditionalErrors,
     Assignment,
+    configurations,
+    countLeaves,
+    answeredLeaves,
+    answeredLinearLeaves,
 
     -- * The directives themselves
     Directive (..),
@@ -45,6 +50,7 @@ module Tilia.Cpp.Directives
   )
 where
 
+import Data.Choice (Choice, fromBool)
 import Data.List (sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -79,9 +85,14 @@ import Tilia.Utils (tshow)
 -- Reading a module
 
 -- | Is CPP enabled and there is at least one CPP directive present?
-usesCpp :: [Extension] -> Text -> Bool
+usesCpp ::
+  -- | The extensions in force.
+  [Extension] ->
+  -- | The module.
+  Text ->
+  Choice "cppUsed"
 usesCpp extensions source =
-  Cpp `elem` extensions && any isDirective (T.lines source)
+  fromBool (Cpp `elem` extensions && any isDirective (T.lines source))
 
 -- | Blank out the directive lines, keeping every branch.
 blankCpp :: Text -> Text
@@ -435,6 +446,124 @@ unconditionalErrors source =
 
 -- | Which branch every question was answered with to reach a configuration.
 type Assignment = Map [Guard] Int
+
+-- | Split a module on its first outermost conditional, and on every other
+-- one written behind the same directives, wherever in the module it sits.
+configurations ::
+  -- | The module.
+  Text ->
+  Maybe Configurations
+configurations source = do
+  forest <- scanConditionals source
+  gs <- listToMaybe forest
+  pure (configurationsOn gs forest source)
+
+-- | How many configurations a module has, without building any of them,
+-- and so counting those no definition of the macros gives.
+countLeaves ::
+  -- | The module.
+  Text ->
+  Either CppError Integer
+countLeaves source = do
+  forest <- readConditionals source
+  pure (sum [across answers forest | answers <- combinations (afforded forest)])
+  where
+    across answers = product . fmap (one answers)
+    one answers gs = case lookup (gsGuards gs) answers of
+      Just i -> across answers (nestedIn gs i)
+      Nothing -> sum [across answers (nestedIn gs i) | i <- [0 .. gsCount gs - 1]]
+    combinations = traverse (\(g, k) -> [(g, i) | i <- [0 .. k - 1]])
+    afforded forest = go 1 (repeated forest)
+      where
+        go _ [] = []
+        go n ((g, k) : rest)
+          | n * toInteger k <= guardsToTie = (g, k) : go (n * toInteger k) rest
+          | otherwise = []
+
+-- | The guards a module asks more than once, and how many answers each has.
+repeated ::
+  -- | The conditionals of the module.
+  [GroupSpec] ->
+  [([Guard], Int)]
+repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
+  where
+    asked gss = concat [(gsGuards gs, gsCount gs) : asked (concat (gsNested gs)) | gs <- gss]
+    times = Map.fromListWith (+) [(g, 1 :: Int) | (g, _) <- asked forest]
+    twice g = Map.findWithDefault 0 g times >= 2
+
+    distinct _ [] = []
+    distinct seen (q@(g, _) : rest)
+      | Map.member g seen = distinct seen rest
+      | otherwise = q : distinct (Map.insert g () seen) rest
+
+-- | How many combinations of answers 'countLeaves' will enumerate.
+guardsToTie :: Integer
+guardsToTie = 4096
+
+-- | Every configuration some definition of the macros gives, and the
+-- answers that reach it.
+answeredLeaves ::
+  -- | The module.
+  Text ->
+  Either CppError [(Assignment, Text)]
+answeredLeaves =
+  fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
+  where
+    go answers source = case configurations source of
+      Nothing -> answeredLeaf answers source
+      Just c ->
+        concat
+          <$> traverse
+            (\(i, t) -> go (Map.insert (cfgGuards c) i answers) t)
+            (zip [0 ..] (cfgTexts c))
+
+-- | The same, labelled by the answers that reach each one, and for the same
+-- reason as 'answeredLeaves'.
+answeredLinearLeaves ::
+  -- | The module.
+  Text ->
+  Either CppError [(Assignment, Text)]
+answeredLinearLeaves =
+  fmap (filter (isJust . implied . Map.toList . fst)) . go Map.empty
+  where
+    go answers source = case configurations source of
+      Nothing -> answeredLeaf answers source
+      Just c -> case zip [0 ..] (cfgTexts c) of
+        [] -> Right []
+        (i, first) : rest ->
+          (<>)
+            <$> go (Map.insert (cfgGuards c) i answers) first
+            <*> (concat <$> traverse (held answers (cfgGuards c)) rest)
+      where
+        held before gs (i, t) = answeredBaseline (Map.insert gs i before) t
+
+-- | The configuration in which every question still to be asked takes its
+-- first branch, and the answers that give it, unless it aborts with
+-- @#error@.
+answeredBaseline ::
+  -- | The answers given so far.
+  Assignment ->
+  -- | What they leave of the module.
+  Text ->
+  Either CppError [(Assignment, Text)]
+answeredBaseline answers source = case configurations source of
+  Nothing -> answeredLeaf answers source
+  Just c -> case cfgTexts c of
+    [] -> Right [(answers, source)]
+    t : _ -> answeredBaseline (Map.insert (cfgGuards c) 0 answers) t
+
+-- | A module with every conditional answered, and the answers that reach
+-- it, unless it aborts with @#error@.
+answeredLeaf ::
+  -- | The answers that reach it.
+  Assignment ->
+  -- | The module, with every conditional answered.
+  Text ->
+  Either CppError [(Assignment, Text)]
+answeredLeaf answers source
+  | null (unconditionalErrors source) =
+      [(answers, withoutOpaque source)] <$ readConditionals source
+  | otherwise = Right []
 
 ----------------------------------------------------------------------------
 -- The directives themselves
