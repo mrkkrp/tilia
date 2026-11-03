@@ -56,7 +56,7 @@ import Tilia.Span.Ghc
 
 -- | A type.
 hsType :: Ctx -> LHsType GhcPs -> Doc
-hsType ctx l = at ctx l (hsTypeBody ctx (spanOf l))
+hsType ctx l = frangible (at ctx l (hsTypeBody ctx (spanOf l)))
 
 -- | A type whose location the caller has already entered.
 hsTypeBody :: Ctx -> Maybe Span -> HsType GhcPs -> Doc
@@ -114,12 +114,18 @@ typeBody ctx documented here = \case
     unboxed (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
   HsParTy _ t ->
-    layoutWithin ctx here (spanOf t) (parens (insideBrackets here (hsType ctx t)))
+    layoutWithin
+      ctx
+      here
+      (spanOf t)
+      (parens (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
-    align (at ctx n outputable <> joinedBy (reserved ctx "::") <> indent (hsType ctx t))
+    align
+      (at ctx n outputable <> joinedBy (reserved ctx "::") <> indent (hsType ctx t))
   HsStarTy _ _ -> txt (reserved ctx "*")
   HsKindSig _ t k ->
-    align (hsType ctx t <> joinedBy (reserved ctx "::") <> indent (hsType ctx k))
+    align
+      (hsType ctx t <> joinedBy (reserved ctx "::") <> indent (hsType ctx k))
   HsSpliceTy _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
   HsExplicitListTy _ promoted xs ->
@@ -376,7 +382,8 @@ forallBndrs ctx visibility render bndrs =
   layoutAcross ctx bndrs $
     txt (reserved ctx "forall")
       <> breakOrSpace
-      <> indent (align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs)) <> close)
+      <> indent
+        (align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs)) <> close)
   where
     close = case visibility of
       Invisible -> txt "."
@@ -416,7 +423,7 @@ outerBndrs ctx separator = \case
 
 -- | A type together with whatever it quantifies over.
 hsSigType :: Ctx -> LHsSigType GhcPs -> Doc
-hsSigType ctx = at_ ctx (hsSigTypeBody ctx)
+hsSigType ctx l = frangible (at ctx l (hsSigTypeBody ctx))
 
 -- | A signature type whose location the caller has already entered.
 hsSigTypeBody :: Ctx -> HsSigType GhcPs -> Doc
@@ -428,7 +435,8 @@ hsSigTypeBody ctx HsSig{..} =
 -- | The @:: t@ that follows a name.
 typeAscription :: Ctx -> LHsSigType GhcPs -> Doc
 typeAscription ctx sigType =
-  indent (space <> txt (reserved ctx "::") <> separator <> hsSigType ctx sigType)
+  indent
+    (space <> txt (reserved ctx "::") <> separator <> hsSigType ctx sigType)
   where
     separator = typeBreak (typeIsDocumented (unLoc (sig_body (unLoc sigType))))
 

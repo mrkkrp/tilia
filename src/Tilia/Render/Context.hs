@@ -57,7 +57,12 @@ import GHC.Types.Name.Reader (RdrName (..))
 import GHC.Types.SrcLoc (GenLocated (..))
 import GHC.Types.SrcLoc qualified as GHC
 
-import Tilia.Comments (Comment (..), CommentStyle (..), carriesOn, commentTrailing)
+import Tilia.Comments
+  ( Comment (..),
+    CommentStyle (..),
+    carriesOn,
+    commentTrailing,
+  )
 import Tilia.Doc.Combinators
 import Tilia.Fixity
   ( Fixity,

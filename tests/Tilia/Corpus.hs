@@ -423,6 +423,7 @@ ormoluSkip =
     <> ormoluUnicodeSyntax
     <> ormoluCommentsUnderTheLastDeclaration
     <> ormoluOneLineRuns
+    <> ormoluLongLines
 
 -- | Ormolu examples with a space between a record and its braces.
 ormoluRecordBraces :: [FilePath]
@@ -488,6 +489,15 @@ ormoluOneLineRuns =
     "declaration" </> "value" </> "function" </> "simple.hs",
     "declaration" </> "value" </> "function" </> "strings.hs",
     "declaration" </> "value" </> "function" </> "tuple-sections.hs"
+  ]
+
+-- | Ormolu examples with a line past the column limit, which we break.
+ormoluLongLines :: [FilePath]
+ormoluLongLines =
+  [ "declaration" </> "value" </> "function" </> "do-single-line-case-guards.hs",
+    "declaration" </> "value" </> "function" </> "do-single-line-multiple-cases.hs",
+    "declaration" </> "value" </> "function" </> "do-single-line-nested-case.hs",
+    "declaration" </> "value" </> "function" </> "do-single-line-with-case.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.

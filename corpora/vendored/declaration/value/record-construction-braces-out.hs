@@ -15,7 +15,11 @@ qualified = Inventory.Crate{Inventory.crateCount = 2, ..}
   where
     crateSku = Sku "q"
 
-nested = Pallet{palletCrates = [Crate{crateSku = Sku "a", crateCount = 1}], palletWrapped = True}
+nested =
+  Pallet
+    { palletCrates = [Crate{crateSku = Sku "a", crateCount = 1}],
+      palletWrapped = True
+    }
 
 argument = ship Letter{letterWeight = 20} (Sku "b")
 
