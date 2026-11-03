@@ -35,7 +35,6 @@ module Tilia.Render.Context
     at_,
     atSpan,
     keywordAt,
-    fenceWithin,
     layoutFrom,
     layoutWithin,
     layoutAcross,
@@ -354,12 +353,6 @@ atSpan ctx (Just s) d = located s (layoutFrom ctx (Just s) d)
 -- | A keyword, claiming the span it was written on.
 keywordAt :: Ctx -> Maybe Span -> Text -> Doc
 keywordAt ctx s = atSpan ctx s . txt
-
--- | Prevent comments inside the given region to float out of it and attach
--- to elements outside.
-fenceWithin :: Ctx -> Maybe Span -> Doc -> Doc
-fenceWithin _ Nothing d = d
-fenceWithin _ (Just s) d = fence s d
 
 -- | Lay a region out as it was written, and claim nothing.
 --

@@ -187,10 +187,15 @@ unclaimed = \case
   DLocated _ d -> unclaimed d
   d -> mapChildren unclaimed d
 
--- | Fence prevents comments inside from floating out and attaching to
--- elements they are not supposed to attach to.
-fence :: Span -> Doc -> Doc
-fence = DFence
+-- | Keep the comments inside a region from floating out of it and
+-- attaching to anything outside.
+fence ::
+  -- | The region, if there is one.
+  Maybe Span ->
+  -- | The document printed from it.
+  Doc ->
+  Doc
+fence = maybe id DFence
 
 -- | Alternatives the preprocessor chooses between.
 cppChoice ::
