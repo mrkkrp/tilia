@@ -48,13 +48,13 @@ import Tilia.Cpp.Directives
 import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
 import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
-import Tilia.Doc (printDoc)
-import Tilia.Doc.Internal
+import Tilia.Doc
   ( Doc (..),
     Layout (..),
     conditionalRange,
     foldChildren,
     mapChildren,
+    printDoc,
     printedFrom,
   )
 import Tilia.Parser

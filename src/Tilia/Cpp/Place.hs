@@ -49,8 +49,7 @@ import Tilia.Cpp.Directives
     opaqueDirectives,
     readConditionals,
   )
-import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen, indent)
-import Tilia.Doc.Internal
+import Tilia.Doc
   ( Conditional (..),
     Doc (..),
     conditionalRange,
@@ -62,6 +61,7 @@ import Tilia.Doc.Internal
     unwrap,
     wrap,
   )
+import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen, indent)
 import Tilia.Source (Lines, Written (..), blankAt, lineAt, lineTexts, linesOf)
 import Tilia.Span (Span (..), mkSpan, startPoint)
 

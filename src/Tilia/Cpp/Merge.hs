@@ -23,9 +23,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Tilia.Cpp.Directives (Guard (..), Varied (..), untouched)
 import Tilia.Cpp.Place (foldRegions, regionOf)
-import Tilia.Doc (printDoc)
-import Tilia.Doc.Combinators qualified as Doc
-import Tilia.Doc.Internal
+import Tilia.Doc
   ( Conditional (..),
     Doc (..),
     Layout (..),
@@ -36,6 +34,7 @@ import Tilia.Doc.Internal
     mapChildren,
     onlyBreaks,
     onlySpacing,
+    printDoc,
     printedFrom,
     printsNothing,
     printsOnOneLine,
@@ -44,6 +43,7 @@ import Tilia.Doc.Internal
     unwrap,
     wrap,
   )
+import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Source (Lines, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 

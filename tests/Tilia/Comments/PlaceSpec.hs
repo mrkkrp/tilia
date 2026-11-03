@@ -7,7 +7,7 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Comments (Comment (..), renderComment)
 import Tilia.Comments.Place
-import Tilia.Doc.Internal (Spill (..))
+import Tilia.Doc (Spill (..))
 import Tilia.Span
 import Tilia.TestUtils (commentsIn)
 

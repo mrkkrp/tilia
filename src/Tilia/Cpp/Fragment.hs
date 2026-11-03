@@ -26,14 +26,14 @@ import Tilia.Cpp.Directives
     blankingFor,
     droppedFor,
   )
-import Tilia.Doc.Combinators (declarationsStart)
-import Tilia.Doc.Internal
+import Tilia.Doc
   ( Doc (..),
     Layout (..),
     foldChildren,
     printedFrom,
     spineAt,
   )
+import Tilia.Doc.Combinators (declarationsStart)
 
 -- | A module's document, taken apart where its declarations begin.
 data Body = Body

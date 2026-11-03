@@ -32,7 +32,7 @@ import Tilia.Comments
     commentTrailing,
     singleLine,
   )
-import Tilia.Doc.Internal (Spill (..))
+import Tilia.Doc (Spill (..))
 import Tilia.Span
 
 -- | Where a comment is emitted in relation to its region.
