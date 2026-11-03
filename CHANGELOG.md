@@ -26,6 +26,11 @@
   binding no longer joins a signature further up across an empty line the
   author left above it, so under a run of signatures that empty line stays.
   [Issue 347](https://github.com/mrkkrp/tilia/issues/347).
+* Pragmas written one after another stay together where they name different
+  things, `INLINE`, `RULES`, `DEPRECATED` and the other pragmas alike, as
+  declarations of one kind do, and still get an empty line above them under
+  a declaration they do not name.
+  [Issue 284](https://github.com/mrkkrp/tilia/issues/284).
 
 ## Tilia 0.1.4.0
 
