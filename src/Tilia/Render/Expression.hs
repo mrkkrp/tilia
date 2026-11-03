@@ -704,7 +704,7 @@ letIn ctx bodyOf nested (letToken, inToken) binds body =
   where
     chained = nested && not (sameLine (spanOf inToken) (spanOf body))
     separator = if chained then space else variant space (hardBreak <> txt " ")
-    written s d = if chained then fenceWithin ctx s d else d
+    written s d = if chained then fence s d else d
 
 -- | The bindings of a @let@ or a @where@.
 localBinds :: Ctx -> Bracing -> HsLocalBinds GhcPs -> Doc
@@ -1036,7 +1036,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
     body = sepBy breakOrSpace (fmap alternative (NE.toList grhssGRHSs))
 
     alternative g =
-      fenceWithin ctx (spanOf g) $
+      fence (spanOf g) $
         guardedRhs ctx placement bracing mkBody groupStyle g
 
     groupStyle
@@ -1102,9 +1102,8 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
   _ ->
     maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
-      fenceWithin ctx headSpan guardHead
-        <> fenceWithin
-          ctx
+      fence headSpan guardHead
+        <> fence
           (fmap endOf separatorSpan <> spanOf body)
           ( nest
               (if parentPlacement == Normal then 1 else 0)

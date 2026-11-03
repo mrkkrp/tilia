@@ -89,7 +89,7 @@ docBody ctx style doc@(L l str) =
   where
     margin = Margin directive (const False)
     directive t = extensionOn ctx Cpp && isJust (directiveOnLine t)
-    writtenAt = fenceWithin ctx (spanOfSrcSpan l)
+    writtenAt = fence (spanOfSrcSpan l)
     emptyBlock = txt (blockOpener style) <> space <> txt "-}"
     rebuilt =
       sepBy hardBreak (zipWith line' (True : repeat False) written')

@@ -99,7 +99,7 @@ typeBody ctx documented here = \case
       <> space
       <> functionArrow ctx (at_ ctx recur) multAnn
       <> betweenArgs
-      <> fenceWithin ctx (fmap endOf (arrowSpan multAnn) <> spanOf y) result
+      <> fence (fmap endOf (arrowSpan multAnn) <> spanOf y) result
     where
       result = case unLoc y of
         HsFunTy{} -> recur (unLoc y)

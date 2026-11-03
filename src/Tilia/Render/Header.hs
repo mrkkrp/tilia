@@ -433,8 +433,7 @@ importDecl ctx ImportDecl{..} =
        in layoutWithin ctx listSpan parensSpan $
             hidden
               <> breakOrSpace
-              <> fenceWithin
-                ctx
+              <> fence
                 parensSpan
                 (parens (insideBrackets listSpan (importExportItems ctx xs)))
 

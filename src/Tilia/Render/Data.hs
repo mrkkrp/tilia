@@ -126,7 +126,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
               beforeEquals
                 <> txt "="
                 <> space
-                <> fenceWithin ctx (fmap endOf equalsSpan <> spansOf cons) alternatives
+                <> fence (fmap endOf equalsSpan <> spansOf cons) alternatives
         where
           singleRecCon = case cons of
             [L _ ConDeclH98{con_args = RecCon{}}] -> True
