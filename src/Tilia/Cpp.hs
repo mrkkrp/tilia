@@ -33,6 +33,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, get, put)
 import Data.Foldable (traverse_)
+import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
@@ -121,10 +122,19 @@ formatWithCpp parser render path source = do
         }
     known =
       render
-        { rcImportBarriers = maybe [] (importBarriers parser source) groups,
-          rcNameBarriers = maybe [] (sort . concatMap gsOwnLines) groups
+        { rcDirectiveLines = maybe [] (sort . concatMap gsOwnLines) groups,
+          rcImportBarriers = maybe [] (importBarriers layout) groups,
+          rcImportBounds = importBounds
         }
     groups = allGroups <$> scanConditionals source
+    layout = fromMaybe IntMap.empty (importLayout parser (blankCpp source))
+    importBounds
+      | maybe False (not . null) groups = do
+          (first, _) <- IntMap.lookupMin starts
+          (final, _) <- IntMap.lookupMax starts
+          pure (first, final)
+      | otherwise = Nothing
+    starts = IntMap.filter id layout
 
 -- | A module's branches, parsed: as one module where they parse together,
 -- and otherwise as the branch leaves that parse.
@@ -151,22 +161,20 @@ everyBranch parser path source =
 -- conditional but one that only continues the item above it, such as a
 -- @hiding@ clause written behind a condition.
 importBarriers ::
-  -- | What to read the module with.
-  ParserConfig ->
-  -- | The module, directives and all.
-  Text ->
+  -- | The lines among the imports of every branch, as 'importLayout' gives
+  -- them.
+  IntMap Bool ->
   -- | Every conditional of the module, nested ones included.
   [GroupSpec] ->
   [Int]
-importBarriers parser source groups =
+importBarriers layout groups =
   sort [l | g <- groups, not (continuesAnItem g), l <- gsOwnLines g]
   where
-    starts = fromMaybe IntMap.empty (importLayout parser (blankCpp source))
     continuesAnItem g =
       let (from, to) = gsWhole g
           held =
             IntMap.elems $
-              fst (IntMap.split to (snd (IntMap.split from starts)))
+              fst (IntMap.split to (snd (IntMap.split from layout)))
        in not (null held) && not (or held)
 
 -- | Formatting that spends the lines it formats out of the budget left, or

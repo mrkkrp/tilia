@@ -29,6 +29,7 @@ import Control.Monad (forM)
 import Data.ByteString.Lazy qualified as BL
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe, maybeToList)
 import Data.Set (Set)
@@ -52,7 +53,7 @@ import System.FilePath (splitDirectories, takeDirectory, (</>))
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Cabal.Target (projectModules)
+import Tilia.Cabal.Target (describeTargetProblem, projectModules)
 import Tilia.Pragma (Defaults)
 import Tilia.TestUtils (haskellFilesIn)
 import Tilia.Utils (quietly)
@@ -869,9 +870,10 @@ data Example = Example
     -- of a package, see 'corpusInPackages', and for one whose package could
     -- not be read.
     exampleExtensions :: Maybe Defaults,
-    -- | The modules the package around it declares, empty for a corpus whose
-    -- examples are not modules of a package.
-    exampleOwnModules :: Set Text
+    -- | The modules the package around it declares, each with the package's
+    -- name, and none for a corpus whose examples are not modules of a
+    -- package.
+    exampleOwnModules :: Map Text (Set Text)
   }
   deriving (Eq, Show)
 
@@ -1066,19 +1068,21 @@ examplesIn corpus root dirs = do
 ownModulesReaderFor ::
   -- | The corpus.
   Corpus ->
-  IO (FilePath -> IO (Set Text))
+  IO (FilePath -> IO (Map Text (Set Text)))
 ownModulesReaderFor corpus
-  | not (corpusInPackages corpus) = pure (const (pure Set.empty))
+  | not (corpusInPackages corpus) = pure (const (pure Map.empty))
   | otherwise = do
       known <- newIORef Map.empty
       pure $ \f ->
         findProjectRoot f >>= \case
-          Nothing -> pure Set.empty
+          Nothing -> pure Map.empty
           Just root ->
             Map.lookup (prPath root) <$> readIORef known >>= \case
               Just modules -> pure modules
               Nothing -> do
-                modules <- projectModules root
+                modules <-
+                  either (fail . T.unpack . describeTargetProblem) pure
+                    =<< projectModules root
                 atomicModifyIORef' known ((,()) . Map.insert (prPath root) modules)
                 pure modules
 

@@ -147,9 +147,9 @@ parseConfiguration config path written source =
         . GHC.diagnosticMessage GHC.NoDiagnosticOpts
         . GHC.errMsgDiagnostic
 
--- | Return each line a token other than a comment begins on, down to the
--- first item of the top level after the imports, and whether the leftmost
--- such token on the line begins an item of the top level.
+-- | Return each line among the imports that a token other than a comment
+-- begins on, and whether the leftmost such token on the line begins an
+-- import.
 -- 'Nothing' if the module has no imports, writes its top level in explicit
 -- braces, or does not lex.
 importLayout ::
@@ -174,10 +174,11 @@ importLayout config source =
                in case (t, previous, topLevel) of
                     (GHC.ITocurly, Just GHC.ITwhere, Nothing) -> pure Nothing
                     (GHC.ITimport, _, Nothing) -> lexing (Just column) (Just t) found'
+                    (_, _, Nothing) -> lexing topLevel (Just t) found
                     (_, _, Just c)
                       | column <= c,
                         not (isImport t) ->
-                          pure (atTopLevel topLevel found')
+                          pure (atTopLevel topLevel found)
                     _ -> lexing topLevel (Just t) found'
         _ -> lexing topLevel previous found
     atTopLevel topLevel found = (\c -> fmap (<= c) found) <$> topLevel

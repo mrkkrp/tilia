@@ -12,6 +12,8 @@ import Data.Char (isAlphaNum)
 import Data.Choice (Choice, isTrue)
 import Data.Function (on, (&))
 import Data.List (groupBy, sortOn)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -33,23 +35,23 @@ import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 normalizeImports ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | The modules the project's own packages declare.
-  Set Text ->
-  -- | Source lines the block must not be sorted across.
+  -- | The modules the project's own packages declare, each with the names
+  -- of those that declare it.
+  Map Text (Set Text) ->
+  -- | The lines the imports are not sorted across.
   [Int] ->
-  -- | Source lines the names of a list must not be sorted across.
+  -- | The lines the names of a list are not sorted across.
   [Int] ->
   -- | The module's comments.
   [Comment] ->
   -- | Original imports.
   [LImportDecl GhcPs] ->
-  -- | Normalized imports, in runs that an empty line keeps apart: where a
-  -- stretch the barriers leave holds both, its imports of the project's
-  -- own modules begin a run.
+  -- | Normalized imports, in runs that an empty line keeps apart: an
+  -- import of the project's own modules that follows one of another
+  -- package's begins a run.
   [[LImportDecl GhcPs]]
 normalizeImports implicitPrelude ownModules barriers directives written imports =
-  filter (not . null) . foldr together [] $
-    span (not . ours) . stretch <$> cutAtBarriers barriers tidied
+  foldr apart [] (concatMap stretch (cutAtBarriers barriers tidied))
   where
     tidied = fmap (fmap (tidyImportList directives written)) imports
     identity = importIdentity implicitPrelude ownModules
@@ -58,12 +60,11 @@ normalizeImports implicitPrelude ownModules barriers directives written imports 
       foldRuns
         (combineImports directives written)
         [((identity i, hiddenNames i, alone i), i) | i <- is]
-    together (others, owned)
-      | null others || null owned = joined (others <> owned)
-      | otherwise = (others :) . joined owned
-    joined is = \case
-      run : rest -> (is <> run) : rest
-      [] -> [is]
+    apart i = \case
+      run@(j : _) : rest
+        | ours j && not (ours i) -> [i] : run : rest
+      run : rest -> (i : run) : rest
+      [] -> [[i]]
     alone i
       | any strands (spanOf i) = lineOf i
       | otherwise = 0
@@ -155,7 +156,8 @@ foldRuns fold' =
 -- run; sorting by module first would interleave them and hide who provides
 -- what.
 data ImportIdentity = ImportIdentity
-  { -- | One of the project's own modules.
+  { -- | One of the project's own modules, from the package it names where
+    -- it names one.
     iiOwn :: Bool,
     -- | A @Prelude@ that only refines what the module already has.
     iiRefinesPrelude :: Bool,
@@ -183,20 +185,22 @@ data ImportIdentity = ImportIdentity
 importIdentity ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | The modules the project's own packages declare.
-  Set Text ->
+  -- | The modules the project's own packages declare, each with the names
+  -- of those that declare it.
+  Map Text (Set Text) ->
   -- | The import.
   LImportDecl GhcPs ->
   ImportIdentity
 importIdentity implicitPrelude ownModules (L _ decl) =
   ImportIdentity
-    { iiOwn =
-        package (ideclPkgQual decl) == (2, T.empty)
-          || Set.member (named (ideclName decl)) ownModules,
+    { iiOwn = case qualifier of
+        (0, _) -> Map.member module' ownModules
+        (1, named') -> any (Set.member named') (Map.lookup module' ownModules)
+        _ -> True,
       iiRefinesPrelude =
-        isTrue implicitPrelude && named (ideclName decl) == T.pack "Prelude",
-      iiPackage = package (ideclPkgQual decl),
-      iiModule = named (ideclName decl),
+        isTrue implicitPrelude && module' == T.pack "Prelude",
+      iiPackage = qualifier,
+      iiModule = module',
       iiBoot = ideclSource decl == IsBoot,
       iiSafe = ideclSafe decl,
       iiQualified = isImportDeclQualified (ideclQualified decl),
@@ -205,6 +209,8 @@ importIdentity implicitPrelude ownModules (L _ decl) =
       iiLevel = lifted (ideclLevelSpec decl)
     }
   where
+    module' = named (ideclName decl)
+    qualifier = package (ideclPkgQual decl)
     named = T.pack . moduleNameString . unLoc
     package = \case
       NoRawPkgQual -> (0, T.empty)
@@ -226,7 +232,7 @@ importIdentity implicitPrelude ownModules (L _ decl) =
 
 -- | Keep the first import and give it everything the second named.
 combineImports ::
-  -- | Source lines the names of a list must not be sorted across.
+  -- | The lines the names of a list are not sorted across.
   [Int] ->
   -- | The module's comments, which decide how far the span may grow.
   [Comment] ->

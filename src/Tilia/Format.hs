@@ -58,7 +58,14 @@ import Tilia.Cabal.Plan
     versionMacros,
   )
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Cabal.Target (Component, componentInPlan, packageFilesOf, projectModules)
+import Tilia.Cabal.Target
+  ( Component,
+    TargetProblem,
+    componentInPlan,
+    describeTargetProblem,
+    packageFilesOf,
+    projectModules,
+  )
 import Tilia.Cpp
   ( CppError (..),
     answeredLeaves,
@@ -116,6 +123,8 @@ data FormatError
     NoProject FilePath
   | -- | A project, but no build plan we could read or produce, and why.
     NoBuildPlan FilePath Text
+  | -- | A project whose own modules could not be told, and why.
+    NoOwnModules FilePath TargetProblem
   | -- | The extensions in force in the file could not be settled, and why.
     NoPackage FilePath PackageProblem
   | -- | The file is not Haskell we can parse.
@@ -149,6 +158,11 @@ describeFormatError palette = \case
     "no project above " <> file path <> ": expected a cabal.project or a .cabal file"
   NoBuildPlan root reason ->
     "no build plan for " <> file root <> ": " <> reason
+  NoOwnModules root problem ->
+    "cannot tell which modules the project in "
+      <> file root
+      <> " declares: "
+      <> describeTargetProblem problem
   NoPackage path problem ->
     "cannot tell what "
       <> file path
@@ -238,6 +252,7 @@ formatErrorExitCode = \case
   Threw{} -> 22
   Unwritable{} -> 23
   MisplacedMagicComment{} -> 24
+  NoOwnModules{} -> 25
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
@@ -255,13 +270,15 @@ refused = \case
   Threw{} -> False
   NoProject{} -> False
   NoBuildPlan{} -> False
+  NoOwnModules{} -> False
 
 -- | What a run works out once and then uses for every file.
 data Session = Session
   { -- | The project.
     sessionRoot :: ProjectRoot,
-    -- | The modules the project's own packages declare.
-    sessionOwnModules :: Set Text,
+    -- | The modules the project's own packages declare, each with the names
+    -- of those that declare it.
+    sessionOwnModules :: Map Text (Set Text),
     -- | What can be asked about the modules a file imports.
     sessionResolver :: Resolver,
     -- | What the plan settles about the questions a file's conditionals
@@ -334,7 +351,7 @@ newSession ::
   IO (Either FormatError Session)
 newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
-  ownModules <- liftIO (projectModules project)
+  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules project)
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
@@ -396,7 +413,9 @@ compiledSession ::
 compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   project <-
     maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
-  ownModules <- liftIO (projectModules project)
+  ownModules <-
+    orElse (NoOwnModules (prPath project))
+      =<< liftIO (projectModules project)
   resolver <- liftIO (newResolverFrom compiledInterface)
   pure
     Session

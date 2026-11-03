@@ -43,8 +43,9 @@ formatExample ::
   Choice "check" ->
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
-  -- | The modules the package around it declares.
-  Set Text ->
+  -- | The modules the package around it declares, each with the package's
+  -- name.
+  Map Text (Set Text) ->
   -- | Its name in the corpus.
   FilePath ->
   -- | The example.

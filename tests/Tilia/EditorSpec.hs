@@ -28,6 +28,7 @@ import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Format (FormatError, formatErrorExitCode)
 import Tilia.Run (Outcome (..))
 import Tilia.TestUtils (withOpsProject)
+import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = describe "formatting what an editor holds" $ do
@@ -65,6 +66,11 @@ spec = describe "formatting what an editor holds" $ do
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") importsOfBoth
         `shouldReturn` CameTo importsOfBothGrouped
+
+  it "takes an import naming another package for one of that package's" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Uses.hs") importsByPackage
+        `shouldReturn` CameTo importsByPackageGrouped
 
   it "takes fixities from a module that begins with a byte order mark" $
     withProject $ \buffer ->
@@ -108,6 +114,20 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #debugFixity)
         `shouldReturn` Just 2
 
+  it "fails where a .cabal file of the project does not parse" $
+    inProject $ \project planFile -> do
+      writeUtf8File (project </> "fake.cabal") "library\n  exposed-modules: {\n"
+      either (Just . failure) (const Nothing)
+        <$> editorSession
+          (project </> "src" </> "Ops.hs")
+          (Just planFile)
+          (Don't #useCache)
+          (Don't #download)
+          (Don't #checkAst)
+          (Don't #checkIdempotence)
+          (Don't #debugFixity)
+        `shouldReturn` Just 25
+
   describe "given what compiling the project establishes" $ do
     it "puts the imports of the project's own modules after the rest" $
       withCompiled $ \buffer ->
@@ -147,7 +167,6 @@ importsOfBoth =
       "import Ops",
       "",
       "-- Sorting.",
-      "",
       "import Data.List (sort)",
       "import Data.Char",
       "x = sort"
@@ -165,6 +184,36 @@ importsOfBothGrouped =
       "import Data.List (sort)",
       "",
       "import Ops",
+      "",
+      "x = sort"
+    ]
+
+-- | A module importing the project's own module and a module of the same
+-- name from another package, each by the name of its package.
+importsByPackage :: Text
+importsByPackage =
+  T.unlines
+    [ "{-# LANGUAGE PackageImports #-}",
+      "module Uses where",
+      "import \"fake\" Ops",
+      "import qualified \"other\" Ops as Other",
+      "import Data.List (sort)",
+      "x = sort"
+    ]
+
+-- | 'importsByPackage', with the import naming the project's package after
+-- the rest.
+importsByPackageGrouped :: Text
+importsByPackageGrouped =
+  T.unlines
+    [ "{-# LANGUAGE PackageImports #-}",
+      "",
+      "module Uses where",
+      "",
+      "import Data.List (sort)",
+      "import qualified \"other\" Ops as Other",
+      "",
+      "import \"fake\" Ops",
       "",
       "x = sort"
     ]

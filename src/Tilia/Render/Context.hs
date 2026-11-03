@@ -103,16 +103,6 @@ data Ctx = Ctx
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
     ctxHaddocks :: Map (Int, Int) Comment,
-    -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves
-    -- as written.
-    ctxMagicCommentRanges :: [(Int, Int)],
-    -- | Source lines the import block must not be sorted across.
-    ctxImportBarriers :: [Int],
-    -- | Source lines the names of an import list must not be sorted across.
-    ctxNameBarriers :: [Int],
-    -- | The modules the project's own packages declare, whose imports go
-    -- after the rest.
-    ctxOwnModules :: Set Text,
     -- | The knot.
     ctxKnot :: Knot
   }
