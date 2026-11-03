@@ -76,10 +76,13 @@ decls ctx = declRun apart ctx Free
 topLevelDecls ::
   -- | The context.
   Ctx ->
+  -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves as
+  -- written.
+  [(Int, Int)] ->
   -- | The declarations.
   [LHsDecl GhcPs] ->
   Doc
-topLevelDecls ctx ds = case ctxMagicCommentRanges ctx of
+topLevelDecls ctx magicCommentRanges ds = case magicCommentRanges of
   [] -> decls ctx ds
   kept -> sepBy hardBreak (zipWith joined (Nothing : fmap Just ps) ps)
     where

@@ -7,16 +7,21 @@ module Tilia.Render
   )
 where
 
+import Control.Applicative ((<|>))
+import Control.Monad (guard)
 import Data.Char (isSpace)
+import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Hs (HsModule (..), LImportDecl, XModulePs (..))
+import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc)
@@ -42,11 +47,17 @@ import Tilia.Render.Context
 import Tilia.Render.Declaration (decls, declsKeepingGroups)
 import Tilia.Render.Expression (hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
-import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
+import Tilia.Render.Header
+  ( HeaderPragma (..),
+    ModuleCtx (..),
+    hsModule,
+    takeHeaderPragmas,
+    takeStackHeader,
+  )
 import Tilia.Render.Signature (sigDecl)
 import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
-import Tilia.Span.Ghc (spanOf, spanOfSrcSpan, spansOf)
+import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
 
 -- | What the printer needs to know about the module beyond its text.
 data RenderConfig = RenderConfig
@@ -55,13 +66,20 @@ data RenderConfig = RenderConfig
     rcExtensions :: Set Extension,
     -- | What the module can see, if it could be worked out.
     rcScope :: Maybe Scope,
-    -- | Source lines the import block must not be sorted across.
+    -- | The lines of every conditional's directives, which the names of an
+    -- import list are not sorted across.
+    rcDirectiveLines :: [Int],
+    -- | The lines of the directives that imports are not sorted across:
+    -- those of every conditional but one that only continues the import
+    -- above it, such as a @hiding@ clause written behind a condition.
     rcImportBarriers :: [Int],
-    -- | Source lines the names of an import list must not be sorted across.
-    rcNameBarriers :: [Int],
-    -- | The modules the project's own packages declare, whose imports go
-    -- after the rest.
-    rcOwnModules :: Set Text
+    -- | The lines the first and the last import of any configuration begin
+    -- on, where the module has conditionals, so that every configuration
+    -- agrees on which comments are among the imports.
+    rcImportBounds :: Maybe (Int, Int),
+    -- | The modules the project's own packages declare, each with the names
+    -- of those that declare it.
+    rcOwnModules :: Map Text (Set Text)
   }
 
 -- | A configuration that asserts nothing.
@@ -70,9 +88,10 @@ defaultRenderConfig =
   RenderConfig
     { rcExtensions = Set.empty,
       rcScope = Nothing,
+      rcDirectiveLines = [],
       rcImportBarriers = [],
-      rcNameBarriers = [],
-      rcOwnModules = Set.empty
+      rcImportBounds = Nothing,
+      rcOwnModules = Map.empty
     }
 
 -- | Render a parsed module, comments and all.
@@ -92,7 +111,7 @@ renderConfiguration ::
 renderConfiguration settings parsed =
   ( prologue (pmPrologue parsed)
       <> stackHeader
-      <> hsModule ctx pragmas opening hsMod,
+      <> hsModule ctx mctx pragmas hsMod,
     loose
   )
   where
@@ -106,15 +125,7 @@ renderConfiguration settings parsed =
     (stackHeader, rest) = takeStackHeader (pmPrologue parsed) plain
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
-    opening = importsOpening (sourceLines (pmSource parsed)) held hsMod
-    loose =
-      [ amongImports (hsmodImports hsMod) (belowOpening opening c)
-      | c <- held,
-        not (leftAlone c)
-      ]
-    leftAlone c = any (holds (spanStartLine (commentSpan c))) magicCommentRanges
-    holds n (from, to) = from <= n && n <= to
-    magicCommentRanges = preservedLines (pmSource parsed)
+    (mctx, loose) = moduleCtx settings parsed held
     carryingOn = carriedOnFrom loose
     ctx =
       Ctx
@@ -131,12 +142,61 @@ renderConfiguration settings parsed =
                 Just (_, remark) <- [carryingOn c]
               ],
           ctxHaddocks = indexOn haddocks,
-          ctxMagicCommentRanges = magicCommentRanges,
-          ctxImportBarriers = rcImportBarriers settings,
-          ctxNameBarriers = rcNameBarriers settings,
-          ctxOwnModules = rcOwnModules settings,
           ctxKnot = knot
         }
+
+-- | What printing the top level of one configuration takes, and the
+-- comments it does not carry with the empty lines around them that stay.
+moduleCtx ::
+  -- | How to render it.
+  RenderConfig ->
+  -- | The configuration, parsed.
+  ParsedModule ->
+  -- | The comments neither its syntax tree nor its header carries.
+  [Comment] ->
+  (ModuleCtx, [Comment])
+moduleCtx settings parsed held =
+  ( ModuleCtx
+      { mcOpening = opening,
+        mcHeadings = Set.toList (Set.fromList (mapMaybe heading held)),
+        mcDirectiveLines = rcDirectiveLines settings,
+        mcImportBarriers = rcImportBarriers settings,
+        mcOwnModules = rcOwnModules settings,
+        mcMagicCommentRanges = magicCommentRanges
+      },
+    [ if among c && isNothing (heading c) then withoutGaps c' else c'
+    | c <- held,
+      not (leftAlone c),
+      let c' = belowOpening opening c
+    ]
+  )
+  where
+    hsMod = pmModule parsed
+    ls = sourceLines (pmSource parsed)
+    opening = importsOpening ls held hsMod
+    imports = mapMaybe spanOf (hsmodImports hsMod)
+    among = amongImports bounds imports
+    bounds =
+      rcImportBounds settings
+        <|> fmap
+          (\starts -> (NE.head starts, NE.last starts))
+          (NE.nonEmpty (fmap spanStartLine imports))
+    blocks = blockEdges held
+    heading c = do
+      guard (among c)
+      edges <- IntMap.lookup (spanStartLine (commentSpan c)) blocks
+      guard $
+        headsImports
+          (rcImportBarriers settings)
+          ls
+          imports
+          (spanStartColumn (commentSpan c))
+          edges
+      pure (snd edges)
+    withoutGaps c = c{commentGapAbove = False, commentGapBelow = False}
+    leftAlone c = any (holds (spanStartLine (commentSpan c))) magicCommentRanges
+    holds n (from, to) = from <= n && n <= to
+    magicCommentRanges = preservedLines (pmSource parsed)
 
 -- | Keep a comment from running into a Haddock.
 heldOff :: [Comment] -> [Comment] -> [Comment]
@@ -235,21 +295,68 @@ belowOpening opening c
       c{commentGapAbove = False}
   | otherwise = c
 
--- | Leave out the empty lines around a comment written among the imports,
--- where the only empty line is the one between the project's own modules
--- and the rest.
+-- | Does a block of comments head the imports under it: is it written at
+-- their indentation, with empty lines right above and right under it, and
+-- no line they must not be sorted across between it and the first of them?
+headsImports ::
+  -- | The lines the imports are not sorted across.
+  [Int] ->
+  -- | The module as written.
+  Lines ->
+  -- | Where the imports are.
+  [Span] ->
+  -- | The column the block begins at.
+  Int ->
+  -- | The lines right above and right under the block.
+  (Int, Int) ->
+  Bool
+headsImports barriers ls imports column (above, under) =
+  blankAt above ls
+    && blankAt under ls
+    && case dropWhile ((< under) . spanStartLine) imports of
+      next : _ ->
+        spanStartColumn next == column
+          && not (any (\b -> under < b && b < spanStartLine next) barriers)
+      [] -> False
+
+-- | The lines right above and right under each block of comments on lines
+-- of their own, written one right under another at one column, by the line
+-- each comment of the block begins on.
+blockEdges :: [Comment] -> IntMap (Int, Int)
+blockEdges cs =
+  IntMap.fromList
+    [ (spanStartLine (commentSpan c), (above, under))
+    | block <- foldr joined [] (filter (not . commentTrailing) cs),
+      let above = spanStartLine (commentSpan (NE.head block)) - 1
+          under = spanEndLine (commentSpan (NE.last block)) + 1,
+      c <- NE.toList block
+    ]
+  where
+    joined c ((d :| ds) : rest)
+      | continuedBy c d = (c :| d : ds) : rest
+    joined c rest = (c :| []) : rest
+    continuedBy c d =
+      spanStartLine (commentSpan d) == spanEndLine (commentSpan c) + 1
+        && spanStartColumn (commentSpan d) == spanStartColumn (commentSpan c)
+
+-- | Is a comment written between imports rather than inside one?
 amongImports ::
-  -- | The imports, as written.
-  [LImportDecl GhcPs] ->
+  -- | The first and the last line an import begins on in any configuration
+  -- of the module, where it has imports.
+  Maybe (Int, Int) ->
+  -- | Where the imports of this configuration are.
+  [Span] ->
   -- | The comment.
   Comment ->
-  Comment
-amongImports imports c
-  | Just s <- spansOf imports,
-    startPoint s < startPoint (commentSpan c),
-    endPoint (commentSpan c) < endPoint s =
-      c{commentGapAbove = False, commentGapBelow = False}
-  | otherwise = c
+  Bool
+amongImports bounds imports c = case bounds of
+  Just (first, final) ->
+    (first < spanStartLine s || first == spanStartLine s && commentTrailing c)
+      && spanEndLine s < final
+      && not (any (`covers` s) imports)
+  Nothing -> False
+  where
+    s = commentSpan c
 
 -- | The lines above the module, put back exactly as they were written.
 prologue :: [Text] -> Doc

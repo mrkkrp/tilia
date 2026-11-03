@@ -5,8 +5,12 @@
 module Tilia.Cabal.TargetSpec (spec) where
 
 import Data.List (isSuffixOf, sort)
+import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time.Clock (addUTCTime)
+import System.Directory (getModificationTime, setModificationTime)
 import System.FilePath (isPathSeparator, takeFileName, (</>))
 import Test.Hspec
 
@@ -586,6 +590,44 @@ spec = do
         componentsOfTarget root Everything >>= \case
           Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
           Left problem -> describeTargetProblem problem `shouldSatisfy` T.isInfixOf "does not parse"
+
+  describe "the modules a project declares" $ do
+    it "takes those of every package the project names"
+      $ withProject
+        [ ("cabal.project", "packages: one two\n"),
+          ("one/one.cabal", packageWith "one" ["src"] ["A"]),
+          ("two/two.cabal", packageWith "two" ["src"] ["B", "C"])
+        ]
+      $ \root ->
+        projectModules root
+          `shouldReturn` Right
+            (Map.fromList [("A", one), ("B", two), ("C", two)])
+
+    it "says so when a .cabal file will not parse"
+      $ withProject
+        [ ("cabal.project", "packages: one two\n"),
+          ("one/one.cabal", packageWith "one" ["src"] ["A"]),
+          ("two/two.cabal", "library\n  exposed-modules: {\n")
+        ]
+      $ \root ->
+        projectModules root >>= \case
+          Right modules -> expectationFailure ("found " <> show modules)
+          Left problem ->
+            describeTargetProblem problem
+              `shouldSatisfy` T.isInfixOf "does not parse"
+
+    it "reads a .cabal file again once it has been modified" $
+      withProject [("one.cabal", packageWith "one" ["src"] ["A"])] $ \root -> do
+        let file = prPath root </> "one.cabal"
+        projectModules root `shouldReturn` Right (Map.fromList [("A", one)])
+        modified <- getModificationTime file
+        writeUtf8File file (packageWith "one" ["src"] ["A", "B"])
+        setModificationTime file (addUTCTime 1 modified)
+        projectModules root
+          `shouldReturn` Right (Map.fromList [("A", one), ("B", one)])
+  where
+    one = Set.singleton "one"
+    two = Set.singleton "two"
 
 ----------------------------------------------------------------------------
 -- Helpers

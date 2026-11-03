@@ -7,6 +7,7 @@ module Tilia.Render.Header
   ( HeaderPragma (..),
     takeHeaderPragmas,
     takeStackHeader,
+    ModuleCtx (..),
     hsModule,
   )
 where
@@ -14,10 +15,12 @@ where
 import Control.Applicative ((<|>))
 import Data.Choice (fromBool)
 import Data.Function (on)
-import Data.List (sortOn)
+import Data.List (insert, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict (Map)
 import Data.Maybe (isJust, isNothing)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -192,41 +195,75 @@ pragmaBlock =
 namesAnEdition :: Text -> Bool
 namesAnEdition = isJust . lookupEdition
 
+-- | What printing the top level of a module takes beyond 'Ctx'.
+data ModuleCtx = ModuleCtx
+  { -- | The empty line that opens the imports, where the comments written
+    -- above it stay.
+    mcOpening :: Maybe Int,
+    -- | The empty lines under the comments that head stretches of the
+    -- imports, which they are not sorted across.
+    mcHeadings :: [Int],
+    -- | The lines of every conditional's directives, which the names of an
+    -- import list are not sorted across.
+    mcDirectiveLines :: [Int],
+    -- | The lines of the directives that imports are not sorted across:
+    -- those of every conditional but one that only continues the import
+    -- above it.
+    mcImportBarriers :: [Int],
+    -- | The modules the project's own packages declare, each with the names
+    -- of those that declare it.
+    mcOwnModules :: Map Text (Set Text),
+    -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves
+    -- as written.
+    mcMagicCommentRanges :: [(Int, Int)]
+  }
+
 -- | A whole module.
 hsModule ::
   -- | The context.
   Ctx ->
+  -- | What printing its top level takes.
+  ModuleCtx ->
   -- | The pragmas the header hoists.
   [HeaderPragma] ->
-  -- | The empty line that opens the imports, where the comments written
-  -- above it stay.
-  Maybe Int ->
   -- | The module.
   HsModule GhcPs ->
   Doc
-hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
+hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
   pragmaBlock pragmas
     <> hardBreak
     <> moduleLine
     <> hardBreak
-    <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
-    <> sepBy hardBreak (fmap (foldMap importLine) imports)
+    <> foldMap anchor mcOpening
+    <> importLines mcHeadings False imports
     <> includeUnless
-      (null hsmodDecls && null (ctxMagicCommentRanges ctx))
+      (null hsmodDecls && null mcMagicCommentRanges)
       ( hardBreak
           <> declarationsStart
-          <> declarationLayout (topLevelDecls ctx hsmodDecls)
+          <> declarationLayout
+            (topLevelDecls ctx mcMagicCommentRanges hsmodDecls)
       )
   where
     imports =
       normalizeImports
         (fromBool (Set.member ImplicitPrelude (ctxExtensions ctx)))
-        (ctxOwnModules ctx)
-        (ctxImportBarriers ctx)
-        (ctxNameBarriers ctx)
+        mcOwnModules
+        (foldr insert mcImportBarriers mcHeadings)
+        mcDirectiveLines
         (Source.comments (ctxSource ctx))
         hsmodImports
-    importLine i = at_ ctx (importDecl ctx) i <> hardBreak
+    importLines pending later = \case
+      [] -> mempty
+      [] : runs -> importLines pending True runs
+      (i : is) : runs ->
+        foldMap anchor above
+          <> includeWhen later hardBreak
+          <> at_ ctx (importDecl ctx) i
+          <> hardBreak
+          <> importLines rest False (is : runs)
+        where
+          (above, rest) = span (< maybe 0 spanStartLine (spanOf i)) pending
+    anchor l = located (mkSpan (l, 1) (l, 2)) mempty
     declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of
       (_ : _ : _, Just s) | isSingleLine s -> flat
       _ -> id
