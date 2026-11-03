@@ -23,6 +23,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..), comparing)
 import Data.Set qualified as Set
+
 import Tilia.Comments
   ( Above (..),
     Comment (..),

@@ -56,6 +56,7 @@ import System.Directory
   )
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.IO (hClose, openBinaryTempFile)
+
 import Tilia.Fixity
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))
 import Tilia.Utils (quietly, readUtf8File, sha256Of, tshow)

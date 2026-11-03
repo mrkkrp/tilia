@@ -25,6 +25,7 @@ import GHC.Hs
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.Name.Reader (RdrName (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Data (dataDecl)

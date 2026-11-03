@@ -12,6 +12,7 @@ module Tilia.Render.Header
 where
 
 import Control.Applicative ((<|>))
+import Data.Choice (fromBool)
 import Data.Function (on)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty)
@@ -24,8 +25,10 @@ import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+
 import Tilia.Comments (Comment (..), Pragma (..), commentPragma)
 import Tilia.Doc.Combinators
+import Tilia.Imports (normalizeImports)
 import Tilia.Parser (writtenInHeader)
 import Tilia.Pragma (languageNames, lookupEdition, sameInForce)
 import Tilia.Render.Context
@@ -36,6 +39,7 @@ import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
 import Tilia.Render.Pragma (warningTxt)
 import Tilia.Source (Source, directivePresentOnLine, sourceLines)
+import Tilia.Source qualified as Source
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -206,7 +210,7 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
     <> moduleLine
     <> hardBreak
     <> foldMap (\l -> located (mkSpan (l, 1) (l, 2)) mempty) opening
-    <> foldMap (\i -> at_ ctx (importDecl ctx) i <> hardBreak) hsmodImports
+    <> sepBy hardBreak (fmap (foldMap importLine) imports)
     <> includeUnless
       (null hsmodDecls && null (ctxMagicCommentRanges ctx))
       ( hardBreak
@@ -214,6 +218,15 @@ hsModule ctx pragmas opening HsModule{hsmodExt = XModulePs{..}, ..} =
           <> declarationLayout (topLevelDecls ctx hsmodDecls)
       )
   where
+    imports =
+      normalizeImports
+        (fromBool (Set.member ImplicitPrelude (ctxExtensions ctx)))
+        (ctxOwnModules ctx)
+        (ctxImportBarriers ctx)
+        (ctxNameBarriers ctx)
+        (Source.comments (ctxSource ctx))
+        hsmodImports
+    importLine i = at_ ctx (importDecl ctx) i <> hardBreak
     declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of
       (_ : _ : _, Just s) | isSingleLine s -> flat
       _ -> id

@@ -57,6 +57,7 @@ import GHC.LanguageExtensions.Type (Extension (NegativeLiterals, UnicodeSyntax))
 import GHC.Types.Name.Reader (RdrName (..))
 import GHC.Types.SrcLoc (GenLocated (..))
 import GHC.Types.SrcLoc qualified as GHC
+
 import Tilia.Comments (Comment (..), CommentStyle (..), carriesOn, commentTrailing)
 import Tilia.Doc.Combinators
 import Tilia.Fixity
@@ -106,6 +107,13 @@ data Ctx = Ctx
     -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves
     -- as written.
     ctxMagicCommentRanges :: [(Int, Int)],
+    -- | Source lines the import block must not be sorted across.
+    ctxImportBarriers :: [Int],
+    -- | Source lines the names of an import list must not be sorted across.
+    ctxNameBarriers :: [Int],
+    -- | The modules the project's own packages declare, whose imports go
+    -- after the rest.
+    ctxOwnModules :: Set Text,
     -- | The knot.
     ctxKnot :: Knot
   }

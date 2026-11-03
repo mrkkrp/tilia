@@ -32,6 +32,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
+
 import Tilia.Comments (Comment, commentsOf)
 import Tilia.Source.Lines
 

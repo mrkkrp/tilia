@@ -12,6 +12,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Test.Hspec
+
 import Tilia.Fixity
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
 import Tilia.Fixity.Interface

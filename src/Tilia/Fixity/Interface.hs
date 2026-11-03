@@ -22,6 +22,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+
 import Tilia.Fixity
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
 import Tilia.Process (readProgramOutput)

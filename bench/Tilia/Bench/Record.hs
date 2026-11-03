@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word64)
 import Text.Read (readMaybe)
+
 import Tilia.Utils (readUtf8File, writeUtf8File)
 
 -- | The bytes each benchmark allocated and the instructions it retired, by

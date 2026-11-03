@@ -15,7 +15,6 @@ import Data.Text.IO qualified as T
 import Data.Version (showVersion)
 import GHC.IO.Encoding (TextEncoding (textEncodingName))
 import Options.Applicative
-import Paths_tilia (version)
 import System.Directory (getCurrentDirectory, makeRelativeToCurrentDirectory)
 import System.Exit (ExitCode (..))
 import System.Exit qualified
@@ -29,6 +28,8 @@ import System.IO
     stdin,
     stdout,
   )
+
+import Paths_tilia (version)
 import Tilia.Cabal.Project (ProjectRoot, findProjectRoot)
 import Tilia.Cabal.Target
   ( Component,

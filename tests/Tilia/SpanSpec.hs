@@ -3,6 +3,7 @@ module Tilia.SpanSpec (spec) where
 
 import Test.Hspec
 import Test.QuickCheck
+
 import Tilia.Gen (AnySpan (..))
 import Tilia.Span
 

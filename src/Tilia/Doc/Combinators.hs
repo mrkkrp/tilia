@@ -74,6 +74,7 @@ where
 import Data.List (intersperse)
 import Data.Text (Text)
 import Data.Text qualified as T
+
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),

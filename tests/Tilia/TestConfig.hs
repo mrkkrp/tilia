@@ -16,9 +16,11 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
+import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension (ImportQualifiedPost))
+
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cabal.Project (Marker (ProjectFile), ProjectRoot (..))
 import Tilia.Fixity
@@ -41,15 +43,18 @@ formatExample ::
   Choice "check" ->
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
+  -- | The modules the package around it declares.
+  Set Text ->
   -- | Its name in the corpus.
   FilePath ->
   -- | The example.
   Text ->
   IO (Either FormatError Text)
-formatExample checking package =
+formatExample checking package ownModules =
   formatSource
     Session
       { sessionRoot = ProjectRoot "." ProjectFile,
+        sessionOwnModules = ownModules,
         sessionResolver =
           Resolver $ \_ name ->
             pure mempty{establishedFixities = exportsOf name},

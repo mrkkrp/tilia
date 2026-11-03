@@ -24,6 +24,7 @@ import System.Process
     waitForProcess,
     withCreateProcess,
   )
+
 import Tilia.Newline (NewlineStyle (Lf), setNewlineStyle)
 import Tilia.Utils (quietly)
 

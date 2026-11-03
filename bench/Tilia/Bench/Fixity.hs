@@ -32,6 +32,7 @@ import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.Process (getCurrentPid)
 import Text.Printf (printf)
+
 import Tilia.Bench.Cases (Benchmark (..), Stage (..))
 import Tilia.Cabal.Package (newPackageReader)
 import Tilia.Cabal.Plan

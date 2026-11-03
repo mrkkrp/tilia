@@ -92,6 +92,7 @@ import GHC.Types.Fixity qualified as GHC
 import GHC.Types.Name.Occurrence (isDataOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+
 import Tilia.Gathered (Gathered (..))
 import Tilia.Palette (Color (Place), Palette, paint)
 import Tilia.Span (Span, covers)

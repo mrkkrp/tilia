@@ -4,6 +4,7 @@
 module Tilia.NewlineSpec (spec) where
 
 import Test.Hspec
+
 import Tilia.Newline
 
 spec :: Spec

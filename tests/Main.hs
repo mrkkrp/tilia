@@ -12,10 +12,11 @@
 module Main (main) where
 
 import Data.List (intercalate, isPrefixOf)
-import Spec qualified
 import System.Environment (lookupEnv)
 import Test.Hspec.Runner (Config (..), Path, defaultConfig, hspecWith)
 import Text.Read (readMaybe)
+
+import Spec qualified
 import Tilia.TestUtils (fingerprint)
 
 main :: IO ()

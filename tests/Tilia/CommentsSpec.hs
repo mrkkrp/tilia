@@ -8,6 +8,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+
 import Tilia.Comments
 import Tilia.Comments.Attach
 import Tilia.Doc

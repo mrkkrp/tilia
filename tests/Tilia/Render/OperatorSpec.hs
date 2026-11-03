@@ -5,6 +5,7 @@ module Tilia.Render.OperatorSpec (spec) where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Test.Hspec
+
 import Tilia.Fixity (Direction (..), Fixity (..))
 import Tilia.Render.Operator
 

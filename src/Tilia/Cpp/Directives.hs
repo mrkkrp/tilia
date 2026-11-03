@@ -59,6 +59,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
+
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar)
 import Tilia.Doc (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)

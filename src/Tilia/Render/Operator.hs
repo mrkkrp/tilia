@@ -17,6 +17,7 @@ import Data.List (tails, zip4)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isNothing, mapMaybe)
+
 import Tilia.Fixity (Direction (..), Fixity (..))
 import Tilia.Span
 

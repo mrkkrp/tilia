@@ -18,6 +18,7 @@ import Data.List (unfoldr)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
+
 import Tilia.Palette (Color (..), Palette, paint)
 import Tilia.Utils (tshow)
 

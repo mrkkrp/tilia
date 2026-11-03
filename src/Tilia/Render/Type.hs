@@ -42,6 +42,7 @@ import GHC.Types.Name.Reader (RdrName, isUnqual, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import GHC.Types.Var (Specificity (..))
+
 import Tilia.Doc.Combinators
 import Tilia.Fixity (typeOperatorNamespace)
 import Tilia.Render.Context

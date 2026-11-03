@@ -15,6 +15,7 @@ module Tilia.Render.Layout
 where
 
 import Data.Choice (Choice, isTrue, pattern Without)
+
 import Tilia.Doc.Combinators
 import Tilia.Span
 

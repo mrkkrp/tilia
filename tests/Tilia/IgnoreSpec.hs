@@ -7,6 +7,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import Test.Hspec
+
 import Tilia.Ignore
 import Tilia.TestUtils (underAsciiLocale, withFiles)
 import Tilia.Utils (writeUtf8File)

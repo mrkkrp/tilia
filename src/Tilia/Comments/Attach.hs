@@ -23,6 +23,7 @@ import Data.Maybe (listToMaybe)
 import Data.Monoid (First (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
+
 import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc

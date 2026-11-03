@@ -23,6 +23,7 @@ import Data.List (unsnoc)
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+
 import Tilia.Span (Span)
 
 ----------------------------------------------------------------------------

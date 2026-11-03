@@ -18,6 +18,7 @@ import System.FilePath ((</>))
 import System.IO (Handle, IOMode (ReadWriteMode), withFile)
 import System.IO.Temp (withSystemTempDirectory, withSystemTempFile)
 import Test.Hspec
+
 import Tilia.Cabal.Package (PackageProblem (..))
 import Tilia.Cpp (CppError (..))
 import Tilia.Fixity

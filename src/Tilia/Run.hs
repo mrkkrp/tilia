@@ -31,6 +31,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.FilePath (takeExtension)
+
 import Tilia.Diff (diffInFull)
 import Tilia.Format
   ( FormatError (Threw, Unreadable, Unwritable),

@@ -13,6 +13,7 @@ where
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+
 import Tilia.Fixity
 
 -- | Every module the boot packages expose, with the operators it exports.

@@ -7,6 +7,7 @@ import Data.List (isInfixOf)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Test.Hspec
+
 import Tilia.Fixity.PackageDb
 
 spec :: Spec

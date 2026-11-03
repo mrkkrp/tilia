@@ -53,6 +53,7 @@ import GHC.Unit.Types (Unit)
 import Language.Haskell.Syntax.Extension (XRec)
 import Language.Haskell.Syntax.Module.Name (ModuleName)
 import System.IO.Unsafe (unsafePerformIO)
+
 import Tilia.Comments
   ( Comment (..),
     Pragma (..),
@@ -332,7 +333,7 @@ asImports path x y = case (cast x, cast y) of
   _ -> Nothing
   where
     normalised :: [LImportDecl GhcPs] -> [LImportDecl GhcPs]
-    normalised = normalizeImports (Is #implicitPrelude) [] [] []
+    normalised = concat . normalizeImports (Is #implicitPrelude) Set.empty [] [] []
     alongside before after
       | length before /= length after =
           Just (describe path "the module imports a different set of modules")

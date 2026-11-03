@@ -33,6 +33,7 @@ import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -40,6 +41,7 @@ import Data.Version (Version, versionBranch)
 import GHC.Driver.Session (OnOff (..))
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (canonicalizePath)
+
 import Tilia.Cabal.Package
   ( PackageProblem (..),
     PackageReader,
@@ -56,7 +58,7 @@ import Tilia.Cabal.Plan
     versionMacros,
   )
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Cabal.Target (Component, componentInPlan, packageFilesOf)
+import Tilia.Cabal.Target (Component, componentInPlan, packageFilesOf, projectModules)
 import Tilia.Cpp
   ( CppError (..),
     answeredLeaves,
@@ -257,6 +259,8 @@ refused = \case
 data Session = Session
   { -- | The project.
     sessionRoot :: ProjectRoot,
+    -- | The modules the project's own packages declare.
+    sessionOwnModules :: Set Text,
     -- | What can be asked about the modules a file imports.
     sessionResolver :: Resolver,
     -- | What the plan settles about the questions a file's conditionals
@@ -329,6 +333,7 @@ newSession ::
   IO (Either FormatError Session)
 newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
+  ownModules <- liftIO (projectModules project)
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
@@ -350,6 +355,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
   pure
     Session
       { sessionRoot = project,
+        sessionOwnModules = ownModules,
         sessionResolver = resolver,
         sessionMacros = macrosOf plan,
         sessionPackage = packageReader,
@@ -389,10 +395,12 @@ compiledSession ::
 compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   project <-
     maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
+  ownModules <- liftIO (projectModules project)
   resolver <- liftIO (newResolverFrom compiledInterface)
   pure
     Session
       { sessionRoot = project,
+        sessionOwnModules = ownModules,
         sessionResolver = resolver,
         sessionMacros =
           versionMacros
@@ -470,14 +478,20 @@ formatTurnedOn session path source = runExceptT $ do
           [] ->
             pure
               defaultRenderConfig
-                { rcExtensions = extensions,
+                { rcOwnModules = sessionOwnModules session,
+                  rcExtensions = extensions,
                   rcScope = Just scope
                 }
           unknown -> throwE (UnknownFixity path unknown)
       formatting (extensions, cpp) already text
         | isTrue cpp = do
             render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
-              Nothing -> pure defaultRenderConfig{rcExtensions = extensions}
+              Nothing ->
+                pure
+                  defaultRenderConfig
+                    { rcOwnModules = sessionOwnModules session,
+                      rcExtensions = extensions
+                    }
               Just branches -> do
                 traverse_ misplaced (misplacedMagicComment text branches)
                 renderConfigFor extensions branches

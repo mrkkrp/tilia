@@ -27,6 +27,7 @@ module Tilia.Doc
 where
 
 import Data.Maybe (mapMaybe)
+
 import Tilia.Doc.Internal
   ( Conditional (..),
     Doc (..),

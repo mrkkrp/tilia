@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Test.Hspec hiding (after, before)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
+
 import Tilia.Cpp (formatWithCpp, withoutRuledOut)
 import Tilia.Cpp.Directives (answeredLeaves)
 import Tilia.Cpp.Macros (Macros (..))

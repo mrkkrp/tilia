@@ -8,6 +8,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
 import Test.QuickCheck
+
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Gen

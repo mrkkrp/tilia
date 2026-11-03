@@ -22,6 +22,7 @@ import Data.Maybe (isJust)
 import GHC.Hs
 import GHC.Types.Basic (Arity, Boxity (..), ConTag)
 import GHC.Types.Name.Reader (RdrName)
+
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Layout

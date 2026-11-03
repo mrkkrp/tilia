@@ -15,11 +15,13 @@ module Tilia.Cabal.Target
     componentInPlan,
     filesOfComponents,
     packageFilesOf,
+    projectModules,
   )
 where
 
 import Control.Monad (filterM)
 import Data.Bifunctor (first)
+import Data.Functor ((<&>))
 import Data.List (isPrefixOf, isSuffixOf, sort, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -39,11 +41,13 @@ import System.FilePath
     takeDirectory,
     (</>),
   )
+
 import Tilia.Cabal.Package
   ( ComponentSection (..),
     Kind (..),
     PackageProblem,
     addedSources,
+    declaredModules,
     describePackageProblem,
     isDeclaredModule,
     joined,
@@ -287,6 +291,28 @@ packageFilesOf root = case prMarker root of
             (packageToCabalFile (prPath root))
             (concatMap packagesInProjectConfig parsed)
         pure (Right (Set.toList (Set.fromList (concat found))))
+
+-- | The modules the project's own packages declare, whatever the conditions
+-- in their @.cabal@ files.
+projectModules ::
+  -- | The project.
+  ProjectRoot ->
+  IO (Set Text)
+projectModules root =
+  packageFilesOf root >>= \case
+    Left _ -> pure Set.empty
+    Right files -> Set.unions <$> traverse declaredIn files
+  where
+    declaredIn file =
+      readPackageDescription file <&> \case
+        Left _ -> Set.empty
+        Right described ->
+          Set.fromList
+            [ name
+            | (_, _, branches) <- packageComponents described,
+              (_, modules) <- declaredModules branches,
+              (name, _) <- modules
+            ]
 
 -- | The entries of a project configuration file's @packages@ fields.
 packagesInProjectConfig :: [Field Position] -> [Text]

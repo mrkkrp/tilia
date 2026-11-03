@@ -13,6 +13,7 @@ where
 import Data.Choice (Choice)
 import Data.Either (fromRight)
 import Data.Text (Text)
+
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
   ( Target (Everything),

@@ -19,6 +19,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+
 import Tilia.Cpp.Directives
   ( GroupSpec (..),
     allGroups,

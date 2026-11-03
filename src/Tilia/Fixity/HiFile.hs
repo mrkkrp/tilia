@@ -25,6 +25,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word (Word32, Word8)
+
 import Tilia.Fixity
   ( Direction (..),
     Fixities,

@@ -32,6 +32,7 @@ import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Parser.Header (toArgs)
 import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
+
 import Tilia.Utils (tshow)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with

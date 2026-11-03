@@ -12,6 +12,7 @@ module Tilia.Fixity.KnownKeys.Ghc910
 where
 
 import Data.Text (Text)
+
 import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..))
 
 -- | Every name a key stands for: the tag and index of its key, its

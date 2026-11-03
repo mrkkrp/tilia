@@ -24,6 +24,7 @@ import System.Directory (doesFileExist)
 import System.FilePath (takeDirectory, (</>))
 import System.IO.Unsafe (unsafePerformIO)
 import Test.Hspec (Spec)
+
 import Tilia.Cabal.Plan
   ( BuildPlan (..),
     PackageSource (..),

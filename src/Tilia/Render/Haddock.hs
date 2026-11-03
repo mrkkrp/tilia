@@ -25,6 +25,7 @@ import Data.Text qualified as T
 import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
+
 import Tilia.Comments (Comment (..), afterOpener, bracketed, singleLine, triggerOn)
 import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators

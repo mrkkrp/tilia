@@ -5,6 +5,7 @@ module Tilia.Comments.PlaceSpec (spec) where
 
 import Data.Text (Text)
 import Test.Hspec
+
 import Tilia.Comments (Comment (..), renderComment)
 import Tilia.Comments.Place
 import Tilia.Doc (Spill (..))

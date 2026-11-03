@@ -27,6 +27,7 @@ import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import System.Directory (canonicalizePath, doesFileExist)
 import Test.Hspec
+
 import Tilia.BootFixities (bootFixities)
 import Tilia.Cabal.Plan
 import Tilia.Cpp (blankCpp)

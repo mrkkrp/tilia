@@ -28,6 +28,7 @@ import Data.Text.Encoding qualified as T
 import Distribution.PackageDescription (GenericPackageDescription)
 import GHC.Generics (Generic)
 import System.FilePath.Posix qualified as Posix
+
 import Tilia.Cabal.Package (packageSourceDirs)
 import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile)
 import Tilia.Utils (quietly)

@@ -35,6 +35,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath (joinPath, (</>))
+
 import Tilia.Utils (byteOrderMark, pathUnder, quietly)
 
 -- | The patterns of one ignore file, in the order they are written.

@@ -22,6 +22,7 @@ import System.FilePath (replaceExtension, (</>))
 import System.IO (stdout)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec hiding (Example, after, before, example)
+
 import Tilia.Corpus
 import Tilia.Corpus.Manifest
 import Tilia.Cpp (countLeaves, describeCppError, usesCpp)
@@ -290,7 +291,12 @@ check palette example = do
     Nothing -> pure (Result NotUtf8 "" noDigest)
     Just text -> guarded $ do
       let package = exampleExtensions example
-          format checking = formatExample checking package (exampleName example)
+          format checking =
+            formatExample
+              checking
+              package
+              (exampleOwnModules example)
+              (exampleName example)
           unchecked = do
             printed <- format (Don't #check) text
             (printed,) <$> either (pure . Left) (format (Don't #check)) printed

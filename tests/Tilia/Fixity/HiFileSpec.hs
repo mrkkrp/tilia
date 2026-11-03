@@ -19,6 +19,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+
 import Tilia.Cabal.Plan (BuildPlan)
 import Tilia.Fixity (Fixities, Namespace (..), OpName (..))
 import Tilia.Fixity.HiFile

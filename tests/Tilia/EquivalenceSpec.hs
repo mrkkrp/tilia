@@ -9,6 +9,7 @@ import Data.Text qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import Test.Hspec
+
 import Tilia.Equivalence
 import Tilia.Parser (pmModule)
 import Tilia.TestUtils (parsed)

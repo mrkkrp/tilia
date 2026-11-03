@@ -21,6 +21,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List (isSuffixOf)
 import Data.Text (Text)
 import Distribution.PackageDescription (GenericPackageDescription)
+
 import Tilia.Cabal.Package
   ( declaredModules,
     packageBranches,
