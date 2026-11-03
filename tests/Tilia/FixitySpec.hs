@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import Test.Hspec
+
 import Tilia.Cpp (blankCpp, branchLeaves)
 import Tilia.Fixity
 import Tilia.Parser

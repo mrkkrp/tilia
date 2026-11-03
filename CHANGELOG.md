@@ -31,6 +31,13 @@
   declarations of one kind do, and still get an empty line above them under
   a declaration they do not name.
   [Issue 284](https://github.com/mrkkrp/tilia/issues/284).
+* The imports of the project's own modules, the ones its packages declare
+  and any written with `"this"`, come after the rest, with an empty line
+  between the two groups, each sorted as before. Where a conditional cuts
+  the imports into stretches that are sorted apart, each stretch is grouped
+  on its own. The empty lines written around a comment among the imports
+  are left out, so that the one between the groups is the only one.
+  [Issue 349](https://github.com/mrkkrp/tilia/issues/349).
 
 ## Tilia 0.1.4.0
 

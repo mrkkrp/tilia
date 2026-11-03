@@ -11,6 +11,7 @@ import Data.Maybe (isJust, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+
 import Tilia.Cpp
 import Tilia.Cpp.Directives (configurations, implied)
 import Tilia.Cpp.Place (regionsIn)

@@ -23,6 +23,7 @@ import Distribution.FieldGrammar.Newtypes (FSep (..), FilePathNT (..), alaList')
 import Distribution.Parsec (Parsec, simpleParsec)
 import System.Directory (doesDirectoryExist, findExecutable)
 import System.FilePath ((</>))
+
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (blocksOf, fieldWords, looksLikeModule, quietly)
 

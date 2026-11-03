@@ -7,7 +7,7 @@ module Tilia.Render
   )
 where
 
-import Data.Choice (fromBool)
+import Data.Char (isSpace)
 import Data.IntMap.Strict qualified as IntMap
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -15,10 +15,12 @@ import Data.Maybe (listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GHC.Hs (HsModule (..), XModulePs (..))
+import Data.Text qualified as T
+import GHC.Hs (HsModule (..), LImportDecl, XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc)
+
 import Tilia.Comments
   ( Comment (..),
     asOrdinary,
@@ -34,7 +36,6 @@ import Tilia.Comments.Attach (attachComments)
 import Tilia.Doc.Combinators
 import Tilia.Fixity (Scope, capturedUses)
 import Tilia.Gathered (Gathered)
-import Tilia.Imports (normalizeImports)
 import Tilia.MagicComments (preservedLines)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
@@ -43,9 +44,9 @@ import Tilia.Render.Expression (hsExprIn, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header (HeaderPragma (..), hsModule, takeHeaderPragmas, takeStackHeader)
 import Tilia.Render.Signature (sigDecl)
-import Tilia.Source (Lines, blankAt, comments, sourceLines)
+import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
-import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
+import Tilia.Span.Ghc (spanOf, spanOfSrcSpan, spansOf)
 
 -- | What the printer needs to know about the module beyond its text.
 data RenderConfig = RenderConfig
@@ -57,7 +58,10 @@ data RenderConfig = RenderConfig
     -- | Source lines the import block must not be sorted across.
     rcImportBarriers :: [Int],
     -- | Source lines the names of an import list must not be sorted across.
-    rcNameBarriers :: [Int]
+    rcNameBarriers :: [Int],
+    -- | The modules the project's own packages declare, whose imports go
+    -- after the rest.
+    rcOwnModules :: Set Text
   }
 
 -- | A configuration that asserts nothing.
@@ -67,7 +71,8 @@ defaultRenderConfig =
     { rcExtensions = Set.empty,
       rcScope = Nothing,
       rcImportBarriers = [],
-      rcNameBarriers = []
+      rcNameBarriers = [],
+      rcOwnModules = Set.empty
     }
 
 -- | Render a parsed module, comments and all.
@@ -87,7 +92,7 @@ renderConfiguration ::
 renderConfiguration settings parsed =
   ( prologue (pmPrologue parsed)
       <> stackHeader
-      <> hsModule ctx pragmas opening (sorted hsMod),
+      <> hsModule ctx pragmas opening hsMod,
     loose
   )
   where
@@ -102,22 +107,14 @@ renderConfiguration settings parsed =
     (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
     opening = importsOpening (sourceLines (pmSource parsed)) held hsMod
-    loose = [belowOpening opening c | c <- held, not (leftAlone c)]
+    loose =
+      [ amongImports (hsmodImports hsMod) (belowOpening opening c)
+      | c <- held,
+        not (leftAlone c)
+      ]
     leftAlone c = any (holds (spanStartLine (commentSpan c))) magicCommentRanges
     holds n (from, to) = from <= n && n <= to
     magicCommentRanges = preservedLines (pmSource parsed)
-    implicitPrelude =
-      fromBool (Set.member ImplicitPrelude (rcExtensions settings))
-    sorted m =
-      m
-        { hsmodImports =
-            normalizeImports
-              implicitPrelude
-              (rcImportBarriers settings)
-              (rcNameBarriers settings)
-              (comments (pmSource parsed))
-              (hsmodImports m)
-        }
     carryingOn = carriedOnFrom loose
     ctx =
       Ctx
@@ -135,6 +132,9 @@ renderConfiguration settings parsed =
               ],
           ctxHaddocks = indexOn haddocks,
           ctxMagicCommentRanges = magicCommentRanges,
+          ctxImportBarriers = rcImportBarriers settings,
+          ctxNameBarriers = rcNameBarriers settings,
+          ctxOwnModules = rcOwnModules settings,
           ctxKnot = knot
         }
 
@@ -200,13 +200,22 @@ heldOffModuleDoc hsMod haddocks pragmas cs
     startOfModuleLine = spanStartLine <$> (spanOf =<< hsmodName hsMod)
 
 -- | The empty line right above the first import, or above the comments
--- written on top of it.
-importsOpening :: Lines -> [Comment] -> HsModule GhcPs -> Maybe Int
+-- written on top of it and the lines that hold only semicolons.
+importsOpening ::
+  -- | The module as written.
+  Lines ->
+  -- | Its comments.
+  [Comment] ->
+  -- | The module.
+  HsModule GhcPs ->
+  Maybe Int
 importsOpening ls cs hsMod =
   climb . pred . spanStartLine =<< spanOf =<< listToMaybe (hsmodImports hsMod)
   where
     climb n
       | blankAt n ls = Just n
+      | maybe False (T.all (\ch -> ch == ';' || isSpace ch)) (lineAt n ls) =
+          climb (pred n)
       | otherwise = climb . pred =<< IntMap.lookup n onTheirOwnLines
     onTheirOwnLines =
       IntMap.fromList
@@ -224,6 +233,22 @@ belowOpening opening c
   | Just l <- opening,
     spanStartLine (commentSpan c) == l + 1 =
       c{commentGapAbove = False}
+  | otherwise = c
+
+-- | Leave out the empty lines around a comment written among the imports,
+-- where the only empty line is the one between the project's own modules
+-- and the rest.
+amongImports ::
+  -- | The imports, as written.
+  [LImportDecl GhcPs] ->
+  -- | The comment.
+  Comment ->
+  Comment
+amongImports imports c
+  | Just s <- spansOf imports,
+    startPoint s < startPoint (commentSpan c),
+    endPoint (commentSpan c) < endPoint s =
+      c{commentGapAbove = False, commentGapBelow = False}
   | otherwise = c
 
 -- | The lines above the module, put back exactly as they were written.

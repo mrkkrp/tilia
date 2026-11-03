@@ -39,6 +39,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
+
 import Tilia.Pragma (withoutSkippedComments)
 import Tilia.Source.Lines
   ( Lines,

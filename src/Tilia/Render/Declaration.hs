@@ -25,6 +25,7 @@ import GHC.Types.Name.Occurrence (occNameFS)
 import GHC.Types.Name.Reader (RdrName, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), isGoodSrcSpan, unLoc)
+
 import Tilia.Doc (printsOnOneLine)
 import Tilia.Doc.Combinators
 import Tilia.Render.Class

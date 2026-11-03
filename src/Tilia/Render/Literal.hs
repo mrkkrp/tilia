@@ -21,6 +21,7 @@ import GHC.Data.FastString (FastString, unpackFS)
 import GHC.Hs (GhcPs, HsLit (..))
 import GHC.Parser.CharClass (is_space)
 import GHC.Types.SourceText (SourceText (..), StringLiteral (..))
+
 import Tilia.Doc.Combinators
 import Tilia.Render.Layout (Position (..), positioned)
 import Tilia.Render.Name (outputable)

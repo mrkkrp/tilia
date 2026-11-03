@@ -43,6 +43,7 @@ import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath ((</>))
+
 import Tilia.Cabal.Package
   ( Kind (Lib),
     PackageReader,

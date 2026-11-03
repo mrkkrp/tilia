@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import System.FilePath (isPathSeparator, takeFileName, (</>))
 import Test.Hspec
+
 import Tilia.Cabal.Plan (PlanComponent (..))
 import Tilia.Cabal.Project (Marker (..), ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target

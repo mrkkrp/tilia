@@ -32,6 +32,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
+
 import Tilia.Utils (readUtf8File, writeUtf8File)
 
 ----------------------------------------------------------------------------

@@ -19,10 +19,13 @@ where
 import Data.ByteString qualified as BS
 import Data.Choice (isTrue, pattern Don't)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Traversable (for)
+
 import Tilia.Corpus (Example (..))
 import Tilia.Cpp (usesCpp)
 import Tilia.Format (AstCheck (..), rewritten)
@@ -140,6 +143,7 @@ corpusSubjects examples =
             Right $
               subjectOf
                 (exampleExtensions example)
+                (exampleOwnModules example)
                 isChecked
                 (T.pack name)
                 source
@@ -147,11 +151,11 @@ corpusSubjects examples =
 -- | Modules made to stress one part of the formatter each.
 syntheticSubjects :: [Subject]
 syntheticSubjects =
-  [ subjectOf Nothing False "synthetic/comments" commented,
-    subjectOf Nothing False "synthetic/imports" imported,
-    subjectOf Nothing False "synthetic/conditionals" conditional,
-    subjectOf Nothing False "synthetic/nesting" nested,
-    subjectOf Nothing False "synthetic/long-line" long
+  [ subjectOf Nothing Set.empty False "synthetic/comments" commented,
+    subjectOf Nothing Set.empty False "synthetic/imports" imported,
+    subjectOf Nothing Set.empty False "synthetic/conditionals" conditional,
+    subjectOf Nothing Set.empty False "synthetic/nesting" nested,
+    subjectOf Nothing Set.empty False "synthetic/long-line" long
   ]
   where
     commented =
@@ -219,6 +223,8 @@ syntheticSubjects =
 subjectOf ::
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
+  -- | The modules the package around it declares.
+  Set Text ->
   -- | Whether to check what formatting it printed.
   Bool ->
   -- | Its name in the corpus, or the stress it makes.
@@ -226,13 +232,13 @@ subjectOf ::
   -- | The module.
   Text ->
   Subject
-subjectOf package isChecked name source =
+subjectOf package ownModules isChecked name source =
   Subject
     { subjectName = name,
       subjectSource = source,
       subjectFormat =
         fmap (either (const Nothing) Just)
-          . formatExample (Don't #check) package path,
+          . formatExample (Don't #check) package ownModules path,
       subjectCheck =
         if isChecked
           then Just (fst . rewritten parser EachCppBranch cpp path (source, tree))

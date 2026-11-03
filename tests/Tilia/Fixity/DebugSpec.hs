@@ -12,6 +12,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+
 import Tilia.Fixity
   ( Direction (..),
     Established (..),

@@ -6,6 +6,7 @@ module Tilia.RenderSpec (spec) where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.Hspec
+
 import Tilia.Doc (printDoc)
 import Tilia.Render
 import Tilia.TestUtils (parsed)

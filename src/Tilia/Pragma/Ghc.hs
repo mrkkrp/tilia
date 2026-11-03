@@ -25,6 +25,7 @@ import GHC.Types.SafeHaskell (SafeHaskellMode)
 import GHC.Types.SrcLoc (noLoc)
 import GHC.Unit.Types (stringToUnitId)
 import GHC.Utils.Fingerprint (fingerprint0)
+
 import Tilia.Pragma (flagSwitches)
 
 -- | What the flags of a header settle, whatever was in force before them.

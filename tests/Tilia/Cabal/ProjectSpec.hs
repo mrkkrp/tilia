@@ -5,6 +5,7 @@ module Tilia.Cabal.ProjectSpec (spec) where
 
 import System.FilePath ((</>))
 import Test.Hspec
+
 import Tilia.Cabal.Project
 import Tilia.TestUtils (withFiles)
 

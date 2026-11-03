@@ -20,6 +20,7 @@ import Data.Maybe (isJust, listToMaybe, mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs (HsModule (..))
+
 import Tilia.Comments (Comment (..), CommentStyle (..), commentTrailing)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Source (Source, comments, directiveOnLine, lineTexts, sourceLines)

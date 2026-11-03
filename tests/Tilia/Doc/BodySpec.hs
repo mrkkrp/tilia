@@ -6,6 +6,7 @@ module Tilia.Doc.BodySpec (spec) where
 
 import Data.Text (Text)
 import Test.Hspec
+
 import Tilia.Doc
 import Tilia.Doc.Body
 import Tilia.Doc.Combinators

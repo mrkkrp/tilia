@@ -17,6 +17,7 @@ import System.Directory (getModificationTime, listDirectory, setModificationTime
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+
 import Tilia.Fixity
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb (Installed (..), InstalledPackage (..))

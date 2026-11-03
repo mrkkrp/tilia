@@ -87,6 +87,7 @@ import System.FilePath
     takeExtension,
     (</>),
   )
+
 import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
 import Tilia.Process (readProgramOutput)

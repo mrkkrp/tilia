@@ -17,6 +17,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+
 import Tilia.Cabal.Package
   ( declaredModules,
     describePackageProblem,

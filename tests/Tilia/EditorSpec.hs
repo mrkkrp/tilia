@@ -16,6 +16,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
+
 import Tilia.Editor
   ( Compiled (..),
     compiledSession,
@@ -60,6 +61,11 @@ spec = describe "formatting what an editor holds" $ do
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
         `shouldReturn` CameTo "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
 
+  it "puts the imports of the project's own modules after the rest" $
+    withProject $ \buffer ->
+      buffer ("src" </> "Uses.hs") importsOfBoth
+        `shouldReturn` CameTo importsOfBothGrouped
+
   it "takes fixities from a module that begins with a byte order mark" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Marked\nx=a <-> b\n"
@@ -103,6 +109,11 @@ spec = describe "formatting what an editor holds" $ do
         `shouldReturn` Just 2
 
   describe "given what compiling the project establishes" $ do
+    it "puts the imports of the project's own modules after the rest" $
+      withCompiled $ \buffer ->
+        buffer ("src" </> "Uses.hs") importsOfBoth
+          `shouldReturn` CameTo importsOfBothGrouped
+
     it "takes fixities from the interfaces it is given" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
@@ -126,6 +137,37 @@ spec = describe "formatting what an editor holds" $ do
     it "leaves out the branches the versions it is given rule out" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") versioned `shouldReturn` CameOut
+
+-- | A module importing one of the project's own modules among others, with
+-- a comment between them.
+importsOfBoth :: Text
+importsOfBoth =
+  T.unlines
+    [ "module Uses where",
+      "import Ops",
+      "",
+      "-- Sorting.",
+      "",
+      "import Data.List (sort)",
+      "import Data.Char",
+      "x = sort"
+    ]
+
+-- | 'importsOfBoth', with the project's own modules after the rest and no
+-- empty line in either group.
+importsOfBothGrouped :: Text
+importsOfBothGrouped =
+  T.unlines
+    [ "module Uses where",
+      "",
+      "import Data.Char",
+      "-- Sorting.",
+      "import Data.List (sort)",
+      "",
+      "import Ops",
+      "",
+      "x = sort"
+    ]
 
 -- | A formatted module with a conditional around two alternatives, which do
 -- not parse one after the other.

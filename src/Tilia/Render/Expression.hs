@@ -39,6 +39,7 @@ import GHC.Types.SrcLoc
     unLoc,
   )
 import Language.Haskell.Syntax.Basic (field_label)
+
 import Tilia.Doc.Body
 import Tilia.Doc.Combinators
 import Tilia.Fixity

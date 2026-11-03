@@ -5,6 +5,7 @@ module Tilia.Doc.CombinatorsSpec (spec) where
 
 import Data.Text (Text)
 import Test.Hspec
+
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Span

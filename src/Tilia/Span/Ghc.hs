@@ -17,6 +17,7 @@ import Data.Maybe (mapMaybe)
 import GHC.Parser.Annotation (AnnListBrackets (..), HasLoc, getHasLoc)
 import GHC.Types.SrcLoc (GenLocated, getLoc, leftmost_smallest)
 import GHC.Types.SrcLoc qualified as GHC
+
 import Tilia.Span (Span, mkSpan)
 
 -- | Convert a span the compiler knows to be real.

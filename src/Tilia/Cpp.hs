@@ -44,6 +44,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Traversable (for)
 import GHC.Conc (par)
+
 import Tilia.Cpp.Directives
 import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
 import Tilia.Cpp.Merge (Settled (..), combine, merge)

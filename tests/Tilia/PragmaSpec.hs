@@ -22,6 +22,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
+
 import Tilia.Pragma
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter, readFlags)
 

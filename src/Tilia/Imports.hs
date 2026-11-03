@@ -12,6 +12,8 @@ import Data.Char (isAlphaNum)
 import Data.Choice (Choice, isTrue)
 import Data.Function (on, (&))
 import Data.List (groupBy, sortOn)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
@@ -21,14 +23,18 @@ import GHC.Types.Name.Reader (RdrName, rdrNameOcc)
 import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
+
 import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
 import Tilia.Span (Span (..), endPoint, isSingleLine, startPoint)
 import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 
--- | Sort and fold together a module's imports.
+-- | Sort and fold together a module's imports, the project's own modules
+-- after the rest.
 normalizeImports ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
+  -- | The modules the project's own packages declare.
+  Set Text ->
   -- | Source lines the block must not be sorted across.
   [Int] ->
   -- | Source lines the names of a list must not be sorted across.
@@ -37,16 +43,27 @@ normalizeImports ::
   [Comment] ->
   -- | Original imports.
   [LImportDecl GhcPs] ->
-  -- | Normalized imports.
-  [LImportDecl GhcPs]
-normalizeImports implicitPrelude barriers directives written imports =
-  concatMap stretch (cutAtBarriers barriers tidied)
+  -- | Normalized imports, in runs that an empty line keeps apart: where a
+  -- stretch the barriers leave holds both, its imports of the project's
+  -- own modules begin a run.
+  [[LImportDecl GhcPs]]
+normalizeImports implicitPrelude ownModules barriers directives written imports =
+  filter (not . null) . foldr together [] $
+    span (not . ours) . stretch <$> cutAtBarriers barriers tidied
   where
     tidied = fmap (fmap (tidyImportList directives written)) imports
+    identity = importIdentity implicitPrelude ownModules
+    ours = iiOwn . identity
     stretch is =
       foldRuns
         (combineImports directives written)
-        [((importIdentity implicitPrelude i, hiddenNames i, alone i), i) | i <- is]
+        [((identity i, hiddenNames i, alone i), i) | i <- is]
+    together (others, owned)
+      | null others || null owned = joined (others <> owned)
+      | otherwise = (others :) . joined owned
+    joined is = \case
+      run : rest -> (is <> run) : rest
+      [] -> [is]
     alone i
       | any strands (spanOf i) = lineOf i
       | otherwise = 0
@@ -129,14 +146,18 @@ foldRuns fold' =
 --
 -- The derived ordering is the whole of the policy: the fields are compared
 -- in the order they are declared, which is the order imports are printed
--- in. The two leading fields are about reading rather than about identity.
--- A @Prelude@ that only refines what the module already has goes at the
--- end, since looking for it among the @D@s would be looking for the least
--- interesting line in the block. The package goes before the module name so
--- that the imports from one package stay in one run; sorting by module
--- first would interleave them and hide who provides what.
+-- in. The three leading fields are about reading rather than about
+-- identity. The project's own modules go after the rest, in a group of
+-- their own. A @Prelude@ that only refines what the module already has goes
+-- at the end of the rest, since looking for it among the @D@s would be
+-- looking for the least interesting line in the block. The package goes
+-- before the module name so that the imports from one package stay in one
+-- run; sorting by module first would interleave them and hide who provides
+-- what.
 data ImportIdentity = ImportIdentity
-  { -- | A @Prelude@ that only refines what the module already has.
+  { -- | One of the project's own modules.
+    iiOwn :: Bool,
+    -- | A @Prelude@ that only refines what the module already has.
     iiRefinesPrelude :: Bool,
     -- | The package it names, where it names one.
     iiPackage :: (Int, Text),
@@ -162,12 +183,17 @@ data ImportIdentity = ImportIdentity
 importIdentity ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
+  -- | The modules the project's own packages declare.
+  Set Text ->
   -- | The import.
   LImportDecl GhcPs ->
   ImportIdentity
-importIdentity implicitPrelude (L _ decl) =
+importIdentity implicitPrelude ownModules (L _ decl) =
   ImportIdentity
-    { iiRefinesPrelude =
+    { iiOwn =
+        package (ideclPkgQual decl) == (2, T.empty)
+          || Set.member (named (ideclName decl)) ownModules,
+      iiRefinesPrelude =
         isTrue implicitPrelude && named (ideclName decl) == T.pack "Prelude",
       iiPackage = package (ideclPkgQual decl),
       iiModule = named (ideclName decl),

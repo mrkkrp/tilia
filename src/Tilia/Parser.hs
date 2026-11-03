@@ -38,6 +38,7 @@ import GHC.Types.SrcLoc qualified as GHC
 import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
+
 import Tilia.Gathered (Gathered (..), gathered)
 import Tilia.Pragma (Defaults, effectiveExtensions)
 import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, linesOf, sourceOf)

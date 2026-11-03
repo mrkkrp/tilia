@@ -48,6 +48,7 @@ import System.IO (BufferMode (..), hSetBuffering, stdout)
 import System.Info (fullCompilerVersion)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
+
 import Tilia.Bench.Cases
 import Tilia.Bench.Fixity
 import Tilia.Bench.Measure

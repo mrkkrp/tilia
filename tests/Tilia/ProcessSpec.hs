@@ -6,6 +6,7 @@ module Tilia.ProcessSpec (spec) where
 import Data.Text qualified as T
 import System.Timeout (timeout)
 import Test.Hspec
+
 import Tilia.Process (readProgramOutput)
 
 spec :: Spec
