@@ -37,7 +37,9 @@ itemsSepBy ::
   Bracing ->
   [Doc] ->
   Doc
-itemsSepBy semisWhenBroken bracing xs = variant flatForm brokenForm
+itemsSepBy semisWhenBroken bracing xs = case (bracing, xs) of
+  (NoBrace, [x]) -> x
+  _ -> variant flatForm brokenForm
   where
     flatForm = case (bracing, xs) of
       (MayBrace, []) -> txt "{}"

@@ -55,8 +55,8 @@ printsOnOneLine layout = all single . spineAt layout
       Just (w, y) -> printsOnOneLine (layoutInside layout w) y
       Nothing -> case x of
         DHardBreak -> False
-        DBreak -> layout == Flat
-        DSoftBreak -> layout == Flat
+        DBreak -> layout /= Broken
+        DSoftBreak -> layout /= Broken
         DVerbatimBreak{} -> False
         DCppChoice{} -> False
         _ -> True
@@ -123,7 +123,7 @@ spineAt layout = \case
   DEmpty -> []
   DCat a b -> spineAt layout a <> spineAt layout b
   DVariant flatD brokenD ->
-    spineAt layout (case layout of Flat -> flatD; Broken -> brokenD)
+    spineAt layout (case layout of Broken -> brokenD; _ -> flatD)
   d -> [d]
 
 -- | The lines of the input a document holds something printed from, as far
@@ -135,7 +135,8 @@ printedFrom ::
 printedFrom = \case
   DLocated s x -> (spanStartLine s, spanEndLine s) : printedFrom x
   DFence s x -> (spanStartLine s, spanEndLine s) : printedFrom x
-  d@(DCppChoice cs _ _) -> mapMaybe conditionalRange cs <> foldChildren printedFrom d
+  d@(DCppChoice cs _ _) ->
+    mapMaybe conditionalRange cs <> foldChildren printedFrom d
   d -> foldChildren printedFrom d
 
 -- | Nothing but the whitespace that separates one thing from the next.

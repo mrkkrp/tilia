@@ -152,8 +152,13 @@ conditionalRange c =
 
 -- | Whether a group is laid out on one line or across several.
 data Layout
-  = Flat
-  | Broken
+  = -- | On one line, every break printed as a space or as nothing.
+    Flat
+  | -- | Across lines, every break printed as a line break.
+    Broken
+  | -- | Flat where it fits within the column limit, broken where it does
+    -- not.
+    Frangible
   deriving (Eq, Show)
 
 -- | Where the line after a 'DVerbatimBreak' begins.
@@ -187,7 +192,10 @@ data Env = Env
     envLayout :: !Layout,
     -- | Whether what is written now is a note, which goes to the margin
     -- right above a preprocessor directive.
-    envNote :: !Bool
+    envNote :: !Bool,
+    -- | Whether a group around what is written now is laid out flat, which
+    -- keeps every 'Frangible' group inside it flat.
+    envHeldFlat :: !Bool
   }
 
 -- | Output built so far.
@@ -292,7 +300,8 @@ printDoc doc = finish (go env doc emptyOut)
       Env
         { envIndent = 0,
           envLayout = Broken,
-          envNote = False
+          envNote = False,
+          envHeldFlat = False
         }
 
 -- | Walk a document, accumulating output.
@@ -304,11 +313,11 @@ go env = \case
     | otherwise -> putText (envIndent env) t . noting (envNote env)
   DSpace -> putSpace
   DBreak -> case envLayout env of
-    Flat -> putSpace
     Broken -> breakLine (envIndent env)
+    _ -> putSpace
   DSoftBreak -> case envLayout env of
-    Flat -> id
     Broken -> breakLine (envIndent env)
+    _ -> id
   DHoldBack spill t -> putHeldBack (envIndent env) spill t . noting False
   DCloseLine -> closeLine (envIndent env)
   DCloseLineUnlessAfterOpener gap -> \out ->
@@ -318,17 +327,27 @@ go env = \case
     where
       gapped = if gap then DCloseLine <> DHardBreak <> DHardBreak else DEmpty
   DHardBreak -> breakLine (envIndent env)
-  DVerbatimBreak lineStart trailing -> verbatimBreakLine (envNote env) lineStart trailing
+  DVerbatimBreak lineStart trailing ->
+    verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
   DNest n d -> go env{envIndent = envIndent env + n * indentStep} d
   DAlign d -> \out ->
     go env{envIndent = max (envIndent env) (outColumn out)} d out
   DCppMarginNote d -> \out ->
     go env{envNote = not (hasContent out)} d out
-  DGroup l d -> go env{envLayout = l} d
+  DGroup l d -> \out ->
+    let settled = case l of
+          Frangible
+            | not (envHeldFlat env),
+              fracturesFrom out (envIndent env) d ->
+                Broken
+            | otherwise -> Flat
+          _ -> l
+        heldFlat = envHeldFlat env || settled == Flat
+     in go env{envLayout = settled, envHeldFlat = heldFlat} d out
   DVariant flatD brokenD -> case envLayout env of
-    Flat -> go env flatD
     Broken -> go env brokenD
+    _ -> go env flatD
   DLocated _ d -> go env d
   DFence _ d -> go env d
   DCppChoice cs branches fallback ->
@@ -344,6 +363,106 @@ go env = \case
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
+
+-- | The column past which a 'Frangible' group is laid out broken.
+columnLimit :: Int
+columnLimit = 80
+
+-- | Does a frangible document break where it is about to be printed?
+fracturesFrom ::
+  -- | The output so far.
+  Out ->
+  -- | The indentation in force.
+  Int ->
+  -- | The document.
+  Doc ->
+  Bool
+fracturesFrom out indent =
+  fracturesAt
+    (if started out then outColumn out else indent)
+    (started out && not (endsWithSpace out))
+
+-- | Does a frangible document break from this column, running past
+-- 'columnLimit' flat and ending its first line sooner broken?
+fracturesAt ::
+  -- | The column it starts at.
+  Int ->
+  -- | Whether a space asked for first is printed.
+  Bool ->
+  -- | The document.
+  Doc ->
+  Bool
+fracturesAt column spaceFirst d =
+  flat columnLimit > columnLimit
+    && (broken columnLimit <= columnLimit || flat brokenEnd > brokenEnd)
+  where
+    flat bound = columnReached bound column spaceFirst [(Flat, True, d)]
+    broken bound = columnReached bound column spaceFirst [(Broken, False, d)]
+    brokenEnd = broken maxBound
+
+-- | The column a line reaches, or the first one past the bound.
+columnReached ::
+  -- | The column past which it stops.
+  Int ->
+  -- | The column it starts at.
+  Int ->
+  -- | Whether a space asked for first is printed.
+  Bool ->
+  -- | What is left to lay out, each with the layout in force and whether a
+  -- flat group holds it.
+  [(Layout, Bool, Doc)] ->
+  Int
+columnReached bound = walk
+  where
+    walk column spaceDue items
+      | column > bound = column
+      | otherwise = case items of
+          [] -> column
+          (layout, held, x) : rest -> case x of
+            DText t
+              | T.null t -> walk column spaceDue rest
+              | otherwise -> walk (column + T.length t) True rest
+            DSpace -> space column spaceDue rest
+            DBreak -> case layout of
+              Broken -> column
+              _ -> space column spaceDue rest
+            DSoftBreak -> case layout of
+              Broken -> column
+              _ -> walk column spaceDue rest
+            DCat a b ->
+              walk column spaceDue ((layout, held, a) : (layout, held, b) : rest)
+            DGroup l y ->
+              let settled = case l of
+                    Frangible
+                      | not held,
+                        fracturesAt column spaceDue y ->
+                          Broken
+                      | otherwise -> Flat
+                    _ -> l
+               in walk
+                    column
+                    spaceDue
+                    ((settled, held || settled == Flat, y) : rest)
+            DVariant flatD brokenD -> case layout of
+              Broken -> walk column spaceDue ((layout, held, brokenD) : rest)
+              _ -> walk column spaceDue ((layout, held, flatD) : rest)
+            DHardBreak -> column
+            DCloseLine -> column
+            DCloseLineUnlessAfterOpener _ -> column
+            DVerbatimBreak{} -> column
+            DCppChoice{} -> column
+            DCppDirective{} -> column
+            DEmpty -> walk column spaceDue rest
+            DHoldBack{} -> walk column spaceDue rest
+            DDeclarationsStart -> walk column spaceDue rest
+            DNest _ y -> walk column spaceDue ((layout, held, y) : rest)
+            DAlign y -> walk column spaceDue ((layout, held, y) : rest)
+            DCppMarginNote y -> walk column spaceDue ((layout, held, y) : rest)
+            DLocated _ y -> walk column spaceDue ((layout, held, y) : rest)
+            DFence _ y -> walk column spaceDue ((layout, held, y) : rest)
+    space column spaceDue rest
+      | spaceDue = walk (column + 1) False rest
+      | otherwise = walk column spaceDue rest
 
 -- | Record whether the line holds nothing but a note, given whether what is
 -- about to be written to it is one.
@@ -445,7 +564,8 @@ closeLine indent out
 -- | Say that the current line does not continue the line before it.
 discontinued :: Out -> Out
 discontinued out
-  | lineContinues (outLine out) = out{outLine = (outLine out){lineContinues = False}}
+  | lineContinues (outLine out) =
+      out{outLine = (outLine out){lineContinues = False}}
   | otherwise = out
 
 -- | Begin a new line, leaving the one being built unfinished.

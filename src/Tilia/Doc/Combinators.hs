@@ -26,6 +26,8 @@ module Tilia.Doc.Combinators
     Layout (..),
     flat,
     broken,
+    frangible,
+    infrangible,
     variant,
     located,
     unclaimed,
@@ -81,8 +83,11 @@ import Tilia.Doc
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
+    Wrapper (..),
     mapChildren,
     printsNothing,
+    unwrap,
+    wrap,
   )
 import Tilia.Span (Span, endOf)
 
@@ -160,6 +165,28 @@ flat = DGroup Flat
 -- | Force broken layout.
 broken :: Doc -> Doc
 broken = DGroup Broken
+
+-- | Let a document's group, under its wrappers, break where it does not
+-- fit within the column limit.
+frangible ::
+  -- | The document.
+  Doc ->
+  Doc
+frangible d = case unwrap d of
+  Just (WGroup Flat, x) -> DGroup Frangible x
+  Just (WGroup _, _) -> d
+  Just (w, x) -> wrap w (frangible x)
+  Nothing -> d
+
+-- | Lay every 'Frangible' group of a document out flat, as it was written,
+-- wherever it would run past the column limit.
+infrangible ::
+  -- | The document.
+  Doc ->
+  Doc
+infrangible = \case
+  DGroup Frangible d -> DGroup Flat (infrangible d)
+  d -> mapChildren infrangible d
 
 -- | Choose according to the layout the enclosing group settled on.
 --

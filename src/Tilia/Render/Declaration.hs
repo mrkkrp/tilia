@@ -51,7 +51,7 @@ decls ::
   -- | The declarations.
   [LHsDecl GhcPs] ->
   Doc
-decls ctx = declRun apart ctx Free
+decls ctx = declRun True apart ctx Free
   where
     apart previous current =
       kindOf previous /= kindOf current
@@ -62,7 +62,8 @@ decls ctx = declRun apart ctx Free
           (spanOf (fst (NE.last previous)))
           (spanOf (fst (NE.head current)))
     standsApart (d, printed) =
-      isDoc (unLoc d) || not (printsOnOneLine Broken printed)
+      isDoc (unLoc d)
+        || not (printsOnOneLine Broken printed)
     kindOf group =
       listToMaybe
         [ k
@@ -141,7 +142,7 @@ declsKeepingGroups ::
   -- | The declarations.
   [LHsDecl GhcPs] ->
   Doc
-declsKeepingGroups ctx = declRun apart ctx Associated
+declsKeepingGroups ctx = declRun False apart ctx Associated
   where
     apart previous current = any documented previous || any documented current
     documented (d, _) = case unLoc d of
@@ -152,6 +153,9 @@ declsKeepingGroups ctx = declRun apart ctx Associated
 -- | Render a run of declarations, with an empty line wherever the author
 -- left one and between groups kept apart.
 declRun ::
+  -- | Should the individual lines of groups of declarations without blank
+  -- lines in between be considered infrangible?
+  Bool ->
   -- | Do these neighbouring groups, printed like this, get an empty line
   -- between them even where the author left none?
   ( NonEmpty (LHsDecl GhcPs, Doc) ->
@@ -165,24 +169,30 @@ declRun ::
   -- | The declarations.
   [LHsDecl GhcPs] ->
   Doc
-declRun apart ctx style ds =
+declRun holds apart ctx style ds =
   items
     NoBrace
-    [ includeWhen gap breakOrSpace <> printed
-    | (previous, current) <- zip (Nothing : fmap Just groups) groups,
-      let gaps = any (`separate` current) previous : repeat False,
+    [ includeWhen gap breakOrSpace <> (if held then infrangible else id) printed
+    | (current, above, below) <-
+        zip3 groups (Nothing : fmap Just links) (fmap Just links <> [Nothing]),
+      let gaps = any fst above : repeat False
+          held = holds && (any snd above || any snd below),
       (gap, (_, printed)) <- zip gaps (NE.toList current)
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
+    declaration d = frangible (at ctx d (hsDecl ctx style))
     groups =
-      fmap (\d -> (d, at_ ctx (hsDecl ctx style) d))
+      fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds
 
-    separate previous current =
-      not (remarkUnder ctx ended began || underHeading)
-        && (separatedByBlank ctx ended began || apart previous current)
+    -- Whether an empty line goes between each two neighbouring groups, and
+    -- whether they are written together and not kept apart.
+    links = zipWith link groups (drop 1 groups)
+    link previous current =
+      (not (remarkUnder ctx ended began || underHeading || glued), glued)
       where
+        glued = not (separatedByBlank ctx ended began || apart previous current)
         ended = spanOf (fst (NE.last previous))
         began = spanOf (fst (NE.head current))
         underHeading =
@@ -291,10 +301,13 @@ declKind = \case
   SigD _ CompleteMatchSig{} -> (PragmaDeclaration, [])
   SigD _ (FixSig _ (FixitySig _ ns _)) -> (FixityDeclaration, fmap unLoc ns)
   ValD _ (FunBind _ (L _ n) _) -> (FunctionBody, [n])
-  ValD _ (PatBind _ p _ _) -> (FunctionBody, collectPatBinders CollNoDictBinders p)
+  ValD _ (PatBind _ p _ _) ->
+    (FunctionBody, collectPatBinders CollNoDictBinders p)
   ValD _ (PatSynBind _ (PSB _ (L _ n) _ _ _)) -> (PatternDefinition, [n])
-  AnnD _ (HsAnnotation _ (ValueAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
-  AnnD _ (HsAnnotation _ (TypeAnnProvenance (L _ n)) _) -> (PragmaDeclaration, [n])
+  AnnD _ (HsAnnotation _ (ValueAnnProvenance (L _ n)) _) ->
+    (PragmaDeclaration, [n])
+  AnnD _ (HsAnnotation _ (TypeAnnProvenance (L _ n)) _) ->
+    (PragmaDeclaration, [n])
   AnnD _ (HsAnnotation _ ModuleAnnProvenance _) -> (PragmaDeclaration, [])
   RuleD{} -> (PragmaDeclaration, [])
   WarningD _ (Warnings _ ws) ->
@@ -302,7 +315,8 @@ declKind = \case
   TyClD _ (DataDecl _ (L _ n) _ _ _) -> (DataDeclaration, [n])
   TyClD _ (ClassDecl{tcdLName = L _ n}) -> (ClassDeclaration, [n])
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
-  TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) -> (FamilyDeclaration, [n])
+  TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) ->
+    (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
   InstD _ ClsInstD{} -> (InstanceDeclaration, [])
   InstD _ TyFamInstD{} -> (TypeInstance, [])

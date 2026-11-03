@@ -86,7 +86,8 @@ attachScopedComments margin scopeOf cs doc =
     rs = byScope id regions
     fs = byScope id fences
     xs = byScope commentSpan cs
-    byScope f ys = reverse <$> Map.fromListWith (<>) [(scopeOf (f y), [y]) | y <- ys]
+    byScope f ys =
+      reverse <$> Map.fromListWith (<>) [(scopeOf (f y), [y]) | y <- ys]
     inScope = Map.findWithDefault []
 
 -- | The comments nothing came to collect, written after everything.
@@ -170,7 +171,7 @@ walk margin = go
             under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
             withUnder
               | null under' = id
-              | otherwise = \x -> DAlign (x <> write under')
+              | otherwise = \x -> DAlign (infrangible x <> write under')
          in ( write before' <> withUnder (DLocated s d' <> write after'),
               p''
             )
@@ -217,7 +218,7 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DLocated _ x -> firstLine layout x
       DFence _ x -> firstLine layout x
       DGroup l x -> firstLine l x
-      DVariant a b -> firstLine layout (case layout of Flat -> a; Broken -> b)
+      DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
       DCloseLineUnlessAfterOpener _ -> ([], True)

@@ -62,7 +62,7 @@ hsExpr ctx = hsExprIn ctx plainSite
 
 -- | An expression that knows where it stands.
 hsExprIn :: Ctx -> Site -> LHsExpr GhcPs -> Doc
-hsExprIn ctx site l = at ctx l (exprBody ctx site (spanOf l))
+hsExprIn ctx site l = frangible (at ctx l (exprBody ctx site (spanOf l)))
 
 -- | Every shape an expression can take.
 exprBody :: Ctx -> Site -> Maybe Span -> HsExpr GhcPs -> Doc
@@ -90,7 +90,7 @@ exprBody ctx site here = \case
       <> includeWhen (startsWithSymbol e) space
       <> hsExpr ctx e
   HsPar _ e ->
-    layoutWithin ctx here (spanOf e) $
+    frangible . layoutWithin ctx here (spanOf e) $
       parensWith (closingFor site) (insideBrackets here (apart (hsExpr ctx e)))
     where
       apart d = case unLoc e of
@@ -104,13 +104,17 @@ exprBody ctx site here = \case
   SectionL _ x op -> hsExpr ctx x <> breakOrSpace <> indent (hsExpr ctx op)
   SectionR _ op x -> hsExpr ctx op <> breakOrSpace <> indent (hsExpr ctx x)
   ExplicitTuple _ args boxity -> tuple ctx here (closingFor site) boxity args
-  ExplicitSum _ tag arity e -> unboxedSum (closingFor site) tag arity (hsExpr ctx e)
+  ExplicitSum _ tag arity e ->
+    unboxedSum (closingFor site) tag arity (hsExpr ctx e)
   HsCase anns e mg -> caseOf ctx site (ExprBody ctx) anns e mg
-  HsIf anns c t e -> ifThenElse ctx (bodyIn (ExprBody ctx) (siteBracing site)) anns c t e
+  HsIf anns c t e ->
+    ifThenElse ctx (bodyIn (ExprBody ctx) (siteBracing site)) anns c t e
   HsMultiIf _ guards ->
     txt "if"
       <> breakOrSpace
-      <> underSite site (sepBy breakOrSpace (fmap alternative (NE.toList guards)))
+      <> underSite
+        site
+        (sepBy breakOrSpace (fmap alternative (NE.toList guards)))
     where
       alternative =
         guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow
@@ -134,14 +138,20 @@ exprBody ctx site here = \case
   ExplicitList _ xs ->
     bracketsWith
       (closingFor site)
-      (insideBrackets here (commaSep (fmap (align . hsExpr ctx) xs)))
+      (insideBrackets here (commaSep (fmap (align . item . hsExpr ctx) xs)))
+    where
+      item
+        | maybe True (writtenOnOneLine ctx) here = id
+        | otherwise = infrangible
   RecordCon{..} ->
     name ctx rcon_con
       <> breakOrNothing
-      <> indent (braces (insideBrackets here (commaSep (fmap align (fields <> wildcard)))))
+      <> indent
+        (braces (insideBrackets here (commaSep (fmap align (fields <> wildcard)))))
     where
       HsRecFields{..} = rcon_flds
-      fields = fmap (at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel)))) rec_flds
+      fields =
+        fmap (frangible . at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel)))) rec_flds
       wildcard = case rec_dotdot of
         Just l -> [at ctx l (const (txt ".."))]
         Nothing -> []
@@ -150,9 +160,11 @@ exprBody ctx site here = \case
     where
       updates = case rupd_flds of
         RegularRecUpdFields{..} ->
-          commaSep (fmap (align . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx)))) recUpdFields)
+          commaSep
+            (fmap (align . frangible . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx)))) recUpdFields)
         OverloadedRecUpdFields{..} ->
-          commaSep (fmap (align . at_ ctx (fieldBind ctx (at_ ctx labelChain))) olRecUpdFields)
+          commaSep
+            (fmap (align . frangible . at_ ctx (fieldBind ctx (at_ ctx labelChain))) olRecUpdFields)
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
   HsGetField{..} ->
     hsExpr ctx gf_expr <> txt "." <> at ctx gf_field (dotField ctx)
@@ -172,7 +184,8 @@ exprBody ctx site here = \case
         BracketNoE{} -> "[||"
         BracketHasE{} -> "[e||"
   HsUntypedBracket _ q -> quotation ctx here q
-  HsTypedSplice _ (HsTypedSpliceExpr _ e) -> spliceTH ctx (Is #typed) e DollarSplice
+  HsTypedSplice _ (HsTypedSpliceExpr _ e) ->
+    spliceTH ctx (Is #typed) e DollarSplice
   HsUntypedSplice _ splice -> untypedSplice ctx DollarSplice splice
   HsProc _ p e ->
     txt "proc"
@@ -196,7 +209,8 @@ exprBody ctx site here = \case
   HsEmbTy _ HsWC{hswc_body} -> txt "type" <> space <> hsType ctx hswc_body
   HsHole holeKind -> case holeKind of
     HoleVar n -> name ctx n
-    HoleError -> error "Tilia: a nameless hole cannot come from a successful parse"
+    HoleError ->
+      error "Tilia: a nameless hole cannot come from a successful parse"
   HsForAll _ tele e -> forallTelescope ctx tele <> breakOrSpace <> hsExpr ctx e
   HsQual _ qs e ->
     at ctx qs (contextOf loneVariableExpr (hsExpr ctx) . fmap unbracketed)
@@ -381,12 +395,17 @@ renderExprChain ctx site = \case
       placement =
         chainPlacement exprHangs (chainSpan spanOf firstOne) (NE.last operands)
       laidOut bracing =
-        renderExprChain ctx (withBracing bracing site) firstOne
+        infrangible (renderExprChain ctx (withBracing bracing site) firstOne)
           <> foldr (piece bracing) mempty (links operands operators)
       piece bracing (previous, o, operand, isLast) rest' =
         let operandSite =
-              withBracing (if isLast then siteBracing site else bracing) plainSite
-            rendered = renderExprChain ctx operandSite operand
+              withBracing
+                (if isLast then siteBracing site else bracing)
+                plainSite
+            kept
+              | isLast = id
+              | otherwise = infrangible
+            rendered = kept (renderExprChain ctx operandSite operand)
          in if trailing
               then
                 space
@@ -483,10 +502,12 @@ stmtBody ctx site mkBody = \case
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
       <> nest 1 (space <> keywordAt ctx (spanOf arrow) (reserved ctx "<-"))
-      <> layoutFrom
-        ctx
-        (fmap endOf (spanOf p) <> spanOf f)
-        (attach placement (printBody bound))
+      <> frangible
+        ( layoutFrom
+            ctx
+            (fmap endOf (spanOf p) <> spanOf f)
+            (attach placement (printBody bound))
+        )
     where
       bound = bodyIn mkBody (siteBracing site) f
       placement
@@ -550,7 +571,7 @@ stmtBlock ::
   BodyOf body b ->
   XRec GhcPs [LStmt GhcPs (XRec GhcPs body)] ->
   Doc
-stmtBlock ctx site mkBody es = at ctx es block
+stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
   where
     block xs =
       items (siteBracing site) $
@@ -561,18 +582,19 @@ stmtBlock ctx site mkBody es = at ctx es block
           ]
     item position stmt =
       blockItem position (siteBracing site) $ \bracing ->
-        at_ ctx (stmtBody ctx (blockSite bracing) mkBody) stmt
+        frangible (at ctx stmt (stmtBody ctx (blockSite bracing) mkBody))
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
 -- | A list comprehension.
-comprehension :: Ctx -> Site -> Maybe Span -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
+comprehension ::
+  Ctx -> Site -> Maybe Span -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
 comprehension ctx site here es = align (variant onOneLine acrossLines)
   where
     onOneLine = txt "[" <> body <> txt "]"
     acrossLines = txt "[" <> space <> keepInside (body <> hardBreak <> txt "]")
     keepInside = if siteInBlock site then align else id
-    body = insideBrackets here (at ctx es sections)
+    body = insideBrackets here (frangible (at ctx es sections))
     sections xs = case unsnoc xs of
       Nothing -> error "Tilia: a comprehension always yields something"
       Just (stmts, yield) ->
@@ -720,7 +742,8 @@ localBinds ctx bracing = \case
       sorted = inSourceOrder [fmap (fmap Left) binds, fmap (fmap Right) sigs]
       rendered position item =
         blockItem position NoBrace $ \b ->
-          at_ ctx (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx)) item
+          entered item (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx))
+      entered item = frangible . at ctx item
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
     anchored ann . items bracing $
@@ -736,7 +759,7 @@ localBinds ctx bracing = \case
     anchored ann d = case ann of
       EpAnn{anns = AnnList{al_anchor}}
         | not (isZeroWidthSpan (locA al_anchor)) ->
-            atSpan ctx (spanOfSrcSpan (locA al_anchor)) d
+            frangible (atSpan ctx (spanOfSrcSpan (locA al_anchor)) d)
       _ -> d
 
 -- | Where a @do@ or @mdo@ was written.
@@ -867,7 +890,16 @@ valDecl ctx bracing = \case
   FunBind _ funId funMatches ->
     matchGroup ctx bracing (ExprBody ctx) (FunctionStyle funId) funMatches
   PatBind _ p multAnn grhss ->
-    match ctx bracing (ExprBody ctx) PatternBindStyle False multAnn NoSrcStrict [p] grhss
+    match
+      ctx
+      bracing
+      (ExprBody ctx)
+      PatternBindStyle
+      False
+      multAnn
+      NoSrcStrict
+      [p]
+      grhss
   PatSynBind _ psb -> patSynBind ctx psb
   VarBind{} -> error "Tilia: VarBind is introduced by the type checker"
 
@@ -910,7 +942,7 @@ matchGroup ctx bracing mkBody style MG{..}
   where
     blockBracing = if isCaseStyle style then bracing else NoBrace
     rendered (position, m) =
-      blockItem position bracing (\b -> at_ ctx (renderMatch b) m)
+      blockItem position bracing (\b -> frangible (at ctx m (renderMatch b)))
     renderMatch b m@Match{..} =
       match
         ctx
@@ -959,7 +991,8 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
     <> whereClause
   where
     bodyNest = if indentBody then 1 else 0
-    rightHandSide = separator <> layoutFrom ctx bodySpan (attach placement body)
+    rightHandSide =
+      separator <> frangible (layoutFrom ctx bodySpan (attach placement body))
 
     multAnnGap = case multAnn of
       HsUnannotated{} -> mempty
@@ -981,10 +1014,12 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
         FunctionStyle n -> name ctx n
         _ -> mempty
       (headPat : tailPats) -> layoutFrom ctx headSpan $ case style of
-        FunctionStyle n -> defHead (fromBool isInfix) (fromBool indentBody) (name ctx n) rendered
+        FunctionStyle n ->
+          defHead (fromBool isInfix) (fromBool indentBody) (name ctx n) rendered
         PatternBindStyle -> sepBy breakOrSpace rendered
         CaseStyle -> sepBy breakOrSpace rendered
-        LambdaStyle -> txt "\\" <> lambdaGap headPat <> align (sepBy breakOrSpace rendered)
+        LambdaStyle ->
+          txt "\\" <> lambdaGap headPat <> align (sepBy breakOrSpace rendered)
         LambdaCaseStyle ->
           hsPat ctx headPat
             <> includeUnless
@@ -1099,9 +1134,9 @@ guardedRhs ::
   LGRHS GhcPs (LocatedA body) ->
   Doc
 guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guards of
-  [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
+  [] -> frangible (atSpan ctx (grhsSpan grhs) (printBody bound))
   _ ->
-    maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
+    maybe id located (spanOf lgrhs) . frangible . layoutFrom ctx (grhsSpan grhs) $
       fence headSpan guardHead
         <> fence
           (fmap endOf separatorSpan <> spanOf body)
@@ -1187,7 +1222,8 @@ patSynBind ctx PSB{..} =
             <> breakOrSpace
             <> txt "where"
             <> breakOrSpace
-            <> indent (matchGroup ctx NoBrace (ExprBody ctx) (FunctionStyle psb_id) mg)
+            <> indent
+              (matchGroup ctx NoBrace (ExprBody ctx) (FunctionStyle psb_id) mg)
       where
         rhs arrow =
           layoutFrom ctx (spanOf psb_id <> spanOf psb_def <> argSpans) $

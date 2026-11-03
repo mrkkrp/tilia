@@ -13,7 +13,15 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Function (on)
-import Data.List (groupBy, maximumBy, minimumBy, sortOn, stripPrefix, transpose, unsnoc)
+import Data.List
+  ( groupBy,
+    maximumBy,
+    minimumBy,
+    sortOn,
+    stripPrefix,
+    transpose,
+    unsnoc,
+  )
 import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
 import Data.Monoid (All (..), Any (..))
 import Data.Ord (comparing)
@@ -103,14 +111,19 @@ merge written conditionals guards varied settledOthers = go Broken
                 d : rest <- fmap snd wds,
                 not (all (agree varied l d) rest) ->
                   choice xs
-            (WGroup Flat, merged)
-              | not (beginsWithChoice merged) -> choice xs
+            (WGroup l, merged)
+              | l /= Broken,
+                not (beginsWithChoice merged) ->
+                  choice xs
             (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
       DCppChoice ws bs _
         | Just alternatives <-
             every $ \case
-              DCppChoice ws' cs e | ws' == ws, fmap fst cs == fmap fst bs -> Just (fmap snd cs <> [e])
+              DCppChoice ws' cs e
+                | ws' == ws,
+                  fmap fst cs == fmap fst bs ->
+                    Just (fmap snd cs <> [e])
               _ -> Nothing,
           Just (merged, fallback) <- unsnoc (fmap (go layout) (transpose alternatives)) ->
             Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
@@ -123,7 +136,8 @@ merge written conditionals guards varied settledOthers = go Broken
         every f = traverse f xs
 
     unwrapping layout spans xs = do
-      inside <- sole [i | (i, s) <- zip [0 :: Int ..] spans, all (covers s) spans]
+      inside <-
+        sole [i | (i, s) <- zip [0 :: Int ..] spans, all (covers s) spans]
       openedAgainst inside layout =<< listToMaybe (drop inside xs)
       where
         openedAgainst inside l d = case unwrap d of
@@ -206,7 +220,9 @@ merge written conditionals guards varied settledOthers = go Broken
             (conditionals <> fmap settledConditional settledOthers)
         ownerOf x = case printedFrom x of
           [] -> Just Nothing
-          lines' -> case sortOn fst [r | r@(from, to) <- ranges, all (\(a, b) -> from <= a && b <= to) lines'] of
+          lines' -> case sortOn
+            fst
+            [r | r@(from, to) <- ranges, all (\(a, b) -> from <= a && b <= to) lines'] of
             outermost : _ -> Just (Just outermost)
             [] -> Nothing
         settled first' os = case [o | Just o <- os] of
@@ -295,20 +311,27 @@ merge written conditionals guards varied settledOthers = go Broken
 
     ledBy layout = \case
       c@DCppChoice{} : r
-        | everyAlternative (\xs -> take 1 xs == [Doc.comma]) c -> Just (c, r, False)
+        | everyAlternative (\xs -> take 1 xs == [Doc.comma]) c ->
+            Just (c, r, False)
       x : DBreak : DCppChoice ws bs e : r
         | x == Doc.comma,
           following@(_ : _) <- dropWhile onlySpacing r,
           everyAlternative (\xs -> fmap snd (unsnoc xs) == Just Doc.comma) (DCppChoice ws bs e) ->
-            Just (Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e), x : DBreak : following, True)
+            Just
+              (Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e), x : DBreak : following, True)
       _ -> Nothing
       where
         everyAlternative p = \case
-          DCppChoice _ bs e -> all (\a -> printsNothing a || p (spineAt layout a)) (e : fmap snd bs)
+          DCppChoice _ bs e ->
+            all
+              (\a -> printsNothing a || p (spineAt layout a))
+              (e : fmap snd bs)
           _ -> False
         led a
           | printsNothing a = a
-          | otherwise = mconcat (Doc.comma : Doc.space : maybe [] fst (unsnoc (spineAt layout a)))
+          | otherwise =
+              mconcat
+                (Doc.comma : Doc.space : maybe [] fst (unsnoc (spineAt layout a)))
 
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss
@@ -342,7 +365,8 @@ merge written conditionals guards varied settledOthers = go Broken
         inAlternatives = \case
           DCppChoice ws bs e
             | not (any printsNothing (e : fmap snd bs)) ->
-                Just (DCppChoice ws [(g, endingWith t b) | (g, b) <- bs] (endingWith t e))
+                Just
+                  (DCppChoice ws [(g, endingWith t b) | (g, b) <- bs] (endingWith t e))
           DCat a b
             | printsNothing b -> (<> b) <$> inAlternatives a
             | otherwise -> (a <>) <$> inAlternatives b
@@ -430,7 +454,8 @@ merge written conditionals guards varied settledOthers = go Broken
         else Nothing
 
     evidenced ds c = case conditionalRange c of
-      Just (from, to) -> any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)
+      Just (from, to) ->
+        any (\(a, b) -> from < a && b < to) (concatMap printedFrom ds)
       Nothing -> False
 
 -- | The one element of a list that has one.
@@ -581,7 +606,8 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
   [] -> Just base
   [(_, only)] -> Just only
   many -> case (spineAt layout base, [(v, spineAt layout d) | (v, d) <- many]) of
-    ([b], ss) | Just xs <- traverse (\(v, s) -> (,) v <$> sole s) ss -> descend b xs
+    ([b], ss)
+      | Just xs <- traverse (\(v, s) -> (,) v <$> sole s) ss -> descend b xs
     (bs, ss) -> spliced bs ss
   where
     descend b xs = do
@@ -666,7 +692,10 @@ joint wds = case fmap fst wds of
   w : ws | all (kin w) ws -> Just $ case w of
     WLocated s -> WLocated (foldr (<>) s [t | WLocated t <- ws])
     WFence s -> WFence (foldr (<>) s [t | WFence t <- ws])
-    WGroup _ -> WGroup (if Broken `elem` layoutsOf wds then Broken else Flat)
+    WGroup _
+      | Broken `elem` layoutsOf wds -> WGroup Broken
+      | Frangible `elem` layoutsOf wds -> WGroup Frangible
+      | otherwise -> WGroup Flat
     _ -> w
   _ -> Nothing
 
@@ -938,7 +967,7 @@ weigh layout = go
     go = \case
       DCat a b -> go a + go b
       DVariant flatD brokenD ->
-        go (case layout of Flat -> flatD; Broken -> brokenD)
+        go (case layout of Broken -> brokenD; _ -> flatD)
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t

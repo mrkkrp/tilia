@@ -36,6 +36,9 @@
   between imports with an empty line above and below it stays where it was
   written, and the imports on either side of it are sorted apart.
   [Issue 349](https://github.com/mrkkrp/tilia/issues/349).
+* A construct written on one line that runs past column 80 is broken over
+  several lines where possible. [Issue
+  309](https://github.com/mrkkrp/tilia/issues/309).
 
 ## Tilia 0.1.4.0
 

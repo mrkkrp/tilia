@@ -94,7 +94,8 @@ takeHeaderPragmas src headerEnd comments = (pragmas, plain)
       ]
     rightAbovePragma c =
       Set.member (below (spanEndLine (commentSpan c) + 1)) pragmaStarts
-    below n = if directivePresentOnLine n (sourceLines src) then below (n + 1) else n
+    below n =
+      if directivePresentOnLine n (sourceLines src) then below (n + 1) else n
     pragmaStarts =
       Set.fromList [spanStartLine (commentSpan c) | (c, Just _) <- recognised]
     airless c = c{commentGapAbove = False, commentGapBelow = False}
@@ -258,7 +259,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       (i : is) : runs ->
         foldMap anchor above
           <> includeWhen later hardBreak
-          <> at_ ctx (importDecl ctx) i
+          <> frangible (at ctx i (importDecl ctx))
           <> hardBreak
           <> importLines rest False (is : runs)
         where
@@ -449,7 +450,8 @@ importDecl ctx ImportDecl{..} =
     <> foldMap (indent . (space <>)) importList
   where
     annotation = anns (ideclAnn ideclExt)
-    qualified = keywordAt ctx (spanOf =<< importDeclAnnQualified annotation) "qualified"
+    qualified =
+      keywordAt ctx (spanOf =<< importDeclAnnQualified annotation) "qualified"
     qualifiedLast = extensionOn ctx ImportQualifiedPost
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
@@ -464,10 +466,11 @@ importDecl ctx ImportDecl{..} =
     importList = flip fmap ideclImportList $ \(interpretation, L listLoc xs) ->
       let hidden = case interpretation of
             Exactly -> mempty
-            EverythingBut -> keywordAt ctx (spanOf (fst (al_rest (anns listLoc)))) "hiding"
+            EverythingBut ->
+              keywordAt ctx (spanOf (fst (al_rest (anns listLoc)))) "hiding"
           listSpan = spanOfSrcSpan (locA listLoc)
           parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
-       in layoutWithin ctx listSpan parensSpan $
+       in frangible . layoutWithin ctx listSpan parensSpan $
             hidden
               <> breakOrSpace
               <> fence
