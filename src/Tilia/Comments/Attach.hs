@@ -25,8 +25,11 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
+import Tilia.Doc
+  ( Doc (..),
+    foldChildren,
+  )
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal (Doc (..), foldChildren)
 import Tilia.Span
 
 -- | Attach comments to a 'Doc'.

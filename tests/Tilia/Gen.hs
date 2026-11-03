@@ -14,7 +14,7 @@ where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.QuickCheck
-import Tilia.Doc.Internal
+import Tilia.Doc
 import Tilia.Span
 
 ----------------------------------------------------------------------------

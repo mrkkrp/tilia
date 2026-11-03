@@ -7,10 +7,6 @@ import Data.Text (Text)
 import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Doc.Internal
-  ( Doc (DCppDirective, DHoldBack),
-    Spill (..),
-  )
 import Tilia.Span
 
 spec :: Spec

@@ -60,7 +60,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar)
-import Tilia.Doc.Internal (Conditional (..))
+import Tilia.Doc (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
   ( Written (..),
