@@ -326,8 +326,17 @@ asDerivingClause path x y = case (cast x, cast y) of
       DctSingle _ t -> [t]
       DctMulti _ ts -> ts
 
--- | A module's imports, compared as the set they are.
-asImports :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+-- | A module's imports, compared as the set they are, or 'Nothing' where
+-- the two are not imports.
+asImports ::
+  (Data a) =>
+  -- | The constructors above the two, which a difference is described by.
+  Path ->
+  -- | One of them.
+  a ->
+  -- | The other.
+  a ->
+  Maybe (Maybe Text)
 asImports path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (alongside (normalised before) (normalised after))
   _ -> Nothing

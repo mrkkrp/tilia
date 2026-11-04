@@ -599,7 +599,7 @@ spec = do
           ("two/two.cabal", packageWith "two" ["src"] ["B", "C"])
         ]
       $ \root ->
-        projectModules root
+        projectModulesOf root
           `shouldReturn` Right
             (Map.fromList [("A", one), ("B", two), ("C", two)])
 
@@ -610,7 +610,7 @@ spec = do
           ("two/two.cabal", "library\n  exposed-modules: {\n")
         ]
       $ \root ->
-        projectModules root >>= \case
+        projectModulesOf root >>= \case
           Right modules -> expectationFailure ("found " <> show modules)
           Left problem ->
             describeTargetProblem problem
@@ -619,15 +619,17 @@ spec = do
     it "reads a .cabal file again once it has been modified" $
       withProject [("one.cabal", packageWith "one" ["src"] ["A"])] $ \root -> do
         let file = prPath root </> "one.cabal"
-        projectModules root `shouldReturn` Right (Map.fromList [("A", one)])
+        projectModulesOf root `shouldReturn` Right (Map.fromList [("A", one)])
         modified <- getModificationTime file
         writeUtf8File file (packageWith "one" ["src"] ["A", "B"])
         setModificationTime file (addUTCTime 1 modified)
-        projectModules root
+        projectModulesOf root
           `shouldReturn` Right (Map.fromList [("A", one), ("B", one)])
   where
     one = Set.singleton "one"
     two = Set.singleton "two"
+    projectModulesOf root =
+      packageFilesOf root >>= either (pure . Left) projectModules
 
 ----------------------------------------------------------------------------
 -- Helpers

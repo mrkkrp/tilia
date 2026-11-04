@@ -125,7 +125,10 @@ formattedOnly =
 
 -- | The modules of the corpus measured, or which one the corpus does not
 -- have.
-corpusSubjects :: [Example] -> IO (Either Text [Subject])
+corpusSubjects ::
+  -- | The examples of the corpus.
+  [Example] ->
+  IO (Either Text [Subject])
 corpusSubjects examples =
   sequence
     <$> for

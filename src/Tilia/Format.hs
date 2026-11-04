@@ -27,7 +27,6 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Data.Choice (Choice, fromBool, isFalse, isTrue)
-import Data.Either (fromRight)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict (Map)
@@ -351,7 +350,8 @@ newSession ::
   IO (Either FormatError Session)
 newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
-  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules project)
+  packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
+  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
@@ -363,7 +363,6 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
           then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
       pure (plan, routes)
-  packages <- liftIO (fromRight [] <$> packageFilesOf project)
   packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
   resolver <- liftIO (newResolverVia caching routes packageReader root plan)
   notes <-
@@ -399,7 +398,8 @@ data Compiled = Compiled
   }
 
 -- | Settle everything that does not depend on the file being formatted from
--- what compiling its component establishes.
+-- what compiling its component establishes, and from the project's @.cabal@
+-- files which of its modules are its own.
 compiledSession ::
   -- | The file.
   FilePath ->
@@ -413,9 +413,9 @@ compiledSession ::
 compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   project <-
     maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
-  ownModules <-
-    orElse (NoOwnModules (prPath project))
-      =<< liftIO (projectModules project)
+  let root = prPath project
+  packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
+  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
   resolver <- liftIO (newResolverFrom compiledInterface)
   pure
     Session
@@ -474,6 +474,11 @@ formatTurnedOn session path source = runExceptT $ do
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
          in (Set.fromList declared, usesCpp declared text)
+      renderConfigWith extensions =
+        defaultRenderConfig
+          { rcOwnModules = sessionOwnModules session,
+            rcExtensions = extensions
+          }
       renderConfigFor extensions parsed = do
         let implicitPrelude =
               fromBool (Set.member ImplicitPrelude extensions)
@@ -495,23 +500,12 @@ formatTurnedOn session path source = runExceptT $ do
                 parsed
             atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
         case unknownOperators scope (fmap pmGathered parsed) of
-          [] ->
-            pure
-              defaultRenderConfig
-                { rcOwnModules = sessionOwnModules session,
-                  rcExtensions = extensions,
-                  rcScope = Just scope
-                }
+          [] -> pure (renderConfigWith extensions){rcScope = Just scope}
           unknown -> throwE (UnknownFixity path unknown)
       formatting (extensions, cpp) already text
         | isTrue cpp = do
             render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
-              Nothing ->
-                pure
-                  defaultRenderConfig
-                    { rcOwnModules = sessionOwnModules session,
-                      rcExtensions = extensions
-                    }
+              Nothing -> pure (renderConfigWith extensions)
               Just branches -> do
                 traverse_ misplaced (misplacedMagicComment text branches)
                 renderConfigFor extensions branches

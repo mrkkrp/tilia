@@ -19,9 +19,8 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 
 import Tilia.Cabal.Package
-  ( declaredModules,
+  ( declaredModuleNames,
     describePackageProblem,
-    packageBranches,
     packageExtensions,
     packageSourceDirs,
     parsePackageDescription,
@@ -65,7 +64,9 @@ spec = do
               )
             ]
         )
-        `shouldSatisfy` maybe False (elem "Test.Hspec.Runner" . modulesOf)
+        `shouldSatisfy` maybe
+          False
+          (elem "Test.Hspec.Runner" . declaredModuleNames)
 
   describe "a tarball that cannot be read" $ do
     it "leaves its package unread when it is not gzip" $
@@ -300,7 +301,7 @@ spec = do
 
 -- | The modules a @.cabal@ of this shape holds.
 exposed :: Text -> [Text]
-exposed = modulesOf . described
+exposed = declaredModuleNames . described
 
 -- | The directories a @.cabal@ of this shape offers modules under.
 sourceDirs :: Text -> [FilePath]
@@ -330,10 +331,6 @@ described fields =
 -- | The fields a @.cabal@ file needs before its components.
 header :: Text
 header = "cabal-version: 2.4\nname: t\nversion: 0\n"
-
--- | The names of the modules a package declares.
-modulesOf :: GenericPackageDescription -> [Text]
-modulesOf = fmap fst . concatMap snd . declaredModules . packageBranches
 
 -- | A tar entry at the given path, holding the given text.
 entryFor :: FilePath -> Text -> Tar.Entry
