@@ -85,7 +85,7 @@ format       179191752     330024521  servant-server-0.20.3.0/src/Servant/Server
 format       174616880     327650866  swagger2-2.9.1/src/Data/Swagger/Internal.hs
 format       673134288    1380373924  synthetic/comments
 format       106395056     230048954  synthetic/conditionals
-format       100088992     199817118  synthetic/imports
+format       100120640     200235953  synthetic/imports
 format        21403328      52562468  synthetic/long-line
 format       106484600     226617324  synthetic/nesting
 format       829377440    1559975081  text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs

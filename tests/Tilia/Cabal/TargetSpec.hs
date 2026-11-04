@@ -653,6 +653,22 @@ spec = do
           `shouldReturn` Right
             (Map.fromList [("A", one), ("B", two), ("C", two)])
 
+    it "takes those every conditional branch declares" $
+      withProject [("only.cabal", conditional)] $ \root ->
+        projectModulesOf root
+          `shouldReturn` Right
+            (Map.fromList [("A", only), ("B", only), ("C", only)])
+
+    it "takes those of optional packages that exist, ignoring absent ones"
+      $ withProject
+        [ ("cabal.project", "packages: one\noptional-packages: two absent\n"),
+          ("one/one.cabal", packageWith "one" ["src"] ["A"]),
+          ("two/two.cabal", packageWith "two" ["src"] ["B"])
+        ]
+      $ \root ->
+        projectModulesOf root
+          `shouldReturn` Right (Map.fromList [("A", one), ("B", two)])
+
     it "says so when a .cabal file will not parse"
       $ withProject
         [ ("cabal.project", "packages: one two\n"),
@@ -678,6 +694,7 @@ spec = do
   where
     one = Set.singleton "one"
     two = Set.singleton "two"
+    only = Set.singleton "only"
     projectModulesOf root =
       packageFilesOf root >>= either (pure . Left) projectModules
 
