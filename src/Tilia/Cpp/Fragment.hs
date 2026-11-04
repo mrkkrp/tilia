@@ -189,7 +189,7 @@ fragmentText body forest source f
 
 -- | Put what each fragment was formatted to in place of what the module's
 -- body holds there, or 'Nothing' where one of them came out other than a
--- fragment of declarations.
+-- fragment of declarations or split the run after it.
 reassembled ::
   Body ->
   -- | Each fragment, with what it was formatted to.
@@ -229,8 +229,13 @@ reassembled body formatted = do
             | fragmentAbove f = 0
             | otherwise = maybe (bodyHeadEnd body) runTo (fragmentBefore f)
           high = maybe maxBound runFrom (fragmentAfter f)
+          whole r =
+            any
+              (\r' -> runFrom r' <= runFrom r && runTo r <= runTo r')
+              (bodyRuns b)
       guard (start < end)
       guard (all (maybe True (\(s, e) -> low < s && e < high) . extent) new)
+      guard (all whole (fragmentAfter f))
       pure
         ( f,
           b,
