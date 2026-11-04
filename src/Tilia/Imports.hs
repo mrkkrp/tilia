@@ -5,15 +5,22 @@
 -- | Putting a module's imports in order.
 module Tilia.Imports
   ( normalizeImports,
+    travellingComments,
   )
 where
 
-import Data.Char (isAlphaNum)
+import Control.Monad (guard)
+import Data.Char (isAlphaNum, isSpace)
 import Data.Choice (Choice, isTrue)
 import Data.Function (on, (&))
-import Data.List (groupBy, sortOn)
+import Data.IntMap.Strict (IntMap)
+import Data.IntMap.Strict qualified as IntMap
+import Data.List (groupBy, sortOn, unfoldr)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -26,7 +33,14 @@ import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc
 
-import Tilia.Comments (Comment (..), commentTrailing, commentsWithin)
+import Tilia.Comments
+  ( Comment (..),
+    CommentStyle (..),
+    commentTrailing,
+    commentsWithin,
+  )
+import Tilia.MagicComments (magicCommentOf)
+import Tilia.Source (Lines, lineAt)
 import Tilia.Span (Span (..), endPoint, isSingleLine, startPoint)
 import Tilia.Span.Ghc (bracketsSpan, spanOf, spanOfSrcSpan)
 
@@ -81,6 +95,42 @@ normalizeImports
               (filter loose (commentsWithin s written))
           loose = not . commentTrailing
       unanchored starts c = not (any (> endPoint (commentSpan c)) starts)
+
+-- | The comments that go wherever an import does, by the line it begins
+-- on: those written right under it, on lines of their own one under
+-- another at its column, with an empty line or nothing under them.
+travellingComments ::
+  -- | The module as written.
+  Lines ->
+  -- | Its comments, in order.
+  [Comment] ->
+  -- | The module.
+  HsModule GhcPs ->
+  IntMap (NonEmpty Comment)
+travellingComments ls cs m =
+  IntMap.fromList
+    [ (spanStartLine s, block)
+    | s <- mapMaybe spanOf (hsmodImports m),
+      Just block <- [NE.nonEmpty (unfoldr (next s) (spanEndLine s + 1))],
+      setApart (spanEndLine (commentSpan (NE.last block)) + 1)
+    ]
+  where
+    byLine =
+      IntMap.fromList
+        [(spanStartLine (commentSpan c), c) | c <- takeWhile aboveDecls cs]
+    aboveDecls c =
+      all
+        ((spanStartLine (commentSpan c) <) . spanStartLine)
+        (spanOf =<< listToMaybe (hsmodDecls m))
+    next s n = do
+      c <- IntMap.lookup n byLine
+      guard $
+        not (commentTrailing c)
+          && commentStyle c /= DocComment
+          && isNothing (magicCommentOf c)
+          && spanStartColumn (commentSpan c) == spanStartColumn s
+      pure (c, spanEndLine (commentSpan c) + 1)
+    setApart n = maybe True (T.all isSpace) (lineAt n ls)
 
 -- | The names an import hides, where it hides any, so that only imports
 -- hiding the same names are folded together.

@@ -15,6 +15,8 @@ where
 import Control.Applicative ((<|>))
 import Data.Choice (fromBool)
 import Data.Function (on)
+import Data.IntMap.Strict (IntMap)
+import Data.IntMap.Strict qualified as IntMap
 import Data.List (insert, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -204,6 +206,13 @@ data ModuleCtx = ModuleCtx
     -- | The empty lines under the comments that head stretches of the
     -- imports, which they are not sorted across.
     mcHeadings :: [Int],
+    -- | The empty line under the comments written right under an import but
+    -- the last, by the line the import begins on, so that they go wherever
+    -- it does.
+    mcUnderImports :: IntMap Int,
+    -- | The empty line under the comments written right under the last
+    -- import of any configuration, which stay at the end of the imports.
+    mcBelowImports :: Maybe Int,
     -- | The lines of every conditional's directives, which the names of an
     -- import list are not sorted across.
     mcDirectiveLines :: [Int],
@@ -260,10 +269,13 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
         foldMap anchor above
           <> includeWhen later hardBreak
           <> frangible (at ctx i (importDecl ctx))
+          <> foldMap anchor (IntMap.lookup start mcUnderImports)
+          <> includeWhen (null is && null runs) (foldMap anchor mcBelowImports)
           <> hardBreak
           <> importLines rest False (is : runs)
         where
-          (above, rest) = span (< maybe 0 spanStartLine (spanOf i)) pending
+          start = maybe 0 spanStartLine (spanOf i)
+          (above, rest) = span (< start) pending
     anchor l = located (mkSpan (l, 1) (l, 2)) mempty
     declarationLayout = case (hsmodDecls, spansOf hsmodDecls) of
       (_ : _ : _, Just s) | isSingleLine s -> flat

@@ -12,6 +12,7 @@ import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -41,6 +42,7 @@ import Tilia.Comments.Attach (attachComments)
 import Tilia.Doc.Combinators
 import Tilia.Fixity (Scope, capturedUses)
 import Tilia.Gathered (Gathered)
+import Tilia.Imports (travellingComments)
 import Tilia.MagicComments (preservedLines)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
@@ -160,12 +162,16 @@ moduleCtx settings parsed held =
   ( ModuleCtx
       { mcOpening = opening,
         mcHeadings = Set.toList (Set.fromList (mapMaybe heading held)),
+        mcUnderImports = maybe id (IntMap.delete . snd) bounds underImports,
+        mcBelowImports = (`IntMap.lookup` underImports) . snd =<< bounds,
         mcDirectiveLines = rcDirectiveLines settings,
         mcImportBarriers = rcImportBarriers settings,
         mcOwnModules = rcOwnModules settings,
         mcMagicCommentRanges = magicCommentRanges
       },
-    [ if among c && isNothing (heading c) then withoutGaps c' else c'
+    [ if among c && isNothing (heading c) || IntSet.member (line c) travellers
+        then withoutGaps c'
+        else c'
     | c <- held,
       not (leftAlone c),
       let c' = belowOpening opening c
@@ -182,7 +188,7 @@ moduleCtx settings parsed held =
         <|> fmap
           (\starts -> (NE.head starts, NE.last starts))
           (NE.nonEmpty (fmap spanStartLine imports))
-    blocks = blockEdges held
+    blocks = blockEdges (filter among held)
     heading c = do
       guard (among c)
       edges <- IntMap.lookup (spanStartLine (commentSpan c)) blocks
@@ -194,6 +200,10 @@ moduleCtx settings parsed held =
           (spanStartColumn (commentSpan c))
           edges
       pure (snd edges)
+    travelling = travellingComments ls held hsMod
+    underImports = fmap ((+ 1) . spanEndLine . commentSpan . NE.last) travelling
+    travellers = IntSet.fromList (line <$> foldMap NE.toList travelling)
+    line = spanStartLine . commentSpan
     withoutGaps c = c{commentGapAbove = False, commentGapBelow = False}
     leftAlone c = any (holds (spanStartLine (commentSpan c))) magicCommentRanges
     holds n (from, to) = from <= n && n <= to
