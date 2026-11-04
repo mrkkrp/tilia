@@ -91,7 +91,9 @@ spec = do
         `saysSomethingElseThan` "module M where\n\n-- | Says.\nf :: Int\nf = 1\n"
 
     it "says where the difference is, not merely that there is one" $
-      case syntaxDifference (treeOf "module M where\nf = 1\n") (treeOf "module M where\nf = 2\n") of
+      case syntaxDifference
+        (treeOf "module M where\nf = 1\n")
+        (treeOf "module M where\nf = 2\n") of
         Nothing -> expectationFailure "found no difference"
         Just why -> do
           why `shouldSatisfy` T.isInfixOf "HsOverLit"
@@ -111,14 +113,18 @@ spec = do
         `losesTheCommentsOf` "module M where\n\n-- a remark\nf = 1\n"
 
     it "notices a pragma that went missing, and names it" $
-      case difference "{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n" "module M where\nf = 1\n" of
+      case difference
+        "{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n"
+        "module M where\nf = 1\n" of
         Nothing -> expectationFailure "let the pragma go"
         Just why -> do
           why `shouldSatisfy` T.isInfixOf "lost the pragma"
           why `shouldSatisfy` T.isInfixOf "LambdaCase"
 
     it "notices a pragma that was invented" $
-      case difference "module M where\nf = 1\n" "{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n" of
+      case difference
+        "module M where\nf = 1\n"
+        "{-# LANGUAGE LambdaCase #-}\nmodule M where\nf = 1\n" of
         Nothing -> expectationFailure "let the pragma through"
         Just why -> why `shouldSatisfy` T.isInfixOf "invented the pragma"
 

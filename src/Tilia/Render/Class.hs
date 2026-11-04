@@ -73,7 +73,9 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
             parens
               ( insideBrackets
                   (spanOf tyCon)
-                  (commaSep (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit))
+                  ( commaSep
+                      (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit)
+                  )
               )
       | otherwise =
           defHead
@@ -166,7 +168,9 @@ standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
           <> foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning
           <> breakOrSpace
           <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
-          <> nest (if indented then 1 else 0) (hsSigType ctx (hswc_body deriv_type))
+          <> nest
+            (if indented then 1 else 0)
+            (hsSigType ctx (hswc_body deriv_type))
 
     strategy = case deriv_strategy of
       Nothing -> instanceHead False
@@ -241,7 +245,9 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             space
           <> indent
             ( fold resultSig
-                <> foldMap ((space <>) . at_ ctx (injectivityAnn ctx)) fdInjectivityAnn
+                <> foldMap
+                  ((space <>) . at_ ctx (injectivityAnn ctx))
+                  fdInjectivityAnn
             )
 
     resultSig = familyResultSig ctx fdResultSig
@@ -306,7 +312,8 @@ roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
     <> indent
       ( name ctx tyCon
           <> breakOrSpace
-          <> indent (align (sepBy breakOrSpace (fmap (align . at_ ctx role) roles)))
+          <> indent
+            (align (sepBy breakOrSpace (fmap (align . at_ ctx role) roles)))
       )
   where
     role = maybe (txt "_") $ \case

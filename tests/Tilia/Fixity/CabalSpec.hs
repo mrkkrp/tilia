@@ -220,7 +220,9 @@ spec = do
         `shouldSatisfy` elem LambdaCase
 
     it "reads several, however they are written" $ do
-      let found = extensions "library\n  default-extensions:\n    LambdaCase\n    MultiWayIf, BlockArguments\n"
+      let found =
+            extensions
+              "library\n  default-extensions:\n    LambdaCase\n    MultiWayIf, BlockArguments\n"
       found `shouldSatisfy` elem LambdaCase
       found `shouldSatisfy` elem MultiWayIf
       found `shouldSatisfy` elem BlockArguments

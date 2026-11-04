@@ -214,7 +214,8 @@ describeFormatError palette = \case
         where
           single = length ops == 1
           because = case why of
-            NotRead missing -> "may be declared in " <> spellUnreadIn palette missing
+            NotRead missing ->
+              "may be declared in " <> spellUnreadIn palette missing
             Ambiguous offers ->
               (if single then "is " else "are ") <> spellDisagreement palette offers
   where
@@ -354,7 +355,8 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
   ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
-      plan <- orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
+      plan <-
+        orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
       pure (plan, [FromInterface, FromSource])
     GivenPlan path -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
@@ -498,13 +500,18 @@ formatTurnedOn session path source = runExceptT $ do
                 (askModule resolver (Just importer))
                 scope
                 parsed
-            atomicModifyIORef' ref (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
+            atomicModifyIORef'
+              ref
+              (\m -> (Map.insertWith (\_ old -> old) path told m, ()))
         case unknownOperators scope (fmap pmGathered parsed) of
           [] -> pure (renderConfigWith extensions){rcScope = Just scope}
           unknown -> throwE (UnknownFixity path unknown)
       formatting (extensions, cpp) already text
         | isTrue cpp = do
-            render <- case everyBranch config path (withoutRuledOut (sessionMacros session) text) of
+            render <- case everyBranch
+              config
+              path
+              (withoutRuledOut (sessionMacros session) text) of
               Nothing -> pure (renderConfigWith extensions)
               Just branches -> do
                 traverse_ misplaced (misplacedMagicComment text branches)
@@ -516,7 +523,10 @@ formatTurnedOn session path source = runExceptT $ do
             pure (printed, Nothing)
         | otherwise = do
             parsed <-
-              maybe (orElse NotParsed (parseModule config path text)) pure already
+              maybe
+                (orElse NotParsed (parseModule config path text))
+                pure
+                already
             traverse_ misplaced (misplacedMagicComment text (pure parsed))
             render <- renderConfigFor extensions (pure parsed)
             pure
@@ -532,7 +542,8 @@ formatTurnedOn session path source = runExceptT $ do
       astCheck = sessionCheckAst session
   traverse_ (throwE . NotEquivalent path) changed
   when (isTrue (sessionCheckIdempotence session)) $ do
-    (settled, _) <- formatting (extensionsAndCpp formatted) printedTree formatted
+    (settled, _) <-
+      formatting (extensionsAndCpp formatted) printedTree formatted
     when (settled /= formatted) $
       throwE (NotIdempotent path (whyNotIdempotent formatted settled))
   pure formatted
@@ -633,9 +644,12 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
         input = Map.fromList went
         output = Map.fromList came
     compareBranch Nothing Nothing = Nothing
-    compareBranch Nothing (Just _) = Just "a configuration no longer aborts preprocessing"
-    compareBranch (Just _) Nothing = Just "a configuration now aborts preprocessing"
-    compareBranch (Just b) (Just a) = ("in one configuration, " <>) <$> difference b a
+    compareBranch Nothing (Just _) =
+      Just "a configuration no longer aborts preprocessing"
+    compareBranch (Just _) Nothing =
+      Just "a configuration now aborts preprocessing"
+    compareBranch (Just b) (Just a) =
+      ("in one configuration, " <>) <$> difference b a
     difference b a = case (parseModule config path b, parseModule config path a) of
       (Left e, _) -> unread e
       (_, Left e) ->

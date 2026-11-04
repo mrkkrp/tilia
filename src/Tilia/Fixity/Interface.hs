@@ -24,7 +24,12 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 
 import Tilia.Fixity
-import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..), decodeHiFile)
+import Tilia.Fixity.HiFile
+  ( HiExport (..),
+    HiFile (..),
+    HiName (..),
+    decodeHiFile,
+  )
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (blocksOf, indented, quietly)
 
@@ -132,14 +137,17 @@ parseInterface modName out
                 namespace <- [InTypes, InTerms]
               ],
             interfaceMembers =
-              Map.unionsWith Set.union (fmap membersIn (sectionsNamed "exports:")),
+              Map.unionsWith
+                Set.union
+                (fmap membersIn (sectionsNamed "exports:")),
             interfaceExports = Nothing
           }
   where
     holdsModule l = case T.words l of
       ("interface" : m : _) -> m == modName
       _ -> False
-    sectionsNamed name = [body | (heading, body) <- sections out, heading == name]
+    sectionsNamed name =
+      [body | (heading, body) <- sections out, heading == name]
     fixities =
       Map.fromListWith
         (flip (<>))

@@ -92,7 +92,8 @@ parseTarget written = case T.splitOn ":" (T.strip (T.pack written)) of
   ["all"] -> Right Everything
   [one] -> Right (Called one)
   [k, name] | Just kind <- kindNamed k -> Right (Qualified Nothing kind name)
-  [package, k, name] | Just kind <- kindNamed k -> Right (Qualified (Just package) kind name)
+  [package, k, name]
+    | Just kind <- kindNamed k -> Right (Qualified (Just package) kind name)
   _ -> Left unrecognised
   where
     unrecognised =
@@ -202,7 +203,12 @@ componentsOfTarget root target =
               let found = concat [cs | Right cs <- results]
               pure $ case filter (targetSelectsComponent target) found of
                 [] | Everything <- target -> Right []
-                [] -> Left (NoSuchTarget (spellTarget target) (spellComponent <$> filter targetable found))
+                [] ->
+                  Left
+                    ( NoSuchTarget
+                        (spellTarget target)
+                        (spellComponent <$> filter targetable found)
+                    )
                 wanted -> Right wanted
 
 -- | Can a component be asked for on its own?
@@ -410,7 +416,9 @@ componentsInCabalFile cabalFile =
                    componentName = "setup",
                    componentRoot = root,
                    componentSources =
-                     Map.singleton "." (Wanted Set.empty (Set.singleton setupScript))
+                     Map.singleton
+                       "."
+                       (Wanted Set.empty (Set.singleton setupScript))
                  }
              | hasSetup
              ]
@@ -422,13 +430,17 @@ sourcesIn d ComponentSection{..} =
   Map.fromListWith
     (<>)
     ( [(joined d sub, Wanted (Set.singleton name) Set.empty) | (sub, name) <- sectionModules]
-        <> [(joined d sub, Wanted Set.empty (Set.singleton name)) | (sub, name) <- sectionEntries]
+        <> [ (joined d sub, Wanted Set.empty (Set.singleton name))
+           | (sub, name) <- sectionEntries
+           ]
     )
 
 -- | The components of a parsed @.cabal@ file, in the order declared.
 declaredComponents :: FilePath -> GenericPackageDescription -> [Component]
 declaredComponents root described =
-  [made kind name branches | (kind, name, branches) <- packageComponents described]
+  [ made kind name branches
+  | (kind, name, branches) <- packageComponents described
+  ]
   where
     made kind name branches =
       Component

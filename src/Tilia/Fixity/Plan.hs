@@ -58,7 +58,15 @@ import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
-import Tilia.Fixity.Archive (Archive (..), InArchive (..), moduleEndings, moduleIn, pathOfModule, readArchive, writtenForHsc)
+import Tilia.Fixity.Archive
+  ( Archive (..),
+    InArchive (..),
+    moduleEndings,
+    moduleIn,
+    pathOfModule,
+    readArchive,
+    writtenForHsc,
+  )
 import Tilia.Fixity.Cabal (packageModules)
 import Tilia.Fixity.Cache
 import Tilia.Fixity.HiFile (HiFile, primopFixities)
@@ -226,8 +234,14 @@ newResolverWith routes cache installed tarballs packageReader plan = do
               fmap packageExtensions . (archiveCabal =<<) <$> archiveOf tarball
         | otherwise = pure Nothing
       archiveOf tarball =
-        memoized flights archivesRead Nothing (T.pack tarball) (readArchive tarball)
-      moduleInArchive tarball modName = (moduleIn modName =<<) <$> archiveOf tarball
+        memoized
+          flights
+          archivesRead
+          Nothing
+          (T.pack tarball)
+          (readArchive tarball)
+      moduleInArchive tarball modName =
+        (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty . importable}
 
 -- | A module's interface, read once, with the primops' fixities standing
@@ -408,7 +422,8 @@ resolveModule
             route >>= \case
               Just established
                 | settlesEverything established -> pure established
-                | established /= unreadable -> go (partial <|> Just established) rest
+                | established /= unreadable ->
+                    go (partial <|> Just established) rest
               _ -> go partial rest
 
       viaInterface = case Map.lookup modName wkInterfaces of
@@ -813,10 +828,13 @@ withReexports reach modName summary =
                   <> mempty{establishedUntold = Map.keysSet (establishedUnsettled found)}
                   <> foldMap (member answers qualifier parent) (foldMap Set.toList kids)
                   <> case kids of
-                    Nothing -> certainly (Set.singleton (InTypes, parent)) Map.empty
+                    Nothing ->
+                      certainly (Set.singleton (InTypes, parent)) Map.empty
                     Just known ->
                       withMembers parent (certainMembersOf answers qualifier parent)
-                        <> mempty{establishedMembers = Map.singleton parent known}
+                        <> mempty
+                          { establishedMembers = Map.singleton parent known
+                          }
       ExportSome qualifier parent kids ->
         settled answers True qualifier (InTypes, parent)
           <> foldMap (member answers qualifier parent) kids

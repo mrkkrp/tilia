@@ -139,7 +139,8 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
 
           equalsSpan = spanOf (andd_equal dd_ext)
 
-          lineHaddocks = any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
+          lineHaddocks =
+            any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
 
           beforeEquals
             | lineHaddocks = hardBreak
@@ -198,7 +199,8 @@ conDecl ctx _ ConDeclGADT{..} =
           (null cs)
           (indent (comma <> breakOrSpace <> commaSep (fmap (name ctx) cs)))
         <> joinedBy (reserved ctx "::")
-        <> indent (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
+        <> indent
+          (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
 
     signature =
       outerBndrs ctx breakOrSpace (unLoc con_outer_bndrs)
@@ -206,7 +208,10 @@ conDecl ctx _ ConDeclGADT{..} =
         <> foldMap
           (\qs -> context ctx qs <> joinedBy (reserved ctx "=>"))
           con_mb_cxt
-        <> layoutFrom ctx argResSpan (brokenIfDocumented ctx documented argsAndResult)
+        <> layoutFrom
+          ctx
+          argResSpan
+          (brokenIfDocumented ctx documented argsAndResult)
 
     argsAndResult = arguments <> resultType
 
@@ -250,7 +255,13 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
         ( brokenIfDocumented ctx xs $
             name ctx con_name
               <> includeUnless (null xs) breakOrSpace
-              <> indent (align (sepBy breakOrSpace (fmap (align . documentedConDeclField ctx) xs)))
+              <> indent
+                ( align
+                    ( sepBy
+                        breakOrSpace
+                        (fmap (align . documentedConDeclField ctx) xs)
+                    )
+                )
         )
   RecCon l ->
     ownDoc
@@ -260,7 +271,9 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
         declSpan
         ( name ctx con_name
             <> breakOrNothing
-            <> nest (if isTrue singleRecCon then 0 else 1) (recordFieldsAt ctx l)
+            <> nest
+              (if isTrue singleRecCon then 0 else 1)
+              (recordFieldsAt ctx l)
         )
   InfixCon l r ->
     includeWhen docOnTop ownDoc

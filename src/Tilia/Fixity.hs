@@ -321,7 +321,8 @@ moduleExports =
       IEThingWith _ n wildcard ns _ ->
         [as ExportAll n | IEWildcard _ <- [wildcard]]
           <> [as ExportSome n (fmap (opName . ieWrappedName . unLoc) ns)]
-      IEModuleContents _ m -> [ExportModule (T.pack (moduleNameString (unLoc m)))]
+      IEModuleContents _ m ->
+        [ExportModule (T.pack (moduleNameString (unLoc m)))]
       _ -> []
     as item n =
       let rdr = ieWrappedName (unLoc n)
@@ -352,7 +353,8 @@ declaredMembers =
 listedMembers :: HsModule GhcPs -> Map OpName (Set OpName)
 listedMembers hsModule = case hsmodExports hsModule of
   Nothing -> declared
-  Just items -> Map.fromListWith Set.union (concatMap (fromIE . unLoc) (unLoc items))
+  Just items ->
+    Map.fromListWith Set.union (concatMap (fromIE . unLoc) (unLoc items))
   where
     declared = Map.map (Set.map snd) (declaredMembers hsModule)
     fromIE = \case
@@ -410,7 +412,11 @@ moduleImports ::
 moduleImports implicitPrelude configurations = prelude <> written
   where
     written =
-      nubOrd (fmap (fromDecl . unLoc) (sortOn spanOf (concatMap hsmodImports configurations)))
+      nubOrd
+        ( fmap
+            (fromDecl . unLoc)
+            (sortOn spanOf (concatMap hsmodImports configurations))
+        )
     prelude
       | not (isTrue implicitPrelude) = []
       | any ((== "Prelude") . importModule) written = []
@@ -426,7 +432,8 @@ moduleImports implicitPrelude configurations = prelude <> written
       Import
         { importModule = modName (unLoc (ideclName d)),
           importQualified = ideclQualified d /= NotQualified,
-          importAlias = maybe (modName (unLoc (ideclName d))) (modName . unLoc) (ideclAs d),
+          importAlias =
+            maybe (modName (unLoc (ideclName d))) (modName . unLoc) (ideclAs d),
           importNames = fromList <$> ideclImportList d
         }
     fromList (interpretation, names) =
@@ -518,7 +525,8 @@ certainlyBrings members (namespace, op) i = case importNames i of
     listed = \case
       ImportedName n -> n == op && isVariable op
       ImportedSome _ ns -> op `elem` ns
-      ImportedAll parent -> maybe False (Set.member op) (Map.lookup parent members)
+      ImportedAll parent ->
+        maybe False (Set.member op) (Map.lookup parent members)
     isVariable (OpName t) = case T.uncons t of
       Just (c, _) -> not (isUpper c) && c /= ':'
       Nothing -> False
@@ -654,7 +662,10 @@ resolveScope implicitPrelude known configurations =
           reachAmbiguous =
             Map.union
               (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
-              (Map.mapKeys (first Just) (Map.mapMaybe disagreeing qualifiedFrom)),
+              ( Map.mapKeys
+                  (first Just)
+                  (Map.mapMaybe disagreeing qualifiedFrom)
+              ),
           reachDecided =
             Set.fromList $
               [ (qualifier, op)
@@ -708,7 +719,10 @@ resolveScope implicitPrelude known configurations =
     visible offered i =
       Map.filterWithKey
         (\op _ -> mayBring (establishedMembers (known (importModule i))) op i)
-        (Map.map (\fixity -> (importModule i, fixity) :| []) (offered (importModule i)))
+        ( Map.map
+            (\fixity -> (importModule i, fixity) :| [])
+            (offered (importModule i))
+        )
 
 -- | The fixities in one namespace, by the operator alone.
 fixitiesIn :: Namespace -> Fixities -> Map OpName Fixity
@@ -762,7 +776,8 @@ lookupFixity ::
 lookupFixity scope namespace qualifier op =
   case fixityInScope scope namespace qualifier op of
     Just (_, (fixity, provenance)) -> Resolved fixity provenance
-    Nothing -> case nonEmpty (unreadThatMightDeclare scope namespace qualifier op) of
+    Nothing -> case nonEmpty
+      (unreadThatMightDeclare scope namespace qualifier op) of
       Nothing -> Resolved defaultFixity ReportDefault
       Just missing -> Unresolved missing
 
@@ -927,7 +942,9 @@ capturedUses found =
         <> concatMap guarded rhss
     fromExpression = \case
       HsLet _ binds body ->
-        [(name, f, bindingSpans binds <> [spanOf body]) | (name, f) <- localBinders binds]
+        [ (name, f, bindingSpans binds <> [spanOf body])
+        | (name, f) <- localBinders binds
+        ]
       HsDo _ _ (L _ stmts) -> inSequence stmts []
       HsMultiIf _ rhss -> concatMap guarded rhss
       _ -> []
@@ -937,15 +954,21 @@ capturedUses found =
       concat
         [ case unLoc stmt of
             BindStmt _ pat _ ->
-              [(name, f, fmap spanOf later <> after) | (name, f) <- patternBinders [pat]]
+              [ (name, f, fmap spanOf later <> after)
+              | (name, f) <- patternBinders [pat]
+              ]
             LetStmt _ binds ->
-              [(name, f, fmap spanOf (stmt : later) <> after) | (name, f) <- localBinders binds]
+              [ (name, f, fmap spanOf (stmt : later) <> after)
+              | (name, f) <- localBinders binds
+              ]
             _ -> []
         | stmt : later <- tails stmts
         ]
 
     patternBinders pats =
-      [(opName n, defaultFixity) | n <- collectPatsBinders CollNoDictBinders pats]
+      [ (opName n, defaultFixity)
+      | n <- collectPatsBinders CollNoDictBinders pats
+      ]
     localBinders binds =
       [ (opName n, Map.findWithDefault defaultFixity (opName n) declared)
       | let declared = localFixities binds,
@@ -968,7 +991,8 @@ capturedUses found =
 --
 -- Empty is the only acceptable answer: an operator whose fixity is not
 -- known cannot be laid out, only guessed at.
-unknownOperators :: Scope -> NonEmpty Gathered -> [((Maybe Text, OpName), Unknown)]
+unknownOperators ::
+  Scope -> NonEmpty Gathered -> [((Maybe Text, OpName), Unknown)]
 unknownOperators scope found =
   Map.toList (Map.fromList (mapMaybe unsettled (concatMap operatorsUsed found)))
   where
@@ -1106,10 +1130,15 @@ instance NFData Established
 instance Semigroup Established where
   a <> b =
     Established
-      { establishedFixities = Map.union (establishedFixities a) (establishedFixities b),
+      { establishedFixities =
+          Map.union (establishedFixities a) (establishedFixities b),
         establishedUnsettled =
-          Map.unionWith Set.union (establishedUnsettled a) (establishedUnsettled b),
-        establishedUntold = Set.union (establishedUntold a) (establishedUntold b),
+          Map.unionWith
+            Set.union
+            (establishedUnsettled a)
+            (establishedUnsettled b),
+        establishedUntold =
+          Set.union (establishedUntold a) (establishedUntold b),
         establishedCertain = establishedCertain a <> establishedCertain b,
         establishedMembers =
           Map.unionWith Set.union (establishedMembers a) (establishedMembers b)

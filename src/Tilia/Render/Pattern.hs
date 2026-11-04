@@ -132,11 +132,23 @@ conPattern ctx inParens here con = \case
   RecCon (HsRecFields _ fields dotdot) ->
     name ctx con
       <> breakOrNothing
-      <> indent (braces (insideBrackets here (commaSep (fmap field (visibleFields dotdot fields)))))
+      <> indent
+        ( braces
+            ( insideBrackets
+                here
+                (commaSep (fmap field (visibleFields dotdot fields)))
+            )
+        )
   InfixCon l r ->
     layoutFrom ctx (spanOf l <> spanOf r) $
       recur l
-        <> attachOperator Normal (spanOf l) (spanOf con) (spanOf r) (name ctx con) (recur r)
+        <> attachOperator
+          Normal
+          (spanOf l)
+          (spanOf con)
+          (spanOf r)
+          (name ctx con)
+          (recur r)
   where
     recur = hsPatIn ctx inParens Indented
     field = either wildcard (at_ ctx (patFieldBind ctx))
@@ -161,7 +173,9 @@ fieldOcc ctx FieldOcc{..} = name ctx foLabel
 -- one that is not.
 unboxedSum :: ClosingIndent -> ConTag -> Arity -> Doc -> Doc
 unboxedSum closing tag arity d =
-  unboxedWith closing (sepBy (txt "|") (before <> [space <> d <> space] <> after))
+  unboxedWith
+    closing
+    (sepBy (txt "|") (before <> [space <> d <> space] <> after))
   where
     before = replicate (tag - 1) space
     after = replicate (arity - tag) space

@@ -256,7 +256,8 @@ instance FromJSON PlanPackage where
                     (_, _, Just uri) -> RepoDownloaded uri
                     _ -> RepoNoProvenance
                 )
-            (_, Just "local") -> LocalPackage (maybe "" T.unpack (join sourcePath))
+            (_, Just "local") ->
+              LocalPackage (maybe "" T.unpack (join sourcePath))
             (_, Just "source-repo") -> SourceRepo
             -- Anything else, a local or remote tarball among them, is
             -- treated as already present.
@@ -469,10 +470,12 @@ data Readiness
 
 -- | Where @cabal@ writes the plan for a project.
 planPathFor :: FilePath -> FilePath
-planPathFor projectDir = projectDir </> "dist-newstyle" </> "cache" </> "plan.json"
+planPathFor projectDir =
+  projectDir </> "dist-newstyle" </> "cache" </> "plan.json"
 
 -- | Check what is missing.
-checkReadiness :: Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
+checkReadiness ::
+  Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
 checkReadiness caching wanted projectDir =
   readinessOf caching wanted projectDir =<< readBuildPlan (planPathFor projectDir)
 
@@ -795,7 +798,10 @@ plannedTarballs cache projectDir plan =
       repos <- quietly [] (Data.List.sort <$> listDirectory cacheRoot)
       traverse
         (\p -> (,) p <$> tarballFor cacheRoot repos p)
-        (nubOrdOn (\p -> (ppName p, ppVersion p)) [p | p <- bpPackages plan, not (isLocal p)])
+        ( nubOrdOn
+            (\p -> (ppName p, ppVersion p))
+            [p | p <- bpPackages plan, not (isLocal p)]
+        )
     isLocal p = case ppSource p of
       LocalPackage _ -> True
       CheckedOut _ -> True

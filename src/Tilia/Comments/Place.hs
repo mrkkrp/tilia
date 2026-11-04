@@ -115,7 +115,10 @@ placeComments ::
   Placements
 placeComments regions leads fences comments =
   Placements
-    { placedAt = Map.fromListWith (flip (<>)) [(r, [(p, c)]) | (Just (r, p), c) <- decided],
+    { placedAt =
+        Map.fromListWith
+          (flip (<>))
+          [(r, [(p, c)]) | (Just (r, p), c) <- decided],
       placedNowhere = [c | (Nothing, c) <- decided]
     }
   where
@@ -145,7 +148,8 @@ placeComments regions leads fences comments =
       | otherwise = Nothing
       where
         here = commentSpan c
-        asCommentBefore = against =<< (`Map.lookup` commentsByEndPoint) =<< stopsAt
+        asCommentBefore =
+          against =<< (`Map.lookup` commentsByEndPoint) =<< stopsAt
         trailed
           | writtenAgainst || endsItsLine c =
               linedUpUnder <|> endingOn (spanStartLine here)
@@ -155,7 +159,9 @@ placeComments regions leads fences comments =
           (r, Under ByTheRegion) <- against top
           r <$ guard (candidate r)
         endingOn line =
-          nearest (\r -> (Down (endPoint r), startPoint r)) (filter candidate onThatLine)
+          nearest
+            (\r -> (Down (endPoint r), startPoint r))
+            (filter candidate onThatLine)
           where
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
         candidate r =
@@ -170,7 +176,10 @@ placeComments regions leads fences comments =
           outside (Map.lookup here enclosingRegions)
             || (not heldBack && outside (Map.lookup here enclosingFences))
           where
-            outside = maybe False (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
+            outside =
+              maybe
+                False
+                (\(from, to) -> not (from <= startPoint r && endPoint r <= to))
 
         heldBack = case shapeOf (After SpillAtIndentation) c of
           HeldBack _ -> True
@@ -226,7 +235,8 @@ placeComments regions leads fences comments =
                 Map.lookupLT (startPoint r) regionsByStartPoint
             larger r o = startPoint o < startPoint r && endPoint o == lineEnd
 
-    commentsByEndPoint = Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
+    commentsByEndPoint =
+      Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
 
     endsItsLine c =
       not (commentFollowed c)
@@ -270,7 +280,8 @@ placeComments regions leads fences comments =
 -- earliest end among them.
 enclosures :: [Span] -> [Span] -> Map Span ((Int, Int), (Int, Int))
 enclosures outer inner =
-  Map.fromList (go (sortOn startPoint outer) Map.empty Set.empty (sortOn startPoint inner))
+  Map.fromList
+    (go (sortOn startPoint outer) Map.empty Set.empty (sortOn startPoint inner))
   where
     go _ _ _ [] = []
     go os latest ends (i : is) =
@@ -285,7 +296,10 @@ enclosures outer inner =
     -- A span opened later starts no earlier, so it supersedes those that end
     -- no later than it does.
     admit latest o =
-      Map.insert (endPoint o) (startPoint o) (Map.dropWhileAntitone (<= endPoint o) latest)
+      Map.insert
+        (endPoint o)
+        (startPoint o)
+        (Map.dropWhileAntitone (<= endPoint o) latest)
 
 -- | Claim the comments that belong to the given 'Span'.
 claimPlaced :: Span -> Placements -> ([(Position, Comment)], Placements)

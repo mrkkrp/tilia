@@ -107,7 +107,10 @@ fixityNotes ::
   NonEmpty ParsedModule ->
   IO FixityNotes
 fixityNotes implicitPrelude resolve scope configurations = do
-  importNotes <- traverse alongside (moduleImports implicitPrelude (fmap pmModule configurations))
+  importNotes <-
+    traverse
+      alongside
+      (moduleImports implicitPrelude (fmap pmModule configurations))
   pure
     FixityNotes
       { notedImports = importNotes,
@@ -135,7 +138,8 @@ fixityNotes implicitPrelude resolve scope configurations = do
                 then Nothing
                 else Just (Set.size (Set.map snd (Map.keysSet fixities))),
             noteUnsettled =
-              Set.toList (Map.keysSet (establishedUnsettled answer) <> establishedUntold answer)
+              Set.toList
+                (Map.keysSet (establishedUnsettled answer) <> establishedUntold answer)
           }
 
     used =
@@ -143,7 +147,9 @@ fixityNotes implicitPrelude resolve scope configurations = do
         Map.fromList
           [ ((noteSpelling note, answering), (One answering, note))
           | (answering, note) <-
-              fmap aboutOperator (concatMap (operatorsUsed . pmGathered) configurations)
+              fmap
+                aboutOperator
+                (concatMap (operatorsUsed . pmGathered) configurations)
           ]
 
     here =
@@ -204,7 +210,8 @@ aboutFile palette notes =
           Nothing -> "could not be read" <> through (noteUnsettled i)
           Just n
             | null (noteUnsettled i) -> operators n
-            | otherwise -> operators n <> ", not settling every name" <> through (noteUnsettled i)
+            | otherwise ->
+                operators n <> ", not settling every name" <> through (noteUnsettled i)
 
     through ways = case mapMaybe nonEmpty ways of
       [] -> ""

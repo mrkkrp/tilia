@@ -210,7 +210,8 @@ fixityBenchmarks dir toResolve held = do
       interfaces <- interfacesOf decoded
       let reading kept modules = do
             packageReader <- newPackageReader (plannedCompiler plan) []
-            resolver <- newResolverWith [FromSource] kept [] tarballs packageReader plan
+            resolver <-
+              newResolverWith [FromSource] kept [] tarballs packageReader plan
             pure $ do
               answers <- traverse (askModule resolver Nothing) modules
               length <$> evaluate (force answers)

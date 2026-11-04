@@ -54,7 +54,9 @@ spec = do
 
     it "reads it alongside ordinary ones" $
       declares "exports:\n  ->\n  !\nfixities infixr -1 ->, infixl 9 !\n"
-        `shouldBe` [(OpName "!", Fixity LeftAssoc 9), (OpName "->", Fixity RightAssoc (-1))]
+        `shouldBe` [ (OpName "!", Fixity LeftAssoc 9),
+                     (OpName "->", Fixity RightAssoc (-1))
+                   ]
 
     it "passes over an entry it cannot read, and keeps the rest" $
       declares "exports:\n  ?\n  !\nfixities infixl notadigit ?, infixl 9 !, infixl\n"
@@ -168,7 +170,10 @@ spec = do
       members
         "exports:\n\
         \  GHC.Internal.Base.Applicative{GHC.Internal.Base.*> GHC.Internal.Base.<*> GHC.Internal.Base.pure}\n"
-        `shouldBe` [(OpName "Applicative", [OpName "*>", OpName "<*>", OpName "pure"])]
+        `shouldBe` [ ( OpName "Applicative",
+                       [OpName "*>", OpName "<*>", OpName "pure"]
+                     )
+                   ]
 
     it "takes them from a partial export, which still says what it has" $
       members "exports:\n  GHC.Internal.Base.Functor|{GHC.Internal.Base.<$}\n"
@@ -176,7 +181,10 @@ spec = do
 
     it "takes a name this module declared, written without a module" $
       members "exports:\n  WrappedArrow{WrapArrow unwrapArrow}\n"
-        `shouldBe` [(OpName "WrappedArrow", [OpName "WrapArrow", OpName "unwrapArrow"])]
+        `shouldBe` [ ( OpName "WrappedArrow",
+                       [OpName "WrapArrow", OpName "unwrapArrow"]
+                     )
+                   ]
 
     it "keeps entries apart where several sit on one line" $
       members "exports:\n  A{B} C{D}\n"
@@ -193,8 +201,15 @@ spec = do
         `shouldBe` Right
           ( Just
               ( Certain
-                  (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
-                  (Map.fromList [(OpName "T", Set.fromList [(InTerms, OpName "C")])])
+                  ( Set.fromList
+                      [ (InTypes, OpName "T"),
+                        (InTerms, OpName "C"),
+                        (InTerms, OpName "f")
+                      ]
+                  )
+                  ( Map.fromList
+                      [(OpName "T", Set.fromList [(InTerms, OpName "C")])]
+                  )
               )
           )
 

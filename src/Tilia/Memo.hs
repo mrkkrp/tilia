@@ -95,7 +95,10 @@ memoized flights (Memo table answers) standIn key work =
             | waitedOnBy fl me (table, key) -> pure (fl, Just standIn)
             | otherwise ->
                 pure
-                  ( fl{flightWaits = Map.insert me (table, key) (flightWaits fl)},
+                  ( fl
+                      { flightWaits =
+                          Map.insert me (table, key) (flightWaits fl)
+                      },
                     Nothing
                   )
       case settled of

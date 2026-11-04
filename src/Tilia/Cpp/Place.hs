@@ -203,7 +203,11 @@ keptApart haddocks notes = snd . go Apart
             let under = before == AHaddock && continuesHaddock c
              in (ANote, DLocated s (includeWhen under blankLine <> x))
         | Set.member s haddocks ->
-            (AHaddock, DLocated s (includeWhen (before == ANote) blankLine <> snd (go Apart x)))
+            ( AHaddock,
+              DLocated
+                s
+                (includeWhen (before == ANote) blankLine <> snd (go Apart x))
+            )
       DText t
         | "--" `T.isPrefixOf` t,
           opensHaddock t,
@@ -245,7 +249,8 @@ widened = fst . go
 
 -- | The lines a conditional was written on, from its @#if@ to its @#endif@.
 conditionalSpan :: Conditional -> Maybe Span
-conditionalSpan c = (\(from, to) -> mkSpan (from, 1) (to, 1)) <$> conditionalRange c
+conditionalSpan c =
+  (\(from, to) -> mkSpan (from, 1) (to, 1)) <$> conditionalRange c
 
 -- | The part of the module a region was written in: the innermost branch of
 -- a conditional holding all of it, or 'Nothing' for the module itself.
@@ -333,12 +338,17 @@ unified ds = fmap (rewrite Set.empty) ds
     hulls =
       Map.filter
         ((> 1) . length)
-        (Map.fromListWith (<>) [(startPoint s, [s]) | d <- ds, s <- outermost d])
+        ( Map.fromListWith
+            (<>)
+            [(startPoint s, [s]) | d <- ds, s <- outermost d]
+        )
     rewrite seen = \case
       DLocated s x
         | Set.notMember (startPoint s) seen,
           Just ss <- Map.lookup (startPoint s) hulls ->
-            DLocated (foldr (<>) s ss) (rewrite (Set.insert (startPoint s) seen) x)
+            DLocated
+              (foldr (<>) s ss)
+              (rewrite (Set.insert (startPoint s) seen) x)
         | otherwise -> DLocated s (rewrite (Set.insert (startPoint s) seen) x)
       d@DCppChoice{} -> d
       d -> mapChildren (rewrite seen) d
@@ -423,11 +433,14 @@ putDirective written doc d
   | dKeyword d == "include",
     commaUnder written (dLastLine d) =
       Left (BeforeLeadingComma (dLine d) ("#" <> dText d))
-  | otherwise = Right (placeAt (const False) (Just written) (dLine d) body id doc)
+  | otherwise =
+      Right (placeAt (const False) (Just written) (dLine d) body id doc)
   where
     body =
       DCppDirective (dSpan d) (dText d)
-        <> includeWhen (any (`blankAt` written) [dLastLine d, dLastLine d + 1]) blankLine
+        <> includeWhen
+          (any (`blankAt` written) [dLastLine d, dLastLine d + 1])
+          blankLine
 
 -- | Put a line using a macro back where it was written, at the indentation
 -- of the code around it, since what it stands for is code.
@@ -506,7 +519,14 @@ placeAt present written n body continuing = among []
               | k < length bs ->
                   DCppChoice
                     cs
-                    (replaced k (among (ctx <> [(cs, k)]) (maybe mempty snd (listToMaybe (drop k bs)))) bs)
+                    ( replaced
+                        k
+                        ( among
+                            (ctx <> [(cs, k)])
+                            (maybe mempty snd (listToMaybe (drop k bs)))
+                        )
+                        bs
+                    )
                     e
               | otherwise -> DCppChoice cs bs (among (ctx <> [(cs, k)]) e)
             Nowhere -> d
@@ -545,11 +565,14 @@ placeAt present written n body continuing = among []
       DLocated s _ | spanStartColumn s == farRight -> spanStartLine s >= n
       x -> maybe False (> n) (startOf x)
 
-    lastBounded ds = case break (maybe False (const True) . boundsOf) (reverse ds) of
+    lastBounded ds = case break
+      (maybe False (const True) . boundsOf)
+      (reverse ds) of
       (spacing, x : earlier) -> Just (reverse earlier, x, reverse spacing)
       _ -> Nothing
 
-    replaced k x bs = [if i == k then (g, x) else (g, y) | (i, (g, y)) <- zip [0 :: Int ..] bs]
+    replaced k x bs =
+      [if i == k then (g, x) else (g, y) | (i, (g, y)) <- zip [0 :: Int ..] bs]
 
     unbounded = isNothing . boundsOf
     startOf = fmap fst . boundsOf
@@ -567,7 +590,10 @@ realizations c = go []
     go ctx = \case
       DCppChoice cs bs e ->
         [ctx | c `elem` cs]
-          <> concat [go (ctx <> [(cs, k)]) d | (k, d) <- zip [0 ..] (fmap snd bs <> [e])]
+          <> concat
+            [ go (ctx <> [(cs, k)]) d
+            | (k, d) <- zip [0 ..] (fmap snd bs <> [e])
+            ]
       d -> foldChildren (go ctx) d
 
 -- | Which alternatives of a choice a line of the input is printed in.

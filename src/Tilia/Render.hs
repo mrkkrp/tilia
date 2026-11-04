@@ -123,7 +123,8 @@ renderConfiguration settings parsed =
         (comments (pmSource parsed))
     plain = heldOff haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmPrologue parsed) plain
-    (pragmas, uncovered) = takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
+    (pragmas, uncovered) =
+      takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
     (mctx, loose) = moduleCtx settings parsed held
     carryingOn = carriedOnFrom loose
@@ -252,7 +253,8 @@ heldOffModuleDoc hsMod haddocks pragmas cs
     pragmaStarts = fmap (spanStartLine . hpSpan) pragmas
     endOfModuleDoc = do
       s <- moduleDoc
-      c <- lookup (startPoint s) [(startPoint (commentSpan h), h) | h <- haddocks]
+      c <-
+        lookup (startPoint s) [(startPoint (commentSpan h), h) | h <- haddocks]
       if bracketed c then Nothing else Just (spanEndLine s)
     moduleDoc = case hsmodExt hsMod of
       XModulePs{hsmodHaddockModHeader = Just d} -> spanOfSrcSpan (getLoc d)

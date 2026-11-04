@@ -19,12 +19,16 @@ spec = do
         `shouldBe` (Leaf 'a' :| [Leaf 'b', Leaf 'c'], ['+', '*'])
     it "does not go inside a leaf" $
       flatten split (Apply (Leaf 'a') '+' (Opaque (Apply (Leaf 'b') '*' (Leaf 'c'))))
-        `shouldBe` (Leaf 'a' :| [Opaque (Apply (Leaf 'b') '*' (Leaf 'c'))], ['+'])
+        `shouldBe` ( Leaf 'a' :| [Opaque (Apply (Leaf 'b') '*' (Leaf 'c'))],
+                     ['+']
+                   )
 
   describe "associate" $ do
     it "makes one level of a chain that binds equally" $
       associate known (leaves "abc") ['+', '+']
-        `shouldBe` Chain (Operand (Leaf 'a') :| [Operand (Leaf 'b'), Operand (Leaf 'c')]) ['+', '+']
+        `shouldBe` Chain
+          (Operand (Leaf 'a') :| [Operand (Leaf 'b'), Operand (Leaf 'c')])
+          ['+', '+']
 
     it "splits at the loosest operator" $
       associate known (leaves "abc") ['*', '+']
@@ -50,7 +54,9 @@ spec = do
     -- cannot be established, so it is what the layout follows.
     it "leaves the chain flat when one fixity is unknown" $
       associate known (leaves "abc") ['*', '?']
-        `shouldBe` Chain (Operand (Leaf 'a') :| [Operand (Leaf 'b'), Operand (Leaf 'c')]) ['*', '?']
+        `shouldBe` Chain
+          (Operand (Leaf 'a') :| [Operand (Leaf 'b'), Operand (Leaf 'c')])
+          ['*', '?']
 
   describe "separators" $ do
     it "recognises an operator that introduces its operand" $

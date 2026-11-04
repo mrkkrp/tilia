@@ -26,7 +26,13 @@ import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 
-import Tilia.Comments (Comment (..), afterOpener, bracketed, singleLine, triggerOn)
+import Tilia.Comments
+  ( Comment (..),
+    afterOpener,
+    bracketed,
+    singleLine,
+    triggerOn,
+  )
 import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
@@ -96,8 +102,10 @@ docBody ctx style doc@(L l str) =
         <> mconcat (replicate trailingBlanks (hardBreak <> txt "--"))
     trailingBlanks = case writtenHaddock ctx (spanOfSrcSpan l) of
       Nothing -> 0
-      Just c -> length (takeWhile isBlankLine (reverse (NE.toList (commentBody c))))
-    isBlankLine t = T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
+      Just c ->
+        length (takeWhile isBlankLine (reverse (NE.toList (commentBody c))))
+    isBlankLine t =
+      T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
     line' isFirst t
       | isFirst = txt (opener style) <> space <> txt t
       | "$" `T.isPrefixOf` t = txt "--" <> txt t

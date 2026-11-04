@@ -30,7 +30,8 @@ import Tilia.TestUtils
 
 -- | Format a module which uses the C preprocessor, configured with nothing.
 formatCpp :: Text -> Either Text Text
-formatCpp = said . formatWithCpp defaultParserConfig defaultRenderConfig "example.hs"
+formatCpp =
+  said . formatWithCpp defaultParserConfig defaultRenderConfig "example.hs"
 
 spec :: Spec
 spec = do
@@ -53,7 +54,10 @@ spec = do
         `shouldBe` Just (fmap Guard ["ifdef FOO"])
 
     it "keeps every line where it was" $
-      let sameLength c = all ((== length (T.lines atDeclarations)) . length . T.lines) (cfgTexts c)
+      let sameLength c =
+            all
+              ((== length (T.lines atDeclarations)) . length . T.lines)
+              (cfgTexts c)
        in (sameLength <$> configurations atDeclarations) `shouldBe` Just True
 
     it "has one more configuration than it has directives" $
@@ -120,7 +124,8 @@ spec = do
 
   describe "counting the configurations" $ do
     it "agrees with enumerating them, where enumerating them is possible" $
-      let counted m = (said (countLeaves m), said (toInteger . length <$> leaves m))
+      let counted m =
+            (said (countLeaves m), said (toInteger . length <$> leaves m))
        in fmap
             counted
             [ atDeclarations,
@@ -271,27 +276,33 @@ spec = do
 
     it "refuses an #else that comes before an #elif" $
       formatCpp elseBeforeElif
-        `shouldBe` Left "the #elif at line 7 comes after the #else of its conditional"
+        `shouldBe` Left
+          "the #elif at line 7 comes after the #else of its conditional"
 
     it "refuses a directive inside a quasiquote" $
       formatCpp includeInQuasiquote
-        `shouldBe` Left "the #include at line 7 is inside a quasi-quote or a multi-line string"
+        `shouldBe` Left
+          "the #include at line 7 is inside a quasi-quote or a multi-line string"
 
     it "refuses an #include before a leading comma" $
       formatCpp includeBeforeLeadingComma
-        `shouldBe` Left "#include \"colors.h\" at line 5 comes before a leading comma, which formatting moves above it"
+        `shouldBe` Left
+          "#include \"colors.h\" at line 5 comes before a leading comma, which formatting moves above it"
 
     it "refuses an alternative aborting with #error that it cannot format" $
       formatCpp abortingAlternative
-        `shouldBe` Left "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
+        `shouldBe` Left
+          "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
 
     it "names the line of an #error that settling a conditional leaves unguarded" $
       formatCpp abortingWhereSettled
-        `shouldBe` Left "the alternative that the #error at line 10 aborts cannot be formatted without parsing it"
+        `shouldBe` Left
+          "the alternative that the #error at line 10 aborts cannot be formatted without parsing it"
 
     it "refuses a branch that a conditional around it asking the same question rules out" $
       formatCpp ruledOut
-        `shouldBe` Left "the branch at line 6 is ruled out by a conditional around it that asks the same question"
+        `shouldBe` Left
+          "the branch at line 6 is ruled out by a conditional around it that asks the same question"
 
   describe "telling a directive line from code" $ do
     it "reads the keyword and everything after the hash" $
@@ -624,12 +635,14 @@ askedTwoWays =
 -- | Two alternatives, only one of which parses.
 oneAlternativeParses :: Text
 oneAlternativeParses =
-  T.unlines ["module M where", "", "#ifdef FOO", "f = 1", "#else", "f = (", "#endif"]
+  T.unlines
+    ["module M where", "", "#ifdef FOO", "f = 1", "#else", "f = (", "#endif"]
 
 -- | Two alternatives, neither of which parses.
 noAlternativeParses :: Text
 noAlternativeParses =
-  T.unlines ["module M where", "", "#ifdef FOO", "f = (", "#else", "f = [", "#endif"]
+  T.unlines
+    ["module M where", "", "#ifdef FOO", "f = (", "#else", "f = [", "#endif"]
 
 -- | An @#if@ with nothing to close it.
 unbalanced :: Text

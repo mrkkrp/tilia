@@ -158,7 +158,11 @@ spec = do
         `shouldBe` [Nothing, Nothing, Nothing]
 
   describe "a guard about a macro known to be defined or not" $ do
-    let known = mempty{macroDefined = Set.fromList ["ON"], macroUndefined = Set.fromList ["OFF"]}
+    let known =
+          mempty
+            { macroDefined = Set.fromList ["ON"],
+              macroUndefined = Set.fromList ["OFF"]
+            }
         knownAnswer = guardHolds known
 
     it "takes one that is not defined for 0" $
@@ -201,7 +205,9 @@ spec = do
       ( impliedBy True "if defined(A) && !defined(B)",
         impliedBy False "if defined(A) || defined(B)"
       )
-        `shouldBe` (defined "A" <> notDefined "B", notDefined "A" <> notDefined "B")
+        `shouldBe` ( defined "A" <> notDefined "B",
+                     notDefined "A" <> notDefined "B"
+                   )
 
     it "learns nothing from a conjunction that fails or a disjunction that holds" $
       (impliedBy False "if defined(A) && defined(B)", impliedBy True "if defined(A) || defined(B)")
@@ -310,7 +316,12 @@ spec = do
           "import Two",
           "#endif"
         ]
-        `shouldBe` ["#if defined(FOO)", "import One", "#elif MIN_VERSION_thing(1,0,0)", "import Two", "#endif"]
+        `shouldBe` [ "#if defined(FOO)",
+                     "import One",
+                     "#elif MIN_VERSION_thing(1,0,0)",
+                     "import Two",
+                     "#endif"
+                   ]
 
     it "leaves the branches before a question it cannot answer as well" $
       ruledOut
@@ -356,7 +367,13 @@ spec = do
         `shouldBe` ["", "", "", "", "import New", "", ""]
 
     it "keeps every line where it was written" $
-      let source = T.unlines ["module M where", "#if MIN_VERSION_thing(2,0,0)", "x = 1", "#endif"]
+      let source =
+            T.unlines
+              [ "module M where",
+                "#if MIN_VERSION_thing(2,0,0)",
+                "x = 1",
+                "#endif"
+              ]
        in length (T.lines (withoutRuledOut macros source))
             `shouldBe` length (T.lines source)
 

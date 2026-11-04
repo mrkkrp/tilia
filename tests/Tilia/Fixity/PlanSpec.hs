@@ -43,7 +43,13 @@ import System.Directory
     setPermissions,
   )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
-import System.FilePath (dropExtension, searchPathSeparator, takeBaseName, takeDirectory, (</>))
+import System.FilePath
+  ( dropExtension,
+    searchPathSeparator,
+    takeBaseName,
+    takeDirectory,
+    (</>),
+  )
 import System.IO.Temp (withSystemTempDirectory)
 import System.Info qualified
 import System.Timeout (timeout)
@@ -327,7 +333,13 @@ preparation = describe "preparing a project" $ do
     withChangedPackage $ \dir -> do
       stale <- checkReadiness [] dir
       steps <- newIORef []
-      _ <- prepareWith (obliging steps) (futilityFor (Do #useCache) dir) [] dir stale
+      _ <-
+        prepareWith
+          (obliging steps)
+          (futilityFor (Do #useCache) dir)
+          []
+          dir
+          stale
       later <- addUTCTime 60 <$> getCurrentTime
       setModificationTime (dir </> "thing.cabal") later
       checkReadiness [] dir `shouldReturn` PlanStale [dir </> "thing.cabal"]
@@ -395,7 +407,8 @@ preparation = describe "preparing a project" $ do
                   rememberFutileSolve = writeIORef futile True
                 }
             narrow = PlanNarrow ["thing:test:tests"]
-            once = prepareWith cabal futility [component "test:tests"] dir narrow
+            once =
+              prepareWith cabal futility [component "test:tests"] dir narrow
         once `shouldReturn` Right ()
         readIORef futile `shouldReturn` True
         once `shouldReturn` Right ()
@@ -439,7 +452,13 @@ preparation = describe "preparing a project" $ do
                   rememberFutileFetch = writeIORef refused
                 }
             narrow = PlanNarrow ["thing:test:tests"]
-            again = prepareWith (obliging steps) futility [component "test:tests"] dir narrow
+            again =
+              prepareWith
+                (obliging steps)
+                futility
+                [component "test:tests"]
+                dir
+                narrow
         again `shouldReturn` Right ()
         readIORef refused `shouldReturn` ["tilia-phantom"]
         again `shouldReturn` Right ()
@@ -511,12 +530,14 @@ reexports = describe "an operator a module passes on" $ do
       `shouldReturn` Nothing
 
   it "is the module's own for a constructor handed on with its type" $ do
-    answer <- chasedModule "module M (T (..)) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
+    answer <-
+      chasedModule "module M (T (..)) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
     Map.lookup (InTerms, OpName ":+") (establishedFixities answer)
       `shouldBe` Just (Fixity LeftAssoc 6)
 
   it "is not the module's own for a constructor its type is handed on without" $ do
-    answer <- chasedModule "module M (T) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
+    answer <-
+      chasedModule "module M (T) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
     Map.lookup (InTerms, OpName ":+") (establishedFixities answer) `shouldBe` Nothing
 
   it "is not answered at all when the module it came from cannot be read" $
@@ -556,12 +577,16 @@ reexports = describe "an operator a module passes on" $ do
       `shouldReturn` Nothing
 
   it "leaves unsettled only what the unread import could have supplied" $ do
-    answer <- chasedModule "module M ((<+>), (<?>)) where\nimport No.Such.Module ((<?>))\nimport Text.PrettyPrint\n"
+    answer <-
+      chasedModule
+        "module M ((<+>), (<?>)) where\nimport No.Such.Module ((<?>))\nimport Text.PrettyPrint\n"
     unsettledThrough answer (InTerms, OpName "<?>") `shouldBe` [["No.Such.Module"]]
     unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` []
 
   it "leaves the members of a type from an unread module unsettled, but not what it hands on besides" $ do
-    answer <- chasedModule "module M (T (..), (<+>)) where\nimport No.Such.Module\nimport Text.PrettyPrint\n"
+    answer <-
+      chasedModule
+        "module M (T (..), (<+>)) where\nimport No.Such.Module\nimport Text.PrettyPrint\n"
     unsettledThrough answer (InTerms, OpName "anything") `shouldBe` [["No.Such.Module"]]
     unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` []
     Map.lookup (InTerms, OpName "<+>") (establishedFixities answer) `shouldBe` Just (Fixity LeftAssoc 6)
@@ -760,7 +785,8 @@ withRemembered holding act =
           (asked, found) <- runsCabal (plannedTarballs cache dir plan)
           act root asked (fmap snd found)
   where
-    hackage = "{\"type\":\"secure-repo\",\"uri\":\"https://hackage.haskell.org/\"}"
+    hackage =
+      "{\"type\":\"secure-repo\",\"uri\":\"https://hackage.haskell.org/\"}"
 
 -- | The commands the stand-in for @cabal@ is given while a project short of
 -- a tarball fetches it, the package cache remembered to be a directory of
@@ -896,7 +922,12 @@ withLayouts act =
         bracket
           (lookupEnv "CABAL_DIR" <* unsetEnv "CABAL_DIR")
           (traverse_ (setEnv "CABAL_DIR"))
-          (const (act (cache </> "cabal" </> "packages") (home </> ".cabal" </> "packages")))
+          ( const
+              ( act
+                  (cache </> "cabal" </> "packages")
+                  (home </> ".cabal" </> "packages")
+              )
+          )
 
 -- | Put a Hackage index where a cache directory would have one.
 withIndexIn :: FilePath -> IO ()
@@ -968,7 +999,9 @@ gitDependencies = describe "a dependency that arrived as a git checkout" $ do
   it "finds where cabal unpacked it" $
     withFakeCheckout [("thing-2a9f", "1.0")] $ \dir ->
       sourcesOf dir
-        `shouldReturn` [CheckedOut (dir </> "dist-newstyle" </> "src" </> "thing-2a9f")]
+        `shouldReturn` [ CheckedOut
+                           (dir </> "dist-newstyle" </> "src" </> "thing-2a9f")
+                       ]
 
   it "leaves one alone that cabal has not unpacked yet" $
     withFakeCheckout [] $
@@ -977,7 +1010,9 @@ gitDependencies = describe "a dependency that arrived as a git checkout" $ do
   it "passes over the clone of a revision that has been moved on from" $
     withFakeCheckout [("thing-0000", "0.9"), ("thing-ffff", "1.0")] $ \dir ->
       sourcesOf dir
-        `shouldReturn` [CheckedOut (dir </> "dist-newstyle" </> "src" </> "thing-ffff")]
+        `shouldReturn` [ CheckedOut
+                           (dir </> "dist-newstyle" </> "src" </> "thing-ffff")
+                       ]
 
   it "passes over a directory named for another package" $
     withFakeCheckout [("other-2a9f", "1.0")] $ \dir ->
@@ -991,7 +1026,13 @@ gitDependencies = describe "a dependency that arrived as a git checkout" $ do
         Right p -> do
           rs <- newResolver p
           fixitiesOf rs "Private.Ops"
-            >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 3)))
+            >>= ( `shouldBe`
+                    Just
+                      ( Map.singleton
+                          (InTerms, OpName "<+>")
+                          (Fixity RightAssoc 3)
+                      )
+                )
 
 -- | What the plan says each of its packages came from.
 sourcesOf :: FilePath -> IO [PackageSource]
@@ -1074,7 +1115,10 @@ generatedModuleSpec = describe "a module cabal generates" $ do
       ]
     $ \rs ->
       fixitiesOf rs "Facade"
-        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)))
+        >>= ( `shouldBe`
+                Just
+                  (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5))
+            )
 
   it "reads one somebody wrote by hand rather than assuming"
     $ withFakeProject
@@ -1084,7 +1128,10 @@ generatedModuleSpec = describe "a module cabal generates" $ do
       ]
     $ \rs ->
       fixitiesOf rs "Paths_fake"
-        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)))
+        >>= ( `shouldBe`
+                Just
+                  (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5))
+            )
 
 -- | Modules asked about from several threads at once.
 askedAtOnce :: Spec
@@ -1202,7 +1249,10 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
       _ <- newResolver plan >>= (`fixitiesOf` "Ops")
       newResolver plan
         >>= (`fixitiesOf` "Ops")
-        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6)))
+        >>= ( `shouldBe`
+                Just
+                  (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6))
+            )
 
   it "is read again once its text has changed" $
     withFakePlan [("src/Ops.hs", declaring "infixl 6")] $ \plan -> do
@@ -1211,7 +1261,10 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
         writeUtf8File (dir </> "src" </> "Ops.hs") (declaring "infixr 2")
       newResolver plan
         >>= (`fixitiesOf` "Ops")
-        >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 2)))
+        >>= ( `shouldBe`
+                Just
+                  (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 2))
+            )
   where
     declaring fixity =
       T.unlines
@@ -1220,7 +1273,8 @@ readBefore = describe "a module of the project's own, read by an earlier run" $ 
           "(<+>) :: Int -> Int -> Int",
           "a <+> b = a + b"
         ]
-    localDirsOf plan = [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
+    localDirsOf plan =
+      [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
 
 -- | A module another component of the package names alike, as GHC finds it
 -- for each of them.
@@ -1369,7 +1423,10 @@ chased source = do
 -- | What the chase makes of one module against that world.
 chasedModule :: Text -> IO Established
 chasedModule source =
-  withReexports reach "M" (summarize (Is #implicitPrelude) (pmModule (parsed source)))
+  withReexports
+    reach
+    "M"
+    (summarize (Is #implicitPrelude) (pmModule (parsed source)))
   where
     reach m =
       pure $ case m of
@@ -1380,7 +1437,8 @@ chasedModule source =
                 Certain
                   (Set.fromList [plus, doc])
                   (Map.singleton (OpName "Doc") (Set.singleton plus)),
-              establishedMembers = Map.singleton (OpName "Doc") (Set.singleton (OpName "<+>"))
+              establishedMembers =
+                Map.singleton (OpName "Doc") (Set.singleton (OpName "<+>"))
             }
         "Prelude" -> mempty
         _ -> unreadable
@@ -1413,11 +1471,17 @@ withPlan plan = do
       filter isFetchable locals `shouldBe` []
 
     it "records the project as a local directory, with its path" $ do
-      let locals = [s' | p <- bpPackages plan, ppName p == "tilia", let s' = ppSource p]
+      let locals =
+            [ s'
+            | p <- bpPackages plan,
+              ppName p == "tilia",
+              let s' = ppSource p
+            ]
       locals `shouldSatisfy` all (\s' -> case s' of LocalPackage path -> not (null path); _ -> False)
 
     it "puts every package in exactly one of the three kinds" $ do
-      let kinds p = length (filter id [isPreExisting p, isFetchable p, isLocal p])
+      let kinds p =
+            length (filter id [isPreExisting p, isFetchable p, isLocal p])
           isPreExisting p = ppSource p == PreExisting
           isLocal p = case ppSource p of LocalPackage _ -> True; _ -> False
       filter ((/= 1) . kinds) (bpPackages plan) `shouldBe` []
@@ -1506,7 +1570,13 @@ withPlan plan = do
       withFakeProject [("fake.cabal", package ["LambdaCase"]), ("src/Fancy.hs", fancy)] $
         \rs ->
           fixitiesOf rs "Fancy"
-            >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity RightAssoc 5)))
+            >>= ( `shouldBe`
+                    Just
+                      ( Map.singleton
+                          (InTerms, OpName "<+>")
+                          (Fixity RightAssoc 5)
+                      )
+                )
 
     it "cannot read it when the .cabal puts nothing in force" $
       withFakeProject [("fake.cabal", package []), ("src/Fancy.hs", fancy)] $
@@ -1555,7 +1625,10 @@ withPlan plan = do
         -- System.IO.CodePage does with System.Win32.CodePage. That branch
         -- is passed over rather than taken as a reason to say nothing.
         fixitiesOf rs "Platform"
-          >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6)))
+          >>= ( `shouldBe`
+                  Just
+                    (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6))
+              )
 
     it "answers from the configurations that are Haskell at all"
       $ withFakeProject
@@ -1574,7 +1647,10 @@ withPlan plan = do
         ]
       $ \rs ->
         fixitiesOf rs "Guarded"
-          >>= (`shouldBe` Just (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6)))
+          >>= ( `shouldBe`
+                  Just
+                    (Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6))
+              )
 
     it "leaves what the configurations it can read disagree about unsettled"
       $ withFakeProject
@@ -1754,7 +1830,9 @@ withPlan plan = do
         \rs -> do
           answer <- askModule rs Nothing "Opaque"
           establishedUnsettled answer
-            `shouldBe` Map.singleton ["No.Such.Module"] (Set.singleton (InTerms, OpName "<+>"))
+            `shouldBe` Map.singleton
+              ["No.Such.Module"]
+              (Set.singleton (InTerms, OpName "<+>"))
           establishedUntold answer `shouldBe` Set.empty
 
     it "is nothing for a module that hands on a whole module it can read, whatever else it imports"
@@ -1817,7 +1895,9 @@ withPlan plan = do
       $ \rs -> do
         answer <- askModule rs Nothing "Both"
         establishedUnsettled answer
-          `shouldBe` Map.singleton ["No.Such.Module"] (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "<?>")])
+          `shouldBe` Map.singleton
+            ["No.Such.Module"]
+            (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "<?>")])
 
     it "settles an operator no unread module in scope could have declared" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
@@ -1833,7 +1913,8 @@ withPlan plan = do
           let m = parsed "module M where\nimport Opaque\n"
           scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
           lookupFixity scope InTerms Nothing (OpName "<+>")
-            `shouldBe` Unresolved (ModuleChain ("Opaque" :| ["No.Such.Module"]) :| [])
+            `shouldBe` Unresolved
+              (ModuleChain ("Opaque" :| ["No.Such.Module"]) :| [])
 
     it "names the module that stopped it rather than the import above it" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
@@ -1865,13 +1946,20 @@ withPlan plan = do
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs ->
           certainNamesOf rs "Opaque"
-            `shouldReturn` (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "f")])
+            `shouldReturn` ( Set.fromList
+                               [(InTerms, OpName "<+>"), (InTerms, OpName "f")]
+                           )
 
     it "is what a module in a tarball exports, read from its source" $
       withFakeArchive [("Lib.hs", "module Lib (T (..), f) where\ndata T = C\nf :: Int\nf = 1\n")] $
         \rs ->
           certainNamesOf rs "Lib"
-            `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
+            `shouldReturn` ( Set.fromList
+                               [ (InTypes, OpName "T"),
+                                 (InTerms, OpName "C"),
+                                 (InTerms, OpName "f")
+                               ]
+                           )
 
     it "is everything a module with no export list defines, in its namespaces"
       $ withFakeProject
@@ -1904,13 +1992,20 @@ withPlan plan = do
       withFakeProject [("src/Own.hs", "module Own (T (..)) where\ndata T = C | D\n")] $
         \rs ->
           certainNamesOf rs "Own"
-            `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "D")])
+            `shouldReturn` ( Set.fromList
+                               [ (InTypes, OpName "T"),
+                                 (InTerms, OpName "C"),
+                                 (InTerms, OpName "D")
+                               ]
+                           )
 
     it "keeps to the members its export list writes out beside a type" $
       withFakeProject [("src/Own.hs", "module Own (T (C)) where\ndata T = C | D\n")] $
         \rs ->
           certainNamesOf rs "Own"
-            `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C")])
+            `shouldReturn` ( Set.fromList
+                               [(InTypes, OpName "T"), (InTerms, OpName "C")]
+                           )
 
     it "keeps the fixity of a data instance's constructor, with its family"
       $ withFakeProject
@@ -1954,7 +2049,12 @@ withPlan plan = do
         ]
       $ \rs ->
         certainNamesOf rs "Outer"
-          `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "D")])
+          `shouldReturn` ( Set.fromList
+                             [ (InTypes, OpName "T"),
+                               (InTerms, OpName "C"),
+                               (InTerms, OpName "D")
+                             ]
+                         )
 
     it "takes what a whole module it hands on brings in"
       $ withFakeProject
@@ -1963,14 +2063,20 @@ withPlan plan = do
         ]
       $ \rs ->
         certainNamesOf rs "Outer"
-          `shouldReturn` (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "C"), (InTerms, OpName "f")])
+          `shouldReturn` ( Set.fromList
+                             [ (InTypes, OpName "T"),
+                               (InTerms, OpName "C"),
+                               (InTerms, OpName "f")
+                             ]
+                         )
 
     it "keeps to what the import list of a whole module it hands on certainly brings in"
       $ withFakeProject
         [ ("src/Inner.hs", "module Inner where\ndata T = C\nf :: Int\nf = 1\n"),
           ("src/Outer.hs", "module Outer (module Inner) where\nimport Inner (f)\n")
         ]
-      $ \rs -> certainNamesOf rs "Outer" `shouldReturn` (Set.fromList [(InTerms, OpName "f")])
+      $ \rs ->
+        certainNamesOf rs "Outer" `shouldReturn` (Set.fromList [(InTerms, OpName "f")])
 
     it "keeps to what every configuration of a module brings in"
       $ withFakeProject
@@ -1991,7 +2097,8 @@ withPlan plan = do
               ]
           )
         ]
-      $ \rs -> certainNamesOf rs "Own" `shouldReturn` (Set.fromList [(InTerms, OpName "g")])
+      $ \rs ->
+        certainNamesOf rs "Own" `shouldReturn` (Set.fromList [(InTerms, OpName "g")])
 
     it "settles a name one of the project's own modules brings in, despite an unreadable import"
       $ withFakeProject
@@ -1999,7 +2106,9 @@ withPlan plan = do
           ("src/B.hs", "module B (clampTo) where\nclampTo :: Int -> Int -> Int\nclampTo = min\n")
         ]
       $ \rs -> do
-        let m = parsed "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
+        let m =
+              parsed
+                "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
         scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "clampTo")
           `shouldBe` Resolved defaultFixity ReportDefault
@@ -2022,7 +2131,9 @@ withPlan plan = do
           ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
         ]
       $ \rs -> do
-        let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        let m =
+              parsed
+                "module C (w) where\nimport Core\nimport Tree (Tree (..))\nw = Leaf `Node` Leaf `Node` Leaf\n"
         scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Resolved defaultFixity ReportDefault
@@ -2034,7 +2145,9 @@ withPlan plan = do
           ("src/Tree.hs", "module Tree (Tree (..)) where\ndata Tree = Leaf | Node Tree Tree\n")
         ]
       $ \rs -> do
-        let m = parsed "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
+        let m =
+              parsed
+                "module C (w) where\nimport Core\nimport Tree (Tree)\nw = Leaf `Node` Leaf `Node` Leaf\n"
         scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "Node")
           `shouldBe` Unresolved (ModuleChain ("Core" :| ["A"]) :| [])
@@ -2045,7 +2158,9 @@ withPlan plan = do
           ("src/Other.hs", "module Other ((<+>)) where\ninfixl 6 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a - b\n")
         ]
       $ \rs -> do
-        let m = parsed "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
+        let m =
+              parsed
+                "module C (w) where\nimport Ops (T (..))\nimport Other\nw = 1 <+> 2\n"
         scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "<+>")
           `shouldBe` Resolved (Fixity LeftAssoc 6) (DeclaredIn "Other")
@@ -2077,7 +2192,9 @@ withPlan plan = do
     it "brings in only the methods of a class an import list names with (..)" $
       endToEnd resolver "module M where\nimport Text.ParserCombinators.ReadP\nimport Text.Read (Read (..))\n" $ \scope -> do
         lookupFixity scope InTerms Nothing (OpName "+++")
-          `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Text.ParserCombinators.ReadP")
+          `shouldBe` Resolved
+            (Fixity RightAssoc 5)
+            (DeclaredIn "Text.ParserCombinators.ReadP")
         Map.keys (reachAmbiguous (reachIn InTerms scope)) `shouldBe` []
 
     it "honours a hiding list" $
@@ -2144,12 +2261,16 @@ withPlan plan = do
     it "resolves an operator that arrives under a type's own name" $
       endToEnd resolver "module M where\nimport Data.List.NonEmpty (NonEmpty (..))\n" $ \scope ->
         lookupFixity scope InTerms Nothing (OpName ":|")
-          `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Data.List.NonEmpty")
+          `shouldBe` Resolved
+            (Fixity RightAssoc 5)
+            (DeclaredIn "Data.List.NonEmpty")
 
     it "resolves one written out beside its type" $
       endToEnd resolver "module M where\nimport Data.List.NonEmpty (NonEmpty ((:|)))\n" $ \scope ->
         lookupFixity scope InTerms Nothing (OpName ":|")
-          `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Data.List.NonEmpty")
+          `shouldBe` Resolved
+            (Fixity RightAssoc 5)
+            (DeclaredIn "Data.List.NonEmpty")
 
     it "leaves out an operator no item of the list brings in" $
       endToEnd resolver "module M where\nimport Data.List.NonEmpty (toList)\n" $ \scope ->
@@ -2164,7 +2285,9 @@ withPlan plan = do
     it "brings one in under the qualifier it was imported with" $
       endToEnd resolver "module M where\nimport qualified Data.List.NonEmpty as NE (NonEmpty (..))\n" $ \scope ->
         lookupFixity scope InTerms (Just "NE") (OpName ":|")
-          `shouldBe` Resolved (Fixity RightAssoc 5) (DeclaredIn "Data.List.NonEmpty")
+          `shouldBe` Resolved
+            (Fixity RightAssoc 5)
+            (DeclaredIn "Data.List.NonEmpty")
 
     it "reports no ambiguity for a module that compiles" $
       endToEnd resolver "module M where\nimport Prettyprinter\n" $ \scope ->
@@ -2379,7 +2502,9 @@ package extensions =
       "  hs-source-dirs: src",
       "  default-language: Haskell2010"
     ]
-      <> ["  default-extensions: " <> T.intercalate ", " extensions | not (null extensions)]
+      <> [ "  default-extensions: " <> T.intercalate ", " extensions
+         | not (null extensions)
+         ]
 
 -- | A module that is perfectly readable and still cannot be resolved: the
 -- operator it exports comes from somewhere nothing can be read from.
@@ -2443,7 +2568,8 @@ withFakePlan sources act =
         <> "\"}}]}"
     readBuildPlan (dir </> "plan.json") >>= \case
       Left why -> error (T.unpack why)
-      Right plan -> withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act plan)
+      Right plan ->
+        withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act plan)
   where
     haskellIn = filter (isModule . fst)
     isModule path = any (`Data.List.isSuffixOf` path) [".hs", ".hsc"]
@@ -2506,4 +2632,5 @@ writeTarball path entries =
   where
     entry (inside, text) = case Tar.toTarPath False inside of
       Left why -> error why
-      Right tarPath -> pure (Tar.fileEntry tarPath (BL.fromStrict (T.encodeUtf8 text)))
+      Right tarPath ->
+        pure (Tar.fileEntry tarPath (BL.fromStrict (T.encodeUtf8 text)))

@@ -147,11 +147,15 @@ exprBody ctx site here = \case
     name ctx rcon_con
       <> breakOrNothing
       <> indent
-        (braces (insideBrackets here (commaSep (fmap align (fields <> wildcard)))))
+        ( braces
+            (insideBrackets here (commaSep (fmap align (fields <> wildcard))))
+        )
     where
       HsRecFields{..} = rcon_flds
       fields =
-        fmap (frangible . at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel)))) rec_flds
+        fmap
+          (frangible . at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel))))
+          rec_flds
       wildcard = case rec_dotdot of
         Just l -> [at ctx l (const (txt ".."))]
         Nothing -> []
@@ -161,10 +165,16 @@ exprBody ctx site here = \case
       updates = case rupd_flds of
         RegularRecUpdFields{..} ->
           commaSep
-            (fmap (align . frangible . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx)))) recUpdFields)
+            ( fmap
+                (align . frangible . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx))))
+                recUpdFields
+            )
         OverloadedRecUpdFields{..} ->
           commaSep
-            (fmap (align . frangible . at_ ctx (fieldBind ctx (at_ ctx labelChain))) olRecUpdFields)
+            ( fmap
+                (align . frangible . at_ ctx (fieldBind ctx (at_ ctx labelChain)))
+                olRecUpdFields
+            )
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
   HsGetField{..} ->
     hsExpr ctx gf_expr <> txt "." <> at ctx gf_field (dotField ctx)
@@ -862,7 +872,9 @@ cmdChain ctx site l op r =
       Operand c -> at ctx c (cmdTop ctx site)
       chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
-          mayBraceWhenFlat (if placement == Hanging then MayBrace else NoBrace) laidOut
+          mayBraceWhenFlat
+            (if placement == Hanging then MayBrace else NoBrace)
+            laidOut
         where
           placement =
             chainPlacement

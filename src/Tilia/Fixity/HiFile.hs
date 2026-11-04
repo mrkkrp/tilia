@@ -90,7 +90,9 @@ data Tables = Tables
 hiFile :: Get HiFile
 hiFile = do
   magic <- word32be
-  unless (magic == 0x1face64) (failure ("not a 64-bit interface file: " <> tshow magic))
+  unless
+    (magic == 0x1face64)
+    (failure ("not a 64-bit interface file: " <> tshow magic))
   version <- string
   series <- case take 3 version of
     "910" -> pure Series910
@@ -239,7 +241,11 @@ keyedNames = \case
     keyed entries =
       Map.fromList
         [ ( 0x80000000 .|. (fromIntegral (ord tag) `shiftL` 22) .|. fromIntegral index,
-            maybe (BuiltInSyntax namespace) (`HiName` namespace) printedWith (OpName n)
+            maybe
+              (BuiltInSyntax namespace)
+              (`HiName` namespace)
+              printedWith
+              (OpName n)
           )
         | (tag, index, namespace, printedWith, n) <- entries
         ]
@@ -368,7 +374,8 @@ word32be = do
   b <- byte
   c <- byte
   d <- byte
-  pure (fromIntegral a `shiftL` 24 .|. fromIntegral b `shiftL` 16 .|. fromIntegral c `shiftL` 8 .|. fromIntegral d)
+  pure
+    (fromIntegral a `shiftL` 24 .|. fromIntegral b `shiftL` 16 .|. fromIntegral c `shiftL` 8 .|. fromIntegral d)
 
 -- | An unsigned LEB128 number.
 uleb :: Get Int

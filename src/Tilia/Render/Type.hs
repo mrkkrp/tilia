@@ -109,7 +109,9 @@ typeBody ctx documented here = \case
       brackets (insideBrackets here (hsType ctx t))
   HsTupleTy _ sort xs ->
     layoutWithin ctx here (spansOf xs) $
-      tupleBrackets sort (insideBrackets here (commaSep (fmap (align . hsType ctx) xs)))
+      tupleBrackets
+        sort
+        (insideBrackets here (commaSep (fmap (align . hsType ctx) xs)))
   HsSumTy _ xs ->
     unboxed (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
