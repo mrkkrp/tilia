@@ -209,7 +209,8 @@ describeFormatError palette = \case
     located t = case T.breakOn ":" t of
       (where', rest) -> paint palette Place where' <> rest
 
--- | The exit status a failure should leave behind.
+-- | The exit status a failure should leave behind, distinct for each error
+-- constructor.
 formatErrorExitCode :: FormatError -> Int
 formatErrorExitCode = \case
   NoProject{} -> 2
@@ -218,25 +219,25 @@ formatErrorExitCode = \case
   PositionPragmas{} -> 5
   NoPackage _ problem -> case problem of
     NoPackageFile -> 6
-    PackageUnreadable{} -> 6
-    PackageMalformed{} -> 7
-    FileUnclaimed{} -> 8
-  UnknownFixity{} -> 15
-  Unreadable{} -> 16
-  NotEquivalent{} -> 17
-  NotIdempotent{} -> 18
-  Threw{} -> 19
-  Unwritable{} -> 20
-  MisplacedMagicComment{} -> 21
+    PackageUnreadable{} -> 7
+    PackageMalformed{} -> 8
+    FileUnclaimed{} -> 9
   CppUnsupported _ why -> case why of
-    MalformedConditional{} -> 9
-    TooManyConfigurations -> 10
-    ConfigurationNotParsed{} -> 11
-    DirectiveInQuotedText{} -> 12
-    MacroInQuotedText{} -> 12
-    BeforeLeadingComma{} -> 12
-    RuledOutBranch{} -> 13
-    AbortingAlternative{} -> 14
+    MalformedConditional{} -> 10
+    TooManyConfigurations -> 11
+    ConfigurationNotParsed{} -> 12
+    DirectiveInQuotedText{} -> 13
+    MacroInQuotedText{} -> 14
+    BeforeLeadingComma{} -> 15
+    RuledOutBranch{} -> 16
+    AbortingAlternative{} -> 17
+  UnknownFixity{} -> 18
+  Unreadable{} -> 19
+  NotEquivalent{} -> 20
+  NotIdempotent{} -> 21
+  Threw{} -> 22
+  Unwritable{} -> 23
+  MisplacedMagicComment{} -> 24
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
