@@ -279,7 +279,8 @@ withoutIgnored root files = do
       maybe True (not . isIgnored ignoreFiles) (Map.lookup file below)
     ]
   where
-    below = Map.fromList [(file, b) | file <- files, Just b <- [pathUnder root file]]
+    below =
+      Map.fromList [(file, b) | file <- files, Just b <- [pathUnder root file]]
 
 -- | The @.tiliaignore@ files in the project root and in every directory
 -- between it and the given files, each by its directory's segments relative

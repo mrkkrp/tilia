@@ -126,7 +126,8 @@ shrinkDoc = \case
   DCloseLine -> [DEmpty]
   DCloseLineUnlessAfterOpener _ -> [DEmpty, DCloseLine]
   DHoldBack s t -> DHoldBack s <$> filter (not . T.null) (T.inits t)
-  DCat a b -> [DEmpty, a, b] <> [DCat a' b | a' <- shrinkDoc a] <> [DCat a b' | b' <- shrinkDoc b]
+  DCat a b ->
+    [DEmpty, a, b] <> [DCat a' b | a' <- shrinkDoc a] <> [DCat a b' | b' <- shrinkDoc b]
   DNest n d -> [DEmpty, d] <> [DNest n d' | d' <- shrinkDoc d]
   DAlign d -> [DEmpty, d] <> [DAlign d' | d' <- shrinkDoc d]
   DCppMarginNote d -> [DEmpty, d] <> [DCppMarginNote d' | d' <- shrinkDoc d]

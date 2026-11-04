@@ -232,7 +232,13 @@ asStandaloneDoc path x y = case (cast x, cast y) of
 asExportItems :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asExportItems path x y = case (cast x, cast y) of
   (Just before, Just after) ->
-    Just (elementwise path "the module exports a different list" (kept before) (kept after))
+    Just
+      ( elementwise
+          path
+          "the module exports a different list"
+          (kept before)
+          (kept after)
+      )
   _ -> Nothing
   where
     kept :: [LIE GhcPs] -> [LIE GhcPs]
@@ -245,7 +251,13 @@ asExportItems path x y = case (cast x, cast y) of
 asDeclarations :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asDeclarations path x y = case (cast x, cast y) of
   (Just before, Just after) ->
-    Just (elementwise path "a different number of declarations" (kept before) (kept after))
+    Just
+      ( elementwise
+          path
+          "a different number of declarations"
+          (kept before)
+          (kept after)
+      )
   _ -> Nothing
   where
     kept :: [LHsDecl GhcPs] -> [LHsDecl GhcPs]
@@ -309,7 +321,8 @@ asQualifiedStyle path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (compared before after)
   _ -> Nothing
   where
-    compared :: ImportDeclQualifiedStyle -> ImportDeclQualifiedStyle -> Maybe Text
+    compared ::
+      ImportDeclQualifiedStyle -> ImportDeclQualifiedStyle -> Maybe Text
     compared before after
       | isImportDeclQualified before == isImportDeclQualified after = Nothing
       | otherwise = Just (describe path "the import stopped being qualified")
@@ -338,7 +351,8 @@ asImports ::
   a ->
   Maybe (Maybe Text)
 asImports path x y = case (cast x, cast y) of
-  (Just before, Just after) -> Just (alongside (normalised before) (normalised after))
+  (Just before, Just after) ->
+    Just (alongside (normalised before) (normalised after))
   _ -> Nothing
   where
     normalised :: [LImportDecl GhcPs] -> [LImportDecl GhcPs]
@@ -353,9 +367,11 @@ asImports path x y = case (cast x, cast y) of
 asContext :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
 asContext path x y = compared optional <|> compared written <|> compared quoted
   where
-    compared :: forall b c. (Typeable b, Data c) => (b -> c) -> Maybe (Maybe Text)
+    compared ::
+      forall b c. (Typeable b, Data c) => (b -> c) -> Maybe (Maybe Text)
     compared strip = case (cast x, cast y) of
-      (Just before, Just after) -> Just (differ path (strip before) (strip after))
+      (Just before, Just after) ->
+        Just (differ path (strip before) (strip after))
       _ -> Nothing
     optional :: Maybe (LHsContext GhcPs) -> [HsType GhcPs]
     optional = maybe [] written
@@ -525,8 +541,10 @@ commentDifference parsedBefore parsedAfter
     flagsOf p = pragmaFlags (pragmaName p) (pragmaBody p)
     optionsBefore = filter (not . T.isPrefixOf "-X") flagsBefore
     optionsAfter = filter (not . T.isPrefixOf "-X") flagsAfter
-    haddockBefore = [pragmaBody p | p <- headerBefore, pragmaName p == "OPTIONS_HADDOCK"]
-    haddockAfter = [pragmaBody p | p <- headerAfter, pragmaName p == "OPTIONS_HADDOCK"]
+    haddockBefore =
+      [pragmaBody p | p <- headerBefore, pragmaName p == "OPTIONS_HADDOCK"]
+    haddockAfter =
+      [pragmaBody p | p <- headerAfter, pragmaName p == "OPTIONS_HADDOCK"]
     flagList flags = "`" <> T.unwords flags <> "`"
     gained = pragmasOf after `Set.difference` pragmasOf before
     docsBefore = length (documentation before)

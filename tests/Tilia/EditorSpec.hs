@@ -75,7 +75,8 @@ spec = describe "formatting what an editor holds" $ do
   it "takes fixities from a module that begins with a byte order mark" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Marked\nx=a <-> b\n"
-        `shouldReturn` CameTo "module Uses where\n\nimport Marked\n\nx = a <-> b\n"
+        `shouldReturn` CameTo
+          "module Uses where\n\nimport Marked\n\nx = a <-> b\n"
 
   it "declines an operator from a module it cannot read" $
     withProject $ \buffer ->
@@ -137,7 +138,8 @@ spec = describe "formatting what an editor holds" $ do
     it "takes fixities from the interfaces it is given" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
-          `shouldReturn` CameTo "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
+          `shouldReturn` CameTo
+            "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
 
     it "declines an operator from a module it is given no interface of" $
       withCompiled $ \buffer ->

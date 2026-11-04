@@ -222,7 +222,10 @@ merge written conditionals guards varied settledOthers = go Broken
           [] -> Just Nothing
           lines' -> case sortOn
             fst
-            [r | r@(from, to) <- ranges, all (\(a, b) -> from <= a && b <= to) lines'] of
+            [ r
+            | r@(from, to) <- ranges,
+              all (\(a, b) -> from <= a && b <= to) lines'
+            ] of
             outermost : _ -> Just (Just outermost)
             [] -> Nothing
         settled first' os = case [o | Just o <- os] of
@@ -318,7 +321,10 @@ merge written conditionals guards varied settledOthers = go Broken
           following@(_ : _) <- dropWhile onlySpacing r,
           everyAlternative (\xs -> fmap snd (unsnoc xs) == Just Doc.comma) (DCppChoice ws bs e) ->
             Just
-              (Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e), x : DBreak : following, True)
+              ( Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e),
+                x : DBreak : following,
+                True
+              )
       _ -> Nothing
       where
         everyAlternative p = \case
@@ -366,7 +372,11 @@ merge written conditionals guards varied settledOthers = go Broken
           DCppChoice ws bs e
             | not (any printsNothing (e : fmap snd bs)) ->
                 Just
-                  (DCppChoice ws [(g, endingWith t b) | (g, b) <- bs] (endingWith t e))
+                  ( DCppChoice
+                      ws
+                      [(g, endingWith t b) | (g, b) <- bs]
+                      (endingWith t e)
+                  )
           DCat a b
             | printsNothing b -> (<> b) <$> inAlternatives a
             | otherwise -> (a <>) <$> inAlternatives b

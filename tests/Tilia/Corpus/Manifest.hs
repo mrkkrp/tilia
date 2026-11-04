@@ -164,7 +164,10 @@ readReport path =
           not (T.null name),
           not (" " `T.isPrefixOf` name) ->
             let (reason, rest') = span ("    " `T.isPrefixOf`) rest
-             in go section (Map.insert (T.unpack name) (outcome, reason) report) rest'
+             in go
+                  section
+                  (Map.insert (T.unpack name) (outcome, reason) report)
+                  rest'
       _ : rest -> go section report rest
     ruled line = not (T.null line) && T.all (== '=') line
 

@@ -167,7 +167,10 @@ spec = do
     it "descends into the node that contains the comment" $
       let c = one "module M where\nx =\n  -- note\n  1\n"
           inner = located (mkSpan (4, 3) (4, 4)) (txt "1")
-          d = located (mkSpan (2, 1) (4, 4)) (txt "x =" <> indent (hardBreak <> inner))
+          d =
+            located
+              (mkSpan (2, 1) (4, 4))
+              (txt "x =" <> indent (hardBreak <> inner))
        in render (attachComments [c] d) `shouldBe` "x =\n  -- note\n  1\n"
 
     it "appends a comment that follows every node rather than dropping it" $

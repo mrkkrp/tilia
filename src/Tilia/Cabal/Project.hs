@@ -80,7 +80,9 @@ findProjectRoot start = quietly Nothing $ do
       packages <- cabalFilesAmong directory entries
       pure
         ( [ProjectRoot directory ProjectFile | "cabal.project" `elem` entries],
-          [ProjectRoot directory (PackageFile (takeFileName p)) | p <- take 1 packages]
+          [ ProjectRoot directory (PackageFile (takeFileName p))
+          | p <- take 1 packages
+          ]
         )
 
 -- | Where a walk upwards from a path starts: the path itself if it names a

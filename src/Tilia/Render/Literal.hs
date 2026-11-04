@@ -114,11 +114,15 @@ runsBetweenGaps s = case gapAt 0 s of
       Nothing -> Nothing
       Just ('\\', rest) -> case afterGap rest of
         Just resumes -> Just (n, resumes)
-        Nothing -> let taken = 1 + escapedWidth rest in gapAt (n + taken) (T.drop taken t)
+        Nothing ->
+          let taken = 1 + escapedWidth rest
+           in gapAt (n + taken) (T.drop taken t)
       Just (_, rest) -> gapAt (n + 1) rest
     afterGap t = case T.span is_space t of
       (blank, rest)
-        | not (T.null blank), Just ('\\', resumes) <- T.uncons rest -> Just resumes
+        | not (T.null blank),
+          Just ('\\', resumes) <- T.uncons rest ->
+            Just resumes
       _ -> Nothing
     escapedWidth t = case T.uncons t of
       Just ('^', _) -> 2
@@ -163,7 +167,8 @@ dropCommonIndent = \case
       common = maybe 0 getMin (mconcat indents)
       measure l
         | T.all is_space l = (Nothing, "")
-        | otherwise = (Just (Min (T.length (T.takeWhile is_space l))), T.drop common l)
+        | otherwise =
+            (Just (Min (T.length (T.takeWhile is_space l))), T.drop common l)
 
 -- | Rejoin runs with the smallest gap that keeps them apart.
 --

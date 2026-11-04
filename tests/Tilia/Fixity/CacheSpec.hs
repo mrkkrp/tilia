@@ -13,7 +13,11 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import System.Directory (getModificationTime, listDirectory, setModificationTime)
+import System.Directory
+  ( getModificationTime,
+    listDirectory,
+    setModificationTime,
+  )
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
@@ -88,7 +92,11 @@ spec = do
         cachedEstablished cache "thing-1.0" "Opaque" `shouldReturn` Just unreadable
 
       it "remembers the way down to where reading gave up" $ \cache -> do
-        storeEstablished cache "thing-1.0" "Opaque" (stoppedAt ["Middle", "Deep.Down"])
+        storeEstablished
+          cache
+          "thing-1.0"
+          "Opaque"
+          (stoppedAt ["Middle", "Deep.Down"])
         cachedEstablished cache "thing-1.0" "Opaque"
           `shouldReturn` Just (stoppedAt ["Middle", "Deep.Down"])
 
@@ -126,9 +134,14 @@ spec = do
 
       it "replaces an unread answer once the module can be read" $ \cache -> do
         storeEstablished cache "thing-1.0" "M" unreadable
-        storeEstablished cache "thing-1.0" "M" (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
+        storeEstablished
+          cache
+          "thing-1.0"
+          "M"
+          (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
         cachedEstablished cache "thing-1.0" "M"
-          `shouldReturn` Just (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
+          `shouldReturn` Just
+            (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
 
       it "knows nothing about a module it was never told about" $ \cache ->
         cachedEstablished cache "thing-1.0" "Absent" `shouldReturn` Nothing
@@ -142,14 +155,27 @@ spec = do
         (a, b) `shouldBe` (Just ops, Just mempty)
 
       it "treats a different hash in the key as a different package" $ \cache -> do
-        storeEstablished cache "thing-1.0-aaaa" "M" (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
+        storeEstablished
+          cache
+          "thing-1.0-aaaa"
+          "M"
+          (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
         cachedEstablished cache "thing-1.0-bbbb" "M" `shouldReturn` Nothing
 
       it "overwrites a previous answer for the same key" $ \cache -> do
-        storeEstablished cache "thing-1.0" "M" (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
-        storeEstablished cache "thing-1.0" "M" (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
+        storeEstablished
+          cache
+          "thing-1.0"
+          "M"
+          (declaring [((InTerms, OpName "!"), Fixity LeftAssoc 9)])
+        storeEstablished
+          cache
+          "thing-1.0"
+          "M"
+          (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
         cachedEstablished cache "thing-1.0" "M"
-          `shouldReturn` Just (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
+          `shouldReturn` Just
+            (declaring [((InTerms, OpName "!"), Fixity RightAssoc 3)])
 
       it "gives back no half of an answer two writers store at once" $ \cache -> do
         let answers =
@@ -212,8 +238,13 @@ spec = do
               mempty
                 { establishedCertain =
                     Certain
-                      (Set.fromList [(InTypes, OpName "T"), (InTerms, OpName "A")])
-                      (Map.singleton (OpName "T") (Set.singleton (InTerms, OpName "A"))),
+                      ( Set.fromList
+                          [(InTypes, OpName "T"), (InTerms, OpName "A")]
+                      )
+                      ( Map.singleton
+                          (OpName "T")
+                          (Set.singleton (InTerms, OpName "A"))
+                      ),
                   establishedMembers =
                     Map.fromList
                       [ (OpName "T", Set.fromList [OpName "A", OpName "B"]),
@@ -226,14 +257,22 @@ spec = do
       it "round-trips all of it at once" $ \cache -> do
         let established =
               Established
-                { establishedFixities = Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6),
-                  establishedUnsettled = Map.singleton ["Below"] (Set.singleton (InTerms, OpName "==>")),
-                  establishedUntold = Set.fromList [["Below"], ["Other", "Further"]],
+                { establishedFixities =
+                    Map.singleton (InTerms, OpName "<+>") (Fixity LeftAssoc 6),
+                  establishedUnsettled =
+                    Map.singleton
+                      ["Below"]
+                      (Set.singleton (InTerms, OpName "==>")),
+                  establishedUntold =
+                    Set.fromList [["Below"], ["Other", "Further"]],
                   establishedCertain =
                     Certain
-                      (Set.fromList [(InTerms, OpName "<+>"), (InTerms, OpName "==>")])
+                      ( Set.fromList
+                          [(InTerms, OpName "<+>"), (InTerms, OpName "==>")]
+                      )
                       Map.empty,
-                  establishedMembers = Map.singleton (OpName "T") (Set.singleton (OpName "A"))
+                  establishedMembers =
+                    Map.singleton (OpName "T") (Set.singleton (OpName "A"))
                 }
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
@@ -270,9 +309,14 @@ spec = do
 
     describe "module names with dots" $
       it "files a deeply qualified module without confusion" $ \cache -> do
-        storeEstablished cache "thing-1.0" "A.B.C.D" (declaring [((InTerms, OpName "%"), Fixity NoAssoc 5)])
+        storeEstablished
+          cache
+          "thing-1.0"
+          "A.B.C.D"
+          (declaring [((InTerms, OpName "%"), Fixity NoAssoc 5)])
         cachedEstablished cache "thing-1.0" "A.B.C.D"
-          `shouldReturn` Just (declaring [((InTerms, OpName "%"), Fixity NoAssoc 5)])
+          `shouldReturn` Just
+            (declaring [((InTerms, OpName "%"), Fixity NoAssoc 5)])
 
 -- | A summary with something of every kind in it.
 crowded :: ModuleSummary
@@ -328,7 +372,8 @@ crowded =
             (OpName "C", Set.fromList [(InTerms, OpName "method"), (InTypes, OpName "F")]),
             (OpName "Empty", Set.empty)
           ],
-      summaryListedMembers = Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
+      summaryListedMembers =
+        Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
     }
 
 -- | A summary with nothing in it, not even a name.
@@ -463,7 +508,10 @@ tokens = around (withSystemTempDirectory "tilia-cache") $ do
       before'
       "thing-1.0"
       "M"
-      mempty{establishedUnsettled = Map.singleton ["Below"] (Set.singleton (InTerms, OpName "==>"))}
+      mempty
+        { establishedUnsettled =
+            Map.singleton ["Below"] (Set.singleton (InTerms, OpName "==>"))
+        }
     after' <- open dir (PlanToken "two")
     cachedEstablished after' "thing-1.0" "M" `shouldReturn` Nothing
 
@@ -493,7 +541,9 @@ stoppedAt chain = mempty{establishedUntold = Set.singleton chain}
 -- or into the developer's real cache.
 withIsolatedCache :: (Cache -> IO ()) -> IO ()
 withIsolatedCache action =
-  withSystemTempDirectory "tilia-cache" (\dir -> open dir (PlanToken "plan") >>= action)
+  withSystemTempDirectory
+    "tilia-cache"
+    (\dir -> open dir (PlanToken "plan") >>= action)
 
 -- | Open a cache in a given directory, under a given token.
 open :: FilePath -> PlanToken -> IO Cache

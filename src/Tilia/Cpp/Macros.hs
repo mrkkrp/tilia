@@ -225,7 +225,8 @@ tokensOf = go . T.stripStart
       | otherwise = Nothing
     next = go . T.stripStart
     firstThat f = foldr (\x acc -> maybe acc Just (f x)) Nothing
-    readDigits = T.foldl' (\n c -> n * 10 + toInteger (fromEnum c - fromEnum '0')) 0
+    readDigits =
+      T.foldl' (\n c -> n * 10 + toInteger (fromEnum c - fromEnum '0')) 0
 
 orExpr :: [Token] -> Maybe (Expr, [Token])
 orExpr ts = do

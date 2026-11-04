@@ -111,16 +111,20 @@ splitOn ::
   (NonEmpty (NonEmpty a, [op]), [op])
 splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
   where
-    go current currentOps [] = ((NE.reverse current, reverse currentOps) :| [], [])
+    go current currentOps [] =
+      ((NE.reverse current, reverse currentOps) :| [], [])
     go current currentOps ((op, y) : rest)
       | cuts op =
           let (groups, splitters) = go (y :| []) [] rest
-           in (NE.cons (NE.reverse current, reverse currentOps) groups, op : splitters)
+           in ( NE.cons (NE.reverse current, reverse currentOps) groups,
+                op : splitters
+              )
       | otherwise = go (NE.cons y current) (op : currentOps) rest
 
 -- | Each operator of a chain level with the operands either side of it,
 -- and whether the one after it is the last.
-links :: NonEmpty (OpChain a op) -> [op] -> [(OpChain a op, op, OpChain a op, Bool)]
+links ::
+  NonEmpty (OpChain a op) -> [op] -> [(OpChain a op, op, OpChain a op, Bool)]
 links (firstOne :| rest) operators =
   zip4 (firstOne : rest) operators rest (fmap null (drop 1 (tails rest)))
 

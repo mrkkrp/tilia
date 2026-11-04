@@ -28,7 +28,8 @@ spec = modifyMaxSuccess (const 5000) $
     it "reaches its answer in one pass" $
       property $ \m -> formatted m $ \out ->
         case format out of
-          Left why -> counterexample (T.unpack ("re-formatting refused: " <> why)) False
+          Left why ->
+            counterexample (T.unpack ("re-formatting refused: " <> why)) False
           Right settled ->
             counterexample (T.unpack (diffed out settled)) (settled == out)
 
@@ -46,12 +47,16 @@ spec = modifyMaxSuccess (const 5000) $
       property $ \m -> formatted m $ \out ->
         let remarked = Set.fromList . filter ("/*" `T.isInfixOf`) . T.lines
             lost = Set.difference (remarked (sourceOf m)) (remarked out)
-         in counterexample (T.unpack (T.unlines ("lost:" : Set.toList lost))) (Set.null lost)
+         in counterexample
+              (T.unpack (T.unlines ("lost:" : Set.toList lost)))
+              (Set.null lost)
 
     it "is read as configurations it already had, once a plan rules some out" $
       property $ \m ->
         let source = sourceOf m
-         in case (answeredLeaves source, answeredLeaves (withoutRuledOut macros source)) of
+         in case ( answeredLeaves source,
+                   answeredLeaves (withoutRuledOut macros source)
+                 ) of
               (Right went, Right came) ->
                 let had = Set.fromList (fmap snd went)
                  in conjoin $
@@ -61,7 +66,9 @@ spec = modifyMaxSuccess (const 5000) $
                         "nothing was left to read"
                         (not (null came) || "#error" `T.isInfixOf` source)
                         : [ counterexample
-                              (T.unpack ("not a configuration the module had:\n" <> t))
+                              ( T.unpack
+                                  ("not a configuration the module had:\n" <> t)
+                              )
                               (Set.member t had)
                           | (_, t) <- came
                           ]
@@ -90,7 +97,11 @@ macros =
   mempty{macroExactVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
 
 format :: Text -> Either Text Text
-format source = case formatWithCpp defaultParserConfig defaultRenderConfig "M.hs" source of
+format source = case formatWithCpp
+  defaultParserConfig
+  defaultRenderConfig
+  "M.hs"
+  source of
   Left _ -> Left "declined"
   Right out -> Right out
 
@@ -107,8 +118,10 @@ formatted m k = case format (sourceOf m) of
 
 difference :: Text -> Text -> Maybe Text
 difference before after = do
-  b <- either (const Nothing) Just (parseModule defaultParserConfig "M.hs" before)
-  a <- either (const Nothing) Just (parseModule defaultParserConfig "M.hs" after)
+  b <-
+    either (const Nothing) Just (parseModule defaultParserConfig "M.hs" before)
+  a <-
+    either (const Nothing) Just (parseModule defaultParserConfig "M.hs" after)
   syntaxDifference (pmModule b) (pmModule a)
 
 diffed :: Text -> Text -> Text
@@ -185,18 +198,23 @@ smaller :: [Item] -> [[Item]]
 smaller xs =
   [take i xs <> drop (i + 1) xs | i <- positions]
     <> [take i xs <> branch <> drop (i + 1) xs | (i, Cond _ a b) <- indexed, branch <- [a, b]]
-    <> [take i xs <> [x'] <> drop (i + 1) xs | (i, x) <- indexed, x' <- inside x]
+    <> [ take i xs <> [x'] <> drop (i + 1) xs
+       | (i, x) <- indexed,
+         x' <- inside x
+       ]
   where
     positions = [0 .. length xs - 1]
     indexed = zip positions xs
     inside = \case
-      Cond g a b -> [Cond g a' b | a' <- smaller a] <> [Cond g a b' | b' <- smaller b]
+      Cond g a b ->
+        [Cond g a' b | a' <- smaller a] <> [Cond g a b' | b' <- smaller b]
       _ -> []
 
 -- | The module as it is written out.
 sourceOf :: CppModule -> Text
 sourceOf (CppModule xs) =
-  T.unlines (["{-# LANGUAGE CPP #-}", "", "module M where", ""] <> concatMap written xs)
+  T.unlines
+    (["{-# LANGUAGE CPP #-}", "", "module M where", ""] <> concatMap written xs)
 
 written :: Item -> [Text]
 written = \case

@@ -64,7 +64,8 @@ prepared = unsafePerformIO prepare
 prepare :: IO (Either Text BuildPlan)
 prepare =
   findProjectRoot "." >>= \case
-    Nothing -> pure (Left "no cabal.project or .cabal file above this directory")
+    Nothing ->
+      pure (Left "no cabal.project or .cabal file above this directory")
     Just root ->
       componentsOfTarget root Everything >>= \case
         Left problem -> pure (Left (describeTargetProblem problem))
@@ -85,10 +86,12 @@ fetchMissingSources plan = do
       . filter (not . (`Set.member` unread) . ppName . fst)
       =<< plannedTarballs noCache "." plan
   unless (null absent) $ do
-    putStrLn ("fetching the source of " <> show (length absent) <> " package(s)")
+    putStrLn
+      ("fetching the source of " <> show (length absent) <> " package(s)")
     refused <- filterM (fmap isNothing . fetch . fst) absent
     unless (null refused) $
-      putStrLn ("no source on Hackage for " <> unwords (fmap (named . fst) refused))
+      putStrLn
+        ("no source on Hackage for " <> unwords (fmap (named . fst) refused))
   where
     fetch p = readProgramOutput "cabal" ["fetch", "--no-dependencies", named p]
     named p = T.unpack (ppName p <> "-" <> ppVersion p)
@@ -103,12 +106,17 @@ shippedIn :: Installed -> Set Text
 shippedIn installed = case compilerDir of
   Nothing -> Set.empty
   Just dir ->
-    Set.fromList [ipName p | p <- installedPackages installed, beside p == Just dir]
+    Set.fromList
+      [ipName p | p <- installedPackages installed, beside p == Just dir]
   where
     beside p = takeDirectory <$> listToMaybe (ipImportDirs p)
     compilerDir =
       listToMaybe
-        [dir | p <- installedPackages installed, ipName p == "ghc", Just dir <- [beside p]]
+        [ dir
+        | p <- installedPackages installed,
+          ipName p == "ghc",
+          Just dir <- [beside p]
+        ]
 
 -- | Packages holding no modules at all, such as the runtime system.
 modulelessIn :: Installed -> Set Text

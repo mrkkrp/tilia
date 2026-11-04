@@ -50,7 +50,9 @@ spec = do
       withSystemTempDirectory "tilia-corpus" $ \cache -> do
         for_ ["listed-1.0", "unlisted-1.0"] $ \release -> do
           createDirectoryIfMissing True (cache </> "hackage" </> release)
-          writeFile (cache </> "hackage" </> release </> "M.hs") "module M where\n"
+          writeFile
+            (cache </> "hackage" </> release </> "M.hs")
+            "module M where\n"
         obtained <-
           withEnvironment [("TILIA_CORPUS_DIR", cache)] . obtain $
             hackagePackages{corpusSource = HackageReleases ["listed-1.0"]}
@@ -106,7 +108,12 @@ againstRecord path run examples = do
           for_ examples $ \example ->
             it (exampleName example) $ do
               Result outcome why digest <- run example
-              note seen (exampleName example, Entry outcome digest, T.take reasonLength why)
+              note
+                seen
+                ( exampleName example,
+                  Entry outcome digest,
+                  T.take reasonLength why
+                )
 
     record seen = do
       noted <- readIORef seen
@@ -138,9 +145,11 @@ againstRecord path run examples = do
             Nothing -> expectationFailure (T.unpack (unrecorded outcome))
             Just expected
               | entryOutcome expected /= outcome ->
-                  expectationFailure (T.unpack (moved (entryOutcome expected) outcome why))
+                  expectationFailure
+                    (T.unpack (moved (entryOutcome expected) outcome why))
               | entryDigest expected /= digest ->
-                  expectationFailure (T.unpack (rewritten (entryDigest expected) digest))
+                  expectationFailure
+                    (T.unpack (rewritten (entryDigest expected) digest))
               | Just problem <-
                   misreported
                     (Map.lookup (exampleName example) report)
@@ -176,7 +185,8 @@ againstRecord path run examples = do
     misreported filed outcome reason = case (outcome, filed) of
       (Formatted, Nothing) -> Nothing
       (Formatted, Just _) ->
-        Just (T.pack reportPath <> " gives a reason why this is not formatted, and it is" <> T.pack regenerate)
+        Just
+          (T.pack reportPath <> " gives a reason why this is not formatted, and it is" <> T.pack regenerate)
       (_, Just (filedUnder, given))
         | filedUnder == outcome && given == reason -> Nothing
       _ ->
@@ -263,7 +273,9 @@ verdict False declines (Result outcome why _) = case outcome of
   DoesNotParse -> Fails (unlisted ("does not parse, at " <> why))
   Declined
     | declines -> Passes
-    | otherwise -> Fails "the formatter declined this, and the corpus does not say it should"
+    | otherwise ->
+        Fails
+          "the formatter declined this, and the corpus does not say it should"
   PartlyChecked
     | declines -> Fails wasNotDeclined
     | otherwise -> Reserved why
@@ -315,7 +327,8 @@ readUtf8 path = either (const Nothing) Just . decodeUtf8' <$> BS.readFile path
 -- read.
 diff :: Palette -> (Text, Text) -> Text -> Text -> Text
 diff palette names before after
-  | length body > room = T.intercalate "\n" (heading <> take room body <> [omitted])
+  | length body > room =
+      T.intercalate "\n" (heading <> take room body <> [omitted])
   | otherwise = whole
   where
     whole = Diff.diff palette names before after
@@ -334,7 +347,12 @@ guarded ::
 guarded run =
   try (run >>= evaluate . forced) >>= \case
     Left (e :: SomeException) ->
-      pure (Result Broken ("the formatter raised an error: " <> firstLine (T.pack (show e))) noDigest)
+      pure
+        ( Result
+            Broken
+            ("the formatter raised an error: " <> firstLine (T.pack (show e)))
+            noDigest
+        )
     Right settled -> pure settled
   where
     forced r =

@@ -178,14 +178,19 @@ data ComponentBranch = ComponentBranch
 -- | Which branch holds the file, of those whose directories cover it.
 claiming :: FilePath -> [ComponentBranch] -> Maybe ComponentBranch
 claiming file components =
-  case sortOn (Down . fst) [((named c, nearness c), c) | c <- components, covered c] of
+  case sortOn
+    (Down . fst)
+    [((named c, nearness c), c) | c <- components, covered c] of
     ((_, c) : _) -> Just c
     [] -> Nothing
   where
     covered = not . null . covering
     named c = any (declares c) (covering c)
     declares c (_, under) =
-      isDeclaredModule (componentModules c) (componentEntries c) (joinPath under)
+      isDeclaredModule
+        (componentModules c)
+        (componentEntries c)
+        (joinPath under)
     nearness = maximum . fmap (length . fst) . covering
     covering c =
       [ (d, under)
@@ -234,7 +239,9 @@ findCabalFile ref = climb []
                     then settle (directory : passed) Nothing
                     else climb (directory : passed) parent
     settle passed answer = do
-      modifyIORef' ref (\m -> foldl' (\acc d -> Map.insert d answer acc) m passed)
+      modifyIORef'
+        ref
+        (\m -> foldl' (\acc d -> Map.insert d answer acc) m passed)
       pure answer
 
 -- | What a @.cabal@ file amounts to.
@@ -263,7 +270,8 @@ componentBranchesOf compiler ref cabalFile = do
               (sectionsInForce valueOf description)
 
 -- | Read and parse a @.cabal@ file, or say why it cannot be.
-readPackageDescription :: FilePath -> IO (Either PackageProblem GenericPackageDescription)
+readPackageDescription ::
+  FilePath -> IO (Either PackageProblem GenericPackageDescription)
 readPackageDescription cabalFile =
   readBytes cabalFile >>= \case
     Left why -> pure (Left (PackageUnreadable cabalFile why))
@@ -360,7 +368,8 @@ data Kind = Lib | FLib | Exe | Test | Bench | Setup
 
 -- | Every component of a package, in the order declared: its kind, its
 -- name, which for the main library is the package's own, and its branches.
-packageComponents :: GenericPackageDescription -> [(Kind, Text, [BranchSections])]
+packageComponents ::
+  GenericPackageDescription -> [(Kind, Text, [BranchSections])]
 packageComponents described =
   concat
     [ [(Lib, packageOf described, libraryBranches t) | t <- toList (condLibrary described)],
@@ -481,7 +490,8 @@ suiteBranches = branchesOf $ \s ->
 benchmarkBranches :: CondTree ConfVar Benchmark -> [BranchSections]
 benchmarkBranches = branchesOf $ \b ->
   case benchmarkInterface b of
-    BenchmarkExeV10 _ path -> declaring (benchmarkBuildInfo b) [] [entryPoint path]
+    BenchmarkExeV10 _ path ->
+      declaring (benchmarkBuildInfo b) [] [entryPoint path]
     _ -> declaring (benchmarkBuildInfo b) [] []
 
 -- | Every branch of a component.

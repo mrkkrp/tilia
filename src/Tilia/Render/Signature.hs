@@ -210,7 +210,11 @@ booleanFormula ctx = \case
   Var n -> name ctx n
   And xs -> align (commaSep (fmap (at_ ctx (booleanFormula ctx)) xs))
   Or xs ->
-    align (sepBy (breakOrSpace <> txt "|" <> space) (fmap (at_ ctx (booleanFormula ctx)) xs))
+    align
+      ( sepBy
+          (breakOrSpace <> txt "|" <> space)
+          (fmap (at_ ctx (booleanFormula ctx)) xs)
+      )
   Parens l -> at ctx l (parens . booleanFormula ctx)
 
 -- | A @COMPLETE@ pragma.

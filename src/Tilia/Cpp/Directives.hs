@@ -442,7 +442,11 @@ unconditionalErrors source =
     not (any (encloses (dLine d)) groups)
   ]
   where
-    groups = [gsWhole g | forest <- maybeToList (scanConditionals source), g <- allGroups forest]
+    groups =
+      [ gsWhole g
+      | forest <- maybeToList (scanConditionals source),
+        g <- allGroups forest
+      ]
     encloses n (from, to) = from < n && n < to
 
 -- | Which branch every question was answered with to reach a configuration.
@@ -472,7 +476,8 @@ countLeaves source = do
     across answers = product . fmap (one answers)
     one answers gs = case lookup (gsGuards gs) answers of
       Just i -> across answers (nestedIn gs i)
-      Nothing -> sum [across answers (nestedIn gs i) | i <- [0 .. gsCount gs - 1]]
+      Nothing ->
+        sum [across answers (nestedIn gs i) | i <- [0 .. gsCount gs - 1]]
     combinations = traverse (\(g, k) -> [(g, i) | i <- [0 .. k - 1]])
     afforded forest = go 1 (repeated forest)
       where
@@ -488,7 +493,9 @@ repeated ::
   [([Guard], Int)]
 repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
   where
-    asked gss = concat [(gsGuards gs, gsCount gs) : asked (concat (gsNested gs)) | gs <- gss]
+    asked gss =
+      concat
+        [(gsGuards gs, gsCount gs) : asked (concat (gsNested gs)) | gs <- gss]
     times = Map.fromListWith (+) [(g, 1 :: Int) | (g, _) <- asked forest]
     twice g = Map.findWithDefault 0 g times >= 2
 
@@ -611,22 +618,33 @@ directives = go . zip [1 ..] . T.lines
 -- | A module's conditionals, each with the ones inside its branches, or why
 -- they do not make sense.
 readConditionals :: Text -> Either CppError [GroupSpec]
-readConditionals = go [] [] . filter ((`elem` conditionalKeywords) . dKeyword) . directives
+readConditionals =
+  go [] [] . filter ((`elem` conditionalKeywords) . dKeyword) . directives
   where
     -- The groups finished where the reading is, last first, and the
     -- conditionals open around it, innermost first.
     go done open = \case
       [] -> case open of
         [] -> Right (reverse done)
-        o : _ -> Left (MalformedConditional (dLine (oOpener o)) (dKeyword (oOpener o)) NeverClosed)
+        o : _ ->
+          Left
+            ( MalformedConditional
+                (dLine (oOpener o))
+                (dKeyword (oOpener o))
+                NeverClosed
+            )
       d : ds
         | dKeyword d `elem` opensGroup -> go [] (Open d [] [] done : open) ds
         | dKeyword d `elem` continuesGroup -> case open of
             [] -> malformed NothingOpen
             o : rest
-              | any ((== "else") . dKeyword) (take 1 (oLater o)) -> malformed AfterElse
+              | any ((== "else") . dKeyword) (take 1 (oLater o)) ->
+                  malformed AfterElse
               | otherwise ->
-                  go [] (o{oLater = d : oLater o, oEarlier = reverse done : oEarlier o} : rest) ds
+                  go
+                    []
+                    (o{oLater = d : oLater o, oEarlier = reverse done : oEarlier o} : rest)
+                    ds
         | otherwise -> case open of
             [] -> malformed NothingOpen
             o : rest ->
@@ -690,11 +708,13 @@ groupSpec opener later end nested =
       gsConditional =
         Conditional
           { conditionalLines = fmap dLine group,
-            conditionalElse = foldMap afterKeyword (filter ((== "else") . dKeyword) later),
+            conditionalElse =
+              foldMap afterKeyword (filter ((== "else") . dKeyword) later),
             conditionalEndif = afterKeyword end
           },
       gsOwnRanges = [(dLine d, dLastLine d) | d <- group],
-      gsBranches = [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
+      gsBranches =
+        [(dLastLine a + 1, dLine b - 1) | (a, b) <- zip group (drop 1 group)],
       gsWhole = (dLine opener, dLastLine end),
       gsNested = nested
     }
@@ -717,7 +737,8 @@ nestedIn gs i = concat (take 1 (drop i (gsNested gs)))
 
 -- | Every conditional in a module, outermost first.
 allGroups :: [GroupSpec] -> [GroupSpec]
-allGroups = concat . takeWhile (not . null) . iterate (concatMap (concat . gsNested))
+allGroups =
+  concat . takeWhile (not . null) . iterate (concatMap (concat . gsNested))
 
 -- | Replace the given line ranges with empty lines, keeping every other line
 -- where it was.
@@ -775,7 +796,8 @@ macroLines source =
     inDirective n = any (\d -> dLine d <= n && n <= dLastLine d) written
     code (n, l) = not (T.null (T.strip l) || inDirective n || uses l)
     indentation l = contentColumn l - 1
-    closing = maybe False ((`elem` ("})]" :: String)) . fst) . T.uncons . T.stripStart
+    closing =
+      maybe False ((`elem` ("})]" :: String)) . fst) . T.uncons . T.stripStart
     uses l = Set.member name defined && enclosed arguments
       where
         (name, arguments) = T.span isNameChar (T.strip l)

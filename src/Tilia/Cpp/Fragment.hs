@@ -100,7 +100,8 @@ runsOf items =
               runTo = maximum (fmap (snd . snd) located)
             }
     ordered runs
-      | and (zipWith (\a b -> runTo a < runFrom b) runs (drop 1 runs)) = Just runs
+      | and (zipWith (\a b -> runTo a < runFrom b) runs (drop 1 runs)) =
+          Just runs
       | otherwise = Nothing
 
 -- | The conditionals that reach one fragment of a module.
@@ -165,7 +166,8 @@ fragmentText ::
   Fragment ->
   Maybe (Text, [(Int, Int)])
 fragmentText body forest source f
-  | linesHeld text < linesHeld source = Just (text, outside <> concatMap (`droppedFor` 0) others)
+  | linesHeld text < linesHeld source =
+      Just (text, outside <> concatMap (`droppedFor` 0) others)
   | otherwise = Nothing
   where
     text =
@@ -199,7 +201,11 @@ reassembled body formatted = do
     [] -> Just (bodyWith body)
     [b] -> Just (bodyWith b)
     _ -> Nothing
-  let items = foldr put (bodyItems body) (sortOn (\(i, _, _) -> i) [p | (_, _, p) <- placed])
+  let items =
+        foldr
+          put
+          (bodyItems body)
+          (sortOn (\(i, _, _) -> i) [p | (_, _, p) <- placed])
   pure (with (mconcat items))
   where
     put (from, to, new) items = take from items <> new <> drop to items
@@ -210,7 +216,8 @@ reassembled body formatted = do
       b <- bodyOf d
       guard (fragmentAbove f || not (bodyHeadVaries b))
       let indexed = zip [0 :: Int ..] (bodyItems b)
-          within r x = maybe False (\(s, e) -> runFrom r <= s && e <= runTo r) (extent x)
+          within r x =
+            maybe False (\(s, e) -> runFrom r <= s && e <= runTo r) (extent x)
       start <- case fragmentBefore f of
         Nothing -> Just (-1)
         Just r -> listToMaybe (reverse [i | (i, x) <- indexed, within r x])

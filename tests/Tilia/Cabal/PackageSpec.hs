@@ -166,7 +166,8 @@ spec = do
           Left (PackageMalformed file complaints) -> do
             file `shouldSatisfy` (("demo.cabal" `isSuffixOf`))
             complaints `shouldSatisfy` not . null
-          other -> expectationFailure ("expected a parse failure, got " <> show other)
+          other ->
+            expectationFailure ("expected a parse failure, got " <> show other)
 
   describe "a module no package above it claims" $ do
     it "is claimed by a package of the project that names it"

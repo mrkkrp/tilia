@@ -43,7 +43,8 @@ data InForce = InForce
 inForceAfter :: [Text] -> InForce
 inForceAfter flags =
   InForce
-    { inForceSwitches = Map.fromList (fmap switched (reverse (GHC.extensions dflags))),
+    { inForceSwitches =
+        Map.fromList (fmap switched (reverse (GHC.extensions dflags))),
       inForceEdition = GHC.language dflags,
       inForceSafety = GHC.safeHaskell dflags
     }
@@ -85,7 +86,8 @@ settings =
     { sGhcNameVersion = GhcNameVersion "ghc" cProjectVersion,
       sFileSettings = FileSettings{},
       sTargetPlatform = genericPlatform,
-      sToolSettings = ToolSettings{toolSettings_opt_P_fingerprint = fingerprint0},
+      sToolSettings =
+        ToolSettings{toolSettings_opt_P_fingerprint = fingerprint0},
       sPlatformMisc = PlatformMisc{},
       sUnitSettings = UnitSettings (stringToUnitId "base"),
       sRawSettings = []

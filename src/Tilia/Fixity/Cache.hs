@@ -307,7 +307,15 @@ parseSummaries = \case
       _ -> Nothing
     parseSummary = go empty . fmap T.words
       where
-        empty = ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty
+        empty =
+          ModuleSummary
+            Nothing
+            Nothing
+            []
+            Map.empty
+            Set.empty
+            Map.empty
+            Map.empty
     go s = \case
       [] ->
         Just
@@ -328,7 +336,9 @@ parseSummaries = \case
           _ -> Nothing
         let (listed, rest') = span isListed rest
         list <- importList listed
-        go s{summaryImports = Import m qualified alias list : summaryImports s} rest'
+        go
+          s{summaryImports = Import m qualified alias list : summaryImports s}
+          rest'
       ("fixity" : fields) : rest -> do
         (key, fixity) <- parseFixity fields
         go s{summaryFixities = Map.insert key fixity (summaryFixities s)} rest
@@ -337,9 +347,22 @@ parseSummaries = \case
         go s{summaryNames = Set.insert (n, OpName op) (summaryNames s)} rest
       ("declares" : parent : kids) : rest -> do
         namespaced <- parseNamespaced kids
-        go s{summaryDeclaredMembers = Map.insert (OpName parent) (Set.fromList namespaced) (summaryDeclaredMembers s)} rest
+        go
+          s
+            { summaryDeclaredMembers =
+                Map.insert
+                  (OpName parent)
+                  (Set.fromList namespaced)
+                  (summaryDeclaredMembers s)
+            }
+          rest
       ("offers" : parent : kids) : rest ->
-        go s{summaryListedMembers = Map.insert (OpName parent) (names kids) (summaryListedMembers s)} rest
+        go
+          s
+            { summaryListedMembers =
+                Map.insert (OpName parent) (names kids) (summaryListedMembers s)
+            }
+          rest
       _ -> Nothing
     names = Set.fromList . fmap OpName
     qualifier q = if q == "-" then Nothing else Just q
@@ -347,7 +370,8 @@ parseSummaries = \case
       ["name", namespace, q, op] ->
         (\n -> ExportName n (qualifier q) (OpName op)) <$> parseNamespace namespace
       ["all", q, op] -> Just (ExportAll (qualifier q) (OpName op))
-      "some" : q : op : kids -> Just (ExportSome (qualifier q) (OpName op) (fmap OpName kids))
+      "some" : q : op : kids ->
+        Just (ExportSome (qualifier q) (OpName op) (fmap OpName kids))
       ["module", m] -> Just (ExportModule m)
       _ -> Nothing
     isListed = \case
@@ -366,7 +390,8 @@ parseSummaries = \case
     importItem = \case
       ["item", "name", op] -> Just (ImportedName (OpName op))
       ["item", "all", op] -> Just (ImportedAll (OpName op))
-      "item" : "some" : op : kids -> Just (ImportedSome (OpName op) (fmap OpName kids))
+      "item" : "some" : op : kids ->
+        Just (ImportedSome (OpName op) (fmap OpName kids))
       _ -> Nothing
 
 -- | What packages the compiler could see when last asked, if it can still
@@ -535,7 +560,10 @@ parseNamespace = \case
 -- name.
 renderNamespaced :: Set (Namespace, OpName) -> [Text]
 renderNamespaced names =
-  concat [[renderNamespace namespace, op] | (namespace, OpName op) <- Set.toAscList names]
+  concat
+    [ [renderNamespace namespace, op]
+    | (namespace, OpName op) <- Set.toAscList names
+    ]
 
 -- | Render names as one list of fields for each namespace they are in, the
 -- namespace first.
@@ -551,7 +579,8 @@ renderByNamespace names =
 parseByNamespace :: [Text] -> Maybe [(Namespace, OpName)]
 parseByNamespace = \case
   [] -> Just []
-  namespace : ops -> (\n -> fmap ((n,) . OpName) ops) <$> parseNamespace namespace
+  namespace : ops ->
+    (\n -> fmap ((n,) . OpName) ops) <$> parseNamespace namespace
 
 -- | Parse what 'renderNamespaced' rendered.
 parseNamespaced :: [Text] -> Maybe [(Namespace, OpName)]

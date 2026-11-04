@@ -59,7 +59,10 @@ readArchive tarball = quietly Nothing $ do
             sweep (Just own) found rest
         | Tar.NormalFile content _ <- Tar.entryContent entry,
           any (`isSuffixOf` entryPosixPath entry) moduleEndings ->
-            sweep cabal ((entryPosixPath entry, BL.toStrict content) : found) rest
+            sweep
+              cabal
+              ((entryPosixPath entry, BL.toStrict content) : found)
+              rest
         | otherwise -> sweep cabal found rest
       _ -> Archive cabal (reverse found)
 

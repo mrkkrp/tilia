@@ -62,7 +62,9 @@ editorSession
       Nothing -> pure (Left (NoProject file))
       Just root -> do
         planSource <-
-          planSourceFor givenPlan (fromRight [] <$> componentsOfTarget root Everything)
+          planSourceFor
+            givenPlan
+            (fromRight [] <$> componentsOfTarget root Everything)
         newSession
           root
           planSource

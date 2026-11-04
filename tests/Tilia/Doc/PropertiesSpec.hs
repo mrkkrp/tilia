@@ -35,7 +35,9 @@ spec = do
       property $ \(AnyDoc d) ->
         let ls = T.lines (out d)
             pairs = zip ls (drop 1 ls)
-         in counterexample (show ls) (not (any (\(a, b) -> T.null a && T.null b) pairs))
+         in counterexample
+              (show ls)
+              (not (any (\(a, b) -> T.null a && T.null b) pairs))
 
   describe "content" $
     it "emits exactly the text it was given, and nothing else" $

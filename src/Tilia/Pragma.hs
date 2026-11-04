@@ -268,7 +268,9 @@ pastCode extensions = past
     skipCode t =
       let (plain, rest) = T.break opens (T.drop 1 t)
           before = maybe (T.head t) snd (T.unsnoc plain)
-       in if "'" `T.isPrefixOf` rest && inName before then skipCode rest else rest
+       in if "'" `T.isPrefixOf` rest && inName before
+            then skipCode rest
+            else rest
     opens c =
       c == '{' || c == '-' || c == '"' || c == '\'' || c == '[' || c == '\n'
     inName c = isAlphaNum c || c == '_' || c == '\''

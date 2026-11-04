@@ -68,14 +68,16 @@ spec = do
   describe "against this very project" $ do
     root <- runIO (findProjectRoot ".")
     case root of
-      Nothing -> it "needs a project" $ expectationFailure "no project above the working directory"
+      Nothing ->
+        it "needs a project" $ expectationFailure "no project above the working directory"
       Just here -> do
         it "is rooted at the cabal.project, not the .cabal file" $
           prMarker here `shouldBe` ProjectFile
 
         it "finds the four components this package declares" $
           componentsOfTarget here Everything >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs ->
               sort (fmap (\c -> (componentKind c, componentName c)) cs)
                 `shouldBe` sort
@@ -87,19 +89,23 @@ spec = do
 
         it "narrows to one component when asked for one" $
           componentsOfTarget here (Qualified Nothing Lib "tilia") >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents here cs
               files `shouldSatisfy` any ("src/Tilia/Cabal/Target.hs" `isSuffixOf`)
 
         it "takes the package name as all of its components" $
           componentsOfTarget here (Called "tilia") >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> length cs `shouldBe` 4
 
         it "refuses a target the project does not hold, and says what it does" $
           componentsOfTarget here (Called "nothing-like-this") >>= \case
-            Right cs -> expectationFailure ("matched " <> show (length cs) <> " components")
+            Right cs ->
+              expectationFailure
+                ("matched " <> show (length cs) <> " components")
             Left problem -> do
               let said = describeTargetProblem problem
               said `shouldSatisfy` T.isInfixOf "tilia:lib:tilia"
@@ -108,21 +114,24 @@ spec = do
 
         it "finds this module among the test component's files" $
           componentsOfTarget here (Qualified Nothing Test "tests") >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents here cs
               fmap takeFileName files `shouldSatisfy` elem "TargetSpec.hs"
 
         it "finds only Haskell in it" $
           componentsOfTarget here Everything >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents here cs
               filter (not . haskell) files `shouldBe` []
 
         it "does not wander into the build directory" $
           componentsOfTarget here Everything >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents here cs
               filter (T.isInfixOf "dist-newstyle" . T.pack) files `shouldBe` []
@@ -138,7 +147,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "reads a package an entry goes up to"
@@ -150,7 +160,8 @@ spec = do
       $ \root -> do
         let project = ProjectRoot (prPath root </> "proj") ProjectFile
         componentsOfTarget project Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents project cs
             fmap takeFileName files `shouldBe` ["L.hs"]
@@ -167,7 +178,8 @@ spec = do
           ("packages: " <> entry <> "\n")
         componentsOfTarget (ProjectRoot (prPath root </> "proj") ProjectFile) Everything
           >>= \case
-            Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+            Left problem ->
+              expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> fmap componentPackage cs `shouldBe` ["lib"]
 
     it "reads a package in a directory whose name begins with a dot"
@@ -177,7 +189,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["hidden"]
 
     it "expands a glob in the packages field"
@@ -188,7 +201,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "expands a component with more than one star in it"
@@ -200,7 +214,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "expands a double star to any depth, none included"
@@ -213,7 +228,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs ->
             sort (fmap componentPackage cs) `shouldBe` ["one", "three", "two"]
 
@@ -225,7 +241,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
     it "reads a packages field continued onto later lines"
@@ -236,7 +253,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "reads one continued with tabs, as cabal itself does"
@@ -247,7 +265,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
 
     it "finds one a conditional has put inside a section"
@@ -257,7 +276,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
     it "reads the packages the files it imports name, as cabal does"
@@ -271,7 +291,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs ->
             sort (fmap componentPackage cs) `shouldBe` ["one", "three", "two"]
 
@@ -283,7 +304,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> fmap componentPackage cs `shouldBe` ["one"]
 
     it "looks in every source directory a component names"
@@ -294,7 +316,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             sort (fmap takeFileName files) `shouldBe` ["A.hs", "B.hs"]
@@ -307,7 +330,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             filter (T.isInfixOf "/./" . T.pack) files `shouldBe` []
@@ -319,7 +343,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             files `shouldBe` [prPath root </> "A.hs"]
@@ -333,7 +358,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             length cs `shouldBe` 2
@@ -350,7 +376,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             files
@@ -367,7 +394,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["A.hs"]
@@ -381,7 +409,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["A.hs", "A.hs-boot", "B.hsig"]
@@ -395,7 +424,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["A.hs", "B.hs", "C.hs"]
@@ -409,11 +439,14 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             files
-              `shouldBe` fmap (prPath root </>) ["src/A.hs", "unix/B.hs", "windows/B.hs"]
+              `shouldBe` fmap
+                (prPath root </>)
+                ["src/A.hs", "unix/B.hs", "windows/B.hs"]
 
     it "passes over a declared module with no source, such as a generated one"
       $ withProject
@@ -422,7 +455,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["A.hs"]
@@ -444,7 +478,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             sort (map takeFileName files) `shouldBe` ["Keep.hs", "Runner.hs"]
@@ -461,7 +496,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             sort (map takeFileName files) `shouldBe` ["A.hs", "B.hs"]
@@ -479,7 +515,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             sort (map takeFileName files) `shouldBe` ["A.hs", "KeepSpec.hs"]
@@ -492,7 +529,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root (Called "only") >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> filesOfComponents root cs `shouldReturn` []
 
     it "takes the setup script under all and the package name, not under a component"
@@ -518,7 +556,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root (Qualified Nothing FLib "foreign") >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["F.hs"]
@@ -527,7 +566,8 @@ spec = do
     it "names each library the way a plan does" $
       withProject [("both.cabal", withSubLibrary)] $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
           Right cs ->
             fmap (fmap pcName . componentInPlan) cs
               `shouldBe` [Just "lib", Just "lib:inner"]
@@ -539,19 +579,24 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root (Called "setup") >>= \case
-          Right cs -> expectationFailure ("matched " <> show (length cs) <> " components")
-          Left problem -> describeTargetProblem problem `shouldNotSatisfy` T.isInfixOf ":setup"
+          Right cs ->
+            expectationFailure ("matched " <> show (length cs) <> " components")
+          Left problem ->
+            describeTargetProblem problem `shouldNotSatisfy` T.isInfixOf ":setup"
 
     it "says so when a cabal.project names nothing that exists" $
       withProject [("cabal.project", "packages: nowhere\n")] $ \root ->
         componentsOfTarget root Everything >>= \case
-          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
-          Left problem -> describeTargetProblem problem `shouldSatisfy` T.isInfixOf "no packages"
+          Right cs ->
+            expectationFailure ("found " <> show (length cs) <> " components")
+          Left problem ->
+            describeTargetProblem problem `shouldSatisfy` T.isInfixOf "no packages"
 
     it "says what the parser said of a cabal.project that will not parse" $
       withProject [("cabal.project", "packages: one\nfoo bar: baz\n")] $ \root ->
         componentsOfTarget root Everything >>= \case
-          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
+          Right cs ->
+            expectationFailure ("found " <> show (length cs) <> " components")
           Left problem -> do
             let said = describeTargetProblem problem
             said `shouldSatisfy` T.isInfixOf "cabal.project does not parse:"
@@ -565,7 +610,8 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
+          Right cs ->
+            expectationFailure ("found " <> show (length cs) <> " components")
           Left problem ->
             describeTargetProblem problem
               `shouldSatisfy` T.isInfixOf "more.config does not parse:"
@@ -578,8 +624,10 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Left problem -> expectationFailure (T.unpack (describeTargetProblem problem))
-          Right cs -> sort (map componentPackage cs) `shouldBe` ["main", "optional"]
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs ->
+            sort (map componentPackage cs) `shouldBe` ["main", "optional"]
 
     it "says so when a .cabal file will not parse"
       $ withProject
@@ -588,8 +636,10 @@ spec = do
         ]
       $ \root ->
         componentsOfTarget root Everything >>= \case
-          Right cs -> expectationFailure ("found " <> show (length cs) <> " components")
-          Left problem -> describeTargetProblem problem `shouldSatisfy` T.isInfixOf "does not parse"
+          Right cs ->
+            expectationFailure ("found " <> show (length cs) <> " components")
+          Left problem ->
+            describeTargetProblem problem `shouldSatisfy` T.isInfixOf "does not parse"
 
   describe "the modules a project declares" $ do
     it "takes those of every package the project names"
@@ -679,7 +729,8 @@ withProject files act =
   where
     marker fs
       | any ((== "cabal.project") . fst) fs = ProjectFile
-      | (named : _) <- [p | (p, _) <- fs, ".cabal" `isSuffixOf` p] = PackageFile named
+      | (named : _) <- [p | (p, _) <- fs, ".cabal" `isSuffixOf` p] =
+          PackageFile named
       | otherwise = ProjectFile
 
 -- | A package with two executables that share a module.

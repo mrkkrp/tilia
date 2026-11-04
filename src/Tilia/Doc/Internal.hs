@@ -430,7 +430,10 @@ columnReached bound = walk
               Broken -> column
               _ -> walk column spaceDue rest
             DCat a b ->
-              walk column spaceDue ((layout, held, a) : (layout, held, b) : rest)
+              walk
+                column
+                spaceDue
+                ((layout, held, a) : (layout, held, b) : rest)
             DGroup l y ->
               let settled = case l of
                     Frangible

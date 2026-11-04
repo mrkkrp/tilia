@@ -148,4 +148,5 @@ offered declared m i =
 
 -- | Fixities by the operator alone, namespace aside.
 byOperator :: Fixities -> Set (Text, String)
-byOperator = Set.fromList . fmap (\((_, OpName op), fixity) -> (op, show fixity)) . Map.toList
+byOperator =
+  Set.fromList . fmap (\((_, OpName op), fixity) -> (op, show fixity)) . Map.toList

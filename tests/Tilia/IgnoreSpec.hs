@@ -78,10 +78,16 @@ spec = do
 
   describe "ignore files in several directories" $ do
     it "match from their own directories" $
-      nested [([], ""), (["src"], "/x/\n")] ["src/x/B.hs"] ["x/B.hs", "src/A.hs"]
+      nested
+        [([], ""), (["src"], "/x/\n")]
+        ["src/x/B.hs"]
+        ["x/B.hs", "src/A.hs"]
 
     it "let the deeper file win" $
-      nested [([], "*.hs\n"), (["src"], "!A.hs\n")] ["B.hs", "src/x/B.hs"] ["src/A.hs"]
+      nested
+        [([], "*.hs\n"), (["src"], "!A.hs\n")]
+        ["B.hs", "src/x/B.hs"]
+        ["src/A.hs"]
 
     it "cannot re-include what a file above excluded the directory of" $
       nested [([], "q/\n"), (["q"], "!gen/\n")] ["q/gen/G.hs"] []
@@ -130,4 +136,5 @@ nested files ignored kept =
   fmap (isIgnored rules . splitDirectories) (ignored <> kept)
     `shouldBe` fmap (const True) ignored <> fmap (const False) kept
   where
-    rules = Map.fromList [(directory, parseIgnoreFile t) | (directory, t) <- files]
+    rules =
+      Map.fromList [(directory, parseIgnoreFile t) | (directory, t) <- files]

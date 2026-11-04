@@ -41,7 +41,15 @@ import GHC.Utils.Outputable qualified as GHC
 
 import Tilia.Gathered (Gathered (..), gathered)
 import Tilia.Pragma (Defaults, effectiveExtensions)
-import Tilia.Source (Lines, Source, SourceType (..), Written (..), lineTexts, linesOf, sourceOf)
+import Tilia.Source
+  ( Lines,
+    Source,
+    SourceType (..),
+    Written (..),
+    lineTexts,
+    linesOf,
+    sourceOf,
+  )
 import Tilia.Span (Span (..), startPoint)
 import Tilia.Span.Ghc (spanOf)
 
@@ -173,7 +181,8 @@ importLayout config source =
                   found' = IntMap.insertWith min (GHC.srcLocLine l) column found
                in case (t, previous, topLevel) of
                     (GHC.ITocurly, Just GHC.ITwhere, Nothing) -> pure Nothing
-                    (GHC.ITimport, _, Nothing) -> lexing (Just column) (Just t) found'
+                    (GHC.ITimport, _, Nothing) ->
+                      lexing (Just column) (Just t) found'
                     (_, _, Nothing) -> lexing topLevel (Just t) found
                     (_, _, Just c)
                       | column <= c,

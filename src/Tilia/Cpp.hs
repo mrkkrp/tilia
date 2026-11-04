@@ -38,7 +38,14 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe
+  ( catMaybes,
+    fromMaybe,
+    isNothing,
+    listToMaybe,
+    mapMaybe,
+    maybeToList,
+  )
 import Data.Monoid (Any (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -47,7 +54,13 @@ import Data.Traversable (for)
 import GHC.Conc (par)
 
 import Tilia.Cpp.Directives
-import Tilia.Cpp.Fragment (bodyOf, fragmentText, fragmentsOf, linesHeld, reassembled)
+import Tilia.Cpp.Fragment
+  ( bodyOf,
+    fragmentText,
+    fragmentsOf,
+    linesHeld,
+    reassembled,
+  )
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
 import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
 import Tilia.Doc
@@ -290,14 +303,16 @@ formatAllConfigs formatter r = do
       budget <- lift get
       let pragma = readingPragma r
           least = max 1 (linesHeld (blanking (fmap gsWhole forest) source))
-          affordable = linearCost (budget `div` least) forest source * least <= budget
+          affordable =
+            linearCost (budget `div` least) forest source * least <= budget
       base <-
         if isNothing pragma || affordable
           then
             attempt (formatAllConfigs formatter baseline)
           else pure Nothing
       fragmented <- case (pragma, base) of
-        (Nothing, Just b) -> join <$> attempt (inFragments formatter reached forest source b)
+        (Nothing, Just b) ->
+          join <$> attempt (inFragments formatter reached forest source b)
         _ -> pure Nothing
       linear <- case (fragmented, base) of
         (Nothing, Just b) | affordable -> oneAtATime apart b
@@ -306,7 +321,8 @@ formatAllConfigs formatter r = do
         Just found -> pure found
         Nothing -> case maybeToList pragma <> forest of
           g : _ -> together formatter reached (configurationsOn g forest source)
-          [] -> error "Tilia: a module that varies has a conditional to split on"
+          [] ->
+            error "Tilia: a module that varies has a conditional to split on"
   where
     reached = readingReached r
     source = readingSource r
@@ -314,7 +330,11 @@ formatAllConfigs formatter r = do
       varied <- attempt (separately formatter reached apart base)
       pure $ do
         (merged, found) <- varied
-        d <- combine Broken (fst base) (zip (fmap cfgWholes (vaGroups apart)) merged)
+        d <-
+          combine
+            Broken
+            (fst base)
+            (zip (fmap cfgWholes (vaGroups apart)) merged)
         pure (d, found)
 
 -- | How many formattings varying a module's conditionals one at a time
@@ -372,7 +392,8 @@ variations forest source
               [ Configurations
                   { cfgGuards = gsGuards gs,
                     cfgTexts = [held (varying k i) | i <- [0 .. gsCount gs - 1]],
-                    cfgDropped = [gone (varying k i) | i <- [0 .. gsCount gs - 1]],
+                    cfgDropped =
+                      [gone (varying k i) | i <- [0 .. gsCount gs - 1]],
                     cfgWholes = Varied [gsWhole gs],
                     cfgConditionals = [gsConditional gs]
                   }
@@ -380,8 +401,12 @@ variations forest source
               ]
           }
   where
-    held at = blanking (concat [blankingFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest]) source
-    gone at = concat [droppedFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest]
+    held at =
+      blanking
+        (concat [blankingFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest])
+        source
+    gone at =
+      concat [droppedFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest]
     varying k i j = if j == k then i else 0
 
 -- | Vary each conditional on its own, holding the others at their first
@@ -561,7 +586,8 @@ together formatter reached c
 -- | The document of a configuration whose varied lines hold nothing but an
 -- @#error@: a sibling's, with what it printed from those lines taken out.
 errorBranch :: Varied -> Text -> Doc -> Maybe Doc
-errorBranch (Varied ranges) source reference = foldl step (Just reference) ranges
+errorBranch (Varied ranges) source reference =
+  foldl step (Just reference) ranges
   where
     sourceLines' = zip [1 ..] (T.lines source)
     errors = unconditionalErrors source

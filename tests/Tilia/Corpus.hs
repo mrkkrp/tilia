@@ -230,7 +230,8 @@ hackagePackages =
     { corpusName = "hackage",
       corpusSource = HackageReleases hackageReleases,
       corpusReference = NoReference,
-      corpusExpectations = Recorded ("corpora" </> "hackage" </> "hackage.manifest"),
+      corpusExpectations =
+        Recorded ("corpora" </> "hackage" </> "hackage.manifest"),
       corpusInPackages = True
     }
 
@@ -933,7 +934,8 @@ obtain corpus = case corpusSource corpus of
 --
 -- Fetching happens once and unpacking happens once, and either step already
 -- done is skipped.
-fetch :: (Url 'Https, Option 'Https) -> FilePath -> FilePath -> IO (Either Text ())
+fetch ::
+  (Url 'Https, Option 'Https) -> FilePath -> FilePath -> IO (Either Text ())
 fetch url archive unpacked =
   doesDirectoryExist unpacked >>= \case
     True -> pure (Right ())
@@ -990,7 +992,8 @@ download (url, query) dest =
       runReq defaultHttpConfig $
         responseBody <$> req GET url NoReqBody lbsResponse query
     explain = \case
-      VanillaHttpException (HTTP.HttpExceptionRequest _ reason) -> flatten reason
+      VanillaHttpException (HTTP.HttpExceptionRequest _ reason) ->
+        flatten reason
       other -> flatten other
     flatten :: (Show a) => a -> Text
     flatten = T.take 200 . T.unwords . T.words . T.pack . show
@@ -1002,7 +1005,11 @@ unpackTo archive dest = do
   removePathForcibly staging
   outcome <- quietly (Left "could not unpack") $ do
     bytes <- BL.readFile archive
-    Tar.foldEntries write (pure ()) (const (pure ())) (Tar.read (GZip.decompress bytes))
+    Tar.foldEntries
+      write
+      (pure ())
+      (const (pure ()))
+      (Tar.read (GZip.decompress bytes))
     pure (Right ())
   case outcome of
     Left problem -> do
@@ -1079,7 +1086,8 @@ examplesIn corpus root dirs = do
             Just (stem <> extensionOf name)
       _ -> Nothing
     withoutSuffix suffix name
-      | suffix `isSuffixOf` name = Just (take (length name - length suffix) name)
+      | suffix `isSuffixOf` name =
+          Just (take (length name - length suffix) name)
       | otherwise = Nothing
     stemOf f =
       fromMaybe f (listToMaybe (mapMaybe (`withoutSuffix` f) sourceExtensions))

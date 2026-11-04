@@ -369,7 +369,8 @@ sortSubnames = \case
 
 -- | Deduplicate names in sub-lists.
 dedupeSubnames :: [LIEWrappedName GhcPs] -> [LIEWrappedName GhcPs]
-dedupeSubnames subs = foldRuns const [(wrappedNameIdentity (unLoc s), s) | s <- subs]
+dedupeSubnames subs =
+  foldRuns const [(wrappedNameIdentity (unLoc s), s) | s <- subs]
 
 -- | Where a name sorts, and what makes two of them name one thing.
 --

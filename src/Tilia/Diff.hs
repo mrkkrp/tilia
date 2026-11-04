@@ -115,7 +115,8 @@ unified palette above (beforeName, afterName) before after =
     beforeOf (Line _ b _ _) = b
     afterOf (Line _ _ a _) = a
 
-    hunks = merge [(max 0 (i - margin), min (total - 1) (i + margin)) | i <- changed]
+    hunks =
+      merge [(max 0 (i - margin), min (total - 1) (i + margin)) | i <- changed]
     changed = [i | (i, Line m _ _ _) <- zip [0 ..] lines', m /= Context]
     total = length lines'
     lines' = tag (split before) (split after)
@@ -177,7 +178,8 @@ editScript xs ys = removalsFirst (go 0 n 0 m [])
         (x, y) /= (aLo, bLo),
         (x, y) /= (aHi, bHi) =
           go aLo x bLo y (go x aHi y bHi rest)
-      | otherwise = replicate (aHi - aLo) Removed <> replicate (bHi - bLo) Added <> rest
+      | otherwise =
+          replicate (aHi - aLo) Removed <> replicate (bHi - bLo) Added <> rest
 
 -- | Put the removals of every run of changes before its additions.
 removalsFirst :: [Mark] -> [Mark]
@@ -244,7 +246,11 @@ middle as bs (aLo, aHi) (bLo, bHi) = runST $ do
         | k > d - bEnd = pure (Right (bStart, bEnd))
         | otherwise = do
             x0 <- furthest back d k
-            let x = slide (\i j -> as ! (aHi - 1 - i) == bs ! (bHi - 1 - j)) x0 (x0 - k)
+            let x =
+                  slide
+                    (\i j -> as ! (aHi - 1 - i) == bs ! (bHi - 1 - j))
+                    x0
+                    (x0 - k)
                 y = x - k
             writeArray back (offset + k) x
             if
@@ -252,7 +258,8 @@ middle as bs (aLo, aHi) (bLo, bHi) = runST $ do
               | y > m -> backwards d (k + 2) (bStart + 2) bEnd
               | even delta -> do
                   let o = offset + delta - k
-                  other <- if o >= 0 && o < size then readArray forth o else pure (-1)
+                  other <-
+                    if o >= 0 && o < size then readArray forth o else pure (-1)
                   if other /= -1 && other >= n - x
                     then pure (Left (aLo + other, bLo + other - (delta - k)))
                     else backwards d (k + 2) bStart bEnd

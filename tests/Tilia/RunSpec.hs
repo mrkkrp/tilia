@@ -76,7 +76,8 @@ spec = do
 
     it "gives the lowest code when there are several" $
       exitCodeOf [("A.hs", failure), ("B.hs", otherFailure)]
-        `shouldBe` Just (min (formatErrorExitCode unreadable) (formatErrorExitCode unclaimed))
+        `shouldBe` Just
+          (min (formatErrorExitCode unreadable) (formatErrorExitCode unclaimed))
 
     it "does not depend on the order the failures came back in" $
       exitCodeOf [("A.hs", failure), ("B.hs", otherFailure)]
@@ -139,7 +140,8 @@ spec = do
     it "says what a file that would not settle did" $
       reportErr
         (inplaceReport Plain Plain [("A.hs", Failed (NotIdempotent "A.hs" "line 12 differs"))])
-        `shouldSatisfy` any (T.isInfixOf "A.hs is not idempotent: line 12 differs")
+        `shouldSatisfy` any
+          (T.isInfixOf "A.hs is not idempotent: line 12 differs")
 
     it "names the file in the reason, once" $
       reportErr (inplaceReport Plain Plain mixed)
@@ -149,7 +151,8 @@ spec = do
       case parseModule defaultParserConfig "A.hs" "x = (" of
         Right _ -> expectationFailure "x = ( parsed"
         Left e -> do
-          let said = flattened (inplaceReport Plain Plain [("A.hs", Declined why)])
+          let said =
+                flattened (inplaceReport Plain Plain [("A.hs", Declined why)])
               why = CppUnsupported "A.hs" (ConfigurationNotParsed [] e)
           said `shouldSatisfy` T.isInfixOf "will not format A.hs:"
           T.count "A.hs" said `shouldBe` 1
@@ -193,11 +196,13 @@ spec = do
 
     it "puts a comma before the and once there are three of them" $
       flattened (inplaceReport Plain Plain [("A.hs", missingAll ["<|>", "<+>", "<*>"] "Criterion.Main")])
-        `shouldSatisfy` T.isInfixOf "the fixities of <|>, <+>, and <*> may be declared in"
+        `shouldSatisfy` T.isInfixOf
+          "the fixities of <|>, <+>, and <*> may be declared in"
 
     it "leaves a pair without one" $
       flattened (inplaceReport Plain Plain [("A.hs", missingAll ["<|>", "<+>"] "Criterion.Main")])
-        `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> may be declared in"
+        `shouldSatisfy` T.isInfixOf
+          "the fixities of <|> and <+> may be declared in"
 
     it "counts each answer's operators rather than the file's" $
       flattened (inplaceReport Plain Plain [("A.hs", twoAnswers)])
@@ -208,15 +213,18 @@ spec = do
 
     it "names the imports that disagree and what each brings" $
       flattened (inplaceReport Plain Plain [("A.hs", about "<+>")])
-        `shouldSatisfy` T.isInfixOf "the fixity of <+> is infixl 6 in Left but infixr 5 in Right"
+        `shouldSatisfy` T.isInfixOf
+          "the fixity of <+> is infixl 6 in Left but infixr 5 in Right"
 
     it "gathers the imports that agree with one another" $
       flattened (inplaceReport Plain Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Middle", Fixity LeftAssoc 6)]))])
-        `shouldSatisfy` T.isInfixOf "is infixl 6 in Left and Middle but infixr 5 in Right"
+        `shouldSatisfy` T.isInfixOf
+          "is infixl 6 in Left and Middle but infixr 5 in Right"
 
     it "lists three fixities the way it lists three of anything" $
       flattened (inplaceReport Plain Plain [("A.hs", disagreeing (leftSix :| [rightFive, ("Third", Fixity NoAssoc 4)]))])
-        `shouldSatisfy` T.isInfixOf "is infixl 6 in Left, infixr 5 in Right, and infix 4 in Third"
+        `shouldSatisfy` T.isInfixOf
+          "is infixl 6 in Left, infixr 5 in Right, and infix 4 in Third"
 
     it "gives one disagreement once however many operators share it" $
       flattened
@@ -234,7 +242,8 @@ spec = do
               )
             ]
         )
-        `shouldSatisfy` T.isInfixOf "the fixities of <|> and <+> are infixl 6 in Left but infixr 5 in Right"
+        `shouldSatisfy` T.isInfixOf
+          "the fixities of <|> and <+> are infixl 6 in Left but infixr 5 in Right"
 
     it "keeps all of it off the stream the summary goes to" $
       reportOut (inplaceReport Plain Plain mixed) `shouldBe` ""
@@ -252,7 +261,9 @@ spec = do
         `shouldSatisfy` T.isInfixOf "diff --git a/A.hs b/A.hs"
 
     it "shows the removal and the addition" $ do
-      let shown = reportOut (checkReport Plain Plain [("A.hs", Changed "one\n" "two\n")])
+      let shown =
+            reportOut
+              (checkReport Plain Plain [("A.hs", Changed "one\n" "two\n")])
       shown `shouldSatisfy` T.isInfixOf "-one"
       shown `shouldSatisfy` T.isInfixOf "+two"
 
@@ -310,7 +321,9 @@ spec = do
         `shouldSatisfy` any (T.isInfixOf "\ESC[36m<|>\ESC[0m")
 
     it "matches an operator as a whole word and not as a fragment" $ do
-      let shown = T.unlines (reportErr (inplaceReport Colors Colors [("A.hs", about ".")]))
+      let shown =
+            T.unlines
+              (reportErr (inplaceReport Colors Colors [("A.hs", about ".")]))
       T.count "\ESC[36m" shown `shouldBe` 1
       shown `shouldSatisfy` T.isInfixOf "\ESC[1mA.hs\ESC[0m"
 
@@ -331,8 +344,13 @@ spec = do
         `shouldSatisfy` any (T.isInfixOf "[\ESC[31m✗\ESC[0m]")
 
     it "colors each stream with a palette of its own" $ do
-      let summary = inplaceReport Colors Plain [("A.hs", Unchanged), ("B.hs", decline)]
-          diffs = checkReport Plain Colors [("A.hs", Changed "a\n" "b\n"), ("B.hs", decline)]
+      let summary =
+            inplaceReport Colors Plain [("A.hs", Unchanged), ("B.hs", decline)]
+          diffs =
+            checkReport
+              Plain
+              Colors
+              [("A.hs", Changed "a\n" "b\n"), ("B.hs", decline)]
       reportOut summary `shouldSatisfy` T.isInfixOf "\ESC"
       reportErr summary `shouldSatisfy` all (not . T.isInfixOf "\ESC")
       reportOut diffs `shouldSatisfy` (not . T.isInfixOf "\ESC")
@@ -485,12 +503,18 @@ spec = do
 
   describe "running over many files at once" $ do
     it "answers in the order it was asked, not the order it finished" $ do
-      answers <- inParallel (\n -> threadDelay (1000 * (40 - n)) >> pure n) [1 .. 20 :: Int]
+      answers <-
+        inParallel
+          (\n -> threadDelay (1000 * (40 - n)) >> pure n)
+          [1 .. 20 :: Int]
       answers `shouldBe` [1 .. 20]
 
     it "runs every one of them exactly once" $ do
       seen <- newIORef (0 :: Int)
-      _ <- inParallel (\_ -> atomicModifyIORef' seen (\n -> (n + 1, ()))) [1 .. 500 :: Int]
+      _ <-
+        inParallel
+          (\_ -> atomicModifyIORef' seen (\n -> (n + 1, ())))
+          [1 .. 500 :: Int]
       readIORef seen `shouldReturn` 500
 
     it "copes with having nothing to do" $
@@ -564,11 +588,17 @@ failureAbout path = Failed (Unreadable path "no such file")
 
 -- | A case about one operator whose fixity could not be settled.
 about :: Text -> Outcome
-about op = Declined (UnknownFixity "A.hs" [((Nothing, OpName op), Ambiguous (leftSix :| [rightFive]))])
+about op =
+  Declined
+    ( UnknownFixity
+        "A.hs"
+        [((Nothing, OpName op), Ambiguous (leftSix :| [rightFive]))]
+    )
 
 -- | A case about @<+>@, which the imports bring in as given.
 disagreeing :: NonEmpty (Text, Fixity) -> Outcome
-disagreeing offers = Declined (UnknownFixity "A.hs" [((Nothing, OpName "<+>"), Ambiguous offers)])
+disagreeing offers =
+  Declined (UnknownFixity "A.hs" [((Nothing, OpName "<+>"), Ambiguous offers)])
 
 -- | What two disagreeing imports bring.
 leftSix, rightFive :: (Text, Fixity)

@@ -89,7 +89,9 @@ spec = do
           ("Right", Just [("<+>", Fixity RightAssoc 5)])
         ]
         "import Left\nimport Right\nf a b = a <+> b\n"
-        >>= (`mentions` "the imports disagree about it: infixl 6 in Left but infixr 5 in Right")
+        >>= ( `mentions`
+                "the imports disagree about it: infixl 6 in Left but infixr 5 in Right"
+            )
 
     it "says when they disagree about a constructor written among types" $ do
       let offers = [("Left", infixl' 6), ("Right", Fixity RightAssoc 5)]
@@ -133,7 +135,8 @@ spec = do
                   Map.fromList
                     [((InTerms, OpName ":>"), Fixity RightAssoc 5) | m == "Ops"]
               }
-      told <- notesAgainst answerOf "import Ops\ntype T = Int :> Int\nx = 1 :> 2\n"
+      told <-
+        notesAgainst answerOf "import Ops\ntype T = Int :> Int\nx = 1 :> 2\n"
       filter (T.isInfixOf ":>") (fmap T.stripStart told)
         `shouldBe` ["· :> infixr 5 (term), declared in Ops"]
 
@@ -234,7 +237,10 @@ notesThrough chains world = notesAgainst answerOf
   where
     answerOf m = case exportsOf m of
       Just fixities -> mempty{establishedFixities = fixities}
-      Nothing -> mempty{establishedUntold = Set.singleton (fromMaybe [] (lookup m chains))}
+      Nothing ->
+        mempty
+          { establishedUntold = Set.singleton (fromMaybe [] (lookup m chains))
+          }
     exportsOf m = do
       declared <- lookup m world
       inBothNamespaces . Map.fromList . fmap (\(op, fixity) -> (OpName op, fixity))

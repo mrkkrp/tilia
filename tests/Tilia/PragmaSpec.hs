@@ -189,7 +189,8 @@ spec = do
       effectiveExtensions
         (defaultsOf (languageExtensions (Just Haskell2010)) [On OverloadedStrings])
         "{-# LANGUAGE GHC2021 #-}\nmodule M where\n"
-        `shouldSatisfy` \es -> all (`elem` es) [OverloadedStrings, ImportQualifiedPost]
+        `shouldSatisfy` \es ->
+          all (`elem` es) [OverloadedStrings, ImportQualifiedPost]
     it "switches what the module switches on top of its edition, wherever named" $
       inForceUnder
         []
@@ -248,7 +249,8 @@ spec = do
                 (defaultsOf (languageExtensions Nothing) [])
                 (headerOf pragmas)
             theirs =
-              EnumSet.toList (extensionFlags (readFlags (concatMap flagsOf pragmas)))
+              EnumSet.toList
+                (extensionFlags (readFlags (concatMap flagsOf pragmas)))
          in counterexample (T.unpack (headerOf pragmas)) $
               Set.fromList ours === Set.fromList theirs
     it "takes two orders to be alike where GHC switches alike" $
@@ -266,10 +268,12 @@ spec = do
     it "does not accept the No-prefixed spelling as a name" $
       lookupExtension "NoImplicitPrelude" `shouldBe` Nothing
   where
-    for_' cases expect = mapM_ (\(what, source) -> it what (expect source)) cases
+    for_' cases expect =
+      mapM_ (\(what, source) -> it what (expect source)) cases
 
     langThenLine :: Text
-    langThenLine = "{-# LANGUAGE LambdaCase #-}\nmodule M where\n{-# LINE 3 \"O.hs\" #-}\n"
+    langThenLine =
+      "{-# LANGUAGE LambdaCase #-}\nmodule M where\n{-# LINE 3 \"O.hs\" #-}\n"
 
 -- | The extensions in force in a module of a component whose edition puts
 -- these in force and which switches nothing itself.

@@ -40,7 +40,9 @@ spec = do
 
     it "reads several operators from one declaration" $
       declaredIn "module M where\ninfixl 7 <.>, <:>\n"
-        `shouldBe` [(OpName "<.>", Fixity LeftAssoc 7), (OpName "<:>", Fixity LeftAssoc 7)]
+        `shouldBe` [ (OpName "<.>", Fixity LeftAssoc 7),
+                     (OpName "<:>", Fixity LeftAssoc 7)
+                   ]
 
     it "reads a backticked function name" $
       declaredIn "module M where\ninfixl 7 `quot`\n"
@@ -59,7 +61,9 @@ spec = do
 
     it "reads those at the margin and in a class together" $
       declaredIn "module M where\ninfixl 1 <+>\nclass C a where\n  infixr 8 .=\n  (.=) :: a -> a -> Int\n"
-        `shouldBe` [(OpName ".=", Fixity RightAssoc 8), (OpName "<+>", Fixity LeftAssoc 1)]
+        `shouldBe` [ (OpName ".=", Fixity RightAssoc 8),
+                     (OpName "<+>", Fixity LeftAssoc 1)
+                   ]
 
     it "leaves a declaration local to a binding where it is" $
       declaredIn "module M where\nf = g\n  where\n    infixr 3 ###\n    g = 1\n"
@@ -393,11 +397,17 @@ spec = do
       let leavingMin = \case
             "Opaque" ->
               mempty
-                { establishedCertain = Certain (Set.singleton (InTerms, OpName "min")) Map.empty,
-                  establishedUnsettled = Map.singleton [] (Set.singleton (InTerms, OpName "min"))
+                { establishedCertain =
+                    Certain (Set.singleton (InTerms, OpName "min")) Map.empty,
+                  establishedUnsettled =
+                    Map.singleton [] (Set.singleton (InTerms, OpName "min"))
                 }
             m -> knowingExports m
-          scope = resolveScope (Is #implicitPrelude) leavingMin (pure (pmModule (parsed "module M where\nimport Opaque\n")))
+          scope =
+            resolveScope
+              (Is #implicitPrelude)
+              leavingMin
+              (pure (pmModule (parsed "module M where\nimport Opaque\n")))
        in lookupFixity scope InTerms Nothing (OpName "min") `shouldBe` Unresolved (unreadOnly "Opaque")
 
     it "lets a file be formatted whose every unsettled name is accounted for" $
@@ -421,9 +431,21 @@ spec = do
                   "Prelude" ->
                     mempty
                       { establishedFixities =
-                          inBothNamespaces (Map.fromList [(OpName "+", Fixity LeftAssoc 6), (OpName "*", Fixity LeftAssoc 7)]),
+                          inBothNamespaces
+                            ( Map.fromList
+                                [ (OpName "+", Fixity LeftAssoc 6),
+                                  (OpName "*", Fixity LeftAssoc 7)
+                                ]
+                            ),
                         establishedCertain =
-                          Certain (Set.fromList [(InTerms, OpName "min"), (InTerms, OpName "+"), (InTerms, OpName "*")]) Map.empty
+                          Certain
+                            ( Set.fromList
+                                [ (InTerms, OpName "min"),
+                                  (InTerms, OpName "+"),
+                                  (InTerms, OpName "*")
+                                ]
+                            )
+                            Map.empty
                       }
                   m -> knowingExports m
               )
@@ -437,7 +459,9 @@ spec = do
 
     it "takes the fixity the binding's group declares" $
       capturedIn "f = 1 <+> 2 <+> 3\n  where\n    infixr 5 <+>\n    a <+> b = a * b\n"
-        `shouldBe` [((1, 7), Fixity RightAssoc 5), ((1, 13), Fixity RightAssoc 5)]
+        `shouldBe` [ ((1, 7), Fixity RightAssoc 5),
+                     ((1, 13), Fixity RightAssoc 5)
+                   ]
 
     it "is captured by what a let binds" $
       capturedIn "f = let a <+> b = a * b in 1 <+> 2\n"
@@ -498,19 +522,34 @@ spec = do
   describe "the members of a name" $ do
     it "takes a type's constructors, among terms" $
       declaredMembersIn "module M where\ndata T = A | Int :| Int\n"
-        `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
+        `shouldBe` [ ( OpName "T",
+                       [(InTerms, OpName ":|"), (InTerms, OpName "A")]
+                     )
+                   ]
 
     it "takes a record's fields, which may be operators, among terms" $
       declaredMembersIn "module M where\ndata T = T {(#) :: Int, name :: Int}\n"
-        `shouldBe` [(OpName "T", [(InTerms, OpName "#"), (InTerms, OpName "T"), (InTerms, OpName "name")])]
+        `shouldBe` [ ( OpName "T",
+                       [ (InTerms, OpName "#"),
+                         (InTerms, OpName "T"),
+                         (InTerms, OpName "name")
+                       ]
+                     )
+                   ]
 
     it "takes a GADT's constructors, among terms" $
       declaredMembersIn "module M where\ndata T where\n  A :: T\n  (:|) :: T -> T\n"
-        `shouldBe` [(OpName "T", [(InTerms, OpName ":|"), (InTerms, OpName "A")])]
+        `shouldBe` [ ( OpName "T",
+                       [(InTerms, OpName ":|"), (InTerms, OpName "A")]
+                     )
+                   ]
 
     it "takes a class's methods, among terms" $
       declaredMembersIn "module M where\nclass C a where\n  (.=) :: a -> a -> Int\n  named :: a\n"
-        `shouldBe` [(OpName "C", [(InTerms, OpName ".="), (InTerms, OpName "named")])]
+        `shouldBe` [ ( OpName "C",
+                       [(InTerms, OpName ".="), (InTerms, OpName "named")]
+                     )
+                   ]
 
     it "takes a class's associated families, among types" $
       declaredMembersIn "module M where\nclass C a where\n  type F a\n"
@@ -678,11 +717,13 @@ spec = do
 
   describe "ambiguity" $ do
     it "reports an operator imported with two different fixities" $
-      let (_, _, amb) = scopeOf "module M where\nimport Data.Map\nimport Other\n"
+      let (_, _, amb) =
+            scopeOf "module M where\nimport Data.Map\nimport Other\n"
        in amb `shouldBe` [(Nothing, OpName "!")]
 
     it "reports nothing when two imports agree" $
-      let (_, _, amb) = scopeOf "module M where\nimport Data.Map\nimport Agreeing\n"
+      let (_, _, amb) =
+            scopeOf "module M where\nimport Data.Map\nimport Agreeing\n"
        in amb `shouldBe` []
 
     it "reports nothing when the two go under different names" $
@@ -813,7 +854,9 @@ spec = do
             `shouldBe` Resolved (Fixity LeftAssoc 9) (DeclaredIn "Data.Map")
 
     it "weighs only the unread imports the qualifier reaches" $
-      let s = fullScope "module M where\nimport qualified Data.Map as M\nimport Opaque\n"
+      let s =
+            fullScope
+              "module M where\nimport qualified Data.Map as M\nimport Opaque\n"
        in lookupFixity s InTerms (Just "M") (OpName "<??>")
             `shouldBe` Resolved defaultFixity ReportDefault
 
@@ -916,7 +959,8 @@ exportsOf = \case
   -- Spell @:>@ in different namespaces, as servant and text do.
   "Types" -> Just (Map.fromList [((InTypes, OpName ":>"), Fixity RightAssoc 4)])
   "Terms" -> Just (Map.fromList [((InTerms, OpName ":>"), Fixity LeftAssoc 5)])
-  "Other.Terms" -> Just (Map.fromList [((InTerms, OpName ":>"), Fixity RightAssoc 9)])
+  "Other.Terms" ->
+    Just (Map.fromList [((InTerms, OpName ":>"), Fixity RightAssoc 9)])
   "Opaque" -> Nothing
   "Other.Opaque" -> Nothing
   _ -> Just Map.empty
@@ -976,7 +1020,8 @@ conditionalImports =
 
 -- | What is known in a world made of 'exportsOf' alone.
 knowingExports :: Text -> Established
-knowingExports = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
+knowingExports =
+  maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
 
 -- | A module that uses an operator nothing in scope declares, alongside an
 -- import that could not be read.
@@ -1003,11 +1048,16 @@ scopeBringing said source =
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     certain m =
-      Certain (Set.fromList [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]) Map.empty
+      Certain
+        ( Set.fromList
+            [(namespace, OpName op) | (namespace, op) <- concat (lookup m said)]
+        )
+        Map.empty
 
 -- | The same, with a second unread import to tell apart from the first.
 twoUnread :: Text
-twoUnread = "module M where\nimport Opaque\nimport Other.Opaque\nf a b = a <??> b\n"
+twoUnread =
+  "module M where\nimport Opaque\nimport Other.Opaque\nf a b = a <??> b\n"
 
 -- | A scope in which the unread modules listed say which names they leave
 -- unsettled.
@@ -1026,7 +1076,14 @@ scopeKnowing said =
     leaving ops =
       mempty
         { establishedUnsettled =
-            Map.singleton [] (Set.fromList [(namespace, OpName op) | op <- ops, namespace <- [InTypes, InTerms]])
+            Map.singleton
+              []
+              ( Set.fromList
+                  [ (namespace, OpName op)
+                  | op <- ops,
+                    namespace <- [InTypes, InTerms]
+                  ]
+              )
         }
 
 -- | The uses of an operator a local binding captures in a module made of
@@ -1040,7 +1097,8 @@ capturedIn decls =
 -- | The members of each name a module declares, by namespace, in a
 -- settled order.
 declaredMembersIn :: Text -> [(OpName, [(Namespace, OpName)])]
-declaredMembersIn = fmap (fmap Set.toList) . Map.toList . declaredMembers . pmModule . parsed
+declaredMembersIn =
+  fmap (fmap Set.toList) . Map.toList . declaredMembers . pmModule . parsed
 
 -- | The same, as the module's export list hands them on.
 listedMembersIn :: Text -> [(OpName, [OpName])]
@@ -1076,7 +1134,8 @@ listing items =
 
 -- | What @NonEmpty@ has under it, as an interface tells it.
 nonEmptyMembers :: Map.Map OpName (Set.Set OpName)
-nonEmptyMembers = Map.singleton (OpName "NonEmpty") (Set.singleton (OpName ":|"))
+nonEmptyMembers =
+  Map.singleton (OpName "NonEmpty") (Set.singleton (OpName ":|"))
 
 -- | A scope over the two modules that spell @:>@ in different namespaces.
 scopeOfBoth :: Text -> Scope
@@ -1095,7 +1154,11 @@ scopeSuspecting members source =
   resolveScope
     (Is #implicitPrelude)
     (\m -> (knowingExports m){establishedMembers = membersIn m})
-    (pure (pmModule (parsed ("module M where\n" <> source <> "f a b = a <??> b\n"))))
+    ( pure
+        ( pmModule
+            (parsed ("module M where\n" <> source <> "f a b = a <??> b\n"))
+        )
+    )
   where
     membersIn m =
       Map.fromList
@@ -1128,7 +1191,8 @@ usingItBothWays = takesItsPreludeElsewhere <> "f a b = a <%> b\n"
 -- Kept out of 'exportsOf' so that a Prelude which declares something does
 -- not have to be reckoned with by every other test in the file.
 disagreeingAboutPrelude :: Text -> Established
-disagreeingAboutPrelude = maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . said
+disagreeingAboutPrelude =
+  maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . said
   where
     said = \case
       "Prelude" -> whichever [(OpName "<%>", Fixity RightAssoc 6)]
@@ -1149,7 +1213,11 @@ unsettledAboutPrelude ::
 unsettledAboutPrelude implicitPrelude src =
   let p = parsed src
    in unknownOperators
-        (resolveScope implicitPrelude disagreeingAboutPrelude (pure (pmModule p)))
+        ( resolveScope
+            implicitPrelude
+            disagreeingAboutPrelude
+            (pure (pmModule p))
+        )
         (pure (pmGathered p))
 
 scopeOf ::

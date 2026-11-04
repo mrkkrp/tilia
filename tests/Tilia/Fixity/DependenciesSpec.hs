@@ -54,7 +54,8 @@ withPlan :: BuildPlan -> Spec
 withPlan plan = do
   installed <- runIO readInstalledPackages
   fromSource <- runIO (fixitiesThrough <$> routedResolver [FromSource] plan)
-  fromInterface <- runIO (fixitiesThrough <$> routedResolver [FromInterface] plan)
+  fromInterface <-
+    runIO (fixitiesThrough <$> routedResolver [FromInterface] plan)
   resolver <- runIO (newResolver plan)
   let resolve = fixitiesThrough resolver
   own <- runIO ownModules
@@ -154,7 +155,8 @@ withPlan plan = do
         `shouldBe` []
 
     it "settles every operator they use" $ do
-      unsettled <- traverse (unsettledIn resolver) [(path, m) | (path, Just m) <- own]
+      unsettled <-
+        traverse (unsettledIn resolver) [(path, m) | (path, Just m) <- own]
       concat unsettled `shouldBe` []
 
 ----------------------------------------------------------------------------

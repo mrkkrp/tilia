@@ -42,7 +42,12 @@ import Tilia.Format
     refused,
   )
 import Tilia.Newline (NewlineStyle (Lf), getNewlineStyle, setNewlineStyle)
-import Tilia.Palette (Color (Bad, Good, Middling, Place), Palette, marker, paint)
+import Tilia.Palette
+  ( Color (Bad, Good, Middling, Place),
+    Palette,
+    marker,
+    paint,
+  )
 import Tilia.Utils
   ( asUtf8,
     attempted,
@@ -305,7 +310,8 @@ count palette n extension =
 
 -- | One case among several, opened by a bullet and wrapped underneath it.
 bulleted :: Palette -> FormatError -> [Text]
-bulleted palette e = wrappedUnder 3 (indent 2 <> "· ") (describeFormatError palette e)
+bulleted palette e =
+  wrappedUnder 3 (indent 2 <> "· ") (describeFormatError palette e)
 
 -- | Something to say under a mark of its own, wrapped to fit beneath it.
 noted ::
