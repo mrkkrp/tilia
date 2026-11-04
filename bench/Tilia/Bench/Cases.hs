@@ -21,6 +21,7 @@ import Data.Choice (isTrue, pattern Don't)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
@@ -155,7 +156,7 @@ corpusSubjects examples =
 syntheticSubjects :: [Subject]
 syntheticSubjects =
   [ subjectOf Nothing Map.empty False "synthetic/comments" commented,
-    subjectOf Nothing Map.empty False "synthetic/imports" imported,
+    subjectOf Nothing own False "synthetic/imports" imported,
     subjectOf Nothing Map.empty False "synthetic/conditionals" conditional,
     subjectOf Nothing Map.empty False "synthetic/nesting" nested,
     subjectOf Nothing Map.empty False "synthetic/long-line" long
@@ -181,6 +182,7 @@ syntheticSubjects =
                m <- numbers 250
              ]
           <> ["", "x :: Int", "x = 1"]
+    own = Map.fromList [("M" <> m, Set.singleton "imported") | m <- numbers 50]
     conditional =
       T.unlines $
         ["{-# LANGUAGE CPP #-}", "module Conditional where", ""]
