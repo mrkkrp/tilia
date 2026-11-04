@@ -83,11 +83,8 @@ import Tilia.Doc
     Layout (..),
     LineStart (..),
     TrailingWhitespace (..),
-    Wrapper (..),
     mapChildren,
     printsNothing,
-    unwrap,
-    wrap,
   )
 import Tilia.Span (Span, endOf)
 
@@ -166,17 +163,10 @@ flat = DGroup Flat
 broken :: Doc -> Doc
 broken = DGroup Broken
 
--- | Let a document's group, under its wrappers, break where it does not
--- fit within the column limit.
-frangible ::
-  -- | The document.
-  Doc ->
-  Doc
-frangible d = case unwrap d of
-  Just (WGroup Flat, x) -> DGroup Frangible x
-  Just (WGroup _, _) -> d
-  Just (w, x) -> wrap w (frangible x)
-  Nothing -> d
+-- | Lay a document out flat where it fits within the column limit, and
+-- broken where it does not.
+frangible :: Doc -> Doc
+frangible = DGroup Frangible
 
 -- | Lay every 'Frangible' group of a document out flat, as it was written,
 -- wherever it would run past the column limit.

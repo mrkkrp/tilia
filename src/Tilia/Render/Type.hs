@@ -56,7 +56,7 @@ import Tilia.Span.Ghc
 
 -- | A type.
 hsType :: Ctx -> LHsType GhcPs -> Doc
-hsType ctx l = frangible (at ctx l (hsTypeBody ctx (spanOf l)))
+hsType ctx l = at ctx l (hsTypeBody ctx (spanOf l))
 
 -- | A type whose location the caller has already entered.
 hsTypeBody :: Ctx -> Maybe Span -> HsType GhcPs -> Doc
@@ -425,7 +425,7 @@ outerBndrs ctx separator = \case
 
 -- | A type together with whatever it quantifies over.
 hsSigType :: Ctx -> LHsSigType GhcPs -> Doc
-hsSigType ctx l = frangible (at ctx l (hsSigTypeBody ctx))
+hsSigType ctx l = at ctx l (hsSigTypeBody ctx)
 
 -- | A signature type whose location the caller has already entered.
 hsSigTypeBody :: Ctx -> HsSigType GhcPs -> Doc

@@ -20,7 +20,7 @@ where
 
 import Data.Char (isSpace)
 import Data.List (unsnoc)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -378,29 +378,35 @@ fracturesFrom ::
   Doc ->
   Bool
 fracturesFrom out indent =
-  fracturesAt
-    (if started out then outColumn out else indent)
-    (started out && not (endsWithSpace out))
+  isJust
+    . fracture
+      (if started out then outColumn out else indent)
+      (started out && not (endsWithSpace out))
 
--- | Does a frangible document break from this column, running past
--- 'columnLimit' flat and ending its first line sooner broken?
-fracturesAt ::
+-- | Where the first line of a frangible document laid out broken stops, if
+-- it breaks from this column: if it runs past 'columnLimit' flat and stops
+-- sooner broken.
+fracture ::
   -- | The column it starts at.
   Int ->
   -- | Whether a space asked for first is printed.
   Bool ->
   -- | The document.
   Doc ->
-  Bool
-fracturesAt column spaceFirst d =
-  flat columnLimit > columnLimit
-    && (broken columnLimit <= columnLimit || flat brokenEnd > brokenEnd)
+  Maybe (Int, Bool, Bool)
+fracture column spaceFirst d
+  | flat columnLimit > columnLimit, flat end > end = Just broken
+  | otherwise = Nothing
   where
-    flat bound = columnReached bound column spaceFirst [(Flat, True, d)]
-    broken bound = columnReached bound column spaceFirst [(Broken, False, d)]
-    brokenEnd = broken maxBound
+    flat bound =
+      let (c, _, _) = columnReached bound column spaceFirst [(Flat, True, d)]
+       in c
+    broken@(end, _, _) =
+      columnReached maxBound column spaceFirst [(Broken, False, d)]
 
--- | The column a line reaches, or the first one past the bound.
+-- | The column a line reaches, or the first one past the bound, whether a
+-- space asked for next is printed there, and whether the line ends there
+-- rather than what is laid out on it.
 columnReached ::
   -- | The column past which it stops.
   Int ->
@@ -411,37 +417,36 @@ columnReached ::
   -- | What is left to lay out, each with the layout in force and whether a
   -- flat group holds it.
   [(Layout, Bool, Doc)] ->
-  Int
+  (Int, Bool, Bool)
 columnReached bound = walk
   where
     walk column spaceDue items
-      | column > bound = column
+      | column > bound = (column, spaceDue, True)
       | otherwise = case items of
-          [] -> column
+          [] -> (column, spaceDue, False)
           (layout, held, x) : rest -> case x of
             DText t
               | T.null t -> walk column spaceDue rest
               | otherwise -> walk (column + T.length t) True rest
             DSpace -> space column spaceDue rest
             DBreak -> case layout of
-              Broken -> column
+              Broken -> (column, spaceDue, True)
               _ -> space column spaceDue rest
             DSoftBreak -> case layout of
-              Broken -> column
+              Broken -> (column, spaceDue, True)
               _ -> walk column spaceDue rest
             DCat a b ->
               walk
                 column
                 spaceDue
                 ((layout, held, a) : (layout, held, b) : rest)
+            DGroup Frangible y
+              | not held -> case fracture column spaceDue y of
+                  Just (c, s, True) -> (c, s, True)
+                  Just (c, s, False) -> walk c s rest
+                  Nothing -> walk column spaceDue ((Flat, True, y) : rest)
             DGroup l y ->
-              let settled = case l of
-                    Frangible
-                      | not held,
-                        fracturesAt column spaceDue y ->
-                          Broken
-                      | otherwise -> Flat
-                    _ -> l
+              let settled = if l == Broken then Broken else Flat
                in walk
                     column
                     spaceDue
@@ -449,12 +454,12 @@ columnReached bound = walk
             DVariant flatD brokenD -> case layout of
               Broken -> walk column spaceDue ((layout, held, brokenD) : rest)
               _ -> walk column spaceDue ((layout, held, flatD) : rest)
-            DHardBreak -> column
-            DCloseLine -> column
-            DCloseLineUnlessAfterOpener _ -> column
-            DVerbatimBreak{} -> column
-            DCppChoice{} -> column
-            DCppDirective{} -> column
+            DHardBreak -> (column, spaceDue, True)
+            DCloseLine -> (column, spaceDue, True)
+            DCloseLineUnlessAfterOpener _ -> (column, spaceDue, True)
+            DVerbatimBreak{} -> (column, spaceDue, True)
+            DCppChoice{} -> (column, spaceDue, True)
+            DCppDirective{} -> (column, spaceDue, True)
             DEmpty -> walk column spaceDue rest
             DHoldBack{} -> walk column spaceDue rest
             DDeclarationsStart -> walk column spaceDue rest

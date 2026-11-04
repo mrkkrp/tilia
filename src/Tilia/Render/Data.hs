@@ -91,6 +91,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
                 (fmap renderTyVar tyVars)
             )
           <> foldMap kindSignature dd_kindSig
+          <> includeWhen (isGadt && not (null cons)) (breakOrSpace <> txt "where")
 
     kindSignature k =
       joinedBy (reserved ctx "::") <> indent (hsType ctx k)
@@ -116,13 +117,12 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
       (firstCon : _)
         | isGadt ->
             indent $
-              layoutFrom ctx wholeHeadSpan (breakOrSpace <> txt "where")
-                <> breakOrSpace
+              breakOrSpace
                 <> items
                   (if null (drop 1 cons) then NoBrace else MayBrace)
                   (fmap (at_ ctx (conDecl ctx (Isn't #singleRecCon))) cons)
         | otherwise ->
-            layoutFrom ctx (spanOf tyCon <> spansOf cons) . indent $
+            layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons) . indent $
               beforeEquals
                 <> txt "="
                 <> space

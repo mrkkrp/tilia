@@ -268,7 +268,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       (i : is) : runs ->
         foldMap anchor above
           <> includeWhen later hardBreak
-          <> frangible (at ctx i (importDecl ctx))
+          <> at ctx i (importDecl ctx)
           <> foldMap anchor (IntMap.lookup start mcUnderImports)
           <> includeWhen (null is && null runs) (foldMap anchor mcBelowImports)
           <> hardBreak
@@ -482,7 +482,7 @@ importDecl ctx ImportDecl{..} =
               keywordAt ctx (spanOf (fst (al_rest (anns listLoc)))) "hiding"
           listSpan = spanOfSrcSpan (locA listLoc)
           parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
-       in frangible . layoutWithin ctx listSpan parensSpan $
+       in layoutWithin ctx listSpan parensSpan $
             hidden
               <> breakOrSpace
               <> fence

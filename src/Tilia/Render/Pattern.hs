@@ -52,7 +52,7 @@ hsPatIn ::
   LPat GhcPs ->
   Doc
 hsPatIn ctx inParens closing l =
-  at ctx l (patBody ctx inParens closing (spanOf l))
+  infrangible (at ctx l (patBody ctx inParens closing (spanOf l)))
 
 -- | Every shape a pattern can take.
 patBody ::

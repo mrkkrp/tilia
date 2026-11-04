@@ -249,18 +249,18 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
                   ((space <>) . at_ ctx (injectivityAnn ctx))
                   fdInjectivityAnn
             )
+          <> foldMap (const (breakOrSpace <> txt "where")) closedEqns
 
     resultSig = familyResultSig ctx fdResultSig
 
     equations = case closedEqns of
       Nothing -> mempty
       Just eqs ->
-        indent (layoutFrom ctx headAndSigSpan (breakOrSpace <> txt "where"))
-          <> case eqs of
-            Nothing -> space <> txt ".."
-            Just given ->
-              includeUnless (null given) $
-                hardBreak <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
+        case eqs of
+          Nothing -> space <> txt ".."
+          Just given ->
+            includeUnless (null given) $
+              hardBreak <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
 
 -- | What the head of a family says of its result, a kind or a variable
 -- naming it, if anything.
