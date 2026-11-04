@@ -55,7 +55,7 @@ import Tilia.Cabal.Package
     Kind (..),
     PackageProblem,
     addedSources,
-    declaredModules,
+    declaredModuleNames,
     describePackageProblem,
     isDeclaredModule,
     joined,
@@ -303,14 +303,12 @@ packageFilesOf root = case prMarker root of
 -- | The modules the project's own packages declare, whatever the conditions
 -- in their @.cabal@ files, each with the names of those that declare it.
 projectModules ::
-  -- | The project.
-  ProjectRoot ->
+  -- | The @.cabal@ files of the project's packages, as 'packageFilesOf'
+  -- finds them.
+  [FilePath] ->
   IO (Either TargetProblem (Map Text (Set Text)))
-projectModules root =
-  packageFilesOf root >>= \case
-    Left problem -> pure (Left problem)
-    Right files ->
-      fmap (Map.unionsWith (<>)) . sequence <$> traverse declaredIn files
+projectModules files =
+  fmap (Map.unionsWith (<>)) . sequence <$> traverse declaredIn files
 
 -- | The modules a @.cabal@ file declares, each with the name of its package,
 -- parsed again only once the file has been modified, as an editor may
@@ -332,9 +330,7 @@ declaredIn file = do
     modulesOf described =
       Map.fromList
         [ (name, Set.singleton (packageOf described))
-        | (_, _, branches) <- packageComponents described,
-          (_, modules) <- declaredModules branches,
-          (name, _) <- modules
+        | name <- declaredModuleNames described
         ]
 
 -- | What 'declaredIn' has read, by file, with the time each file was

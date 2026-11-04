@@ -23,8 +23,7 @@ import Data.Text (Text)
 import Distribution.PackageDescription (GenericPackageDescription)
 
 import Tilia.Cabal.Package
-  ( declaredModules,
-    packageBranches,
+  ( declaredModuleNames,
     parsePackageDescription,
   )
 import Tilia.Utils (quietly)
@@ -36,9 +35,8 @@ import Tilia.Utils (quietly)
 packageModules :: FilePath -> IO (Maybe [Text])
 packageModules tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
-  evaluate . force $
-    fmap fst . concatMap snd . declaredModules . packageBranches
-      <$> cabalFileInArchive (Tar.read (GZip.decompress bytes))
+  evaluate . force . fmap declaredModuleNames $
+    cabalFileInArchive (Tar.read (GZip.decompress bytes))
 
 -- | The first @.cabal@ file at the top level of an archive.
 --

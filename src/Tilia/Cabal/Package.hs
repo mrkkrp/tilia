@@ -9,6 +9,7 @@ module Tilia.Cabal.Package
     readPackageDescription,
     parsePackageDescription,
     declaredModules,
+    declaredModuleNames,
     packageSourceDirs,
     packageExtensions,
     PackageReader,
@@ -392,6 +393,12 @@ declaredModules branches =
   | branch <- branches,
     (d, section) <- addedSources branch
   ]
+
+-- | The names of the modules a package declares, whatever the conditions in
+-- its @.cabal@ file.
+declaredModuleNames :: GenericPackageDescription -> [Text]
+declaredModuleNames =
+  fmap fst . concatMap snd . declaredModules . packageBranches
 
 -- | Every directory any branch of a package names for its files, and then
 -- the package's own.

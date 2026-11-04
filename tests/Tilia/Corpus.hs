@@ -53,7 +53,11 @@ import System.FilePath (splitDirectories, takeDirectory, (</>))
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
-import Tilia.Cabal.Target (describeTargetProblem, projectModules)
+import Tilia.Cabal.Target
+  ( describeTargetProblem,
+    packageFilesOf,
+    projectModules,
+  )
 import Tilia.Pragma (Defaults)
 import Tilia.TestUtils (haskellFilesIn)
 import Tilia.Utils (quietly)
@@ -115,7 +119,8 @@ data Corpus = Corpus
     -- | Are these modules of the package around them?
     --
     -- True for a corpus of releases, where a module is compiled with its
-    -- package's @default-extensions@ and does not parse without them.
+    -- package's @default-extensions@, which it may not parse without, and
+    -- the imports of its project's modules come after the rest.
     corpusInPackages :: Bool
   }
 
@@ -870,9 +875,9 @@ data Example = Example
     -- of a package, see 'corpusInPackages', and for one whose package could
     -- not be read.
     exampleExtensions :: Maybe Defaults,
-    -- | The modules the package around it declares, each with the package's
-    -- name, and none for a corpus whose examples are not modules of a
-    -- package.
+    -- | The modules the project around it declares, each with the names of
+    -- the packages that declare it, and none for a corpus whose examples
+    -- are not modules of a package.
     exampleOwnModules :: Map Text (Set Text)
   }
   deriving (Eq, Show)
@@ -1020,14 +1025,22 @@ unpackTo archive dest = do
 
 -- | Every example in these directories of an unpacked corpus, named from
 -- its root, in a settled order.
-examplesIn :: Corpus -> FilePath -> [FilePath] -> IO [Example]
+examplesIn ::
+  -- | The corpus.
+  Corpus ->
+  -- | Where it is unpacked, which the examples are named from.
+  FilePath ->
+  -- | The directories to look in.
+  [FilePath] ->
+  IO [Example]
 examplesIn corpus root dirs = do
   found <- sort . concat <$> traverse haskellFilesIn dirs
   reader <- packageReaderFor corpus
   own <- ownModulesReaderFor corpus
   let present = Set.fromList found
       files = filter (not . skipped) found
-      example f reference = Example (nameOf f) f reference <$> reader f <*> own f
+      example f reference =
+        Example (nameOf f) f reference <$> reader f <*> own f
   case corpusReference corpus of
     NoReference -> traverse (`example` Nothing) files
     ReferenceMarked mark ->
@@ -1063,8 +1076,8 @@ examplesIn corpus root dirs = do
     extensionOf f =
       fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
 
--- | The modules the package around each of a corpus's examples declares,
--- read once for every package.
+-- | The modules the project around each of a corpus's examples declares,
+-- read once for every project.
 ownModulesReaderFor ::
   -- | The corpus.
   Corpus ->
@@ -1082,8 +1095,10 @@ ownModulesReaderFor corpus
               Nothing -> do
                 modules <-
                   either (fail . T.unpack . describeTargetProblem) pure
-                    =<< projectModules root
-                atomicModifyIORef' known ((,()) . Map.insert (prPath root) modules)
+                    =<< either (pure . Left) projectModules
+                    =<< packageFilesOf root
+                atomicModifyIORef' known $
+                  (,()) . Map.insert (prPath root) modules
                 pure modules
 
 -- | What each of a corpus's examples has in force before its own pragmas.

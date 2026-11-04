@@ -50,31 +50,37 @@ normalizeImports ::
   -- import of the project's own modules that follows one of another
   -- package's begins a run.
   [[LImportDecl GhcPs]]
-normalizeImports implicitPrelude ownModules barriers directives written imports =
-  foldr apart [] (concatMap stretch (cutAtBarriers barriers tidied))
-  where
-    tidied = fmap (fmap (tidyImportList directives written)) imports
-    identity = importIdentity implicitPrelude ownModules
-    ours = iiOwn . identity
-    stretch is =
-      foldRuns
-        (combineImports directives written)
-        [((identity i, hiddenNames i, alone i), i) | i <- is]
-    apart i = \case
-      run@(j : _) : rest
-        | ours j && not (ours i) -> [i] : run : rest
-      run : rest -> (i : run) : rest
-      [] -> [[i]]
-    alone i
-      | any strands (spanOf i) = lineOf i
-      | otherwise = 0
-      where
-        strands s =
-          any
-            (unanchored (itemStarts i))
-            (filter loose (commentsWithin s written))
-        loose = not . commentTrailing
-    unanchored starts c = not (any (> endPoint (commentSpan c)) starts)
+normalizeImports
+  implicitPrelude
+  ownModules
+  barriers
+  directives
+  written
+  imports =
+    foldr apart [] (concatMap stretch (cutAtBarriers barriers tidied))
+    where
+      tidied = fmap (fmap (tidyImportList directives written)) imports
+      identity = importIdentity implicitPrelude ownModules
+      ours = iiOwn . identity
+      stretch is =
+        foldRuns
+          (combineImports directives written)
+          [((identity i, hiddenNames i, alone i), i) | i <- is]
+      apart i = \case
+        run@(j : _) : rest
+          | ours j && not (ours i) -> [i] : run : rest
+        run : rest -> (i : run) : rest
+        [] -> [[i]]
+      alone i
+        | any strands (spanOf i) = lineOf i
+        | otherwise = 0
+        where
+          strands s =
+            any
+              (unanchored (itemStarts i))
+              (filter loose (commentsWithin s written))
+          loose = not . commentTrailing
+      unanchored starts c = not (any (> endPoint (commentSpan c)) starts)
 
 -- | The names an import hides, where it hides any, so that only imports
 -- hiding the same names are folded together.
