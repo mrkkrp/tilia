@@ -108,12 +108,14 @@ import Tilia.Parser
     ParsedModule,
     ParserConfig (..),
     describeParseError,
+    parseConfiguration,
     parseModule,
     pmGathered,
     pmModule,
   )
 import Tilia.Pragma (defaultsOf, effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
+import Tilia.Source (Written (..), linesOf)
 import Tilia.Utils (collected, spellList, tshow)
 
 -- | Why a file could not be formatted.
@@ -650,11 +652,13 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
       Just "a configuration now aborts preprocessing"
     compareBranch (Just b) (Just a) =
       ("in one configuration, " <>) <$> difference b a
-    difference b a = case (parseModule config path b, parseModule config path a) of
+    difference b a = case (configuration before b, configuration after a) of
       (Left e, _) -> unread e
       (_, Left e) ->
         Just ("the formatted output does not parse: " <> describeParseError e)
       (Right b', Right a') -> comparing b' a'
+    configuration whole =
+      parseConfiguration config path (linesOf (Written whole))
     unread e = case astCheck of
       EachCppConfiguration _ ->
         Just ("the input does not parse: " <> describeParseError e)

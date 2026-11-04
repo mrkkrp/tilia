@@ -17,6 +17,7 @@ import Data.ByteString qualified as BS
 import Data.Choice (pattern Is)
 import Data.Data
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
+import Data.IntMap.Strict qualified as IntMap
 import Data.List (sortOn, unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -64,7 +65,7 @@ import Tilia.Comments
     commentTrailing,
     triggerEscaped,
   )
-import Tilia.Imports (normalizeImports)
+import Tilia.Imports (normalizeImports, travellingComments)
 import Tilia.Parser (ParsedModule (..), writtenInHeader)
 import Tilia.Pragma (languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
@@ -505,7 +506,7 @@ commentDifference parsedBefore parsedAfter
           <> " documentation comments became "
           <> tshow docsAfter
   | otherwise =
-      diverge (belowHeader moduleBefore before) (belowHeader moduleAfter after)
+      diverge (belowHeader parsedBefore before) (belowHeader parsedAfter after)
         <|> diverge (settled headerCommentsBefore) (settled headerCommentsAfter)
         <|> diverge
           (exported moduleBefore headerCommentsBefore)
@@ -522,7 +523,7 @@ commentDifference parsedBefore parsedAfter
 
     belowHeader m cs = filter (not . inHeader m cs) (ordinary cs)
     withinHeader m cs =
-      filter (inHeader (pmModule m) cs) (ordinary cs)
+      filter (inHeader m cs) (ordinary cs)
         <> filter commented (takeWhile (pragmaWritten m . commentSpan) cs)
     pragmaWritten = writtenInHeader . pmHeaderEnd
     exported m =
@@ -635,13 +636,33 @@ bodyKey c = case commentBody c of
 
 -- | The last line the formatter may reorder: the end of the last import, or
 -- of the module header where there are no imports, and of the comments
--- under it that carry on a remark at its end and travel with it.
+-- under it that travel with it, either carrying on a remark at its end or
+-- written right under the last import with an empty line or nothing under
+-- them.
 --
 -- 'Nothing' where the module has neither header nor imports.
-lastRearrangedLine :: HsModule GhcPs -> [Comment] -> Maybe Int
-lastRearrangedLine m cs =
-  carriedPast . spanEndLine <$> (spansOf (hsmodImports m) <> header)
+lastRearrangedLine ::
+  -- | The module, whose comments as lexed tell which travel with its last
+  -- import.
+  ParsedModule ->
+  -- | Its comments as they are compared.
+  [Comment] ->
+  Maybe Int
+lastRearrangedLine parsed cs =
+  rearranged . spanEndLine <$> (spansOf (hsmodImports m) <> header)
   where
+    m = pmModule parsed
+    rearranged lastLine =
+      maximum (carriedPast lastLine : fmap (spanEndLine . commentSpan) under)
+    under = foldMap NE.toList $ do
+      (_, final) <- unsnoc (hsmodImports m)
+      s <- spanOf final
+      IntMap.lookup (spanStartLine s) travelling
+    travelling =
+      travellingComments
+        (sourceLines (pmSource parsed))
+        (comments (pmSource parsed))
+        m
     header =
       foldMap spanOf (hsmodName m)
         <> foldMap spanOf (hsmodDeprecMessage (hsmodExt m))
