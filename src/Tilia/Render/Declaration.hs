@@ -181,7 +181,7 @@ declRun holds apart ctx style ds =
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
-    declaration d = frangible (at ctx d (hsDecl ctx style))
+    declaration d = at ctx d (hsDecl ctx style)
     groups =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds

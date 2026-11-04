@@ -15,6 +15,8 @@ module Tilia.Render.Signature
 where
 
 import Data.Choice (Choice, isTrue, pattern Do, pattern Don't)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import GHC.Data.BooleanFormula hiding (isTrue)
 import GHC.Hs
@@ -37,7 +39,7 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span (startOf)
-import Tilia.Span.Ghc (spanOf, spansOf)
+import Tilia.Span.Ghc (spanOf)
 
 -- | A signature declaration.
 sigDecl :: Ctx -> Sig GhcPs -> Doc
@@ -91,7 +93,7 @@ typeSig ctx indentTail (n : ns) sigType
     ascription =
       layoutFrom
         ctx
-        (spansOf (n : ns) <> spanOf sigType)
+        (spanOf (NE.last (n :| ns)) <> spanOf sigType)
         (typeAscription ctx sigType)
 
 -- | @pattern P :: t@.

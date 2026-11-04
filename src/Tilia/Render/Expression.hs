@@ -62,7 +62,7 @@ hsExpr ctx = hsExprIn ctx plainSite
 
 -- | An expression that knows where it stands.
 hsExprIn :: Ctx -> Site -> LHsExpr GhcPs -> Doc
-hsExprIn ctx site l = frangible (at ctx l (exprBody ctx site (spanOf l)))
+hsExprIn ctx site l = at ctx l (exprBody ctx site (spanOf l))
 
 -- | Every shape an expression can take.
 exprBody :: Ctx -> Site -> Maybe Span -> HsExpr GhcPs -> Doc
@@ -90,7 +90,7 @@ exprBody ctx site here = \case
       <> includeWhen (startsWithSymbol e) space
       <> hsExpr ctx e
   HsPar _ e ->
-    frangible . layoutWithin ctx here (spanOf e) $
+    layoutWithin ctx here (spanOf e) $
       parensWith (closingFor site) (insideBrackets here (apart (hsExpr ctx e)))
     where
       apart d = case unLoc e of
@@ -154,7 +154,7 @@ exprBody ctx site here = \case
       HsRecFields{..} = rcon_flds
       fields =
         fmap
-          (frangible . at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel))))
+          (at_ ctx (fieldBind ctx (at_ ctx (name ctx . foLabel))))
           rec_flds
       wildcard = case rec_dotdot of
         Just l -> [at ctx l (const (txt ".."))]
@@ -166,13 +166,13 @@ exprBody ctx site here = \case
         RegularRecUpdFields{..} ->
           commaSep
             ( fmap
-                (align . frangible . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx))))
+                (align . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx))))
                 recUpdFields
             )
         OverloadedRecUpdFields{..} ->
           commaSep
             ( fmap
-                (align . frangible . at_ ctx (fieldBind ctx (at_ ctx labelChain)))
+                (align . at_ ctx (fieldBind ctx (at_ ctx labelChain)))
                 olRecUpdFields
             )
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
@@ -272,7 +272,7 @@ application ctx site f x =
       mayBraceWhenFlat (siteBracing site) headAndInit
         <> indent (breakOrSpace <> lastArgDoc)
     Hanging ->
-      layoutFrom ctx initSpan (headAndInit MayBrace)
+      infrangible (layoutFrom ctx initSpan (headAndInit MayBrace))
         <> attach Hanging lastArgDoc
   where
     (func, args) = gatherArgs f (x :| [])
@@ -512,12 +512,10 @@ stmtBody ctx site mkBody = \case
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
       <> nest 1 (space <> keywordAt ctx (spanOf arrow) (reserved ctx "<-"))
-      <> frangible
-        ( layoutFrom
-            ctx
-            (fmap endOf (spanOf p) <> spanOf f)
-            (attach placement (printBody bound))
-        )
+      <> layoutFrom
+        ctx
+        (fmap endOf (spanOf p) <> spanOf f)
+        (attach placement (printBody bound))
     where
       bound = bodyIn mkBody (siteBracing site) f
       placement
@@ -592,7 +590,7 @@ stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
           ]
     item position stmt =
       blockItem position (siteBracing site) $ \bracing ->
-        frangible (at ctx stmt (stmtBody ctx (blockSite bracing) mkBody))
+        at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
@@ -604,7 +602,7 @@ comprehension ctx site here es = align (variant onOneLine acrossLines)
     onOneLine = txt "[" <> body <> txt "]"
     acrossLines = txt "[" <> space <> keepInside (body <> hardBreak <> txt "]")
     keepInside = if siteInBlock site then align else id
-    body = insideBrackets here (frangible (at ctx es sections))
+    body = insideBrackets here (at ctx es sections)
     sections xs = case unsnoc xs of
       Nothing -> error "Tilia: a comprehension always yields something"
       Just (stmts, yield) ->
@@ -752,8 +750,7 @@ localBinds ctx bracing = \case
       sorted = inSourceOrder [fmap (fmap Left) binds, fmap (fmap Right) sigs]
       rendered position item =
         blockItem position NoBrace $ \b ->
-          entered item (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx))
-      entered item = frangible . at ctx item
+          at ctx item (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx))
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
     anchored ann . items bracing $
@@ -769,7 +766,7 @@ localBinds ctx bracing = \case
     anchored ann d = case ann of
       EpAnn{anns = AnnList{al_anchor}}
         | not (isZeroWidthSpan (locA al_anchor)) ->
-            frangible (atSpan ctx (spanOfSrcSpan (locA al_anchor)) d)
+            atSpan ctx (spanOfSrcSpan (locA al_anchor)) d
       _ -> d
 
 -- | Where a @do@ or @mdo@ was written.
@@ -954,7 +951,7 @@ matchGroup ctx bracing mkBody style MG{..}
   where
     blockBracing = if isCaseStyle style then bracing else NoBrace
     rendered (position, m) =
-      blockItem position bracing (\b -> frangible (at ctx m (renderMatch b)))
+      blockItem position bracing (\b -> at ctx m (renderMatch b))
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1004,7 +1001,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
   where
     bodyNest = if indentBody then 1 else 0
     rightHandSide =
-      separator <> frangible (layoutFrom ctx bodySpan (attach placement body))
+      separator <> layoutFrom ctx bodySpan (attach placement body)
 
     multAnnGap = case multAnn of
       HsUnannotated{} -> mempty
@@ -1025,7 +1022,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
       [] -> case style of
         FunctionStyle n -> name ctx n
         _ -> mempty
-      (headPat : tailPats) -> layoutFrom ctx headSpan $ case style of
+      (headPat : tailPats) -> infrangible . layoutFrom ctx headSpan $ case style of
         FunctionStyle n ->
           defHead (fromBool isInfix) (fromBool indentBody) (name ctx n) rendered
         PatternBindStyle -> sepBy breakOrSpace rendered
@@ -1146,10 +1143,10 @@ guardedRhs ::
   LGRHS GhcPs (LocatedA body) ->
   Doc
 guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guards of
-  [] -> frangible (atSpan ctx (grhsSpan grhs) (printBody bound))
+  [] -> atSpan ctx (grhsSpan grhs) (printBody bound)
   _ ->
-    maybe id located (spanOf lgrhs) . frangible . layoutFrom ctx (grhsSpan grhs) $
-      fence headSpan guardHead
+    maybe id located (spanOf lgrhs) . layoutFrom ctx (grhsSpan grhs) $
+      fence headSpan (heldBesideTheHead guardHead)
         <> fence
           (fmap endOf separatorSpan <> spanOf body)
           ( nest
@@ -1164,6 +1161,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         <> align (commaSep (fmap (align . hsStmt ctx) guards))
         <> space
         <> indent (txt (reserved ctx separator))
+    heldBesideTheHead = if parentPlacement == Normal then id else infrangible
     headSpan = (<>) <$> (spanOf =<< ga_vbar) <*> separatorSpan
     bound = bodyIn mkBody bracing body
     separator = case style of

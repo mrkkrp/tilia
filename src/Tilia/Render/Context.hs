@@ -334,7 +334,7 @@ at ctx l f = atSpan ctx (spanOf l) (f (GHC.unLoc l))
 at_ :: (HasLoc l) => Ctx -> (a -> Doc) -> GenLocated l a -> Doc
 at_ ctx f l = at ctx l f
 
--- | Lay a region out as it was written, and claim it.
+-- | Lay a region out as 'layoutFrom' does, and claim it.
 --
 -- Claiming is the difference between this and 'layoutFrom': a comment
 -- written anywhere inside the region attaches to this document. So it is
@@ -349,14 +349,14 @@ atSpan ctx (Just s) d = located s (layoutFrom ctx (Just s) d)
 keywordAt :: Ctx -> Maybe Span -> Text -> Doc
 keywordAt ctx s = atSpan ctx s . txt
 
--- | Lay a region out as it was written, and claim nothing.
+-- | Lay a region out broken where it was written over several lines, and
+-- otherwise flat where it fits within the column limit, claiming nothing.
 --
--- The region decides one thing—whether what is printed here goes on one
--- line or several. The lines of a quasi-quotation count as one, since they
--- are reproduced rather than laid out.
+-- The lines of a quasi-quotation count as one, since they are reproduced
+-- rather than laid out.
 layoutFrom :: Ctx -> Maybe Span -> Doc -> Doc
 layoutFrom ctx s
-  | maybe True (writtenOnOneLine ctx) s = flat
+  | maybe True (writtenOnOneLine ctx) s = frangible
   | otherwise = broken
 
 -- | Lay a construct out from the region its contents occupy rather than the

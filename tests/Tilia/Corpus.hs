@@ -425,6 +425,7 @@ ormoluSkip =
     <> ormoluCommentsUnderTheLastDeclaration
     <> ormoluOneLineRuns
     <> ormoluLongLines
+    <> ormoluSignatureNamesApart
 
 -- | Ormolu examples with a space between a record and its braces.
 ormoluRecordBraces :: [FilePath]
@@ -498,7 +499,17 @@ ormoluLongLines =
   [ "declaration" </> "value" </> "function" </> "do-single-line-case-guards.hs",
     "declaration" </> "value" </> "function" </> "do-single-line-multiple-cases.hs",
     "declaration" </> "value" </> "function" </> "do-single-line-nested-case.hs",
-    "declaration" </> "value" </> "function" </> "do-single-line-with-case.hs"
+    "declaration" </> "value" </> "function" </> "do-single-line-with-case.hs",
+    "declaration" </> "value" </> "function" </> "infix" </> "lenses.hs",
+    "declaration" </> "rewrite-rule" </> "prelude4.hs",
+    "declaration" </> "rewrite-rule" </> "type-signature.hs"
+  ]
+
+-- | Ormolu examples with a signature whose names are written on lines of
+-- their own, the type of which we break only where it does not fit.
+ormoluSignatureNamesApart :: [FilePath]
+ormoluSignatureNamesApart =
+  [ "declaration" </> "signature" </> "type" </> "multi-value.hs"
   ]
 
 -- | Ormolu examples GHC's own parser cannot read.
