@@ -32,7 +32,8 @@ spec = do
         `shouldBe` [Removed, Added, Added, Added, Context, Removed]
 
     it "keeps everything when nothing changed" $
-      editScript ["a", "b", "c"] ["a", "b", "c"] `shouldBe` [Context, Context, Context]
+      editScript ["a", "b", "c"] ["a", "b", "c"]
+        `shouldBe` [Context, Context, Context]
 
     it "takes everything out and puts everything in when nothing is shared" $
       editScript ["a", "b"] ["c"] `shouldBe` [Removed, Removed, Added]

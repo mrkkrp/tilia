@@ -162,7 +162,8 @@ spec = do
       shapeOf Before (firstComment "foo = 1 -- note\n") `shouldBe` EndsTheLine
 
     it "takes lines of its own before a region otherwise" $
-      shapeOf Before (firstComment "-- note\nfoo = 1\n") `shouldBe` OnItsOwnLines
+      shapeOf Before (firstComment "-- note\nfoo = 1\n")
+        `shouldBe` OnItsOwnLines
 
     it "sits in the line after a region when it closes itself" $
       shapeOf (After SpillAtIndentation) (firstComment "foo = 1 {- note -}\n")

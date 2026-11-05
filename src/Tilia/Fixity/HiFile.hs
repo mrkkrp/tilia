@@ -240,7 +240,9 @@ keyedNames = \case
   where
     keyed entries =
       Map.fromList
-        [ ( 0x80000000 .|. (fromIntegral (ord tag) `shiftL` 22) .|. fromIntegral index,
+        [ ( 0x80000000
+              .|. (fromIntegral (ord tag) `shiftL` 22)
+              .|. fromIntegral index,
             maybe
               (BuiltInSyntax namespace)
               (`HiName` namespace)
@@ -375,7 +377,11 @@ word32be = do
   c <- byte
   d <- byte
   pure
-    (fromIntegral a `shiftL` 24 .|. fromIntegral b `shiftL` 16 .|. fromIntegral c `shiftL` 8 .|. fromIntegral d)
+    ( fromIntegral a `shiftL` 24
+        .|. fromIntegral b `shiftL` 16
+        .|. fromIntegral c `shiftL` 8
+        .|. fromIntegral d
+    )
 
 -- | An unsigned LEB128 number.
 uleb :: Get Int

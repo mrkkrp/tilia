@@ -81,7 +81,9 @@ exprBody ctx site here = \case
         ( atSpan
             ctx
             (spanOf at' <> spanOf (hswc_body a))
-            (txt "@" <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a)))
+            ( txt "@"
+                <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a))
+            )
         )
   OpApp _ x op y -> exprChain ctx site x op y
   NegApp _ e _ ->
@@ -160,7 +162,9 @@ exprBody ctx site here = \case
         Just l -> [at ctx l (const (txt ".."))]
         Nothing -> []
   RecordUpd{..} ->
-    hsExpr ctx rupd_expr <> breakOrNothing <> indent (braces (insideBrackets here updates))
+    hsExpr ctx rupd_expr
+      <> breakOrNothing
+      <> indent (braces (insideBrackets here updates))
     where
       updates = case rupd_flds of
         RegularRecUpdFields{..} ->
@@ -1033,7 +1037,9 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
           hsPat ctx headPat
             <> includeUnless
               (null tailPats)
-              (breakOrSpace <> indent (sepBy breakOrSpace (fmap (hsPat ctx) tailPats)))
+              ( breakOrSpace
+                  <> indent (sepBy breakOrSpace (fmap (hsPat ctx) tailPats))
+              )
       where
         rendered = fmap (hsPat ctx) pats
 
@@ -1062,7 +1068,8 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
 
     placement = case endOfPats of
       Just spn
-        | any (longGuard . unLoc) grhssGRHSs || not (sameLine (Just spn) rhsSpan) ->
+        | any (longGuard . unLoc) grhssGRHSs
+            || not (sameLine (Just spn) rhsSpan) ->
             Normal
       _ -> blockPlacement (bodyIn mkBody bracing) grhssGRHSs
     longGuard grhs = case guardsOf grhs of

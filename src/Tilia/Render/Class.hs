@@ -260,7 +260,8 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
           Nothing -> space <> txt ".."
           Just given ->
             includeUnless (null given) $
-              hardBreak <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
+              hardBreak
+                <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
 
 -- | What the head of a family says of its result, a kind or a variable
 -- naming it, if anything.

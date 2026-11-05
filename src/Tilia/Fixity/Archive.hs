@@ -50,7 +50,8 @@ instance NFData Archive
 readArchive :: FilePath -> IO (Maybe Archive)
 readArchive tarball = quietly Nothing $ do
   bytes <- BL.readFile tarball
-  Just <$> evaluate (force (sweep Nothing [] (Tar.read (GZip.decompress bytes))))
+  Just
+    <$> evaluate (force (sweep Nothing [] (Tar.read (GZip.decompress bytes))))
   where
     sweep cabal found = \case
       Tar.Next entry rest

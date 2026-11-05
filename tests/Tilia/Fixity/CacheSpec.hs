@@ -63,7 +63,8 @@ spec = do
                   ((InTerms, OpName "==="), Fixity NoAssoc 4)
                 ]
         storeEstablished cache "thing-1.0" "A.B" established
-        cachedEstablished cache "thing-1.0" "A.B" `shouldReturn` Just established
+        cachedEstablished cache "thing-1.0" "A.B"
+          `shouldReturn` Just established
 
       it "round-trips the extremes of precedence" $ \cache -> do
         let established =
@@ -73,7 +74,8 @@ spec = do
                   ((InTerms, OpName "->"), Fixity RightAssoc (-1))
                 ]
         storeEstablished cache "thing-1.0" "Edges" established
-        cachedEstablished cache "thing-1.0" "Edges" `shouldReturn` Just established
+        cachedEstablished cache "thing-1.0" "Edges"
+          `shouldReturn` Just established
 
       it "round-trips a name that is not ASCII under any locale" $ \cache -> do
         let established =
@@ -89,7 +91,8 @@ spec = do
 
       it "remembers that a module could not be read" $ \cache -> do
         storeEstablished cache "thing-1.0" "Opaque" unreadable
-        cachedEstablished cache "thing-1.0" "Opaque" `shouldReturn` Just unreadable
+        cachedEstablished cache "thing-1.0" "Opaque"
+          `shouldReturn` Just unreadable
 
       it "remembers the way down to where reading gave up" $ \cache -> do
         storeEstablished
@@ -105,7 +108,8 @@ spec = do
         storeEstablished cache "thing-1.0" "Itself" unreadable
         blamed <- cachedEstablished cache "thing-1.0" "Blamed"
         itself <- cachedEstablished cache "thing-1.0" "Itself"
-        (blamed, itself) `shouldBe` (Just (stoppedAt ["Deep.Down"]), Just unreadable)
+        (blamed, itself)
+          `shouldBe` (Just (stoppedAt ["Deep.Down"]), Just unreadable)
 
       it "round-trips the names it leaves unsettled, by namespace and way down" $ \cache -> do
         let established =
@@ -295,7 +299,8 @@ spec = do
         storeSummaries cache "m" "before" (Just (crowded :| []))
         storeSummaries cache "m" "after" (Just (bare :| []))
         cachedSummaries cache "m" "before" `shouldReturn` Nothing
-        cachedSummaries cache "m" "after" `shouldReturn` Just (Just (bare :| []))
+        cachedSummaries cache "m" "after"
+          `shouldReturn` Just (Just (bare :| []))
 
       it "keeps modules apart" $ \cache -> do
         storeSummaries cache "m" "stamp" (Just (crowded :| []))

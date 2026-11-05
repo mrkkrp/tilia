@@ -140,7 +140,8 @@ withPlan plan = do
 
     it "finds the operators that are in it" $ do
       answers <- traverse (fromSource . fst) modules
-      sum [Map.size fixities | Just fixities <- answers] `shouldSatisfy` (>= 300)
+      sum [Map.size fixities | Just fixities <- answers]
+        `shouldSatisfy` (>= 300)
 
   describe "this project's own modules" $ do
     it "parses every one of them" $
@@ -316,6 +317,11 @@ unsettledIn ::
 unsettledIn resolver (path, hsModule) = do
   scope <- scopeFor resolver (Just path) (Is #implicitPrelude) (pure hsModule)
   pure
-    [ path <> ": " <> T.unpack (operatorSpelling qualifier op) <> " " <> show why
-    | ((qualifier, op), why) <- unknownOperators scope (pure (gathered hsModule))
+    [ path
+        <> ": "
+        <> T.unpack (operatorSpelling qualifier op)
+        <> " "
+        <> show why
+    | ((qualifier, op), why) <-
+        unknownOperators scope (pure (gathered hsModule))
     ]

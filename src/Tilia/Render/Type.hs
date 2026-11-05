@@ -123,7 +123,10 @@ typeBody ctx documented here = \case
       (parens (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
     align
-      (at ctx n outputable <> joinedBy (reserved ctx "::") <> indent (hsType ctx t))
+      ( at ctx n outputable
+          <> joinedBy (reserved ctx "::")
+          <> indent (hsType ctx t)
+      )
   HsStarTy _ _ -> txt (reserved ctx "*")
   HsKindSig _ t k ->
     align
@@ -385,7 +388,9 @@ forallBndrs ctx visibility render bndrs =
     txt (reserved ctx "forall")
       <> breakOrSpace
       <> indent
-        (align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs)) <> close)
+        ( align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs))
+            <> close
+        )
   where
     close = case visibility of
       Invisible -> txt "."

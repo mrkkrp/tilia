@@ -247,7 +247,8 @@ subjectOf package ownModules isChecked name source =
           . formatExample (Don't #check) package ownModules path,
       subjectCheck =
         if isChecked
-          then Just (fst . rewritten parser EachCppBranch cpp path (source, tree))
+          then
+            Just (fst . rewritten parser EachCppBranch cpp path (source, tree))
           else Nothing
     }
   where

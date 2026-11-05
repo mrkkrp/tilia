@@ -138,7 +138,13 @@ writeManifest path manifest = do
         <> T.justifyLeft 14 ' ' (entryDigest entry)
         <> T.pack name
     width =
-      2 + maximum (1 : fmap (T.length . outcomeName . entryOutcome) (Map.elems manifest))
+      2
+        + maximum
+          ( 1
+              : fmap
+                (T.length . outcomeName . entryOutcome)
+                (Map.elems manifest)
+          )
 
 -- | The reasons a report gives, by example: the outcome it is filed under,
 -- and the lines that say why.
@@ -180,7 +186,12 @@ writeReport path entries = do
   where
     interesting = [e | e@(_, outcome, _) <- entries, outcome /= Formatted]
     grouped =
-      [ (outcome, [(name, why) | (name, o, why) <- sortOn first interesting, o == outcome])
+      [ ( outcome,
+          [ (name, why)
+          | (name, o, why) <- sortOn first interesting,
+            o == outcome
+          ]
+        )
       | outcome <- sections
       ]
     first (name, _, _) = name

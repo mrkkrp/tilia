@@ -43,11 +43,13 @@ spec = do
     it "keeps branch identity when sorting the source text would swap it" $ do
       let input = "module M where\n#if FLAG\nf=1\n#else\nf = 2\n#endif\n"
           output = "module M where\n#if FLAG\nf = 1\n#else\nf = 2\n#endif\n"
-      (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldBe` Right ()
+      (said (correspondingBranches input output) >>= mapM_ sameBranch)
+        `shouldBe` Right ()
     it "detects moving an error to a different branch" $ do
       let input = "module M where\n#if FLAG\n#error no\n#else\nf = 1\n#endif\n"
           output = "module M where\n#if FLAG\nf = 1\n#else\n#error no\n#endif\n"
-      (said (correspondingBranches input output) >>= mapM_ sameBranch) `shouldSatisfy` isLeft
+      (said (correspondingBranches input output) >>= mapM_ sameBranch)
+        `shouldSatisfy` isLeft
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       cfgGuards <$> configurations atDeclarations
@@ -163,10 +165,12 @@ spec = do
       implied [([Guard "ifdef X"], 1), ([Guard "if X"], 0)] `shouldBe` Nothing
 
     it "allows an #if X failing where #ifdef X holds, as X defined as 0" $
-      implied [([Guard "ifdef X"], 0), ([Guard "if X"], 1)] `shouldSatisfy` isJust
+      implied [([Guard "ifdef X"], 0), ([Guard "if X"], 1)]
+        `shouldSatisfy` isJust
 
     it "rules out #ifdef X and #ifndef X both holding" $
-      implied [([Guard "ifdef X"], 0), ([Guard "ifndef X"], 0)] `shouldBe` Nothing
+      implied [([Guard "ifdef X"], 0), ([Guard "ifndef X"], 0)]
+        `shouldBe` Nothing
 
     it "takes an #if 0 to ask something, as code is put aside with it" $
       implied [([Guard "if 0"], 0)] `shouldSatisfy` isJust
@@ -219,10 +223,12 @@ spec = do
 
   describe "covering every branch" $ do
     it "gives a module with no conditionals one configuration, its own" $
-      said (length <$> branchLeaves "module M where\nx = 1\n") `shouldBe` Right 1
+      said (length <$> branchLeaves "module M where\nx = 1\n")
+        `shouldBe` Right 1
 
     it "gives one per branch of a conditional" $ do
-      said (length <$> branchLeaves "module M where\n#if A\nx = 1\n#endif\n") `shouldBe` Right 2
+      said (length <$> branchLeaves "module M where\n#if A\nx = 1\n#endif\n")
+        `shouldBe` Right 2
       said (length <$> branchLeaves "module M where\n#if A\nx = 1\n#else\nx = 2\n#endif\n")
         `shouldBe` Right 2
 
@@ -269,10 +275,12 @@ spec = do
 
   describe "directives it cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
-      formatCpp unbalanced `shouldBe` Left "the #ifdef at line 3 is never closed"
+      formatCpp unbalanced
+        `shouldBe` Left "the #ifdef at line 3 is never closed"
 
     it "refuses an #endif with no conditional to close" $
-      formatCpp strayEndif `shouldBe` Left "the #endif at line 4 has no conditional to belong to"
+      formatCpp strayEndif
+        `shouldBe` Left "the #endif at line 4 has no conditional to belong to"
 
     it "refuses an #else that comes before an #elif" $
       formatCpp elseBeforeElif

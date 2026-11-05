@@ -191,7 +191,8 @@ spec = do
         `shouldBe` [(OpName "A", [OpName "B"]), (OpName "C", [OpName "D"])]
 
     it "has nothing to say about a name without members" $
-      members "exports:\n  decode'\n  Data.Aeson.Types.FromJSON..:\n" `shouldBe` []
+      members "exports:\n  decode'\n  Data.Aeson.Types.FromJSON..:\n"
+        `shouldBe` []
 
   describe "what a decoded interface brings in" $ do
     it "is every name it exports, by namespace, and the members of each type" $
@@ -293,7 +294,8 @@ spec = do
         `shouldBe` Nothing
 
     it "reads one that names the module asked for" $
-      declares "exports:\n  !\nfixities infixl 9 !\n" `shouldBe` [(OpName "!", Fixity LeftAssoc 9)]
+      declares "exports:\n  !\nfixities infixl 9 !\n"
+        `shouldBe` [(OpName "!", Fixity LeftAssoc 9)]
 
 header :: Text -> Text
 header modName = "interface " <> modName <> " 9103\n"
@@ -309,7 +311,9 @@ declares =
 -- | The same, keeping the namespace each governs.
 declaresIn :: Text -> [((Namespace, OpName), Fixity)]
 declaresIn =
-  maybe [] (Map.toList . interfaceDeclares) . parseInterface "M" . (header "M" <>)
+  maybe [] (Map.toList . interfaceDeclares)
+    . parseInterface "M"
+    . (header "M" <>)
 
 -- | What a module of this shape passes on, namespace aside.
 passesOn :: Text -> [(Text, OpName)]

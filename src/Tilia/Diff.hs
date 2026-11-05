@@ -188,7 +188,9 @@ removalsFirst = \case
   Context : rest -> Context : removalsFirst rest
   marks ->
     let (changes, rest) = break (== Context) marks
-     in filter (== Removed) changes <> filter (== Added) changes <> removalsFirst rest
+     in filter (== Removed) changes
+          <> filter (== Added) changes
+          <> removalsFirst rest
 
 -- | Both sequences of lines as numbers, equal where the lines are.
 interned :: [Text] -> [Text] -> (UArray Int Int, UArray Int Int)

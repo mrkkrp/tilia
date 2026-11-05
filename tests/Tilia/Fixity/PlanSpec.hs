@@ -199,7 +199,8 @@ preparation = describe "preparing a project" $ do
             when (args == solving) (writePlan dir wantingATarball)
             pure (Right ())
       checkReadiness [] dir `shouldReturn` PlanMissing
-      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Right ()
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing
+        `shouldReturn` Right ()
       readIORef steps
         `shouldReturn` [solving, fetching]
 
@@ -208,7 +209,8 @@ preparation = describe "preparing a project" $ do
       steps <- newIORef []
       readiness <- checkReadiness [] dir
       readiness `shouldBe` SourcesMissing ["tilia-phantom"]
-      prepareWith (obliging steps) undiscoveredFutility [] dir readiness `shouldReturn` Right ()
+      prepareWith (obliging steps) undiscoveredFutility [] dir readiness
+        `shouldReturn` Right ()
       readIORef steps `shouldReturn` [fetching]
 
   it "fetches nothing when told not to download" $
@@ -265,14 +267,16 @@ preparation = describe "preparing a project" $ do
 
   it "runs nothing at all when nothing is missing" $ do
     steps <- newIORef []
-    prepareWith (obliging steps) undiscoveredFutility [] "." Ready `shouldReturn` Right ()
+    prepareWith (obliging steps) undiscoveredFutility [] "." Ready
+      `shouldReturn` Right ()
     readIORef steps `shouldReturn` []
 
   it "does not go on to fetch when the solve fails" $
     withTempProject Nothing $ \dir -> do
       steps <- newIORef []
       let cabal args = Left (Unsolvable "cabal said no") <$ record steps args
-      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Left "cabal said no"
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing
+        `shouldReturn` Left "cabal said no"
       readIORef steps `shouldReturn` [solving, narrowSolve]
 
   it "asks about less only where the whole project will not solve" $
@@ -303,7 +307,8 @@ preparation = describe "preparing a project" $ do
             pure (Right ())
       _ <- prepareWith cabal undiscoveredFutility [] dir PlanMissing
       asked <- readIORef steps
-      asked `shouldSatisfy` all (\args -> wholeProject `Data.List.isSuffixOf` args)
+      asked
+        `shouldSatisfy` all (\args -> wholeProject `Data.List.isSuffixOf` args)
 
   it "settles for what will solve when the whole project will not" $
     withTempProject Nothing $ \dir -> do
@@ -315,7 +320,8 @@ preparation = describe "preparing a project" $ do
               else do
                 when (args == narrowSolve) (writePlan dir wantingATarball)
                 pure (Right ())
-      prepareWith cabal undiscoveredFutility [] dir PlanMissing `shouldReturn` Right ()
+      prepareWith cabal undiscoveredFutility [] dir PlanMissing
+        `shouldReturn` Right ()
       readIORef steps
         `shouldReturn` [solving, narrowSolve, fetching, narrowFetch]
 
@@ -538,7 +544,8 @@ reexports = describe "an operator a module passes on" $ do
   it "is not the module's own for a constructor its type is handed on without" $ do
     answer <-
       chasedModule "module M (T) where\ndata T = Int :+ Int\ninfixl 6 :+\n"
-    Map.lookup (InTerms, OpName ":+") (establishedFixities answer) `shouldBe` Nothing
+    Map.lookup (InTerms, OpName ":+") (establishedFixities answer)
+      `shouldBe` Nothing
 
   it "is not answered at all when the module it came from cannot be read" $
     chased "module M ((<+>)) where\nimport No.Such.Module\n"
@@ -580,16 +587,19 @@ reexports = describe "an operator a module passes on" $ do
     answer <-
       chasedModule
         "module M ((<+>), (<?>)) where\nimport No.Such.Module ((<?>))\nimport Text.PrettyPrint\n"
-    unsettledThrough answer (InTerms, OpName "<?>") `shouldBe` [["No.Such.Module"]]
+    unsettledThrough answer (InTerms, OpName "<?>")
+      `shouldBe` [["No.Such.Module"]]
     unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` []
 
   it "leaves the members of a type from an unread module unsettled, but not what it hands on besides" $ do
     answer <-
       chasedModule
         "module M (T (..), (<+>)) where\nimport No.Such.Module\nimport Text.PrettyPrint\n"
-    unsettledThrough answer (InTerms, OpName "anything") `shouldBe` [["No.Such.Module"]]
+    unsettledThrough answer (InTerms, OpName "anything")
+      `shouldBe` [["No.Such.Module"]]
     unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` []
-    Map.lookup (InTerms, OpName "<+>") (establishedFixities answer) `shouldBe` Just (Fixity LeftAssoc 6)
+    Map.lookup (InTerms, OpName "<+>") (establishedFixities answer)
+      `shouldBe` Just (Fixity LeftAssoc 6)
 
   it "comes from a type handed on whole, of which it is a member" $
     chased "module M (Doc (..)) where\nimport Text.PrettyPrint\n"
@@ -744,7 +754,8 @@ packageCache = describe "where the package cache is looked for" $ do
     it "is not asked again where the plan's tarballs are there" $
       withRemembered True $ \root asked found -> do
         asked `shouldBe` []
-        found `shouldBe` [root </> "hackage.haskell.org/thing/1.0/thing-1.0.tar.gz"]
+        found
+          `shouldBe` [root </> "hackage.haskell.org/thing/1.0/thing-1.0.tar.gz"]
 
     it "is not asked again where a tarball of the plan is not there" $
       withRemembered False $ \_ asked _ ->
@@ -1477,7 +1488,9 @@ withPlan plan = do
               ppName p == "tilia",
               let s' = ppSource p
             ]
-      locals `shouldSatisfy` all (\s' -> case s' of LocalPackage path -> not (null path); _ -> False)
+      locals
+        `shouldSatisfy` all
+          (\s' -> case s' of LocalPackage path -> not (null path); _ -> False)
 
     it "puts every package in exactly one of the three kinds" $ do
       let kinds p =
@@ -1489,7 +1502,8 @@ withPlan plan = do
   describe "resolving a module that declares its own operators" $ do
     it "finds <+> in prettyprinter, with the right fixity" $
       needs resolve "Prettyprinter.Internal" $ \fixities ->
-        Map.lookup (InTerms, OpName "<+>") fixities `shouldBe` Just (Fixity RightAssoc 6)
+        Map.lookup (InTerms, OpName "<+>") fixities
+          `shouldBe` Just (Fixity RightAssoc 6)
 
     it "resolves the same module twice to the same answer" $
       needs resolve "Prettyprinter.Internal" $ \first' -> do
@@ -1499,14 +1513,18 @@ withPlan plan = do
   describe "re-exports" $
     it "finds an operator a module exports but does not declare" $
       needs resolve "Prettyprinter" $ \fixities ->
-        Map.lookup (InTerms, OpName "<+>") fixities `shouldBe` Just (Fixity RightAssoc 6)
+        Map.lookup (InTerms, OpName "<+>") fixities
+          `shouldBe` Just (Fixity RightAssoc 6)
 
   describe "boot packages" $ do
     it "answers for Prelude from its interface" $
       needs resolve "Prelude" $ \fixities -> do
-        Map.lookup (InTerms, OpName "$") fixities `shouldBe` Just (Fixity RightAssoc 0)
-        Map.lookup (InTerms, OpName ">>=") fixities `shouldBe` Just (Fixity LeftAssoc 1)
-        Map.lookup (InTerms, OpName ".") fixities `shouldBe` Just (Fixity RightAssoc 9)
+        Map.lookup (InTerms, OpName "$") fixities
+          `shouldBe` Just (Fixity RightAssoc 0)
+        Map.lookup (InTerms, OpName ">>=") fixities
+          `shouldBe` Just (Fixity LeftAssoc 1)
+        Map.lookup (InTerms, OpName ".") fixities
+          `shouldBe` Just (Fixity RightAssoc 9)
 
     it "answers for the primitive operations, which have no interface" $
       needs resolve "GHC.Exts" $ \fixities -> do
@@ -1520,7 +1538,8 @@ withPlan plan = do
 
     it "answers for Control.Applicative" $
       needs resolve "Control.Applicative" $ \fixities ->
-        Map.lookup (InTerms, OpName "<|>") fixities `shouldBe` Just (Fixity LeftAssoc 3)
+        Map.lookup (InTerms, OpName "<|>") fixities
+          `shouldBe` Just (Fixity LeftAssoc 3)
 
     it "covers the containers and text modules a project actually imports" $ do
       let expected =
@@ -1592,13 +1611,17 @@ withPlan plan = do
   describe "modules whose source defeats us" $ do
     it "answers for Test.QuickCheck.Property, which cannot be parsed" $
       needs resolve "Test.QuickCheck.Property" $ \fixities -> do
-        Map.lookup (InTerms, OpName "===") fixities `shouldBe` Just (Fixity NoAssoc 4)
-        Map.lookup (InTerms, OpName ".&&.") fixities `shouldBe` Just (Fixity RightAssoc 1)
-        Map.lookup (InTerms, OpName "==>") fixities `shouldBe` Just (Fixity RightAssoc 0)
+        Map.lookup (InTerms, OpName "===") fixities
+          `shouldBe` Just (Fixity NoAssoc 4)
+        Map.lookup (InTerms, OpName ".&&.") fixities
+          `shouldBe` Just (Fixity RightAssoc 1)
+        Map.lookup (InTerms, OpName "==>") fixities
+          `shouldBe` Just (Fixity RightAssoc 0)
 
     it "carries that through the re-export chain to Test.QuickCheck" $
       needs resolve "Test.QuickCheck" $ \fixities ->
-        Map.lookup (InTerms, OpName "===") fixities `shouldBe` Just (Fixity NoAssoc 4)
+        Map.lookup (InTerms, OpName "===") fixities
+          `shouldBe` Just (Fixity NoAssoc 4)
 
   describe "a module with more than one configuration" $ do
     -- Built in a temporary directory with a build plan written by hand, so
@@ -1743,7 +1766,8 @@ withPlan plan = do
   describe "what a package module brings in" $
     it "names what it hands on" $ do
       answer <- askModule resolver Nothing "Prettyprinter"
-      certainNames (establishedCertain answer) `shouldSatisfy` Set.member (InTerms, OpName "<+>")
+      certainNames (establishedCertain answer)
+        `shouldSatisfy` Set.member (InTerms, OpName "<+>")
 
   describe "the members of each of a module's names" $ do
     it "reads them out of a package's interface" $ do
@@ -1822,7 +1846,8 @@ withPlan plan = do
         [("src/Members.hs", "module Members (T (A)) where\ndata T = A | Int :| Int\n")]
       $ \rs -> do
         members <- membersIn rs "Members"
-        Map.lookup (OpName "T") members `shouldBe` Just (Set.singleton (OpName "A"))
+        Map.lookup (OpName "T") members
+          `shouldBe` Just (Set.singleton (OpName "A"))
 
   describe "what a module leaves unsettled" $ do
     it "is what it hands on from where reading gave up" $
@@ -1864,8 +1889,10 @@ withPlan plan = do
         [("src/Facade.hs", "module Facade (T (..)) where\nimport No.Such.Module\n")]
       $ \rs -> do
         answer <- askModule rs Nothing "Facade"
-        unsettledThrough answer (InTypes, OpName "T") `shouldBe` [["No.Such.Module"]]
-        unsettledThrough answer (InTerms, OpName ":|") `shouldBe` [["No.Such.Module"]]
+        unsettledThrough answer (InTypes, OpName "T")
+          `shouldBe` [["No.Such.Module"]]
+        unsettledThrough answer (InTerms, OpName ":|")
+          `shouldBe` [["No.Such.Module"]]
 
     it "comes back from two modules that hand each other on"
       $ withFakeProject
@@ -2076,7 +2103,8 @@ withPlan plan = do
           ("src/Outer.hs", "module Outer (module Inner) where\nimport Inner (f)\n")
         ]
       $ \rs ->
-        certainNamesOf rs "Outer" `shouldReturn` (Set.fromList [(InTerms, OpName "f")])
+        certainNamesOf rs "Outer"
+          `shouldReturn` (Set.fromList [(InTerms, OpName "f")])
 
     it "keeps to what every configuration of a module brings in"
       $ withFakeProject
@@ -2098,7 +2126,8 @@ withPlan plan = do
           )
         ]
       $ \rs ->
-        certainNamesOf rs "Own" `shouldReturn` (Set.fromList [(InTerms, OpName "g")])
+        certainNamesOf rs "Own"
+          `shouldReturn` (Set.fromList [(InTerms, OpName "g")])
 
     it "settles a name one of the project's own modules brings in, despite an unreadable import"
       $ withFakeProject

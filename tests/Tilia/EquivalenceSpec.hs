@@ -18,7 +18,8 @@ spec :: Spec
 spec = do
   describe "what a formatter is allowed to do" $ do
     it "sees past layout" $
-      "module M where\nf x   =    x\n" `saysTheSameAs` "module M where\n\nf x = x\n"
+      "module M where\nf x   =    x\n"
+        `saysTheSameAs` "module M where\n\nf x = x\n"
 
     it "sees past a line broken in a different place" $
       "module M where\nf x = x + 1\n"
@@ -58,17 +59,20 @@ spec = do
 
   describe "what it must not let through" $ do
     it "catches a changed literal" $
-      "module M where\nf = 1\n" `saysSomethingElseThan` "module M where\nf = 2\n"
+      "module M where\nf = 1\n"
+        `saysSomethingElseThan` "module M where\nf = 2\n"
 
     it "catches a changed name" $
-      "module M where\nf x = x\n" `saysSomethingElseThan` "module M where\nf x = y\n"
+      "module M where\nf x = x\n"
+        `saysSomethingElseThan` "module M where\nf x = y\n"
 
     it "catches an operator regrouped" $
       "module M where\nf = a + b * c\n"
         `saysSomethingElseThan` "module M where\nf = (a + b) * c\n"
 
     it "catches a declaration dropped" $
-      "module M where\nf = 1\ng = 2\n" `saysSomethingElseThan` "module M where\nf = 1\n"
+      "module M where\nf = 1\ng = 2\n"
+        `saysSomethingElseThan` "module M where\nf = 1\n"
 
     it "catches an import dropped" $
       "module M where\nimport Data.Map\nimport Data.Set\n"

@@ -184,7 +184,10 @@ typeNamesIn out =
       indented l,
       (keyword : rest) <- [T.words l],
       keyword `elem` (["data", "type", "newtype", "class"] :: [Text]),
-      name <- take 1 (dropWhile (`elem` (["family", "role", "instance"] :: [Text])) rest)
+      name <-
+        take
+          1
+          (dropWhile (`elem` (["family", "role", "instance"] :: [Text])) rest)
     ]
 
 -- | Sort declared fixities into the namespaces they govern: of two for one

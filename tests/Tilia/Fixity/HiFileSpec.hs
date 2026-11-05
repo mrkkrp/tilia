@@ -67,7 +67,12 @@ withPlan plan = do
     declarations (m, path) = do
       bytes <- BS.readFile path
       pure
-        [ (m, Map.fromList [((namespace, op), fixity) | (namespace, op, fixity) <- hiFixities hi])
+        [ ( m,
+            Map.fromList
+              [ ((namespace, op), fixity)
+              | (namespace, op, fixity) <- hiFixities hi
+              ]
+          )
         | Right hi <- [decodeHiFile bytes]
         ]
     undecodable (m, path) = do
@@ -149,4 +154,6 @@ offered declared m i =
 -- | Fixities by the operator alone, namespace aside.
 byOperator :: Fixities -> Set (Text, String)
 byOperator =
-  Set.fromList . fmap (\((_, OpName op), fixity) -> (op, show fixity)) . Map.toList
+  Set.fromList
+    . fmap (\((_, OpName op), fixity) -> (op, show fixity))
+    . Map.toList
