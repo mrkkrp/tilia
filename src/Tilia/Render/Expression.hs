@@ -16,6 +16,7 @@ module Tilia.Render.Expression
 where
 
 import Control.Applicative ((<|>))
+import Data.Char (isSpace)
 import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
@@ -53,6 +54,7 @@ import Tilia.Render.Name
 import Tilia.Render.Operator
 import Tilia.Render.Pattern
 import Tilia.Render.Type
+import Tilia.Source.Lines (contentColumn)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -1254,8 +1256,16 @@ untypedSplice ctx deco = \case
     txt "["
       <> name ctx quoter
       <> txt "|"
-      <> verbatim (T.pack (unpackFS (unLoc str)))
-      <> txt "|]"
+      <> verbatim (above <> indentation)
+      <> maybe id located lastLine (txt rest <> txt "|]")
+    where
+      (above, final) = T.breakOnEnd "\n" (T.pack (unpackFS (unLoc str)))
+      (indentation, rest) = T.span isSpace final
+      lastLine
+        | T.null above = Nothing
+        | otherwise =
+            (\s -> mkSpan (spanEndLine s, contentColumn final) (endPoint s))
+              <$> spanOf str
 
 -- | A Template Haskell splice, typed or not.
 spliceTH :: Ctx -> Choice "typed" -> LHsExpr GhcPs -> SpliceDecoration -> Doc
