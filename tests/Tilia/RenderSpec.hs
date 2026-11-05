@@ -9,6 +9,7 @@ import Test.Hspec
 
 import Tilia.Doc (printDoc)
 import Tilia.Render
+import Tilia.Settings (defaultSettings)
 import Tilia.TestUtils (parsed)
 
 spec :: Spec
@@ -38,7 +39,7 @@ spec =
 format :: [Text] -> [Text]
 format =
   T.lines
-    . printDoc
+    . printDoc defaultSettings
     . renderModule defaultRenderConfig
     . parsed
     . T.unlines

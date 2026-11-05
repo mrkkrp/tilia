@@ -10,6 +10,7 @@ import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Body
 import Tilia.Doc.Combinators
+import Tilia.Settings (defaultSettings)
 
 -- | A stand-in for a real body type, enough to exercise the class: one
 -- construct that hangs, one that does not, and one that takes its answer
@@ -59,4 +60,4 @@ spec = do
         `shouldBe` Hanging
 
 out :: Doc -> Text
-out = printDoc
+out = printDoc defaultSettings

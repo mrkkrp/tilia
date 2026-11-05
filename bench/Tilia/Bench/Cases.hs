@@ -32,6 +32,7 @@ import Tilia.Cpp (usesCpp)
 import Tilia.Format (AstCheck (..), rewritten)
 import Tilia.Parser (ParserConfig (..), parseModule)
 import Tilia.Pragma (Defaults)
+import Tilia.Settings (defaultSettings)
 import Tilia.TestConfig (defaultsFor, effectiveExtensionsFor, formatExample)
 
 -- | What part of a run a benchmark measures.
@@ -244,7 +245,7 @@ subjectOf package ownModules isChecked name source =
       subjectSource = source,
       subjectFormat =
         fmap (either (const Nothing) Just)
-          . formatExample (Don't #check) package ownModules path,
+          . formatExample (Don't #check) defaultSettings package ownModules path,
       subjectCheck =
         if isChecked
           then

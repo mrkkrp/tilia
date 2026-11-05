@@ -122,6 +122,7 @@ library
     Tilia.Render.Signature
     Tilia.Render.Type
     Tilia.Run
+    Tilia.Settings
     Tilia.Source
     Tilia.Source.Lines
     Tilia.Span
@@ -225,6 +226,7 @@ test-suite tests
     Tilia.Render.OperatorSpec
     Tilia.RenderSpec
     Tilia.RunSpec
+    Tilia.SettingsSpec
     Tilia.SpanSpec
     Tilia.TestConfig
     Tilia.TestUtils

@@ -53,6 +53,7 @@ import Tilia.Doc
     wrap,
   )
 import Tilia.Doc.Combinators qualified as Doc
+import Tilia.Settings (Settings)
 import Tilia.Source (Lines, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 
@@ -71,6 +72,8 @@ data Settled = Settled
 -- A structural walk that keeps what they all agree on and puts a choice
 -- where they part.
 merge ::
+  -- | What the merged document is printed with.
+  Settings ->
   -- | The module as written.
   Lines ->
   -- | The conditionals asking the question, as written.
@@ -84,7 +87,7 @@ merge ::
   -- | One document per answer.
   [Doc] ->
   Doc
-merge written conditionals guards varied settledOthers = go Broken
+merge settings written conditionals guards varied settledOthers = go Broken
   where
     go _ [] = mempty
     go layout ds@(d : _)
@@ -158,8 +161,8 @@ merge written conditionals guards varied settledOthers = go Broken
                 | e <- xs,
                   regionOf e == regionOf y,
                   fmap spanStartColumn (regionOf e) == column,
-                  printDoc (DGroup l y)
-                    == printDoc e
+                  printDoc settings (DGroup l y)
+                    == printDoc settings e
                 ] ->
                 front <> [e]
           _ -> parts
@@ -372,7 +375,7 @@ merge written conditionals guards varied settledOthers = go Broken
         lineEnding h hs
           | all ((== printed h) . printed) hs = layout
           | otherwise = Flat
-        printed = printDoc
+        printed = printDoc settings
 
     endingWith t d = fromMaybe (d <> t) (inAlternatives d)
       where

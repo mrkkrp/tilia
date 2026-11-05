@@ -11,6 +11,7 @@ import Control.Monad (join, unless)
 import Data.ByteString qualified as BS
 import Data.Choice (isTrue, pattern Do, pattern Don't)
 import Data.Foldable (for_)
+import Data.Functor ((<&>))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
@@ -31,6 +32,7 @@ import Tilia.Format (FormatError (..), describeFormatError, refused)
 import Tilia.Palette (Color (Meta), Palette (Plain), paint, paletteFor)
 import Tilia.Parser (ParseError (..))
 import Tilia.Pragma (Defaults)
+import Tilia.Settings (alternativeSettings, defaultSettings)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig
@@ -293,7 +295,8 @@ verdict False declines (Result outcome why _) = case outcome of
         <> what
         <> ", and the corpus does not list it under expectUnreadable"
 
--- | What formatting one example, with every check, establishes.
+-- | What formatting one example, with every check, establishes, with the
+-- default settings and then with 'alternativeSettings'.
 check ::
   -- | How to color the diffs it reports.
   Palette ->
@@ -307,21 +310,39 @@ check palette example = do
     Nothing -> pure (Result NotUtf8 "" noDigest)
     Just text -> guarded $ do
       let package = exampleExtensions example
-          format checking =
+          format checking settings =
             formatExample
               checking
+              settings
               package
               (exampleOwnModules example)
               (exampleName example)
           unchecked = do
-            printed <- format (Don't #check) text
-            (printed,) <$> either (pure . Left) (format (Don't #check)) printed
-      checked <- format (Do #check) text
+            printed <- format (Don't #check) defaultSettings text
+            (printed,)
+              <$> either
+                (pure . Left)
+                (format (Don't #check) defaultSettings)
+                printed
+          alternatively result
+            | resultOutcome result `elem` [Formatted, PartlyChecked] =
+                format (Do #check) alternativeSettings text <&> \case
+                  Right _ -> result
+                  Left e ->
+                    result
+                      { resultOutcome = Broken,
+                        resultWhy =
+                          "with the alternative settings: "
+                            <> describeFormatError Plain e
+                      }
+            | otherwise = pure result
+      checked <- format (Do #check) defaultSettings text
       passes <- case checked of
         Left NotEquivalent{} -> Just <$> unchecked
         Left NotIdempotent{} -> Just <$> unchecked
         _ -> pure Nothing
-      pure (checkPure palette package text (join expected) checked passes)
+      alternatively
+        (checkPure palette package text (join expected) checked passes)
 
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)

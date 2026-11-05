@@ -8,6 +8,7 @@ import Test.Hspec
 
 import Tilia.Doc
 import Tilia.Doc.Combinators
+import Tilia.Settings (defaultSettings)
 import Tilia.Span
 
 spec :: Spec
@@ -90,4 +91,4 @@ spec = do
       out (flat (includeUnless True (txt "a"))) `shouldBe` ""
 
 out :: Doc -> Text
-out = printDoc
+out = printDoc defaultSettings

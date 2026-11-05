@@ -22,8 +22,11 @@ packages and GHC's own test suite, which are not checked into this
 repository.
 
 The Hackage corpus is exercised in order to ensure that every module
-formats, that its AST is preserved, and that formatting it is idempotent.
-The results are recorded in `corpora/hackage/hackage.manifest`. Next to it,
+formats, that its AST is preserved, and that formatting it is idempotent,
+both with the `defaultSettings` and with `alternativeSettings`, which differ
+from the defaults in every setting. The results with the defaults are
+recorded in `corpora/hackage/hackage.manifest`, and a module that formats
+with them has to pass the same checks with the alternative ones. Next to it,
 `hackage.report` explains the failing cases. The manifest and the report can
 be updated like this:
 
