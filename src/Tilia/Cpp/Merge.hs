@@ -435,7 +435,8 @@ merge written conditionals guards varied settledOthers = go Broken
         middleOf (_, m, _) = m
         widest = \case
           [] -> []
-          runs -> maximumBy (comparing (spaceOf layout)) runs
+          runs -> maximumBy (comparing width) runs
+        width r = (spaceOf layout r, DDeclarationsStart `elem` r)
 
     peel ds =
       let (l, rest) = span breaking ds

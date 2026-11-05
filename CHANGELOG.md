@@ -31,13 +31,9 @@
   declarations of one kind do, and still get an empty line above them under
   a declaration they do not name.
   [Issue 284](https://github.com/mrkkrp/tilia/issues/284).
-* The imports of the project's own modules, the ones its packages declare
-  or that name `"this"`, come after the rest, an empty line apart. A comment
-  between imports with an empty line above and below it stays where it was
-  written, and the imports on either side of it are sorted apart. One
-  written right under an import, with an empty line under it, goes with that
-  import, or stays at the end of the imports where it is under the last.
-  [Issue 349](https://github.com/mrkkrp/tilia/issues/349).
+* Local modules of a project and modules of its dependencies are formatted
+  in two separate sorted groups. [Issue
+  349](https://github.com/mrkkrp/tilia/issues/349).
 * A construct written on one line that runs past column 80 is broken over
   several lines where possible. [Issue
   309](https://github.com/mrkkrp/tilia/issues/309).
