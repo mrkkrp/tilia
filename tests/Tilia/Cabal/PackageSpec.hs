@@ -78,7 +78,8 @@ spec = do
       inPackage sharedTests ["tests"] $ \root -> do
         unit <- asked (root </> "tests" </> "Unit.hs")
         driver <- asked (root </> "tests" </> "Doctests.hs")
-        (has BangPatterns unit, has BangPatterns driver) `shouldBe` (True, False)
+        (has BangPatterns unit, has BangPatterns driver)
+          `shouldBe` (True, False)
 
     it "is a foreign library where its source directory holds the file" $
       inPackage withForeignLibrary ["src", "flib"] $ \root -> do

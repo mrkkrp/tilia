@@ -39,7 +39,9 @@ spec = modifyMaxSuccess (const 5000) $
           Left _ -> property Discard
           Right configurations ->
             conjoin
-              [ counterexample (T.unpack ("this configuration does not parse:\n" <> t)) (parses t)
+              [ counterexample
+                  (T.unpack ("this configuration does not parse:\n" <> t))
+                  (parses t)
               | (_, t) <- configurations
               ]
 
@@ -79,7 +81,9 @@ spec = modifyMaxSuccess (const 5000) $
         case (answeredLeaves (sourceOf m), answeredLeaves out) of
           (Right went, Right came) ->
             conjoin
-              [ counterexample (T.unpack (T.unlines [before, "became", after, why])) False
+              [ counterexample
+                  (T.unpack (T.unlines [before, "became", after, why]))
+                  False
               | (answers, before) <- went,
                 Just after <- [lookup answers came],
                 Just why <- [difference before after]

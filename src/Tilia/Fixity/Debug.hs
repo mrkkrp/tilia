@@ -139,7 +139,9 @@ fixityNotes implicitPrelude resolve scope configurations = do
                 else Just (Set.size (Set.map snd (Map.keysSet fixities))),
             noteUnsettled =
               Set.toList
-                (Map.keysSet (establishedUnsettled answer) <> establishedUntold answer)
+                ( Map.keysSet (establishedUnsettled answer)
+                    <> establishedUntold answer
+                )
           }
 
     used =
@@ -211,7 +213,9 @@ aboutFile palette notes =
           Just n
             | null (noteUnsettled i) -> operators n
             | otherwise ->
-                operators n <> ", not settling every name" <> through (noteUnsettled i)
+                operators n
+                  <> ", not settling every name"
+                  <> through (noteUnsettled i)
 
     through ways = case mapMaybe nonEmpty ways of
       [] -> ""
@@ -228,7 +232,11 @@ aboutFile palette notes =
       (False, Nothing) -> ""
 
     fromOwn (namespaces, (op, fixity)) =
-      operator op <> " " <> spellFixity fixity <> " " <> spellNamespaces namespaces
+      operator op
+        <> " "
+        <> spellFixity fixity
+        <> " "
+        <> spellNamespaces namespaces
 
     fromOperator (namespaces, o) =
       operator (noteSpelling o)
@@ -261,7 +269,8 @@ aboutFile palette notes =
     ambiguously o = case noteDisagreement o of
       Nothing -> ""
       Just offers ->
-        ", and the imports disagree about it: " <> spellDisagreement palette offers
+        ", and the imports disagree about it: "
+          <> spellDisagreement palette offers
 
     named = paint palette Place
     operator = paint palette Operator

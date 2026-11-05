@@ -156,7 +156,9 @@ data FormatError
 describeFormatError :: Palette -> FormatError -> Text
 describeFormatError palette = \case
   NoProject path ->
-    "no project above " <> file path <> ": expected a cabal.project or a .cabal file"
+    "no project above "
+      <> file path
+      <> ": expected a cabal.project or a .cabal file"
   NoBuildPlan root reason ->
     "no build plan for " <> file root <> ": " <> reason
   NoOwnModules root problem ->
@@ -219,7 +221,8 @@ describeFormatError palette = \case
             NotRead missing ->
               "may be declared in " <> spellUnreadIn palette missing
             Ambiguous offers ->
-              (if single then "is " else "are ") <> spellDisagreement palette offers
+              (if single then "is " else "are ")
+                <> spellDisagreement palette offers
   where
     file = paint palette Place . T.pack
     located t = case T.breakOn ":" t of
@@ -358,13 +361,16 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <-
-        orElse (NoBuildPlan root) =<< liftIO (loadPlan caching downloading components root)
+        orElse (NoBuildPlan root)
+          =<< liftIO (loadPlan caching downloading components root)
       pure (plan, [FromInterface, FromSource])
     GivenPlan path -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
       routes <-
         if isTrue downloading
-          then [FromInterface, FromSource] <$ liftIO (fetchUninstalled caching root plan)
+          then
+            [FromInterface, FromSource]
+              <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
       pure (plan, routes)
   packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
@@ -593,7 +599,8 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
         ( Just ("the formatted output does not parse: " <> describeParseError e),
           Nothing
         )
-      Right a' -> case printedFrom' <|> whatParsed (parseModule config path before) of
+      Right a' -> case printedFrom'
+        <|> whatParsed (parseModule config path before) of
         Nothing -> (Nothing, Just a')
         Just b' -> (comparing b' a', Just a')
   | otherwise = (underCpp, Nothing)

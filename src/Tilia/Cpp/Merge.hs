@@ -125,7 +125,8 @@ merge written conditionals guards varied settledOthers = go Broken
                   fmap fst cs == fmap fst bs ->
                     Just (fmap snd cs <> [e])
               _ -> Nothing,
-          Just (merged, fallback) <- unsnoc (fmap (go layout) (transpose alternatives)) ->
+          Just (merged, fallback) <-
+            unsnoc (fmap (go layout) (transpose alternatives)) ->
             Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
       _
         | Just spans <- traverse regionOf xs,
@@ -206,7 +207,8 @@ merge written conditionals guards varied settledOthers = go Broken
     cutAtConditionals ss
       | _ : _ : _ <- ranges,
         Just owners <- traverse (traverse ownerOf) ss,
-        present@(first' : _ : _) <- foldr insertOrdered [] [o | Just o <- concat owners],
+        present@(first' : _ : _) <-
+          foldr insertOrdered [] [o | Just o <- concat owners],
         let assigned = fmap (settled first') owners,
         all ascending assigned =
           [ [[x | (x, o) <- zip xs os, o == i] | (xs, os) <- zip ss assigned]
@@ -308,7 +310,8 @@ merge written conditionals guards varied settledOthers = go Broken
       views <- traverse (ledBy layout) ss
       let unmoved = [v | v@(_, _, False) <- views]
       (c, _, _) : _ <- Just (if null unmoved then views else unmoved)
-      if length unmoved < length views && all (\(d, _, _) -> agree varied layout c d) views
+      if length unmoved < length views
+        && all (\(d, _, _) -> agree varied layout c d) views
         then Just (c, [r | (_, r, _) <- views])
         else Nothing
 
@@ -319,7 +322,9 @@ merge written conditionals guards varied settledOthers = go Broken
       x : DBreak : DCppChoice ws bs e : r
         | x == Doc.comma,
           following@(_ : _) <- dropWhile onlySpacing r,
-          everyAlternative (\xs -> fmap snd (unsnoc xs) == Just Doc.comma) (DCppChoice ws bs e) ->
+          everyAlternative
+            (\xs -> fmap snd (unsnoc xs) == Just Doc.comma)
+            (DCppChoice ws bs e) ->
             Just
               ( Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e),
                 x : DBreak : following,
@@ -337,7 +342,10 @@ merge written conditionals guards varied settledOthers = go Broken
           | printsNothing a = a
           | otherwise =
               mconcat
-                (Doc.comma : Doc.space : maybe [] fst (unsnoc (spineAt layout a)))
+                ( Doc.comma
+                    : Doc.space
+                    : maybe [] fst (unsnoc (spineAt layout a))
+                )
 
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss

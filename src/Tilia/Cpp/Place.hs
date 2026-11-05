@@ -314,7 +314,9 @@ spacedApart written = go
         | Just (_, to) <- ownLines x,
           (_ : _, y : rest') <- span onlySpacing rest,
           Just _ <- ownLines y ->
-            x : (if blankAt (to + 1) written then blankLine else hardBreak) : apart (y : rest')
+            x
+              : (if blankAt (to + 1) written then blankLine else hardBreak)
+              : apart (y : rest')
       x : rest -> x : apart rest
       [] -> []
     ownLines = \case
@@ -544,9 +546,21 @@ placeAt present written n body continuing = among []
             | Just (printed, anchor, spacing) <- lastBounded before,
               Just from <- endOf anchor,
               Just ls <- written ->
-                if any (`blankAt` ls) [from .. n - 1] || not (all onlySpacing spacing)
-                  then mconcat (before <> [includeWhen (blankAt (n - 1) ls) blankLine, putBefore after] <> after)
-                  else mconcat (printed <> [anchor, putBefore (spacing <> after)] <> spacing <> after)
+                if any (`blankAt` ls) [from .. n - 1]
+                  || not (all onlySpacing spacing)
+                  then
+                    mconcat
+                      ( before
+                          <> [includeWhen (blankAt (n - 1) ls) blankLine, putBefore after]
+                          <> after
+                      )
+                  else
+                    mconcat
+                      ( printed
+                          <> [anchor, putBefore (spacing <> after)]
+                          <> spacing
+                          <> after
+                      )
             | next : rest <- after,
               any (not . onlySpacing) (takeWhile unbounded (reverse before)) ->
                 mconcat (before <> [within ctx next] <> rest)

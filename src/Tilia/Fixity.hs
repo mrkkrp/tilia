@@ -153,7 +153,8 @@ declaredFixities :: HsModule GhcPs -> Fixities
 declaredFixities hsModule =
   Map.fromList
     [ ((namespace, op), fixity)
-    | (specifier, op, fixity) <- concatMap (fromDecl . unLoc) (hsmodDecls hsModule),
+    | (specifier, op, fixity) <-
+        concatMap (fromDecl . unLoc) (hsmodDecls hsModule),
       namespace <- namespacesOf specifier op
     ]
   where
@@ -162,7 +163,9 @@ declaredFixities hsModule =
       TypeNamespaceSpecifier _ -> [InTypes]
       DataNamespaceSpecifier _ -> [InTerms]
       NoNamespaceSpecifier ->
-        case ([InTypes | Set.member op types] <> [InTerms | Set.member op terms]) of
+        case ( [InTypes | Set.member op types]
+                 <> [InTerms | Set.member op terms]
+             ) of
           [] -> [InTypes, InTerms]
           found -> found
 
@@ -676,10 +679,14 @@ resolveScope implicitPrelude known configurations =
                 <> [ (qualifier, op)
                    | i <- imports,
                      let established = known (importModule i),
-                     name@(n, op) <- Set.toList (certainNames (establishedCertain established)),
+                     name@(n, op) <-
+                       Set.toList
+                         (certainNames (establishedCertain established)),
                      n == namespace,
                      decides established name i,
-                     qualifier <- [Nothing | not (importQualified i)] <> [Just (importAlias i)]
+                     qualifier <-
+                       [Nothing | not (importQualified i)]
+                         <> [Just (importAlias i)]
                    ]
         }
       where
@@ -916,7 +923,13 @@ capturedUses found =
   Map.fromList
     [ (s, fixity)
     | (s, name) <- uses,
-      [fixity] <- [nub [f | (f, region) <- Map.findWithDefault [] name binders, covers region s]]
+      [fixity] <-
+        [ nub
+            [ f
+            | (f, region) <- Map.findWithDefault [] name binders,
+              covers region s
+            ]
+        ]
     ]
   where
     uses =
@@ -929,7 +942,9 @@ capturedUses found =
       Map.fromListWith
         (<>)
         [ (name, [(f, region)])
-        | (name, f, regions) <- concatMap fromMatch (gatheredMatches found) <> concatMap fromExpression (gatheredExpressions found),
+        | (name, f, regions) <-
+            concatMap fromMatch (gatheredMatches found)
+              <> concatMap fromExpression (gatheredExpressions found),
           Set.member name used,
           Just region <- regions
         ]
@@ -1154,7 +1169,8 @@ unreadable = mempty{establishedUntold = Set.singleton []}
 -- | Does reading a module settle the fixity of every name it exports?
 settlesEverything :: Established -> Bool
 settlesEverything established =
-  Map.null (establishedUnsettled established) && Set.null (establishedUntold established)
+  Map.null (establishedUnsettled established)
+    && Set.null (establishedUntold established)
 
 -- | The ways down to a module that could not be read that leave the fixity
 -- of a name unsettled.

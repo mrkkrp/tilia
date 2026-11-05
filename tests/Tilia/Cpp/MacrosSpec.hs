@@ -196,10 +196,12 @@ spec = do
         `shouldBe` [notDefined "A", defined "A"]
 
     it "takes a macro that is not 0 for one that is defined" $
-      fmap (impliedBy True) ["if A", "elif A"] `shouldBe` [defined "A", defined "A"]
+      fmap (impliedBy True) ["if A", "elif A"]
+        `shouldBe` [defined "A", defined "A"]
 
     it "learns nothing from a macro that is 0, which it may be by not being defined" $
-      (impliedBy False "if A", impliedBy True "if !A") `shouldBe` (mempty, mempty)
+      (impliedBy False "if A", impliedBy True "if !A")
+        `shouldBe` (mempty, mempty)
 
     it "reads both sides of a conjunction that holds and of a disjunction that fails" $
       ( impliedBy True "if defined(A) && !defined(B)",

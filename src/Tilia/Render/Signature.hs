@@ -47,7 +47,8 @@ sigDecl ctx = \case
   TypeSig _ names hswc -> typeSig ctx (Do #indentTail) names (hswc_body hswc)
   PatSynSig _ names sigType -> patSynSig ctx names sigType
   ClassOpSig _ isDefault names sigType ->
-    includeWhen isDefault (txt "default" <> space) <> typeSig ctx (Do #indentTail) names sigType
+    includeWhen isDefault (txt "default" <> space)
+      <> typeSig ctx (Do #indentTail) names sigType
   FixSig ((_, written), _) sig -> fixitySig ctx written sig
   InlineSig _ n prag -> inlineSig ctx n prag
   SpecSig _ n types prag ->
@@ -160,7 +161,9 @@ specialiseSig ctx binders target types InlinePragma{..} =
             <> hsExpr ctx target
             <> includeUnless
               (null types)
-              (joinedBy (reserved ctx "::") <> commaSep (fmap (hsSigType ctx) types))
+              ( joinedBy (reserved ctx "::")
+                  <> commaSep (fmap (hsSigType ctx) types)
+              )
         )
   where
     -- A @NOINLINE@ written without a phase reads as never active, so that
@@ -232,7 +235,8 @@ completeSig ctx names ty =
 sccSig :: Ctx -> LocatedN RdrName -> Maybe (XRec GhcPs StringLiteral) -> Doc
 sccSig ctx n literal =
   pragma "SCC" . indent $
-    name ctx n <> foldMap (\l -> breakOrSpace <> writtenString (unLoc l)) literal
+    name ctx n
+      <> foldMap (\l -> breakOrSpace <> writtenString (unLoc l)) literal
 
 -- | @type T :: k@.
 standaloneKindSig :: Ctx -> StandaloneKindSig GhcPs -> Doc

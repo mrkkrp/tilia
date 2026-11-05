@@ -67,7 +67,9 @@ spec = do
       "!keep.hs\n*.hs\n" `ignores` ["a.hs", "keep.hs"] `butNot` []
 
     it "cannot re-include a file whose directory it excluded" $ do
-      "lib/\n!lib/keep.hs\n" `ignores` ["lib/keep.hs", "lib/drop.hs"] `butNot` []
+      "lib/\n!lib/keep.hs\n"
+        `ignores` ["lib/keep.hs", "lib/drop.hs"]
+        `butNot` []
       "lib/*\n!lib/keep.hs\n" `ignores` ["lib/drop.hs"] `butNot` ["lib/keep.hs"]
 
     it "reads lines ended with a carriage return" $
@@ -95,10 +97,14 @@ spec = do
   describe "a file of a project" $ do
     it "is ignored by the .tiliaignore files above it, whether it exists or not" $
       withProject $ \root -> do
-        isIgnoredInProject root (root </> "src" </> "Generated.hs") `shouldReturn` True
-        isIgnoredInProject root (root </> "src" </> "inner" </> "A.hs-boot") `shouldReturn` True
-        isIgnoredInProject root (root </> "src" </> "inner" </> ".." </> "Generated.hs") `shouldReturn` True
-        isIgnoredInProject root (root </> "src" </> "New.hs") `shouldReturn` False
+        isIgnoredInProject root (root </> "src" </> "Generated.hs")
+          `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "inner" </> "A.hs-boot")
+          `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "inner" </> ".." </> "Generated.hs")
+          `shouldReturn` True
+        isIgnoredInProject root (root </> "src" </> "New.hs")
+          `shouldReturn` False
 
     it "is ignored by a .tiliaignore that is not ASCII under any locale" $
       withProject $ \root -> do
@@ -110,7 +116,8 @@ spec = do
 
     it "is not ignored when it is outside of the project" $
       withProject $ \root ->
-        isIgnoredInProject root (takeDirectory root </> "Generated.hs") `shouldReturn` False
+        isIgnoredInProject root (takeDirectory root </> "Generated.hs")
+          `shouldReturn` False
 
 -- | A project with @src/Generated.hs@, which its root's @.tiliaignore@
 -- ignores, and a @.tiliaignore@ in @src/inner@ ignoring boot files.

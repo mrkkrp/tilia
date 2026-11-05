@@ -62,7 +62,8 @@ spec = do
       followeds "module M where\n\tx = f 1 {- here -}\n" `shouldBe` [False]
 
     it "takes the comment's text and no more" $
-      bodies "module M where\n\tx = f {- here -} 1\n" `shouldBe` [["{- here -}"]]
+      bodies "module M where\n\tx = f {- here -} 1\n"
+        `shouldBe` [["{- here -}"]]
 
     it "dedents a block comment by what precedes it" $
       bodies "module M where\n\t{- one\n\t   two -}\nx = 1\n"
@@ -107,7 +108,8 @@ spec = do
     it "widens a section trigger, keeping its stars" $
       widened "module M where\n-- **Foo\nx = 1\n" `shouldBe` [["-- ** Foo"]]
     it "leaves a named anchor alone" $
-      widened "module M where\n-- $section\nx = 1\n" `shouldBe` [["-- $section"]]
+      widened "module M where\n-- $section\nx = 1\n"
+        `shouldBe` [["-- $section"]]
     it "leaves a trigger with nothing after it alone" $
       widened "module M where\n-- |\nx = 1\n" `shouldBe` [["-- |"]]
     it "shifts continuation lines to match" $
@@ -136,7 +138,8 @@ spec = do
       headerLine "{-# LANGUAGE CPP #-}\nmodule M where\nimport Data.List\nx = 1\n"
         `shouldBe` Just 2
     it "reports it where a module without a module line begins" $
-      headerLine "{-# LANGUAGE CPP #-}\nimport Data.List\nx = 1\n" `shouldBe` Just 2
+      headerLine "{-# LANGUAGE CPP #-}\nimport Data.List\nx = 1\n"
+        `shouldBe` Just 2
     it "reports no boundary for a module of pragmas alone" $
       headerLine "{-# LANGUAGE CPP #-}\n" `shouldBe` Nothing
 

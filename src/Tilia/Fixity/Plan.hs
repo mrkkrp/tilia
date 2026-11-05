@@ -937,7 +937,9 @@ withReexports reach modName summary =
 
     certainMembersOf answers qualifier parent =
       Set.unions
-        [ Set.filter (\kid -> certainlyBrings (establishedMembers established) kid i) kids
+        [ Set.filter
+            (\kid -> certainlyBrings (establishedMembers established) kid i)
+            kids
         | (i, established) <- candidates answers qualifier parent,
           let certain = establishedCertain established,
           Set.member (InTypes, parent) (certainNames certain),

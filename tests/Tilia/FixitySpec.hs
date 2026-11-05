@@ -408,7 +408,8 @@ spec = do
               (Is #implicitPrelude)
               leavingMin
               (pure (pmModule (parsed "module M where\nimport Opaque\n")))
-       in lookupFixity scope InTerms Nothing (OpName "min") `shouldBe` Unresolved (unreadOnly "Opaque")
+       in lookupFixity scope InTerms Nothing (OpName "min")
+            `shouldBe` Unresolved (unreadOnly "Opaque")
 
     it "lets a file be formatted whose every unsettled name is accounted for" $
       let source =
@@ -450,7 +451,8 @@ spec = do
                   m -> knowingExports m
               )
               (pure (pmModule (parsed source)))
-       in unknownOperators scope (pure (pmGathered (parsed source))) `shouldBe` []
+       in unknownOperators scope (pure (pmGathered (parsed source)))
+            `shouldBe` []
 
   describe "a use a local binding captures" $ do
     it "is captured by a function its equation binds under where" $
@@ -973,7 +975,10 @@ exportsOf = \case
 -- declaration, however many places it lands in.
 declaredIn :: Text -> [(OpName, Fixity)]
 declaredIn =
-  Map.toList . Map.fromList . fmap (\((_, op), fixity) -> (op, fixity)) . declaredWithNamespaces
+  Map.toList
+    . Map.fromList
+    . fmap (\((_, op), fixity) -> (op, fixity))
+    . declaredWithNamespaces
 
 -- | The same, keeping the namespace each governs.
 declaredWithNamespaces :: Text -> [((Namespace, OpName), Fixity)]
@@ -995,7 +1000,8 @@ scopeOverLeaves =
 
 -- | A module's branch leaves, parsed.
 leavesOf :: Text -> NonEmpty (HsModule GhcPs)
-leavesOf source = case nonEmpty =<< either (const Nothing) Just (branchLeaves source) of
+leavesOf source = case nonEmpty
+  =<< either (const Nothing) Just (branchLeaves source) of
   Nothing -> error "the test input has no branch leaves"
   Just texts -> fmap (pmModule . parsed) texts
 
@@ -1021,7 +1027,8 @@ conditionalImports =
 -- | What is known in a world made of 'exportsOf' alone.
 knowingExports :: Text -> Established
 knowingExports =
-  maybe unreadable (\fixities -> mempty{establishedFixities = fixities}) . exportsOf
+  maybe unreadable (\fixities -> mempty{establishedFixities = fixities})
+    . exportsOf
 
 -- | A module that uses an operator nothing in scope declares, alongside an
 -- import that could not be read.
@@ -1091,7 +1098,9 @@ scopeKnowing said =
 capturedIn :: Text -> [((Int, Int), Fixity)]
 capturedIn decls =
   [ ((spanStartLine s - 1, spanStartColumn s), fixity)
-  | (s, fixity) <- Map.toList (capturedUses (pmGathered (parsed ("module M where\n" <> decls))))
+  | (s, fixity) <-
+      Map.toList
+        (capturedUses (pmGathered (parsed ("module M where\n" <> decls))))
   ]
 
 -- | The members of each name a module declares, by namespace, in a
@@ -1203,7 +1212,10 @@ disagreeingAboutPrelude =
 -- | That world's scope for a module, told whether it has the Prelude.
 scopeAboutPrelude :: Choice "implicitPrelude" -> Text -> Scope
 scopeAboutPrelude implicitPrelude =
-  resolveScope implicitPrelude disagreeingAboutPrelude . pure . pmModule . parsed
+  resolveScope implicitPrelude disagreeingAboutPrelude
+    . pure
+    . pmModule
+    . parsed
 
 -- | What that world leaves unsettled in a module.
 unsettledAboutPrelude ::

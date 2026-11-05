@@ -368,7 +368,8 @@ parseSummaries = \case
     qualifier q = if q == "-" then Nothing else Just q
     exportItem = \case
       ["name", namespace, q, op] ->
-        (\n -> ExportName n (qualifier q) (OpName op)) <$> parseNamespace namespace
+        (\n -> ExportName n (qualifier q) (OpName op))
+          <$> parseNamespace namespace
       ["all", q, op] -> Just (ExportAll (qualifier q) (OpName op))
       "some" : q : op : kids ->
         Just (ExportSome (qualifier q) (OpName op) (fmap OpName kids))

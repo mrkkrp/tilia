@@ -190,9 +190,16 @@ describeCppError = \case
   TooManyConfigurations -> "too many configurations to format"
   ConfigurationNotParsed c e -> describeParseError e <> inConfiguration c
   DirectiveInQuotedText n k ->
-    "the #" <> k <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
+    "the #"
+      <> k
+      <> " at line "
+      <> tshow n
+      <> " is inside a quasi-quote or a multi-line string"
   MacroInQuotedText n t ->
-    t <> " at line " <> tshow n <> " is inside a quasi-quote or a multi-line string"
+    t
+      <> " at line "
+      <> tshow n
+      <> " is inside a quasi-quote or a multi-line string"
   BeforeLeadingComma n t ->
     t
       <> " at line "
@@ -211,7 +218,8 @@ describeCppError = \case
 inConfiguration :: [([Guard], Int)] -> Text
 inConfiguration [] = ""
 inConfiguration answers =
-  ", in the configuration taking " <> T.intercalate ", then " (fmap said answers)
+  ", in the configuration taking "
+    <> T.intercalate ", then " (fmap said answers)
   where
     said (guards, i) = case (drop i guards, guards) of
       (g : _, _) -> "#" <> guardText g
@@ -643,7 +651,9 @@ readConditionals =
               | otherwise ->
                   go
                     []
-                    (o{oLater = d : oLater o, oEarlier = reverse done : oEarlier o} : rest)
+                    ( o{oLater = d : oLater o, oEarlier = reverse done : oEarlier o}
+                        : rest
+                    )
                     ds
         | otherwise -> case open of
             [] -> malformed NothingOpen
@@ -806,7 +816,10 @@ macroLines source =
         [ name
         | d <- written,
           dKeyword d == "define",
-          let (name, rest) = T.span isNameChar (T.stripStart (T.drop (T.length "define") (dText d))),
+          let (name, rest) =
+                T.span
+                  isNameChar
+                  (T.stripStart (T.drop (T.length "define") (dText d))),
           T.isPrefixOf "(" rest
         ]
     -- One parenthesized list of arguments, and nothing after it.

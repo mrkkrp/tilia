@@ -34,22 +34,30 @@ spec = do
       parseTarget "flib:tilia" `shouldBe` Right (Qualified Nothing FLib "tilia")
       parseTarget "exe:tilia" `shouldBe` Right (Qualified Nothing Exe "tilia")
       parseTarget "test:tests" `shouldBe` Right (Qualified Nothing Test "tests")
-      parseTarget "bench:speed" `shouldBe` Right (Qualified Nothing Bench "speed")
+      parseTarget "bench:speed"
+        `shouldBe` Right (Qualified Nothing Bench "speed")
 
     it "takes every spelling of a kind cabal takes, in any case" $ do
-      parseTarget "library:tilia" `shouldBe` Right (Qualified Nothing Lib "tilia")
-      parseTarget "foreign-library:tilia" `shouldBe` Right (Qualified Nothing FLib "tilia")
-      parseTarget "executable:tilia" `shouldBe` Right (Qualified Nothing Exe "tilia")
+      parseTarget "library:tilia"
+        `shouldBe` Right (Qualified Nothing Lib "tilia")
+      parseTarget "foreign-library:tilia"
+        `shouldBe` Right (Qualified Nothing FLib "tilia")
+      parseTarget "executable:tilia"
+        `shouldBe` Right (Qualified Nothing Exe "tilia")
       parseTarget "tst:tests" `shouldBe` Right (Qualified Nothing Test "tests")
-      parseTarget "test-suite:tests" `shouldBe` Right (Qualified Nothing Test "tests")
-      parseTarget "benchmark:speed" `shouldBe` Right (Qualified Nothing Bench "speed")
+      parseTarget "test-suite:tests"
+        `shouldBe` Right (Qualified Nothing Test "tests")
+      parseTarget "benchmark:speed"
+        `shouldBe` Right (Qualified Nothing Bench "speed")
       parseTarget "LIB:tilia" `shouldBe` Right (Qualified Nothing Lib "tilia")
 
     it "takes a package in front of the kind" $
-      parseTarget "tilia:lib:tilia" `shouldBe` Right (Qualified (Just "tilia") Lib "tilia")
+      parseTarget "tilia:lib:tilia"
+        `shouldBe` Right (Qualified (Just "tilia") Lib "tilia")
 
     it "ignores space around it" $
-      parseTarget "  lib:tilia  " `shouldBe` Right (Qualified Nothing Lib "tilia")
+      parseTarget "  lib:tilia  "
+        `shouldBe` Right (Qualified Nothing Lib "tilia")
 
     it "refuses an empty target" $
       parseTarget "" `shouldSatisfy` failed
@@ -69,7 +77,8 @@ spec = do
     root <- runIO (findProjectRoot ".")
     case root of
       Nothing ->
-        it "needs a project" $ expectationFailure "no project above the working directory"
+        it "needs a project" $
+          expectationFailure "no project above the working directory"
       Just here -> do
         it "is rooted at the cabal.project, not the .cabal file" $
           prMarker here `shouldBe` ProjectFile
@@ -93,7 +102,8 @@ spec = do
               expectationFailure (T.unpack (describeTargetProblem problem))
             Right cs -> do
               files <- filesOfComponents here cs
-              files `shouldSatisfy` any ("src/Tilia/Cabal/Target.hs" `isSuffixOf`)
+              files
+                `shouldSatisfy` any ("src/Tilia/Cabal/Target.hs" `isSuffixOf`)
 
         it "takes the package name as all of its components" $
           componentsOfTarget here (Called "tilia") >>= \case
@@ -561,7 +571,8 @@ spec = do
           Right cs -> do
             files <- filesOfComponents root cs
             fmap takeFileName files `shouldBe` ["F.hs"]
-            fmap (fmap pcName . componentInPlan) cs `shouldBe` [Just "flib:foreign"]
+            fmap (fmap pcName . componentInPlan) cs
+              `shouldBe` [Just "flib:foreign"]
 
     it "names each library the way a plan does" $
       withProject [("both.cabal", withSubLibrary)] $ \root ->
@@ -582,7 +593,8 @@ spec = do
           Right cs ->
             expectationFailure ("matched " <> show (length cs) <> " components")
           Left problem ->
-            describeTargetProblem problem `shouldNotSatisfy` T.isInfixOf ":setup"
+            describeTargetProblem problem
+              `shouldNotSatisfy` T.isInfixOf ":setup"
 
     it "says so when a cabal.project names nothing that exists" $
       withProject [("cabal.project", "packages: nowhere\n")] $ \root ->
@@ -590,7 +602,8 @@ spec = do
           Right cs ->
             expectationFailure ("found " <> show (length cs) <> " components")
           Left problem ->
-            describeTargetProblem problem `shouldSatisfy` T.isInfixOf "no packages"
+            describeTargetProblem problem
+              `shouldSatisfy` T.isInfixOf "no packages"
 
     it "says what the parser said of a cabal.project that will not parse" $
       withProject [("cabal.project", "packages: one\nfoo bar: baz\n")] $ \root ->
@@ -639,7 +652,8 @@ spec = do
           Right cs ->
             expectationFailure ("found " <> show (length cs) <> " components")
           Left problem ->
-            describeTargetProblem problem `shouldSatisfy` T.isInfixOf "does not parse"
+            describeTargetProblem problem
+              `shouldSatisfy` T.isInfixOf "does not parse"
 
   describe "the modules a project declares" $ do
     it "takes those of every package the project names"

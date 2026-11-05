@@ -497,7 +497,8 @@ commentDifference parsedBefore parsedAfter
             <> flagList haddockAfter
         )
   | flagsBefore /= flagsAfter,
-    Just why <- inForceDifference (inForceAfter flagsBefore) (inForceAfter flagsAfter) =
+    Just why <-
+      inForceDifference (inForceAfter flagsBefore) (inForceAfter flagsAfter) =
       Just why
   | docsBefore /= docsAfter =
       Just $
@@ -574,7 +575,8 @@ commentDifference parsedBefore parsedAfter
           let shared = length (takeWhile id (zipWith alike printed lifted)),
           k <- [shared, shared - 1 .. 1],
           all (not . commentTrailing) (take k lifted),
-          fmap bodyKey (take j (drop k printed)) == fmap bodyKey (take j written)
+          fmap bodyKey (take j (drop k printed))
+            == fmap bodyKey (take j written)
         ]
 
     alike x y = bodyKey x == bodyKey y
@@ -620,7 +622,8 @@ inForceDifference before after
     switched =
       [ e
       | e <- Map.keys (inForceSwitches before <> inForceSwitches after),
-        Map.lookup e (inForceSwitches before) /= Map.lookup e (inForceSwitches after)
+        Map.lookup e (inForceSwitches before)
+          /= Map.lookup e (inForceSwitches after)
       ]
     edition = maybe "the default" tshow . inForceEdition
 

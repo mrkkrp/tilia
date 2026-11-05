@@ -349,7 +349,8 @@ linearCost limit forest source = go forest
         upTo
           0
           ( go (concatMap (`nestedIn` 0) gss)
-              : [ if blankAcross r written && all (`blankAcross` written) (take 1 (gsBranches gs))
+              : [ if blankAcross r written
+                    && all (`blankAcross` written) (take 1 (gsBranches gs))
                     then 0
                     else go (nestedIn gs i <> concatMap (`nestedIn` 0) others)
                 | (k, gs) <- zip [0 :: Int ..] gss,
@@ -501,7 +502,9 @@ splitOnPragma parser forest source =
     baseline = blanking (concatMap (`blankingFor` 0) groups) source
     answered g i =
       blanking
-        (blankingFor g i <> concat [blankingFor h 0 | h <- groups, gsWhole h /= gsWhole g])
+        ( blankingFor g i
+            <> concat [blankingFor h 0 | h <- groups, gsWhole h /= gsWhole g]
+        )
         source
     written = T.lines source
     holdsPragma g =

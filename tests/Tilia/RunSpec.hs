@@ -249,7 +249,8 @@ spec = do
       reportOut (inplaceReport Plain Plain mixed) `shouldBe` ""
 
     it "says the same about them in either command" $
-      reportErr (checkReport Plain Plain mixed) `shouldBe` reportErr (inplaceReport Plain Plain mixed)
+      reportErr (checkReport Plain Plain mixed)
+        `shouldBe` reportErr (inplaceReport Plain Plain mixed)
 
   describe "what a check run prints" $ do
     it "shows a diff for a file that would change" $
@@ -371,7 +372,8 @@ spec = do
 
   describe "breaking text to fit" $ do
     it "keeps every line within the room given" $
-      fmap T.length (wrapTo 20 (T.replicate 40 "word ")) `shouldSatisfy` all (<= 20)
+      fmap T.length (wrapTo 20 (T.replicate 40 "word "))
+        `shouldSatisfy` all (<= 20)
 
     it "breaks at spaces and nowhere else" $
       wrapTo 12 "one two three four" `shouldBe` ["one two", "three four"]
@@ -395,7 +397,8 @@ spec = do
     it "breaks a colored line exactly where it breaks the bare one" $ do
       let bare = "alpha beta gamma delta epsilon zeta eta theta"
           lit = T.replace "gamma" "\ESC[36mgamma\ESC[0m" bare
-      fmap visibleLength (wrapTo 20 lit) `shouldBe` fmap T.length (wrapTo 20 bare)
+      fmap visibleLength (wrapTo 20 lit)
+        `shouldBe` fmap T.length (wrapTo 20 bare)
 
   describe "how wide anything gets" $ do
     let sprawling =
@@ -483,7 +486,8 @@ spec = do
       withBytes (T.encodeUtf8 "-- ü\r\nmodule A where\r\n") $ \path -> do
         Right asItIs <- readAsUtf8 path
         _ <- writeBack (path, formattingOutcome asItIs "-- ü\nmodule B where\n")
-        BS.readFile path `shouldReturn` T.encodeUtf8 "-- ü\r\nmodule B where\r\n"
+        BS.readFile path
+          `shouldReturn` T.encodeUtf8 "-- ü\r\nmodule B where\r\n"
 
     it "leaves one that did not alone, down to its modification time" $
       untouched Unchanged

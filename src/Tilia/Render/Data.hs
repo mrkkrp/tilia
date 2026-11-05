@@ -91,7 +91,9 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
                 (fmap renderTyVar tyVars)
             )
           <> foldMap kindSignature dd_kindSig
-          <> includeWhen (isGadt && not (null cons)) (breakOrSpace <> txt "where")
+          <> includeWhen
+            (isGadt && not (null cons))
+            (breakOrSpace <> txt "where")
 
     kindSignature k =
       joinedBy (reserved ctx "::") <> indent (hsType ctx k)

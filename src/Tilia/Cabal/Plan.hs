@@ -208,7 +208,10 @@ sourceHashOf p = case ppSource p of
 -- | How a package's cached answers are filed.
 cacheKey :: PlanPackage -> Text
 cacheKey p =
-  ppName p <> "-" <> ppVersion p <> maybe "" (("-" <>) . T.take 16) (sourceHashOf p)
+  ppName p
+    <> "-"
+    <> ppVersion p
+    <> maybe "" (("-" <>) . T.take 16) (sourceHashOf p)
 
 -- | A resolved build plan.
 data BuildPlan = BuildPlan
@@ -284,7 +287,8 @@ componentsOf named whole = case named of
 -- | Read @plan.json@.
 readBuildPlan :: FilePath -> IO (Either Text BuildPlan)
 readBuildPlan path =
-  decodePlan path >>= traverse (checkedOutIn (takeDirectory (takeDirectory path)))
+  decodePlan path
+    >>= traverse (checkedOutIn (takeDirectory (takeDirectory path)))
 
 -- | Read a plan that is to be trusted as up to date.
 readGivenPlan ::
@@ -477,7 +481,8 @@ planPathFor projectDir =
 checkReadiness ::
   Choice "useCache" -> [PlanComponent] -> FilePath -> IO Readiness
 checkReadiness caching wanted projectDir =
-  readinessOf caching wanted projectDir =<< readBuildPlan (planPathFor projectDir)
+  readinessOf caching wanted projectDir
+    =<< readBuildPlan (planPathFor projectDir)
 
 -- | 'checkReadiness', given the plan as read.
 readinessOf ::

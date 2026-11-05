@@ -69,7 +69,8 @@ corpusSpec corpus =
     runIO (obtain corpus) >>= \case
       Left problem ->
         it "is available" . expectationFailure $
-          "corpus not on this machine and could not be fetched: " <> T.unpack problem
+          "corpus not on this machine and could not be fetched: "
+            <> T.unpack problem
       Right examples -> do
         palette <- runIO (paletteFor stdout)
         case corpusExpectations corpus of
@@ -186,7 +187,10 @@ againstRecord path run examples = do
       (Formatted, Nothing) -> Nothing
       (Formatted, Just _) ->
         Just
-          (T.pack reportPath <> " gives a reason why this is not formatted, and it is" <> T.pack regenerate)
+          ( T.pack reportPath
+              <> " gives a reason why this is not formatted, and it is"
+              <> T.pack regenerate
+          )
       (_, Just (filedUnder, given))
         | filedUnder == outcome && given == reason -> Nothing
       _ ->
