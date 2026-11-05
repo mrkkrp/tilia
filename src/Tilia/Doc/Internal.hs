@@ -24,6 +24,7 @@ import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Tilia.Settings (Settings (..))
 import Tilia.Span (Span)
 
 ----------------------------------------------------------------------------
@@ -195,7 +196,9 @@ data Env = Env
     envNote :: !Bool,
     -- | Whether a group around what is written now is laid out flat, which
     -- keeps every 'Frangible' group inside it flat.
-    envHeldFlat :: !Bool
+    envHeldFlat :: !Bool,
+    -- | What the document is printed with.
+    envSettings :: !Settings
   }
 
 -- | Output built so far.
@@ -293,15 +296,21 @@ emptyOut =
     }
 
 -- | Turn a document into text.
-printDoc :: Doc -> Text
-printDoc doc = finish (go env doc emptyOut)
+printDoc ::
+  -- | What to print it with.
+  Settings ->
+  -- | The document.
+  Doc ->
+  Text
+printDoc settings doc = finish (go env doc emptyOut)
   where
     env =
       Env
         { envIndent = 0,
           envLayout = Broken,
           envNote = False,
-          envHeldFlat = False
+          envHeldFlat = False,
+          envSettings = settings
         }
 
 -- | Walk a document, accumulating output.
@@ -339,7 +348,11 @@ go env = \case
     let settled = case l of
           Frangible
             | not (envHeldFlat env),
-              fracturesFrom out (envIndent env) d ->
+              fracturesFrom
+                (settingsColumnLimit (envSettings env))
+                out
+                (envIndent env)
+                d ->
                 Broken
             | otherwise -> Flat
           _ -> l
@@ -364,12 +377,10 @@ go env = \case
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
 
--- | The column past which a 'Frangible' group is laid out broken.
-columnLimit :: Int
-columnLimit = 80
-
 -- | Does a frangible document break where it is about to be printed?
 fracturesFrom ::
+  -- | The column limit.
+  Int ->
   -- | The output so far.
   Out ->
   -- | The indentation in force.
@@ -377,16 +388,19 @@ fracturesFrom ::
   -- | The document.
   Doc ->
   Bool
-fracturesFrom out indent =
+fracturesFrom limit out indent =
   isJust
     . fracture
+      limit
       (if started out then outColumn out else indent)
       (started out && not (endsWithSpace out))
 
 -- | Where the first line of a frangible document laid out broken stops, if
--- it breaks from this column: if it runs past 'columnLimit' flat and stops
--- sooner broken.
+-- it breaks from this column: if it runs past the column limit flat and
+-- stops sooner broken.
 fracture ::
+  -- | The column limit.
+  Int ->
   -- | The column it starts at.
   Int ->
   -- | Whether a space asked for first is printed.
@@ -394,20 +408,23 @@ fracture ::
   -- | The document.
   Doc ->
   Maybe (Int, Bool, Bool)
-fracture column spaceFirst d
-  | flat columnLimit > columnLimit, flat end > end = Just broken
+fracture limit column spaceFirst d
+  | flat limit > limit, flat end > end = Just broken
   | otherwise = Nothing
   where
     flat bound =
-      let (c, _, _) = columnReached bound column spaceFirst [(Flat, True, d)]
+      let (c, _, _) =
+            columnReached limit bound column spaceFirst [(Flat, True, d)]
        in c
     broken@(end, _, _) =
-      columnReached maxBound column spaceFirst [(Broken, False, d)]
+      columnReached limit maxBound column spaceFirst [(Broken, False, d)]
 
 -- | The column a line reaches, or the first one past the bound, whether a
 -- space asked for next is printed there, and whether the line ends there
 -- rather than what is laid out on it.
 columnReached ::
+  -- | The column limit.
+  Int ->
   -- | The column past which it stops.
   Int ->
   -- | The column it starts at.
@@ -418,7 +435,7 @@ columnReached ::
   -- flat group holds it.
   [(Layout, Bool, Doc)] ->
   (Int, Bool, Bool)
-columnReached bound = walk
+columnReached limit bound = walk
   where
     walk column spaceDue items
       | column > bound = (column, spaceDue, True)
@@ -441,7 +458,7 @@ columnReached bound = walk
                 spaceDue
                 ((layout, held, a) : (layout, held, b) : rest)
             DGroup Frangible y
-              | not held -> case fracture column spaceDue y of
+              | not held -> case fracture limit column spaceDue y of
                   Just (c, s, True) -> (c, s, True)
                   Just (c, s, False) -> walk c s rest
                   Nothing -> walk column spaceDue ((Flat, True, y) : rest)

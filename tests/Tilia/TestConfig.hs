@@ -34,6 +34,7 @@ import Tilia.Fixity
 import Tilia.Fixity.Plan (Resolver (..))
 import Tilia.Format (AstCheck (..), FormatError, Session (..), formatSource)
 import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
+import Tilia.Settings (Settings)
 import Tilia.TestUtils (inBothNamespaces)
 
 -- | Format a corpus example with 'formatSource', in a project where only
@@ -41,6 +42,8 @@ import Tilia.TestUtils (inBothNamespaces)
 formatExample ::
   -- | Whether to check idempotence and the AST, in every configuration.
   Choice "check" ->
+  -- | What the project sets.
+  Settings ->
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
   -- | The modules the package around it declares, each with the package's
@@ -51,11 +54,12 @@ formatExample ::
   -- | The example.
   Text ->
   IO (Either FormatError Text)
-formatExample checking package ownModules =
+formatExample checking settings package ownModules =
   formatSource
     Session
       { sessionRoot = ProjectRoot "." ProjectFile,
         sessionOwnModules = ownModules,
+        sessionSettings = settings,
         sessionResolver =
           Resolver $ \_ name ->
             pure mempty{establishedFixities = exportsOf name},

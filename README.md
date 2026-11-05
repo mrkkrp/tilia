@@ -1,10 +1,9 @@
 # Tilia
 
 * [Getting started](#getting-started)
-* [Editor integration](#editor-integration)
+* [Settings](#settings)
 * [Excluding files](#excluding-files)
-* [Formatting operator chains](#formatting-operator-chains)
-* [Formatting CPP](#formatting-cpp)
+* [Editor integration](#editor-integration)
 * [Magic comments](#magic-comments)
 * [Unicode syntax](#unicode-syntax)
 * [Comparison with other formatters](#comparison-with-other-formatters)
@@ -18,7 +17,7 @@ are:
 * Use `ghc-lib-parser` for parsing, thus achieving correct parsing at all
   times.
 * Let single vs multiline layout be influenced by the input.
-* Admit no configuration.
+* Admit as little configuration as possible.
 * Ensure high-quality formatting of comments.
 * Provide first-class support for CPP.
 * Guarantee inference of operator fixity with absolute precision at all
@@ -103,6 +102,48 @@ Finally, here are some other flags that may be of interest:
   declined.
 * `--must-not-decline` turns declined files into failures.
 
+## Settings
+
+A project can change how Tilia formats it in a `tilia.toml` file in its
+root: the directory holding its `cabal.project`, or its `.cabal` file where
+it has no `cabal.project`.
+
+```toml
+# Break what runs past column 100 rather than 80.
+column-limit = 100
+```
+
+The file is TOML, restricted to lines of `key = value` where a value is
+`true`, `false`, or a whole number, and to `#` comments.
+
+| Setting        | Values                 | Default |
+| -------------- | ---------------------- | ------- |
+| `column-limit` | a whole number above 0 | 80      |
+
+## Excluding files
+
+You can tell Tilia to skip certain files and/or directories by listing them
+in a `.tiliaignore` file, which Tilia reads the way Git reads `.gitignore`:
+
+```gitignore
+# Fixtures compiled by a separate driver
+tests/shouldwork/
+tests/shouldfail/
+
+# Generated modules wherever they are, except one
+*Generated.hs
+!/src/Keep/Generated.hs
+```
+
+A `.tiliaignore` can be in the project root or in any directory below it,
+and its patterns are relative to that directory. Everything `.gitignore`
+offers works the same: the globs `*`, `?`, `[…]`, and `**`, a `/` at the
+start or in the middle to anchor a pattern to its directory, a `/` at the
+end to match directories only, `!` to re-include what an earlier pattern
+excluded, `#` for comments, and `\` to escape any of these. As with Git, a
+pattern in a deeper file wins over one above it, and a file whose directory
+is excluded cannot be re-included.
+
 ## Editor integration
 
 Tilia offers a dedicated command for editor integrations:
@@ -135,45 +176,6 @@ require("conform").setup({
 A program that would rather call Tilia as a library, such as a language
 server plugin, can use `editorSession` and `formatBuffer` from
 `Tilia.Editor`, which is what `for-editor` runs.
-
-## Excluding files
-
-You can tell Tilia to skip certain files and/or directories by listing them
-in a `.tiliaignore` file, which Tilia reads the way Git reads `.gitignore`:
-
-```gitignore
-# Fixtures compiled by a separate driver
-tests/shouldwork/
-tests/shouldfail/
-
-# Generated modules wherever they are, except one
-*Generated.hs
-!/src/Keep/Generated.hs
-```
-
-A `.tiliaignore` can be in the project root or in any directory below it,
-and its patterns are relative to that directory. Everything `.gitignore`
-offers works the same: the globs `*`, `?`, `[…]`, and `**`, a `/` at the
-start or in the middle to anchor a pattern to its directory, a `/` at the
-end to match directories only, `!` to re-include what an earlier pattern
-excluded, `#` for comments, and `\` to escape any of these. As with Git, a
-pattern in a deeper file wins over one above it, and a file whose directory
-is excluded cannot be re-included.
-
-## Formatting operator chains
-
-There is nothing you need to know about it or do to make it work. It will
-just happen, no matter where your operators come from: Hackage, Nix, private
-repos, or the modules of the project you are formatting.
-
-## Formatting CPP
-
-CPP is a first-class formattable object to Tilia. Any Haskell syntactically
-enclosed in a conditional branch will format, and it does not even need to
-be self-contained valid Haskell on its own, as long as every configuration
-of the module is a valid Haskell module. A module with too many
-configurations to format, or with something cpp passes on to GHC, such as a
-line marker, is declined and left as it is.
 
 ## Magic comments
 

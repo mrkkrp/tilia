@@ -14,6 +14,7 @@ import Tilia.Comments.Attach
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Parser
+import Tilia.Settings (defaultSettings)
 import Tilia.Span
 import Tilia.TestUtils (commentsIn, parsed)
 
@@ -208,7 +209,7 @@ spec = do
 -- Helpers
 
 render :: Doc -> Text
-render = printDoc
+render = printDoc defaultSettings
 
 one :: Text -> Comment
 one src = case commentsIn src of

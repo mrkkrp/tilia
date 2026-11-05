@@ -116,7 +116,7 @@ spec = describe "formatting what an editor holds" $ do
         `shouldReturn` Just 2
 
   it "fails where a .cabal file of the project does not parse" $
-    inProject $ \project planFile -> do
+    inProject [] $ \project planFile -> do
       writeUtf8File (project </> "fake.cabal") "library\n  exposed-modules: {\n"
       either (Just . failure) (const Nothing)
         <$> editorSession
@@ -128,6 +128,27 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #checkIdempotence)
           (Don't #debugFixity)
         `shouldReturn` Just 25
+
+  describe "given the project's tilia.toml" $ do
+    it "breaks what runs past the column limit it sets" $
+      withProjectHolding [("tilia.toml", "column-limit = 20\n")] $ \buffer ->
+        buffer ("src" </> "Ops.hs") breakable
+          `shouldReturn` CameTo brokenAtTwenty
+
+    it "breaks at the column limit it sets under the preprocessor" $
+      withProjectHolding [("tilia.toml", "column-limit = 20\n")] $ \buffer ->
+        buffer ("src" </> "Ops.hs") conditionallyBreakable
+          `shouldReturn` CameTo conditionallyBrokenAtTwenty
+
+    it "breaks at the column limit it sets given what compiling establishes" $
+      withCompiledHolding [("tilia.toml", "column-limit = 20\n")] $ \buffer ->
+        buffer ("src" </> "Ops.hs") breakable
+          `shouldReturn` CameTo brokenAtTwenty
+
+    it "fails where it cannot be used" $
+      withProjectHolding [("tilia.toml", "column-limit = 0\n")] $ \buffer ->
+        buffer ("src" </> "Ops.hs") "module Ops where\nx=1\n"
+          `shouldReturn` CameFailed 26
 
   describe "given what compiling the project establishes" $ do
     it "puts the imports of the project's own modules after the rest" $
@@ -218,6 +239,59 @@ importsByPackageGrouped =
       "import \"fake\" Ops",
       "",
       "x = sort"
+    ]
+
+-- | A module with a binding that runs past column 20.
+breakable :: Text
+breakable = T.unlines ["module Ops where", "xs = [alpha, beta, gamma]"]
+
+-- | 'breakable', broken where it runs past column 20.
+brokenAtTwenty :: Text
+brokenAtTwenty =
+  T.unlines
+    [ "module Ops where",
+      "",
+      "xs =",
+      "  [ alpha,",
+      "    beta,",
+      "    gamma",
+      "  ]"
+    ]
+
+-- | 'breakable', in each branch of a conditional.
+conditionallyBreakable :: Text
+conditionallyBreakable =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Ops where",
+      "#ifdef FLAG",
+      "xs = [alpha, beta, gamma]",
+      "#else",
+      "xs = [alpha, beta, delta]",
+      "#endif"
+    ]
+
+-- | 'conditionallyBreakable', broken where it runs past column 20.
+conditionallyBrokenAtTwenty :: Text
+conditionallyBrokenAtTwenty =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "",
+      "module Ops where",
+      "",
+      "#ifdef FLAG",
+      "xs =",
+      "  [ alpha,",
+      "    beta,",
+      "    gamma",
+      "  ]",
+      "#else",
+      "xs =",
+      "  [ alpha,",
+      "    beta,",
+      "    delta",
+      "  ]",
+      "#endif"
     ]
 
 -- | A formatted module with a conditional around two alternatives, which do
@@ -314,8 +388,17 @@ failure = formatErrorExitCode
 -- excluding @src/Generated.hs@, and a plan for it trusted as up to date,
 -- handed to the test as a way to format a buffer as one of its files.
 withProject :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
-withProject act =
-  inProject $ \project planFile ->
+withProject = withProjectHolding []
+
+-- | 'withProject', with further files in the project.
+withProjectHolding ::
+  -- | The files, by their paths in the project.
+  [(FilePath, Text)] ->
+  -- | The test, given a way to format a buffer as one of the files.
+  ((FilePath -> Text -> IO Came) -> Expectation) ->
+  Expectation
+withProjectHolding files act =
+  inProject files $ \project planFile ->
     act $ \file text -> do
       let path = project </> file
       editorSession
@@ -335,8 +418,17 @@ withProject act =
 -- package, and the interfaces of @Ops@ and of an empty @Prelude@; asking for
 -- that of @Boom@ throws.
 withCompiled :: ((FilePath -> Text -> IO Came) -> Expectation) -> Expectation
-withCompiled act =
-  inProject $ \project _ ->
+withCompiled = withCompiledHolding []
+
+-- | 'withCompiled', with further files in the project.
+withCompiledHolding ::
+  -- | The files, by their paths in the project.
+  [(FilePath, Text)] ->
+  -- | The test, given a way to format a buffer as one of the files.
+  ((FilePath -> Text -> IO Came) -> Expectation) ->
+  Expectation
+withCompiledHolding files act =
+  inProject files $ \project _ ->
     act $ \file text -> do
       let path = project </> file
       compiledSession path compiled (Don't #checkAst) (Don't #checkIdempotence)
@@ -368,17 +460,24 @@ withCompiled act =
 -- | A project with a module declaring @infixl 6 <+>@, one beginning with a
 -- byte order mark declaring @infixr 0 <->@, and a @.tiliaignore@ excluding
 -- @src/Generated.hs@, given to the test with a plan for it.
-inProject :: (FilePath -> FilePath -> Expectation) -> Expectation
-inProject =
+inProject ::
+  -- | Further files of the project, by their paths in it.
+  [(FilePath, Text)] ->
+  -- | The test, given the project's directory and the plan's path.
+  (FilePath -> FilePath -> Expectation) ->
+  Expectation
+inProject files =
   withOpsProject
-    [ ( "src" </> "Marked.hs",
-        T.unlines
-          [ "\xFEFFmodule Marked ((<->)) where",
-            "infixr 0 <->",
-            "(<->) :: a -> a -> a",
-            "(<->) = const"
-          ]
-      ),
-      (".tiliaignore", "src/Generated.hs\n")
-    ]
+    ( [ ( "src" </> "Marked.hs",
+          T.unlines
+            [ "\xFEFFmodule Marked ((<->)) where",
+              "infixr 0 <->",
+              "(<->) :: a -> a -> a",
+              "(<->) = const"
+            ]
+        ),
+        (".tiliaignore", "src/Generated.hs\n")
+      ]
+        <> files
+    )
     []

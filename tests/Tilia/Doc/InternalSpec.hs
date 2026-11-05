@@ -8,6 +8,7 @@ import Test.Hspec
 
 import Tilia.Doc
 import Tilia.Doc.Combinators
+import Tilia.Settings (defaultSettings)
 import Tilia.Span
 
 spec :: Spec
@@ -100,7 +101,7 @@ held = DHoldBack SpillAtIndentation
 underPrevious = DHoldBack SpillUnderPrevious
 
 out :: Doc -> Text
-out = printDoc
+out = printDoc defaultSettings
 
 directive :: Doc
 directive = DCppDirective (mkSpan (9, 1) (9, 6)) "if X"

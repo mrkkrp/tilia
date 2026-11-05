@@ -12,6 +12,7 @@ import Test.QuickCheck
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Gen
+import Tilia.Settings (defaultSettings)
 
 spec :: Spec
 spec = do
@@ -75,4 +76,4 @@ squash :: Text -> Text
 squash = T.filter (not . isSpace)
 
 out :: Doc -> Text
-out = printDoc
+out = printDoc defaultSettings

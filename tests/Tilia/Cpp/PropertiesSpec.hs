@@ -19,6 +19,7 @@ import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig)
+import Tilia.Settings (defaultSettings)
 import Tilia.TestUtils (defaultParserConfig, parses)
 import Tilia.Utils (tshow)
 
@@ -101,13 +102,17 @@ macros =
   mempty{macroExactVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
 
 format :: Text -> Either Text Text
-format source = case formatWithCpp
-  defaultParserConfig
-  defaultRenderConfig
-  "M.hs"
-  source of
+format source = case result of
   Left _ -> Left "declined"
   Right out -> Right out
+  where
+    result =
+      formatWithCpp
+        defaultSettings
+        defaultParserConfig
+        defaultRenderConfig
+        "M.hs"
+        source
 
 -- | Whatever holds of a module the formatter did not decline.
 --

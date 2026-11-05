@@ -40,6 +40,7 @@ import Data.Version (Version, versionBranch)
 import GHC.Driver.Session (OnOff (..))
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (canonicalizePath)
+import System.FilePath ((</>))
 
 import Tilia.Cabal.Package
   ( PackageProblem (..),
@@ -115,6 +116,13 @@ import Tilia.Parser
   )
 import Tilia.Pragma (defaultsOf, effectiveExtensions, movesPositions)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
+import Tilia.Settings
+  ( Settings (..),
+    SettingsProblem,
+    describeSettingsProblem,
+    readSettings,
+    settingsFile,
+  )
 import Tilia.Source (Written (..), linesOf)
 import Tilia.Utils (collected, spellList, tshow)
 
@@ -126,6 +134,8 @@ data FormatError
     NoBuildPlan FilePath Text
   | -- | A project whose own modules could not be told, and why.
     NoOwnModules FilePath TargetProblem
+  | -- | The project's @tilia.toml@ cannot be used, and why.
+    InvalidSettings FilePath SettingsProblem
   | -- | The extensions in force in the file could not be settled, and why.
     NoPackage FilePath PackageProblem
   | -- | The file is not Haskell we can parse.
@@ -166,6 +176,8 @@ describeFormatError palette = \case
       <> file root
       <> " declares: "
       <> describeTargetProblem problem
+  InvalidSettings path problem ->
+    "cannot use " <> file path <> ": " <> describeSettingsProblem problem
   NoPackage path problem ->
     "cannot tell what "
       <> file path
@@ -258,6 +270,7 @@ formatErrorExitCode = \case
   Unwritable{} -> 23
   MisplacedMagicComment{} -> 24
   NoOwnModules{} -> 25
+  InvalidSettings{} -> 26
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
@@ -268,6 +281,7 @@ refused = \case
   UnknownFixity{} -> True
   NotParsed{} -> False
   NoPackage{} -> False
+  InvalidSettings{} -> False
   Unreadable{} -> False
   Unwritable{} -> False
   NotEquivalent{} -> False
@@ -284,6 +298,8 @@ data Session = Session
     -- | The modules the project's own packages declare, each with the names
     -- of those that declare it.
     sessionOwnModules :: Map Text (Set Text),
+    -- | What the project sets in its @tilia.toml@.
+    sessionSettings :: Settings,
     -- | What can be asked about the modules a file imports.
     sessionResolver :: Resolver,
     -- | What the plan settles about the questions a file's conditionals
@@ -356,6 +372,7 @@ newSession ::
   IO (Either FormatError Session)
 newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
+  settings <- settingsOf project
   packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
   ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
   (plan, routes) <- case planSource of
@@ -383,6 +400,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
     Session
       { sessionRoot = project,
         sessionOwnModules = ownModules,
+        sessionSettings = settings,
         sessionResolver = resolver,
         sessionMacros = macrosOf plan,
         sessionPackage = packageReader,
@@ -424,6 +442,7 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   project <-
     maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
   let root = prPath project
+  settings <- settingsOf project
   packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
   ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
   resolver <- liftIO (newResolverFrom compiledInterface)
@@ -431,6 +450,7 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
     Session
       { sessionRoot = project,
         sessionOwnModules = ownModules,
+        sessionSettings = settings,
         sessionResolver = resolver,
         sessionMacros =
           versionMacros
@@ -480,6 +500,7 @@ formatTurnedOn session path source = runExceptT $ do
   importer <- liftIO (canonicalizePath path)
   let resolver = sessionResolver session
       config = ParserConfig package
+      settings = sessionSettings session
       misplaced (n, why) = throwE (MisplacedMagicComment path n why)
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
@@ -527,7 +548,7 @@ formatTurnedOn session path source = runExceptT $ do
             printed <-
               orElse
                 (CppUnsupported path)
-                (formatWithCpp config render path text)
+                (formatWithCpp settings config render path text)
             pure (printed, Nothing)
         | otherwise = do
             parsed <-
@@ -537,10 +558,7 @@ formatTurnedOn session path source = runExceptT $ do
                 already
             traverse_ misplaced (misplacedMagicComment text (pure parsed))
             render <- renderConfigFor extensions (pure parsed)
-            pure
-              ( printDoc (renderModule render parsed),
-                Just parsed
-              )
+            pure (printDoc settings (renderModule render parsed), Just parsed)
   let inForce@(extensions, cpp) = extensionsAndCpp source
   when (movesPositions (Set.toList extensions) source) $
     throwE (PositionPragmas path)
@@ -671,6 +689,15 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
         Just ("the input does not parse: " <> describeParseError e)
       _ -> Nothing
     firstJust = foldr (<|>) Nothing
+
+-- | The settings of a project, or why they cannot be used.
+settingsOf ::
+  -- | The project.
+  ProjectRoot ->
+  ExceptT FormatError IO Settings
+settingsOf project =
+  orElse (InvalidSettings (prPath project </> settingsFile))
+    =<< liftIO (readSettings (prPath project))
 
 -- | Give up with the given error where there is one to give up over.
 orElse :: (e -> FormatError) -> Either e a -> ExceptT FormatError IO a

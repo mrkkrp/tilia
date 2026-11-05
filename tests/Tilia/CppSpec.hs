@@ -19,6 +19,7 @@ import Tilia.Doc (Doc)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (defaultRenderConfig, renderModule)
+import Tilia.Settings (defaultSettings)
 import Tilia.Source (directiveOnLine)
 import Tilia.Span (Span)
 import Tilia.TestUtils
@@ -31,7 +32,12 @@ import Tilia.TestUtils
 -- | Format a module which uses the C preprocessor, configured with nothing.
 formatCpp :: Text -> Either Text Text
 formatCpp =
-  said . formatWithCpp defaultParserConfig defaultRenderConfig "example.hs"
+  said
+    . formatWithCpp
+      defaultSettings
+      defaultParserConfig
+      defaultRenderConfig
+      "example.hs"
 
 spec :: Spec
 spec = do

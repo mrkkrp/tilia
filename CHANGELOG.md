@@ -37,6 +37,10 @@
 * A construct written on one line that runs past column 80 is broken over
   several lines where possible. [Issue
   309](https://github.com/mrkkrp/tilia/issues/309).
+* A project can set, in a `tilia.toml` file in its root, the column past
+  which a construct is broken over several lines, 80 unless set, as in
+  `column-limit = 100`. A setting Tilia does not know, one set twice, or a
+  value Tilia does not take is an error, with exit code 26.
 
 ## Tilia 0.1.4.0
 
