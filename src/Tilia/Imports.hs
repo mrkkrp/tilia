@@ -60,9 +60,9 @@ normalizeImports ::
   [Comment] ->
   -- | Original imports.
   [LImportDecl GhcPs] ->
-  -- | Normalized imports, in runs that an empty line keeps apart: an
-  -- import of the project's own modules that follows one of another
-  -- package's begins a run.
+  -- | Normalized imports, in runs that an empty line keeps apart: a run
+  -- begins wherever the imports pass between the project's own modules and
+  -- those of other packages.
   [[LImportDecl GhcPs]]
 normalizeImports
   implicitPrelude
@@ -71,7 +71,8 @@ normalizeImports
   directives
   written
   imports =
-    foldr apart [] (concatMap stretch (cutAtBarriers barriers tidied))
+    fmap (fmap snd) . groupBy ((==) `on` fst) $
+      [(ours i, i) | i <- concatMap stretch (cutAtBarriers barriers tidied)]
     where
       tidied = fmap (fmap (tidyImportList directives written)) imports
       identity = importIdentity implicitPrelude ownModules
@@ -80,11 +81,6 @@ normalizeImports
         foldRuns
           (combineImports directives written)
           [((identity i, hiddenNames i, alone i), i) | i <- is]
-      apart i = \case
-        run@(j : _) : rest
-          | ours j && not (ours i) -> [i] : run : rest
-        run : rest -> (i : run) : rest
-        [] -> [[i]]
       alone i
         | any strands (spanOf i) = lineOf i
         | otherwise = 0
