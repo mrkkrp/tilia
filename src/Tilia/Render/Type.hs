@@ -110,8 +110,12 @@ typeBody ctx documented here = \case
   HsTupleTy _ sort xs ->
     layoutWithin ctx here (spansOf xs) $
       tupleBrackets
+        (ctxCommaStyle ctx)
         sort
-        (insideBrackets here (commaSep (fmap (align . hsType ctx) xs)))
+        ( insideBrackets
+            here
+            (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs))
+        )
   HsSumTy _ xs ->
     unboxed (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
@@ -135,17 +139,29 @@ typeBody ctx documented here = \case
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
   HsExplicitListTy _ promoted xs ->
     tick promoted
-      <> brackets
+      <> commaBracketWith
+        (ctxCommaStyle ctx)
+        Outdented
+        "["
+        "]"
         ( insideBrackets
             here
-            (quoteGap promoted xs <> commaSep (fmap (align . hsType ctx) xs))
+            ( quoteGap promoted xs
+                <> commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs)
+            )
         )
   HsExplicitTupleTy _ promoted xs ->
     tick promoted
-      <> parens
+      <> commaBracketWith
+        (ctxCommaStyle ctx)
+        Outdented
+        "("
+        ")"
         ( insideBrackets
             here
-            (quoteGap promoted xs <> commaSep (fmap (hsType ctx) xs))
+            ( quoteGap promoted xs
+                <> commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs)
+            )
         )
   HsTyLit _ t -> case t of
     HsStrTy (SourceText s) _ -> stringLiteral s
@@ -197,10 +213,17 @@ gatherAppArgs f known = case unLoc f of
   _ -> (f, known)
 
 -- | The brackets a tuple type is written with.
-tupleBrackets :: HsTupleSort -> Doc -> Doc
-tupleBrackets = \case
+tupleBrackets ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | Which kind of tuple.
+  HsTupleSort ->
+  -- | The items, separated.
+  Doc ->
+  Doc
+tupleBrackets commas = \case
   HsUnboxedTuple -> unboxed
-  HsBoxedOrConstraintTuple -> parens
+  HsBoxedOrConstraintTuple -> commaBracketWith commas Outdented "(" ")"
 
 -- | The tick in front of a promoted list or tuple.
 tick :: PromotionFlag -> Doc
@@ -279,7 +302,8 @@ spine t =
 
 -- | A class context, as it appears before a @=>@.
 context :: Ctx -> LHsContext GhcPs -> Doc
-context ctx = at_ ctx (contextOf bare (hsType ctx) . fmap unbracket)
+context ctx =
+  at_ ctx (contextOf (ctxCommaStyle ctx) bare (hsType ctx) . fmap unbracket)
   where
     bare t = case unLoc t of
       HsTyVar _ _ (L _ n) | isTvOcc (rdrNameOcc n) -> True
@@ -305,6 +329,8 @@ leftContext ctx ctxt = context ctx ctxt <> joinedBy (reserved ctx "=>")
 
 -- | A context over anything that can stand as a constraint.
 contextOf ::
+  -- | Where the commas go.
+  CommaStyle ->
   -- | Can this constraint, when it is the only one, go without parentheses?
   (a -> Bool) ->
   -- | How to print one.
@@ -312,10 +338,12 @@ contextOf ::
   -- | The constraints.
   [a] ->
   Doc
-contextOf bare render = \case
+contextOf commas bare render = \case
   [] -> txt "()"
   [x] | bare x -> render x
-  xs -> parens (commaSep (fmap (align . render) xs))
+  xs ->
+    commaBracketWith commas Outdented "(" ")" $
+      commaSep commas (fmap (align . render) xs)
 
 -- | The flags a type variable binder may carry.
 --
@@ -455,17 +483,42 @@ asSigType ty = L (getLoc ty) (HsSig NoExtField (HsOuterImplicit NoExtField) ty)
 recordFieldsAt :: Ctx -> XRec GhcPs [LHsConDeclRecField GhcPs] -> Doc
 recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
 
--- | The fields of a record.
+-- | The fields of a record, each documented above it or, with leading
+-- commas, below it, under the comma in front of it.
 recordFields :: Ctx -> Maybe Span -> [LHsConDeclRecField GhcPs] -> Doc
 recordFields ctx enclosing xs =
-  brokenIfDocumented ctx xs . braces . insideBrackets enclosing $
-    commaSep (fmap (align . at_ ctx (recordField ctx)) xs)
+  brokenIfDocumented ctx xs
+    . commaBracketWith commas Outdented "{" "}"
+    . insideBrackets enclosing
+    $ commaSep commas (fmap field xs)
+  where
+    commas = ctxCommaStyle ctx
+    field = case commas of
+      TrailingCommas ->
+        align
+          . at_
+            ctx
+            ( \f ->
+                foldMap (haddockInline ctx Pipe) (documentation f)
+                  <> recordField ctx f
+            )
+      LeadingCommas -> \l ->
+        align (at_ ctx (recordField ctx) l)
+          <> foldMap
+            (\d -> hardBreak <> haddock ctx Caret Open d)
+            (documentation (unLoc l))
+    documentation :: HsConDeclRecField GhcPs -> Maybe (LHsDoc GhcPs)
+    documentation HsConDeclRecField{cdrf_spec} = cdf_doc cdrf_spec
 
--- | One field of a record, documentation and multiplicity included.
+-- | One field of a record, multiplicity included, without its
+-- documentation.
 recordField :: Ctx -> HsConDeclRecField GhcPs -> Doc
 recordField ctx HsConDeclRecField{..} =
-  foldMap (haddockInline ctx Pipe) (cdf_doc cdrf_spec)
-    <> align (commaSep (fmap (at_ ctx (name ctx . foLabel)) cdrf_names))
+  align
+    ( commaSep
+        (ctxCommaStyle ctx)
+        (fmap (at_ ctx (name ctx . foLabel)) cdrf_names)
+    )
     <> space
     <> multiplicity (hsType ctx) (cdf_multiplicity cdrf_spec)
     <> joinedBy (reserved ctx "::")

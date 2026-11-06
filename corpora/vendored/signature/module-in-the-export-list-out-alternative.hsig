@@ -1,0 +1,7 @@
+signature Codec (Codec, module Data.Text) where
+
+import Data.Text
+
+data Codec
+
+encode :: Codec -> Text

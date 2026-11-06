@@ -1,0 +1,7 @@
+{-# LANGUAGE RoleAnnotations #-}
+
+signature Cache where
+
+type role Cache nominal representational
+
+data Cache k v

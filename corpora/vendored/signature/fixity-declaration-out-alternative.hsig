@@ -1,0 +1,7 @@
+signature Combine where
+
+data Chunk
+
+infixr 5 <+>
+
+(<+>) :: Chunk -> Chunk -> Chunk

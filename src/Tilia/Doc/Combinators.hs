@@ -52,6 +52,7 @@ module Tilia.Doc.Combinators
 
     -- * Wrapping
     ClosingIndent (..),
+    commaBracketWith,
     parens,
     parensWith,
     brackets,
@@ -63,8 +64,11 @@ module Tilia.Doc.Combinators
     backticks,
 
     -- * Punctuation
+    CommaStyle (..),
     comma,
+    separatingComma,
     commaSep,
+    commaSepAfter,
     semi,
 
     -- * Conditionals
@@ -86,6 +90,7 @@ import Tilia.Doc
     mapChildren,
     printsNothing,
   )
+import Tilia.Settings (CommaStyle (..))
 import Tilia.Span (Span, endOf)
 
 ----------------------------------------------------------------------------
@@ -323,11 +328,32 @@ bracketWith ::
   -- | Body.
   Doc ->
   Doc
-bracketWith closing open close body =
+bracketWith = commaBracketWith TrailingCommas
+
+-- | A bracket pair around items separated by 'commaSep' in the given style,
+-- which puts leading commas under the opening bracket unless the closing
+-- one is kept a step in.
+commaBracketWith ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | Where the closing bracket goes.
+  ClosingIndent ->
+  -- | Opening bracket.
+  Text ->
+  -- | Closing bracket.
+  Text ->
+  -- | The items, separated.
+  Doc ->
+  Doc
+commaBracketWith commas closing open close body =
   align $
     txt open
-      <> variant body (space <> align body <> hardBreak)
+      <> variant body (space <> linedUp body <> hardBreak)
       <> nest (closingSteps closing) (txt close)
+  where
+    linedUp
+      | commas == LeadingCommas, closing == Outdented = id
+      | otherwise = align
 
 -- | Surround with a bracket pair whose brackets are held off the body.
 --
@@ -414,10 +440,39 @@ comma = txt ","
 semi :: Doc
 semi = txt ";"
 
--- | Separate by a comma and a 'breakOrSpace', so that a broken list puts
--- each element on its own line with the comma left behind on the one above.
-commaSep :: [Doc] -> Doc
-commaSep = sepBy (comma <> breakOrSpace)
+-- | A comma between two items, with the place the line may break: after
+-- it, or, with 'LeadingCommas', before it, at the indentation in force.
+separatingComma ::
+  -- | Where the commas go.
+  CommaStyle ->
+  Doc
+separatingComma = \case
+  TrailingCommas -> comma <> breakOrSpace
+  LeadingCommas -> breakOrNothing <> txt ", "
+
+-- | Separate by 'separatingComma'.
+commaSep ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | The items.
+  [Doc] ->
+  Doc
+commaSep = sepBy . separatingComma
+
+-- | Items after a lead-in such as a bar, separated by commas and lined up
+-- under the first or, with 'LeadingCommas', with the commas under the
+-- lead-in.
+commaSepAfter ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | The lead-in.
+  Text ->
+  -- | The items.
+  [Doc] ->
+  Doc
+commaSepAfter commas leadIn items = case commas of
+  TrailingCommas -> txt leadIn <> space <> align (commaSep commas items)
+  LeadingCommas -> align (txt leadIn <> space <> commaSep commas items)
 
 ----------------------------------------------------------------------------
 -- Conditionals

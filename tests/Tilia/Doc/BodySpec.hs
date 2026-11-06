@@ -10,7 +10,7 @@ import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Body
 import Tilia.Doc.Combinators
-import Tilia.Settings (defaultSettings)
+import Tilia.TestUtils (withEachSettings)
 
 -- | A stand-in for a real body type, enough to exercise the class: one
 -- construct that hangs, one that does not, and one that takes its answer
@@ -32,7 +32,8 @@ instance Body Toy where
     Apply _ x -> bodyPlacement x
 
 spec :: Spec
-spec = do
+spec = withEachSettings $ \settings -> do
+  let out = printDoc settings
   describe "attach" $ do
     it "hands over the line when hanging" $
       out (broken (txt "=" <> attach Hanging (txt "do" <> indent (hardBreak <> txt "s"))))
@@ -58,6 +59,3 @@ spec = do
     it "propagates through nesting" $
       bodyPlacement (Apply (Call "f" "x") (Apply (Call "g" "y") (Block ["a"])))
         `shouldBe` Hanging
-
-out :: Doc -> Text
-out = printDoc defaultSettings

@@ -1,0 +1,11 @@
+{-# LANGUAGE TypeFamilies #-}
+
+signature Element where
+
+data Container
+
+type family Elem c
+
+type Name = String
+
+elems :: Container -> [Elem Container]

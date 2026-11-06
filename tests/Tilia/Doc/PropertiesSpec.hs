@@ -12,10 +12,11 @@ import Test.QuickCheck
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Gen
-import Tilia.Settings (defaultSettings)
+import Tilia.TestUtils (withEachSettings)
 
 spec :: Spec
-spec = do
+spec = withEachSettings $ \settings -> do
+  let out = printDoc settings
   describe "output shape" $ do
     it "never leaves trailing whitespace on a line" $
       property $ \(AnyDoc d) ->
@@ -74,6 +75,3 @@ spec = do
 -- remove; what remains is what it must not touch.
 squash :: Text -> Text
 squash = T.filter (not . isSpace)
-
-out :: Doc -> Text
-out = printDoc defaultSettings

@@ -8,6 +8,7 @@ module Tilia.Corpus
     Corpus (..),
     Source (..),
     Reference (..),
+    alternativeMark,
     Expectations (..),
     Lists (..),
     vendoredExamples,
@@ -25,8 +26,9 @@ where
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Exception (try)
-import Control.Monad (forM)
+import Control.Monad (forM, guard)
 import Data.ByteString.Lazy qualified as BL
+import Data.Foldable (asum)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
 import Data.Map.Strict (Map)
@@ -71,9 +73,15 @@ data Reference
     -- checked.
     NoReference
   | -- | It does, in a file whose name is the input's with the given mark
-    -- put before the extension.
+    -- put before the extension, and, for 'alternativeSettings', with
+    -- 'alternativeMark' after that mark.
     ReferenceMarked String
   deriving (Eq, Show)
+
+-- | What sets apart the reference for 'alternativeSettings', after the
+-- corpus's mark.
+alternativeMark :: String
+alternativeMark = "-alternative"
 
 -- | Where the examples of a corpus come from.
 data Source
@@ -892,6 +900,9 @@ data Example = Example
     -- it says. 'Nothing' for a corpus that ships no expected outputs, and
     -- for an example within one that happens to have none.
     exampleReference :: Maybe FilePath,
+    -- | The file holding what formatting should produce with
+    -- 'alternativeSettings', if the corpus says.
+    exampleAlternativeReference :: Maybe FilePath,
     -- | What the package around it puts in force, already resolved from its
     -- @.cabal@ file. 'Nothing' for a corpus whose examples are not modules
     -- of a package, see 'corpusInPackages', and for one whose package could
@@ -1067,23 +1078,27 @@ examplesIn corpus root dirs = do
   own <- ownModulesReaderFor corpus
   let present = Set.fromList found
       files = filter (not . skipped) found
-      example f reference =
-        Example (nameOf f) f reference <$> reader f <*> own f
+      example f reference alternative =
+        Example (nameOf f) f reference alternative <$> reader f <*> own f
   case corpusReference corpus of
-    NoReference -> traverse (`example` Nothing) files
+    NoReference -> traverse (\f -> example f Nothing Nothing) files
     ReferenceMarked mark ->
       forM (filter (not . answerTo mark present) files) $ \f ->
         if mark `isSuffixOf` stemOf f
-          then example f (Just f)
+          then example f (Just f) Nothing
           else do
-            let reference = stemOf f <> mark <> extensionOf f
-            there <- doesFileExist reference
-            example f (if there then Just reference else Nothing)
+            let marked m = stemOf f <> m <> extensionOf f
+            reference <- existing (marked mark)
+            alternative <- existing (marked (mark <> alternativeMark))
+            example f reference alternative
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
-    answerTo mark present f = case withoutSuffix mark (stemOf f) of
-      Just stem -> Set.member (stem <> extensionOf f) present
-      Nothing -> False
+    existing f = (\there -> f <$ guard there) <$> doesFileExist f
+    answerTo mark present f =
+      any
+        (\stem -> Set.member (stem <> extensionOf f) present)
+        (mapMaybe (`withoutSuffix` stemOf f) (marks mark))
+    marks mark = [mark <> alternativeMark, mark]
     skipped f = any listed (nameOf f : maybeToList (inputFor (nameOf f)))
     listed name = any covers skips
       where
@@ -1093,7 +1108,8 @@ examplesIn corpus root dirs = do
       Recorded _ -> []
     inputFor name = case corpusReference corpus of
       ReferenceMarked mark
-        | Just stem <- withoutSuffix mark (stemOf name) ->
+        | Just stem <-
+            asum (fmap (`withoutSuffix` stemOf name) (marks mark)) ->
             Just (stem <> extensionOf name)
       _ -> Nothing
     withoutSuffix suffix name

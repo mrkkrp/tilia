@@ -14,9 +14,8 @@ import Tilia.Comments.Attach
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Parser
-import Tilia.Settings (defaultSettings)
 import Tilia.Span
-import Tilia.TestUtils (commentsIn, parsed)
+import Tilia.TestUtils (commentsIn, parsed, withEachSettings)
 
 spec :: Spec
 spec = do
@@ -157,7 +156,8 @@ spec = do
     $ renderComment <$> commentsIn "module M where\n{- one\n   two -}\nx = 1\n"
       `shouldBe` ["{- one\n   two -}"]
 
-  describe "attachment" $ do
+  withEachSettings $ \settings -> describe "attachment" $ do
+    let render = printDoc settings
     it "puts a comment before the node it precedes" $
       let c = one "module M where\n-- note\nx = 1\n"
           d = located (mkSpan (3, 1) (3, 5)) (txt "x = 1")
@@ -207,9 +207,6 @@ spec = do
 
 ----------------------------------------------------------------------------
 -- Helpers
-
-render :: Doc -> Text
-render = printDoc defaultSettings
 
 one :: Text -> Comment
 one src = case commentsIn src of
