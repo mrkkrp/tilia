@@ -301,7 +301,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
           <> keywordAt ctx (spanOf (am_where (anns hsmodAnn))) "where"
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
-    warning w = at ctx w warningTxt <> breakOrSpace
+    warning w = at ctx w (warningTxt ctx) <> breakOrSpace
     exports' l =
       at ctx l (\xs -> indent (exportList ctx (spanOf l) xs)) <> breakOrSpace
 
@@ -377,7 +377,13 @@ ieItem ctx here withComma = \case
             here
             (spanOf open <> spanOf close <|> here)
             ( breakOrSpace
-                <> indent (parens (insideBrackets here (commaSep (align <$> withWildcard))))
+                <> indent
+                  ( parens
+                      ( insideBrackets
+                          here
+                          (commaSep TrailingCommas (align <$> withWildcard))
+                      )
+                  )
             )
           <> comma'
       )
@@ -406,7 +412,7 @@ ieItem ctx here withComma = \case
         <> itemDocumentation doc
     comma' = includeWhen withComma comma
     exportWarning =
-      foldMap (\w -> at ctx w warningTxt <> breakOrSpace)
+      foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace)
     itemDocumentation =
       foldMap (\d -> breakOrSpace <> haddock ctx Caret Open d)
 

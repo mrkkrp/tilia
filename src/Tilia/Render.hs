@@ -10,6 +10,7 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isSpace)
+import Data.Generics.Schemes (listify)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
@@ -17,15 +18,21 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Hs (HsModule (..), XModulePs (..))
+import GHC.Hs
+  ( HsConDeclField (..),
+    HsConDeclRecField (..),
+    HsModule (..),
+    LHsConDeclRecField,
+    XModulePs (..),
+  )
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (..))
-import GHC.Types.SrcLoc (getLoc)
+import GHC.Types.SrcLoc (getLoc, unLoc)
 
 import Tilia.Comments
   ( Comment (..),
@@ -57,6 +64,7 @@ import Tilia.Render.Header
     takeStackHeader,
   )
 import Tilia.Render.Signature (sigDecl)
+import Tilia.Settings (Settings (..), defaultSettings)
 import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
@@ -81,7 +89,9 @@ data RenderConfig = RenderConfig
     rcImportBounds :: Maybe (Int, Int),
     -- | The modules the project's own packages declare, each with the names
     -- of those that declare it.
-    rcOwnModules :: Map Text (Set Text)
+    rcOwnModules :: Map Text (Set Text),
+    -- | What the project sets.
+    rcSettings :: Settings
   }
 
 -- | A configuration that asserts nothing.
@@ -93,7 +103,8 @@ defaultRenderConfig =
       rcDirectiveLines = [],
       rcImportBarriers = [],
       rcImportBounds = Nothing,
-      rcOwnModules = Map.empty
+      rcOwnModules = Map.empty,
+      rcSettings = defaultSettings
     }
 
 -- | Render a parsed module, comments and all.
@@ -123,7 +134,8 @@ renderConfiguration settings parsed =
         (sourceLines (pmSource parsed))
         (pmGathered parsed)
         (comments (pmSource parsed))
-    plain = heldOff haddocks loose'
+    plain =
+      heldOff (documentedBelow (rcSettings settings) hsMod) haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmPrologue parsed) plain
     (pragmas, uncovered) =
       takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
@@ -145,7 +157,8 @@ renderConfiguration settings parsed =
                 Just (_, remark) <- [carryingOn c]
               ],
           ctxHaddocks = indexOn haddocks,
-          ctxKnot = knot
+          ctxKnot = knot,
+          ctxCommaStyle = settingsCommaStyle (rcSettings settings)
         }
 
 -- | What printing the top level of one configuration takes, and the
@@ -210,11 +223,19 @@ moduleCtx settings parsed held =
     magicCommentRanges = preservedLines (pmSource parsed)
 
 -- | Keep a comment from running into a Haddock.
-heldOff :: [Comment] -> [Comment] -> [Comment]
-heldOff haddocks = fmap holdOff
+heldOff ::
+  -- | The last lines of what has its Haddock moved under it.
+  [Int] ->
+  -- | The Haddocks, as written.
+  [Comment] ->
+  -- | The comments.
+  [Comment] ->
+  [Comment]
+heldOff movedUnder haddocks = fmap holdOff
   where
     written = filter holdsOff haddocks
-    ends = Set.fromList (fmap (spanEndLine . commentSpan) written)
+    ends =
+      Set.fromList (movedUnder <> fmap (spanEndLine . commentSpan) written)
     starts =
       Set.fromList
         [ spanStartLine (commentSpan h)
@@ -234,6 +255,23 @@ heldOff haddocks = fmap holdOff
             }
       where
         s = commentSpan c
+
+-- | The last lines of the record fields whose Haddock leading commas put
+-- under them.
+documentedBelow ::
+  -- | What the project sets.
+  Settings ->
+  -- | The module.
+  HsModule GhcPs ->
+  [Int]
+documentedBelow settings hsMod = case settingsCommaStyle settings of
+  TrailingCommas -> []
+  LeadingCommas ->
+    [ spanEndLine s
+    | field <- listify (const True :: LHsConDeclRecField GhcPs -> Bool) hsMod,
+      isJust (cdf_doc (cdrf_spec (unLoc field))),
+      Just s <- [spanOf field]
+    ]
 
 -- | Hold the comment that comes out right under the module's own Haddock
 -- off it: the first one between the Haddock and the module line with no

@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Corpora of Haskell to run the formatter over.
 module Tilia.Corpus
@@ -24,9 +26,12 @@ where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Control.Applicative ((<|>))
 import Control.Exception (try)
-import Control.Monad (forM)
+import Control.Monad (forM, guard)
 import Data.ByteString.Lazy qualified as BL
+import Data.Choice (Choice, isTrue, pattern Do, pattern Don't)
+import Data.Foldable (asum)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
 import Data.Map.Strict (Map)
@@ -71,8 +76,10 @@ data Reference
     -- checked.
     NoReference
   | -- | It does, in a file whose name is the input's with the given mark
-    -- put before the extension.
-    ReferenceMarked String
+    -- put before the extension, and, where told to, for
+    -- 'alternativeSettings' as well, in that file unless they give
+    -- something else, which is in a file with a prime after the mark.
+    ReferenceMarked String (Choice "alternatives")
   deriving (Eq, Show)
 
 -- | Where the examples of a corpus come from.
@@ -130,7 +137,7 @@ vendoredExamples =
   Corpus
     { corpusName = "tilia",
       corpusSource = Vendored ("corpora" </> "vendored"),
-      corpusReference = ReferenceMarked "-out",
+      corpusReference = ReferenceMarked "-out" (Do #alternatives),
       corpusExpectations =
         Listed
           Lists
@@ -166,7 +173,7 @@ ormoluExamples =
             mempty
           )
           ("data" </> "examples"),
-      corpusReference = ReferenceMarked "-out",
+      corpusReference = ReferenceMarked "-out" (Don't #alternatives),
       corpusExpectations =
         Listed
           Lists
@@ -892,6 +899,10 @@ data Example = Example
     -- it says. 'Nothing' for a corpus that ships no expected outputs, and
     -- for an example within one that happens to have none.
     exampleReference :: Maybe FilePath,
+    -- | The file holding what formatting should produce with
+    -- 'alternativeSettings', if the corpus says: one of their own where
+    -- they give something else, the one above where they do not.
+    exampleAlternativeReference :: Maybe FilePath,
     -- | What the package around it puts in force, already resolved from its
     -- @.cabal@ file. 'Nothing' for a corpus whose examples are not modules
     -- of a package, see 'corpusInPackages', and for one whose package could
@@ -1067,23 +1078,30 @@ examplesIn corpus root dirs = do
   own <- ownModulesReaderFor corpus
   let present = Set.fromList found
       files = filter (not . skipped) found
-      example f reference =
-        Example (nameOf f) f reference <$> reader f <*> own f
+      example f reference alternative =
+        Example (nameOf f) f reference alternative <$> reader f <*> own f
   case corpusReference corpus of
-    NoReference -> traverse (`example` Nothing) files
-    ReferenceMarked mark ->
-      forM (filter (not . answerTo mark present) files) $ \f ->
+    NoReference -> traverse (\f -> example f Nothing Nothing) files
+    ReferenceMarked mark alternatives ->
+      forM (filter (not . answerTo mark present) files) $ \f -> do
+        let marked m = stemOf f <> m <> extensionOf f
+            alternatively primed reference
+              | isTrue alternatives = primed <|> reference
+              | otherwise = Nothing
         if mark `isSuffixOf` stemOf f
-          then example f (Just f)
+          then example f (Just f) (alternatively Nothing (Just f))
           else do
-            let reference = stemOf f <> mark <> extensionOf f
-            there <- doesFileExist reference
-            example f (if there then Just reference else Nothing)
+            reference <- existing (marked mark)
+            primed <- existing (marked (mark <> "'"))
+            example f reference (alternatively primed reference)
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
-    answerTo mark present f = case withoutSuffix mark (stemOf f) of
-      Just stem -> Set.member (stem <> extensionOf f) present
-      Nothing -> False
+    existing f = (\there -> f <$ guard there) <$> doesFileExist f
+    answerTo mark present f =
+      any
+        (\stem -> Set.member (stem <> extensionOf f) present)
+        (mapMaybe (`withoutSuffix` stemOf f) (marks mark))
+    marks mark = [mark <> "'", mark]
     skipped f = any listed (nameOf f : maybeToList (inputFor (nameOf f)))
     listed name = any covers skips
       where
@@ -1092,8 +1110,9 @@ examplesIn corpus root dirs = do
       Listed lists -> expectSkip lists
       Recorded _ -> []
     inputFor name = case corpusReference corpus of
-      ReferenceMarked mark
-        | Just stem <- withoutSuffix mark (stemOf name) ->
+      ReferenceMarked mark _
+        | Just stem <-
+            asum (fmap (`withoutSuffix` stemOf name) (marks mark)) ->
             Just (stem <> extensionOf name)
       _ -> Nothing
     withoutSuffix suffix name

@@ -4,6 +4,7 @@
 -- | The settings a project writes in its @tilia.toml@.
 module Tilia.Settings
   ( Settings (..),
+    CommaStyle (..),
     defaultSettings,
     alternativeSettings,
     settingsFile,
@@ -30,20 +31,35 @@ import System.FilePath ((</>))
 import Tilia.Utils (tshow)
 
 -- | What a project can set.
-newtype Settings = Settings
+data Settings = Settings
   { -- | The column past which what can break is broken.
-    settingsColumnLimit :: Int
+    settingsColumnLimit :: !Int,
+    -- | Where a list laid out on several lines puts its commas.
+    settingsCommaStyle :: !CommaStyle
   }
+  deriving (Eq, Show)
+
+-- | Where a list laid out on several lines puts its commas.
+data CommaStyle
+  = -- | At the end of each line but the last.
+    TrailingCommas
+  | -- | At the start of each line but the first, two columns left of the
+    -- items.
+    LeadingCommas
   deriving (Eq, Show)
 
 -- | What a project that sets nothing gets.
 defaultSettings :: Settings
-defaultSettings = Settings{settingsColumnLimit = 80}
+defaultSettings =
+  Settings
+    { settingsColumnLimit = 80,
+      settingsCommaStyle = TrailingCommas
+    }
 
--- | Settings that differ from 'defaultSettings' in every one, which the
--- corpora are formatted with as well.
+-- | Settings that differ from 'defaultSettings' in every one but the column
+-- limit, which the corpora are formatted with as well.
 alternativeSettings :: Settings
-alternativeSettings = Settings{settingsColumnLimit = 100}
+alternativeSettings = defaultSettings{settingsCommaStyle = LeadingCommas}
 
 -- | The file a project's settings are in, relative to its root.
 settingsFile :: FilePath
@@ -124,6 +140,12 @@ parseSettings written = do
             Right settings{settingsColumnLimit = fromInteger i}
       ("column-limit", _) ->
         malformed n "column-limit is a whole number greater than 0"
+      ("leading-commas", Flag b) ->
+        Right
+          settings
+            { settingsCommaStyle = if b then LeadingCommas else TrailingCommas
+            }
+      ("leading-commas", _) -> malformed n "leading-commas is true or false"
       _ -> malformed n ("there is no setting " <> key)
     malformed n = Left . SettingsMalformed n
 

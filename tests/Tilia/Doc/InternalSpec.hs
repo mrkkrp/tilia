@@ -8,11 +8,12 @@ import Test.Hspec
 
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Settings (defaultSettings)
 import Tilia.Span
+import Tilia.TestUtils (withEachSettings)
 
 spec :: Spec
-spec = do
+spec = withEachSettings $ \settings -> do
+  let out = printDoc settings
   describe "atoms" $ do
     it "renders nothing for an empty document" $
       out mempty `shouldBe` ""
@@ -99,9 +100,6 @@ spec = do
 held, underPrevious :: Text -> Doc
 held = DHoldBack SpillAtIndentation
 underPrevious = DHoldBack SpillUnderPrevious
-
-out :: Doc -> Text
-out = printDoc defaultSettings
 
 directive :: Doc
 directive = DCppDirective (mkSpan (9, 1) (9, 6)) "if X"

@@ -41,6 +41,12 @@
   which a construct is broken over several lines, 80 unless set, as in
   `column-limit = 100`. A setting Tilia does not know, one set twice, or a
   value Tilia does not take is an error, with exit code 26.
+* With `leading-commas = true` in `tilia.toml`, a list, a tuple, a record,
+  a context, a `deriving` clause, a guard and every other construct that
+  separates its parts with commas, but for import and export lists, puts
+  each comma at the start of a line when broken, and a record field's
+  Haddock goes under it as `-- ^`. [Issue
+  353](https://github.com/mrkkrp/tilia/issues/353).
 
 ## Tilia 0.1.4.0
 

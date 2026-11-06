@@ -109,7 +109,9 @@ data Ctx = Ctx
     -- | The author's own text for each Haddock, by starting position.
     ctxHaddocks :: Map (Int, Int) Comment,
     -- | The knot.
-    ctxKnot :: Knot
+    ctxKnot :: Knot,
+    -- | Where a list laid out on several lines puts its commas.
+    ctxCommaStyle :: CommaStyle
   }
 
 -- | The backward edges of the rendering knot.

@@ -508,7 +508,8 @@ formatTurnedOn session path source = runExceptT $ do
       renderConfigWith extensions =
         defaultRenderConfig
           { rcOwnModules = sessionOwnModules session,
-            rcExtensions = extensions
+            rcExtensions = extensions,
+            rcSettings = settings
           }
       renderConfigFor extensions parsed = do
         let implicitPrelude =
@@ -548,7 +549,7 @@ formatTurnedOn session path source = runExceptT $ do
             printed <-
               orElse
                 (CppUnsupported path)
-                (formatWithCpp settings config render path text)
+                (formatWithCpp config render path text)
             pure (printed, Nothing)
         | otherwise = do
             parsed <-

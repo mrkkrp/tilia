@@ -306,6 +306,8 @@ check ::
 check palette example = do
   source <- readUtf8 (exampleInput example)
   expected <- traverse readUtf8 (exampleReference example)
+  expectedAlternatively <-
+    join <$> traverse readUtf8 (exampleAlternativeReference example)
   case source of
     Nothing -> pure (Result NotUtf8 "" noDigest)
     Just text -> guarded $ do
@@ -327,15 +329,26 @@ check palette example = do
           alternatively result
             | resultOutcome result `elem` [Formatted, PartlyChecked] =
                 format (Do #check) alternativeSettings text <&> \case
-                  Right _ -> result
-                  Left e ->
-                    result
-                      { resultOutcome = Broken,
-                        resultWhy =
-                          "with the alternative settings: "
-                            <> describeFormatError Plain e
-                      }
+                  Right formatted
+                    | Just reference <- expectedAlternatively,
+                      reference /= formatted ->
+                        broken
+                          ( "does not match the corpus's expected output\n"
+                              <> diff
+                                palette
+                                ("expected", "ours")
+                                reference
+                                formatted
+                          )
+                    | otherwise -> result
+                  Left e -> broken (describeFormatError Plain e)
             | otherwise = pure result
+            where
+              broken why =
+                result
+                  { resultOutcome = Broken,
+                    resultWhy = "with the alternative settings: " <> why
+                  }
       checked <- format (Do #check) defaultSettings text
       passes <- case checked of
         Left NotEquivalent{} -> Just <$> unchecked

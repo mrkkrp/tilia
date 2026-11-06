@@ -140,9 +140,15 @@ exprBody ctx site here = \case
           <> keywordAt ctx (doKeywordSpan anns) word
           <> statements ctx site (ExprBody ctx) es
   ExplicitList _ xs ->
-    bracketsWith
+    commaBracketWith
+      (ctxCommaStyle ctx)
       (closingFor site)
-      (insideBrackets here (commaSep (fmap (align . item . hsExpr ctx) xs)))
+      "["
+      "]"
+      ( insideBrackets
+          here
+          (commaSep (ctxCommaStyle ctx) (fmap (align . item . hsExpr ctx) xs))
+      )
     where
       item
         | maybe True (writtenOnOneLine ctx) here = id
@@ -151,8 +157,10 @@ exprBody ctx site here = \case
     name ctx rcon_con
       <> breakOrNothing
       <> indent
-        ( braces
-            (insideBrackets here (commaSep (fmap align (fields <> wildcard))))
+        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+            insideBrackets
+              here
+              (commaSep (ctxCommaStyle ctx) (fmap align (fields <> wildcard)))
         )
     where
       HsRecFields{..} = rcon_flds
@@ -166,17 +174,22 @@ exprBody ctx site here = \case
   RecordUpd{..} ->
     hsExpr ctx rupd_expr
       <> breakOrNothing
-      <> indent (braces (insideBrackets here updates))
+      <> indent
+        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+            insideBrackets here updates
+        )
     where
       updates = case rupd_flds of
         RegularRecUpdFields{..} ->
           commaSep
+            (ctxCommaStyle ctx)
             ( fmap
                 (align . at_ ctx (fieldBind ctx (at_ ctx (fieldOcc ctx))))
                 recUpdFields
             )
         OverloadedRecUpdFields{..} ->
           commaSep
+            (ctxCommaStyle ctx)
             ( fmap
                 (align . at_ ctx (fieldBind ctx (at_ ctx labelChain)))
                 olRecUpdFields
@@ -229,7 +242,12 @@ exprBody ctx site here = \case
       error "Tilia: a nameless hole cannot come from a successful parse"
   HsForAll _ tele e -> forallTelescope ctx tele <> breakOrSpace <> hsExpr ctx e
   HsQual _ qs e ->
-    at ctx qs (contextOf loneVariableExpr (hsExpr ctx) . fmap unbracketed)
+    at
+      ctx
+      qs
+      ( contextOf (ctxCommaStyle ctx) loneVariableExpr (hsExpr ctx)
+          . fmap unbracketed
+      )
       <> joinedBy (reserved ctx "=>")
       <> hsExpr ctx e
   HsFunArr _ multAnn x y ->
@@ -311,9 +329,10 @@ gatherArgs f known = case unLoc f of
 tuple :: Ctx -> Maybe Span -> ClosingIndent -> Boxity -> [HsTupArg GhcPs] -> Doc
 tuple ctx here closing boxity args
   | any isMissing args = flat (brackets' (sepBy comma (fmap arg args)))
-  | otherwise = brackets' (commaSep (fmap arg args))
+  | otherwise = brackets' (commaSep (ctxCommaStyle ctx) (fmap arg args))
   where
-    brackets' = boxityBrackets boxity closing . insideBrackets here
+    brackets' =
+      boxityBrackets (ctxCommaStyle ctx) boxity closing . insideBrackets here
     isMissing = \case
       Missing _ -> True
       _ -> False
@@ -327,18 +346,24 @@ arithSeq :: Ctx -> Maybe Span -> ClosingIndent -> ArithSeqInfo GhcPs -> Doc
 arithSeq ctx here closing = \case
   From from -> wrap (hsExpr ctx from <> breakOrSpace <> txt "..")
   FromThen from next ->
-    wrap (commaSep (fmap (hsExpr ctx) [from, next]) <> breakOrSpace <> txt "..")
+    wrap
+      ( commaSep (ctxCommaStyle ctx) (fmap (hsExpr ctx) [from, next])
+          <> breakOrSpace
+          <> txt ".."
+      )
   FromTo from to ->
     wrap (hsExpr ctx from <> breakOrSpace <> txt ".." <> space <> hsExpr ctx to)
   FromThenTo from next to ->
     wrap $
-      commaSep (fmap (hsExpr ctx) [from, next])
+      commaSep (ctxCommaStyle ctx) (fmap (hsExpr ctx) [from, next])
         <> breakOrSpace
         <> txt ".."
         <> space
         <> hsExpr ctx to
   where
-    wrap = bracketsWith closing . insideBrackets here
+    wrap =
+      commaBracketWith (ctxCommaStyle ctx) closing "[" "]"
+        . insideBrackets here
 
 -- | One field of a record construction or update.
 fieldBind ::
@@ -618,7 +643,11 @@ comprehension ctx site here es = align (variant onOneLine acrossLines)
     section stmts =
       located'
         (spansOf stmts)
-        (txt "|" <> space <> align (commaSep (fmap (align . hsStmt ctx) stmts)))
+        ( commaSepAfter
+            (ctxCommaStyle ctx)
+            "|"
+            (fmap (align . hsStmt ctx) stmts)
+        )
     located' = maybe id located
 
 -- | Split the statements of a comprehension into its parallel sections.
@@ -1165,9 +1194,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   where
     GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
     guardHead =
-      txt "|"
-        <> space
-        <> align (commaSep (fmap (align . hsStmt ctx) guards))
+      commaSepAfter (ctxCommaStyle ctx) "|" (fmap (align . hsStmt ctx) guards)
         <> space
         <> indent (txt (reserved ctx separator))
     heldBesideTheHead = if parentPlacement == Normal then id else infrangible
@@ -1207,7 +1234,15 @@ patSynBind ctx PSB{..} =
               ctx
               (vars args)
               ( includeUnless (null args) breakOrNothing
-                  <> braces (commaSep (fmap (name ctx) (vars args)))
+                  <> commaBracketWith
+                    (ctxCommaStyle ctx)
+                    Outdented
+                    "{"
+                    "}"
+                    ( commaSep
+                        (ctxCommaStyle ctx)
+                        (fmap (name ctx) (vars args))
+                    )
               )
               <> definition (spansOf (vars args))
           )

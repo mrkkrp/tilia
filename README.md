@@ -111,14 +111,17 @@ it has no `cabal.project`.
 ```toml
 # Break what runs past column 100 rather than 80.
 column-limit = 100
+# Start each line of a broken list with its comma.
+leading-commas = true
 ```
 
 The file is TOML, restricted to lines of `key = value` where a value is
 `true`, `false`, or a whole number, and to `#` comments.
 
-| Setting        | Values                 | Default |
-| -------------- | ---------------------- | ------- |
-| `column-limit` | a whole number above 0 | 80      |
+| Setting          | Values                 | Default |
+| ---------------- | ---------------------- | ------- |
+| `column-limit`   | a whole number above 0 | 80      |
+| `leading-commas` | `true` or `false`      | `false` |
 
 ## Excluding files
 
