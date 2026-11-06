@@ -24,15 +24,21 @@ repository.
 The Hackage corpus is exercised in order to ensure that every module
 formats, that its AST is preserved, and that formatting it is idempotent,
 both with the `defaultSettings` and with `alternativeSettings`, which differ
-from the defaults in every setting. The results with the defaults are
-recorded in `corpora/hackage/hackage.manifest`, and a module that formats
-with them has to pass the same checks with the alternative ones. Next to it,
-`hackage.report` explains the failing cases. The manifest and the report can
-be updated like this:
+from the defaults in every setting but the column limit. The results with
+the defaults are recorded in `corpora/hackage/hackage.manifest`, and a
+module that formats with them has to pass the same checks with the
+alternative ones. Next to it, `hackage.report` explains the failing cases.
+The manifest and the report can be updated like this:
 
 ```console
 $ TILIA_CORPUS_ACCEPT=1 cabal test
 ```
+
+Each example of our own in `corpora/vendored` comes with what it formats to,
+`name-out.hs`, and, where the alternative settings give something else,
+`name-out'.hs` with what they give. Each module in `corpora/column-limit`
+comes with what it formats to at a column limit `N` other than the default
+one, `name-out-N.hs`.
 
 Finally, Tilia formats itself, so make sure to run this command before you
 open a PR:

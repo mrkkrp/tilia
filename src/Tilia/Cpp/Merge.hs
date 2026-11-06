@@ -14,7 +14,8 @@ import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
-  ( groupBy,
+  ( find,
+    groupBy,
     maximumBy,
     minimumBy,
     sortOn,
@@ -54,7 +55,7 @@ import Tilia.Doc
   )
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Settings (Settings)
-import Tilia.Source (Lines, lineAt, offsetOf)
+import Tilia.Source (Lines, directiveOnLine, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 
 -- | A conditional other than the one asked about that answering a question
@@ -242,7 +243,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
         ascending os = and (zipWith (<=) os (drop 1 os))
 
     varying within layout ss =
-      let (opening, ss1) = sharedStart layout ss
+      let (opening, ss1) = leadingCommaIn (sharedStart layout ss)
           (ss2, closing) = sharedEnd layout ss1
           (lead, ss3, trail) = hoisted layout ss2
        in mconcat opening
@@ -256,6 +257,29 @@ merge settings written conditionals guards varied settledOthers = go Broken
         all (agree varied layout h) hs =
           let (c, ss') = sharedStart layout (fmap (drop 1) ss) in (h : c, ss')
       | otherwise = ([], ss)
+
+    leadingCommaIn (opening, ss) = case reverse opening of
+      x : DSoftBreak : rest
+        | x == leadingComma,
+          any (any writtenAfterComma . find (not . onlySpacing)) ss ->
+            (reverse rest, fmap ([DSoftBreak, x] <>) ss)
+      _ -> (opening, ss)
+
+    writtenAfterComma y = case regionOf y of
+      Just s -> commaBefore (spanStartLine s) (Just (spanStartColumn s))
+      Nothing -> False
+
+    commaBefore n column = case lineAt n written of
+      Just l
+        | Nothing <- directiveOnLine l ->
+            let before = maybe l (\c -> T.take (offsetOf l c) l) column
+                code = T.stripEnd (fst (T.breakOn "--" before))
+             in if T.null code
+                  then n > 1 && commaBefore (n - 1) Nothing
+                  else "," `T.isSuffixOf` code
+      _ -> False
+
+    leadingComma = Doc.txt ", "
 
     sharedEnd layout ss =
       let (c, ss') = sharedStart layout (fmap reverse ss)
@@ -272,12 +296,15 @@ merge settings written conditionals guards varied settledOthers = go Broken
       | all (alike layout s) rest = mconcat s
       | Just xs <- traverse sole ss = go layout xs
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
+      | Just tails <- traverse (stripPrefix [leadingComma]) ss,
+        not (any (all onlySpacing) tails) =
+          onEdge First leadingComma (middle layout tails)
       | otherwise =
           minimumBy
             (comparing (weigh layout))
             (apart : maybeToList (alongsideHeads layout ss) <> byLines)
       where
-        apart = choice (fmap (mconcat . commaFirst) ss)
+        apart = choice (fmap (mconcat . commaGlued) ss)
         byLines
           | not (any continuing ss),
             not (null (foldr1 Set.intersection (foldMap writtenAt <$> ss))),
@@ -305,9 +332,15 @@ merge settings written conditionals guards varied settledOthers = go Broken
       (spacing, x : more) -> Just (spacing, x, more)
       _ -> Nothing
 
-    commaFirst = \case
+    commaGlued = \case
       x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
-      xs -> xs
+      xs -> case reverse xs of
+        x : DSoftBreak : rest | x == leadingComma -> reverse (gluedTo rest)
+        _ -> xs
+      where
+        gluedTo = \case
+          d : DHardBreak : rest -> d : DHardBreak : Doc.comma : rest
+          rest -> Doc.comma : rest
 
     commaLed layout ss = do
       views <- traverse (ledBy layout) ss
@@ -354,7 +387,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
       heads <- traverse listToMaybe ss
       let rest = fmap (drop 1) ss
           (glued, tails) = case traverse (stripPrefix [Doc.comma]) rest of
-            Just rest' -> (endingWith Doc.comma, rest')
+            Just rest' -> (onEdge Last Doc.comma, rest')
             Nothing -> (id, rest)
       case heads of
         (h : hs)
@@ -377,20 +410,27 @@ merge settings written conditionals guards varied settledOthers = go Broken
           | otherwise = Flat
         printed = printDoc settings
 
-    endingWith t d = fromMaybe (d <> t) (inAlternatives d)
+    onEdge edge t d = fromMaybe (beside d) (inAlternatives d)
       where
+        beside = case edge of
+          First -> (t <>)
+          Last -> (<> t)
         inAlternatives = \case
           DCppChoice ws bs e
             | not (any printsNothing (e : fmap snd bs)) ->
                 Just
                   ( DCppChoice
                       ws
-                      [(g, endingWith t b) | (g, b) <- bs]
-                      (endingWith t e)
+                      [(g, onEdge edge t b) | (g, b) <- bs]
+                      (onEdge edge t e)
                   )
-          DCat a b
-            | printsNothing b -> (<> b) <$> inAlternatives a
-            | otherwise -> (a <>) <$> inAlternatives b
+          DCat a b -> case edge of
+            First
+              | printsNothing a -> (a <>) <$> inAlternatives b
+              | otherwise -> (<> b) <$> inAlternatives a
+            Last
+              | printsNothing b -> (<> b) <$> inAlternatives a
+              | otherwise -> (a <>) <$> inAlternatives b
           y -> do
             (w, x) <- unwrap y
             wrap w <$> inAlternatives x
@@ -1037,6 +1077,7 @@ anchoring :: Doc -> Bool
 anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
+  DText ", " -> False
   DDeclarationsStart -> False
   DNest _ d -> located d || not (blank d)
   DAlign d -> located d || not (printsNothing d)

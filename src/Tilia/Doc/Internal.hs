@@ -57,8 +57,8 @@ data Doc
     -- it has nothing left to do.
     DCloseLine
   | -- | Close the line, and leave an empty line under it if told to, unless
-    -- it ends with an opening bracket, a bar or an equals sign, which what
-    -- follows then shares.
+    -- it ends with an opening bracket, a bar, an equals sign or a leading
+    -- comma, which what follows then shares.
     DCloseLineUnlessAfterOpener !Bool
   | -- | A line break between two lines of text that is being reproduced
     -- rather than laid out.
@@ -670,13 +670,13 @@ atStart out = null (outLines out) && not (hasContent out)
 started :: Out -> Bool
 started out = not (null (outCurrent out)) || linePinned (outLine out)
 
--- | Does the current line end with an opening bracket, a bar or an equals
--- sign, with nothing held back for its end?
+-- | Does the current line end with an opening bracket, a bar, an equals
+-- sign or a leading comma, with nothing held back for its end?
 endsWithOpener :: Out -> Bool
 endsWithOpener out =
   null (outHeldBack out)
     && case dropWhile (T.all isSpace) (outCurrent out) of
-      t : _ -> T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
+      t : _ -> t == ", " || T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
       [] -> False
 
 -- | Is there anything on the current line, written or held back?

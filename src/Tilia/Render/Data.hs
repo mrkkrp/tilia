@@ -199,7 +199,11 @@ conDecl ctx _ ConDeclGADT{..} =
       name ctx c
         <> includeUnless
           (null cs)
-          (indent (comma <> breakOrSpace <> commaSep (fmap (name ctx) cs)))
+          ( indent
+              ( separatingComma (ctxCommaStyle ctx)
+                  <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) cs)
+              )
+          )
         <> joinedBy (reserved ctx "::")
         <> indent
           (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
@@ -339,8 +343,11 @@ derivingClause ctx HsDerivingClause{..} =
         brokenIfDocumented ctx tys $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
-            parens . insideBrackets (spanOf deriv_clause_tys) $
-              commaSep (fmap (align . hsSigType ctx) sigTys)
+            commaBracketWith (ctxCommaStyle ctx) Outdented "(" ")"
+              . insideBrackets (spanOf deriv_clause_tys)
+              $ commaSep
+                (ctxCommaStyle ctx)
+                (fmap (align . hsSigType ctx) sigTys)
 
     strategy = case deriv_clause_strategy of
       Nothing -> breakOrSpace <> indent what

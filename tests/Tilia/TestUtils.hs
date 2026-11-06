@@ -9,6 +9,7 @@ module Tilia.TestUtils
     withOpsProject,
     switchedOn,
     underAsciiLocale,
+    withEachSettings,
     defaultParserConfig,
     parsed,
     parses,
@@ -51,6 +52,7 @@ import System.Environment.Blank (setEnv, unsetEnv)
 import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (mkTextEncoding)
 import System.IO.Temp (withSystemTempDirectory)
+import Test.Hspec (Spec, describe)
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
@@ -65,6 +67,7 @@ import Tilia.Parser
     parseModule,
   )
 import Tilia.Pragma (defaultsOf)
+import Tilia.Settings (Settings, alternativeSettings, defaultSettings)
 import Tilia.Source (comments)
 import Tilia.Utils (quietly, writeUtf8File)
 
@@ -159,6 +162,16 @@ underAsciiLocale act = do
   ascii <- mkTextEncoding "ASCII"
   bracket getLocaleEncoding setLocaleEncoding $ \_ ->
     setLocaleEncoding ascii >> act
+
+-- | Run specs once with 'defaultSettings' and once with
+-- 'alternativeSettings'.
+withEachSettings ::
+  -- | The specs, given the settings.
+  (Settings -> Spec) ->
+  Spec
+withEachSettings specs = do
+  describe "with the default settings" (specs defaultSettings)
+  describe "with the alternative settings" (specs alternativeSettings)
 
 -- | What to parse a module of no package with: GHC2021.
 defaultParserConfig :: ParserConfig

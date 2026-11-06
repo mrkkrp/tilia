@@ -9,37 +9,39 @@ import Test.Hspec
 
 import Tilia.Doc (printDoc)
 import Tilia.Render
-import Tilia.Settings (defaultSettings)
-import Tilia.TestUtils (parsed)
+import Tilia.Settings (Settings)
+import Tilia.TestUtils (parsed, withEachSettings)
 
 spec :: Spec
 spec =
   -- Without fixities nothing is asserted about how a chain associates, so
   -- nothing is rearranged and every operator is treated alike.
-  describe "operator chains"
-    $ it "leaves a chain alone when the fixities are unknown"
-    $ format
-      [ "module M where",
-        "",
-        "f =",
-        "  a * b",
-        "    + c * d"
-      ]
-      `shouldBe` [ "module M where",
-                   "",
-                   "f =",
-                   "  a",
-                   "    * b",
-                   "    + c",
-                   "    * d"
-                 ]
+  withEachSettings $ \settings ->
+    describe "operator chains"
+      $ it "leaves a chain alone when the fixities are unknown"
+      $ format
+        settings
+        [ "module M where",
+          "",
+          "f =",
+          "  a * b",
+          "    + c * d"
+        ]
+        `shouldBe` [ "module M where",
+                     "",
+                     "f =",
+                     "  a",
+                     "    * b",
+                     "    + c",
+                     "    * d"
+                   ]
 
 -- | Format the given lines with no fixities known and give the result back
 -- as lines.
-format :: [Text] -> [Text]
-format =
+format :: Settings -> [Text] -> [Text]
+format settings =
   T.lines
-    . printDoc defaultSettings
-    . renderModule defaultRenderConfig
+    . printDoc settings
+    . renderModule defaultRenderConfig{rcSettings = settings}
     . parsed
     . T.unlines
