@@ -12,6 +12,7 @@ module Tilia.Cabal.Plan
     cacheKey,
     BuildPlan (..),
     readBuildPlan,
+    unsolvedPlan,
     readGivenPlan,
     fetchUninstalled,
     getInstalledPackages,
@@ -215,8 +216,13 @@ cacheKey p =
 
 -- | A resolved build plan.
 data BuildPlan = BuildPlan
-  { bpCompiler :: Text,
-    bpPackages :: [PlanPackage]
+  { -- | The compiler, as @ghc-9.14.1@.
+    bpCompiler :: Text,
+    -- | Every package the plan names.
+    bpPackages :: [PlanPackage],
+    -- | Whether Cabal solved the plan, so that it names every package the
+    -- project can use.
+    bpSolved :: Bool
   }
   deriving (Eq, Show)
 
@@ -225,6 +231,7 @@ instance FromJSON BuildPlan where
     BuildPlan
       <$> o .: "compiler-id"
       <*> o .: "install-plan"
+      <*> pure True
 
 instance FromJSON PlanPackage where
   parseJSON = withObject "PlanPackage" $ \o -> do
@@ -283,6 +290,34 @@ componentsOf :: Maybe Text -> Maybe (Map Text Value) -> [Text]
 componentsOf named whole = case named of
   Just component -> [component]
   Nothing -> filter (/= "setup") (Map.keys (fromMaybe Map.empty whole))
+
+-- | A plan for a project Cabal could not solve one for, which names only the
+-- project's own packages.
+unsolvedPlan ::
+  -- | The compiler's version, where it is known.
+  Maybe Version ->
+  -- | The project's @.cabal@ files.
+  [FilePath] ->
+  IO BuildPlan
+unsolvedPlan compiler cabalFiles = do
+  described <- traverse readPackageDescription cabalFiles
+  pure
+    BuildPlan
+      { bpCompiler = foldMap (("ghc-" <>) . T.pack . prettyShow) compiler,
+        bpPackages =
+          [ local file (package (packageDescription d))
+          | (file, Right d) <- zip cabalFiles described
+          ],
+        bpSolved = False
+      }
+  where
+    local file identifier =
+      PlanPackage
+        { ppName = T.pack (unPackageName (pkgName identifier)),
+          ppVersion = T.pack (prettyShow (pkgVersion identifier)),
+          ppSource = LocalPackage (takeDirectory file),
+          ppComponents = []
+        }
 
 -- | Read @plan.json@.
 readBuildPlan :: FilePath -> IO (Either Text BuildPlan)
@@ -343,7 +378,8 @@ checkedOutIn distDir plan = do
       T.pack (unPackageName (pkgName identifier)) == ppName p
         && T.pack (prettyShow (pkgVersion identifier)) == ppVersion p
 
--- | The version macros a plan settles.
+-- | The version macros a plan settles, those of the packages it does not
+-- name among them where Cabal solved it.
 macrosOf :: BuildPlan -> Macros
 macrosOf plan =
   ( versionMacros
@@ -351,7 +387,10 @@ macrosOf plan =
       (Map.mapMaybe sole versions)
   )
     { macroPlannedPackages =
-        Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
+        if bpSolved plan
+          then
+            Just (Set.fromList [underscored (ppName p) | p <- bpPackages plan])
+          else Nothing
     }
   where
     versions =

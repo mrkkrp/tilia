@@ -44,6 +44,7 @@ import System.Directory (canonicalizePath)
 import Tilia.Cabal.Package
   ( PackageProblem (..),
     PackageReader,
+    compilerVersion,
     describePackageProblem,
     newPackageReader,
   )
@@ -54,6 +55,7 @@ import Tilia.Cabal.Plan
     macrosOf,
     plannedCompiler,
     readGivenPlan,
+    unsolvedPlan,
     versionMacros,
   )
 import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
@@ -297,7 +299,10 @@ data Session = Session
     sessionCheckIdempotence :: Choice "checkIdempotence",
     -- | An account of how each file's fixities were determined, or 'Nothing'
     -- where none was asked for.
-    sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes))
+    sessionFixityNotes :: Maybe (IORef (Map FilePath FixityNotes)),
+    -- | Why Cabal could not solve a plan for the project, where the session
+    -- went on without one.
+    sessionUnsolved :: Maybe Text
   }
 
 -- | Whether to check AST equivalence, and in which configurations of a
@@ -336,7 +341,9 @@ planSourceFor givenPlan components = case givenPlan of
   Just plan -> pure (GivenPlan plan)
   Nothing -> PlanFromCabal . mapMaybe componentInPlan <$> components
 
--- | Settle everything that does not depend on the file being formatted.
+-- | Settle everything that does not depend on the file being formatted,
+-- with only the project's own packages and the compiler's where Cabal
+-- cannot solve a plan.
 newSession ::
   -- | The project.
   ProjectRoot ->
@@ -358,12 +365,13 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
   let root = prPath project
   packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
   ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
-  (plan, routes) <- case planSource of
-    PlanFromCabal components -> do
-      plan <-
-        orElse (NoBuildPlan root)
-          =<< liftIO (loadPlan caching downloading components root)
-      pure (plan, [FromInterface, FromSource])
+  (plan, routes, unsolved) <- case planSource of
+    PlanFromCabal components ->
+      liftIO (loadPlan caching downloading components root) >>= \case
+        Right plan -> pure (plan, [FromInterface, FromSource], Nothing)
+        Left why -> do
+          plan <- liftIO ((`unsolvedPlan` packages) =<< compilerVersion)
+          pure (plan, [FromInterface], Just why)
     GivenPlan path -> do
       plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
       routes <-
@@ -372,7 +380,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
             [FromInterface, FromSource]
               <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
-      pure (plan, routes)
+      pure (plan, routes, Nothing)
   packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
   resolver <- liftIO (newResolverVia caching routes packageReader root plan)
   notes <-
@@ -388,7 +396,8 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
         sessionPackage = packageReader,
         sessionCheckAst = sessionProdAstCheck checkAst,
         sessionCheckIdempotence = checkIdempotence,
-        sessionFixityNotes = notes
+        sessionFixityNotes = notes,
+        sessionUnsolved = unsolved
       }
 
 -- | What compiling a file's component establishes, which a session
@@ -440,7 +449,8 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
           \_ -> pure (Right (defaultsOf [] (On <$> compiledExtensions))),
         sessionCheckAst = sessionProdAstCheck checkAst,
         sessionCheckIdempotence = checkIdempotence,
-        sessionFixityNotes = Nothing
+        sessionFixityNotes = Nothing,
+        sessionUnsolved = Nothing
       }
   where
     numbers = fmap toInteger . versionBranch

@@ -36,22 +36,16 @@ import Data.Time (addUTCTime, getCurrentTime)
 import System.Directory
   ( canonicalizePath,
     createDirectoryIfMissing,
-    doesFileExist,
-    getPermissions,
     setModificationTime,
-    setOwnerExecutable,
-    setPermissions,
   )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath
   ( dropExtension,
-    searchPathSeparator,
     takeBaseName,
     takeDirectory,
     (</>),
   )
 import System.IO.Temp (withSystemTempDirectory)
-import System.Info qualified
 import System.Timeout (timeout)
 import Test.Hspec
 
@@ -80,6 +74,7 @@ import Tilia.TestUtils
     unreadOnly,
     withEnvironment,
     withOpsProject,
+    withStandIn,
   )
 import Tilia.Utils (inParallel, writeUtf8File)
 import Tilia.WithProjectPlan (withProjectPlan)
@@ -128,7 +123,8 @@ tokens = describe "the token a plan is cached under" $ do
     asked `shouldBe` tokenForEnvAndBuildPlan environment onePackage
   where
     here = "/somewhere/bin/ghc-pkg"
-    noPackages = BuildPlan{bpCompiler = "ghc-9.10.3", bpPackages = []}
+    noPackages =
+      BuildPlan{bpCompiler = "ghc-9.10.3", bpPackages = [], bpSolved = True}
     onePackage =
       BuildPlan
         { bpCompiler = "ghc-9.10.3",
@@ -139,7 +135,8 @@ tokens = describe "the token a plan is cached under" $ do
                   ppSource = PreExisting,
                   ppComponents = []
                 }
-            ]
+            ],
+          bpSolved = True
         }
 
 -- | What a plan says about macros.
@@ -155,8 +152,13 @@ plannedMacros = describe "the macros a plan settles" $ do
   it "holds every package of the plan, as its version macros spell it" $
     macroPlannedPackages (macrosOf twoPackages)
       `shouldBe` Just (Set.fromList ["base", "data_default"])
+
+  it "leaves open the packages a plan Cabal did not solve leaves out" $
+    macroPlannedPackages (macrosOf twoPackages{bpSolved = False})
+      `shouldBe` Nothing
   where
-    planFor compiler = BuildPlan{bpCompiler = compiler, bpPackages = []}
+    planFor compiler =
+      BuildPlan{bpCompiler = compiler, bpPackages = [], bpSolved = True}
     twoPackages =
       BuildPlan
         { bpCompiler = "ghc-9.10.3",
@@ -168,7 +170,8 @@ plannedMacros = describe "the macros a plan settles" $ do
                   ppComponents = []
                 }
             | name <- ["base", "data-default"]
-            ]
+            ],
+          bpSolved = True
         }
 
 -- | 'Plan.checkReadiness', with the cache in use as it is by default.
@@ -902,26 +905,7 @@ runsCabal = runsCabalWith "exit 1"
 -- | 'runsCabal', with the stand-in going on to run the shell commands
 -- given.
 runsCabalWith :: String -> IO a -> IO ([String], a)
-runsCabalWith script act
-  | System.Info.os == "mingw32" =
-      expectationFailure "the stand-in for cabal is a shell script, which does not run on Windows"
-        >> (,) [] <$> act
-  | otherwise =
-      withSystemTempDirectory "tilia-cabal" $ \bin -> do
-        let stand = bin </> "cabal"
-            commandLog = bin </> "commands"
-        writeFile stand $
-          "#!/bin/sh\necho \"$1\" >> '"
-            <> commandLog
-            <> "'\n"
-            <> script
-            <> "\n"
-        setPermissions stand . setOwnerExecutable True =<< getPermissions stand
-        path <- maybe "" (searchPathSeparator :) <$> lookupEnv "PATH"
-        answer <- withEnvironment [("PATH", bin <> path)] act
-        ran <- doesFileExist commandLog
-        commands <- if ran then lines <$> readFile commandLog else pure []
-        pure (commands, answer)
+runsCabalWith = withStandIn "cabal"
 
 -- | Run something against a home and an XDG cache directory of its own,
 -- handing it both of the places a cache could then be in.

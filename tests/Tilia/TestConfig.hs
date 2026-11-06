@@ -66,7 +66,8 @@ formatExample checking package ownModules =
             then EachCppConfiguration configurationsToCheck
             else NoAstCheck,
         sessionCheckIdempotence = fromBool (isTrue checking),
-        sessionFixityNotes = Nothing
+        sessionFixityNotes = Nothing,
+        sessionUnsolved = Nothing
       }
 
 -- | How many configurations one example gets compared over.

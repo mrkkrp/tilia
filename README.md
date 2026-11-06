@@ -89,6 +89,13 @@ are often not enabled by default and that would be confusing. Where a
 project will not solve with those flags, Tilia settles for what Cabal builds
 by default, so you get a narrower plan rather than none.
 
+Where Cabal cannot solve a plan at all, because the project's bounds rule
+out the compiler on the path, say, Tilia says why before the files and goes
+on without one. The project's own modules and the packages that come with
+the compiler can still be read, so a file whose operators they settle is
+formatted, and a file that uses an operator only a plan would say where to
+read is declined, as with `--no-downloads`.
+
 Finally, here are some other flags that may be of interest:
 
 * `--check-ast` performs an AST-equivalence check.

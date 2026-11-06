@@ -1,5 +1,9 @@
 ## Unreleased
 
+* Where Cabal cannot solve a build plan, Tilia says why and formats what the
+  project's own modules and the compiler's packages settle, declining the
+  files whose operators come from elsewhere, rather than formatting nothing.
+  [Issue 352](https://github.com/mrkkrp/tilia/issues/352).
 * Where `UnicodeSyntax` is in force, through a module's own pragmas or its
   component's `default-extensions`, the symbols that have Unicode forms come
   out in them throughout the module: `∷`, `⇒`, `→`, `←` and `∀`, `⊸` for a

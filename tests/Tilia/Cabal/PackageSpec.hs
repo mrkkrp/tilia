@@ -145,7 +145,8 @@ spec = do
 
     it "take the compiler's version from the plan where it names one" $
       inPackage conditionalExtensions ["src"] $ \root -> do
-        ask <- newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" [])) []
+        ask <-
+          newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" [] True)) []
         library <- ask (root </> "src" </> "M.hs")
         (has StarIsType library, has BangPatterns library)
           `shouldBe` (True, True)

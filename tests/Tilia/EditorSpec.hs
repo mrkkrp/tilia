@@ -9,6 +9,7 @@ module Tilia.EditorSpec (spec) where
 import Control.Exception (throwIO)
 import Data.Choice (pattern Don't)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Version (makeVersion)
@@ -25,9 +26,9 @@ import Tilia.Editor
   )
 import Tilia.Fixity (Direction (..), Fixity (..), Namespace (..), OpName (..))
 import Tilia.Fixity.HiFile (HiExport (..), HiFile (..), HiName (..))
-import Tilia.Format (FormatError, formatErrorExitCode)
+import Tilia.Format (FormatError, Session (..), formatErrorExitCode)
 import Tilia.Run (Outcome (..))
-import Tilia.TestUtils (withOpsProject)
+import Tilia.TestUtils (withOpsProject, withStandIn)
 import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
@@ -128,6 +129,32 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #checkIdempotence)
           (Don't #debugFixity)
         `shouldReturn` Just 25
+
+  describe "where Cabal cannot solve a plan" $ do
+    it "says why it went on without one" $
+      withUnsolved $ \session _ ->
+        sessionUnsolved session `shouldSatisfy` isJust
+
+    it "takes fixities from the project's own modules" $
+      withUnsolved $ \_ buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nimport Ops\nx=a <+> b\n"
+          `shouldReturn` CameTo
+            "module Uses where\n\nimport Ops\n\nx = a <+> b\n"
+
+    it "takes fixities from the compiler's own packages" $
+      withUnsolved $ \_ buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nx=f $ g . h\n"
+          `shouldReturn` CameTo "module Uses where\n\nx = f $ g . h\n"
+
+    it "declines an operator only a plan would say where to read" $
+      withUnsolved $ \_ buffer ->
+        buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
+          `shouldReturn` CameDeclined 18
+
+    it "leaves open the branches of another package's version" $
+      withUnsolved $ \_ buffer ->
+        buffer ("src" </> "Uses.hs") versionedElsewhere
+          `shouldReturn` CameDeclined 18
 
   describe "given what compiling the project establishes" $ do
     it "puts the imports of the project's own modules after the rest" $
@@ -284,6 +311,10 @@ versioned =
       "#endif"
     ]
 
+-- | 'versioned', asking about the version of a package no plan names.
+versionedElsewhere :: Text
+versionedElsewhere = T.replace "MIN_VERSION_fake" "MIN_VERSION_other" versioned
+
 -- | What formatting a buffer came to, with errors told apart by the status
 -- they exit with.
 data Came
@@ -329,6 +360,29 @@ withProject act =
         >>= \case
           Left e -> pure (CameFailed (failure e))
           Right session -> came <$> formatBuffer session path text
+
+-- | The project of 'withProject' with no plan, and a stand-in for @cabal@
+-- that cannot solve one, handed to the test as the session made for it
+-- and a way to format a buffer as one of its files.
+withUnsolved ::
+  (Session -> (FilePath -> Text -> IO Came) -> Expectation) -> Expectation
+withUnsolved act =
+  inProject $ \project _ -> do
+    (_, made) <-
+      withStandIn "cabal" "exit 1" $
+        editorSession
+          (project </> "src" </> "Ops.hs")
+          Nothing
+          (Don't #useCache)
+          (Don't #download)
+          (Don't #checkAst)
+          (Don't #checkIdempotence)
+          (Don't #debugFixity)
+    case made of
+      Left e -> expectationFailure ("came to " <> show (failure e))
+      Right session ->
+        act session $ \file text ->
+          came <$> formatBuffer session (project </> file) text
 
 -- | The project of 'withProject', with what compiling it would establish
 -- given instead of a plan: @LambdaCase@ in force, version 0.1.0.0 of the

@@ -8,8 +8,9 @@ module Main (main) where
 import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Choice (Choice, fromBool, isTrue)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import Data.Version (showVersion)
@@ -30,7 +31,7 @@ import System.IO
   )
 
 import Paths_tilia (version)
-import Tilia.Cabal.Project (ProjectRoot, findProjectRoot)
+import Tilia.Cabal.Project (ProjectRoot (..), findProjectRoot)
 import Tilia.Cabal.Target
   ( Component,
     Target,
@@ -43,14 +44,14 @@ import Tilia.Editor (editorSession, formatBuffer)
 import Tilia.Fixity.Debug (renderFixityNotes)
 import Tilia.Format
   ( FormatError (NoProject, Unreadable),
-    Session,
+    Session (..),
     describeFormatError,
     fixityNotesOf,
     formatErrorExitCode,
     newSession,
     planSourceFor,
   )
-import Tilia.Palette (Color (Bad), Palette, paletteFor)
+import Tilia.Palette (Color (..), Palette, paint, paletteFor)
 import Tilia.Parser (ghcLibParserVersion)
 import Tilia.Run
   ( Outcome (..),
@@ -145,7 +146,8 @@ formatStdin palette opts@Opts{..} file = do
       pure (before, outcomes)
 
 -- | Format with a session and print how it settled fixities, counting a
--- declined file as failed where the options say so.
+-- declined file as failed where the options say so, having said first
+-- that the session went on without a build plan where it did.
 formatWith ::
   Palette ->
   Opts ->
@@ -153,6 +155,7 @@ formatWith ::
   (Session -> IO [(FilePath, Outcome)]) ->
   IO [(FilePath, Outcome)]
 formatWith palette Opts{..} session formatting = do
+  noteUnsolved palette session
   outcomes <- formatting session
   printFixityNotes palette session
   pure $
@@ -168,6 +171,17 @@ readStandardInput = BS.concat <$> chunks
     chunks = do
       chunk <- BS.hGetSome stdin 32768
       if BS.null chunk then pure [] else (chunk :) <$> chunks
+
+-- | Say why Cabal could not solve a plan, where the session went on
+-- without one.
+noteUnsolved :: Palette -> Session -> IO ()
+noteUnsolved palette session =
+  for_ (sessionUnsolved session) $ \why ->
+    traverse_ (T.hPutStrLn stderr) . noted palette ("=", Middling) $
+      "formatting without a build plan for "
+        <> paint palette Place (T.pack (prPath (sessionRoot session)))
+        <> ": "
+        <> why
 
 -- | Print how the session settled every file's fixities, if it was asked to
 -- keep an account of that.

@@ -14,6 +14,7 @@ module Tilia.Cabal.Package
     packageExtensions,
     PackageReader,
     newPackageReader,
+    compilerVersion,
     ComponentSection (..),
     BranchSections,
     Kind (..),

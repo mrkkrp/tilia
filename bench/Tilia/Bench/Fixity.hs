@@ -195,7 +195,8 @@ fixityBenchmarks dir toResolve held = do
           { bpCompiler = "ghc-9.10.3",
             bpPackages =
               [PlanPackage n v PreExisting [] | (n, v) <- dependencies]
-                <> fmap fst tarballs
+                <> fmap fst tarballs,
+            bpSolved = True
           }
       fetched release = corpus </> release <.> "tar.gz"
   missing <- filterM (fmap not . doesFileExist . fetched) releases

@@ -5,6 +5,7 @@
 -- | Helpers several specs share.
 module Tilia.TestUtils
   ( withEnvironment,
+    withStandIn,
     withFiles,
     withOpsProject,
     switchedOn,
@@ -44,13 +45,24 @@ import System.Directory
   ( canonicalizePath,
     createDirectoryIfMissing,
     doesDirectoryExist,
+    doesFileExist,
+    getPermissions,
     listDirectory,
+    setOwnerExecutable,
+    setPermissions,
   )
 import System.Environment (lookupEnv)
 import System.Environment.Blank (setEnv, unsetEnv)
-import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
+import System.FilePath
+  ( searchPathSeparator,
+    takeBaseName,
+    takeDirectory,
+    takeExtension,
+    (</>),
+  )
 import System.IO (mkTextEncoding)
 import System.IO.Temp (withSystemTempDirectory)
+import System.Info qualified
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
@@ -80,6 +92,41 @@ withEnvironment vars act = bracket set restore (const act)
       pure (key, was)
     restore = traverse_ $ \(key, was) ->
       maybe (unsetEnv key) (\value -> setEnv key value True) was
+
+-- | The first argument of every run of a program while something runs,
+-- as told by a stand-in for it put first on the path that goes on to run
+-- the shell commands given, and what that came to.
+withStandIn ::
+  -- | The program.
+  FilePath ->
+  -- | What the stand-in does once it has noted the run.
+  String ->
+  -- | What to run with the stand-in in place.
+  IO a ->
+  IO ([String], a)
+withStandIn program script act
+  | System.Info.os == "mingw32" =
+      fail
+        ( "the stand-in for "
+            <> program
+            <> " is a shell script, which does not run on Windows"
+        )
+  | otherwise =
+      withSystemTempDirectory "tilia-stand-in" $ \bin -> do
+        let stand = bin </> program
+            commandLog = bin </> "commands"
+        writeFile stand $
+          "#!/bin/sh\necho \"$1\" >> '"
+            <> commandLog
+            <> "'\n"
+            <> script
+            <> "\n"
+        setPermissions stand . setOwnerExecutable True =<< getPermissions stand
+        path <- maybe "" (searchPathSeparator :) <$> lookupEnv "PATH"
+        answer <- withEnvironment [("PATH", bin <> path)] act
+        ran <- doesFileExist commandLog
+        commands <- if ran then lines <$> readFile commandLog else pure []
+        pure (commands, answer)
 
 -- | Run something on a new temporary directory, by its canonical path,
 -- holding these files at their paths in it.
