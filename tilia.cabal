@@ -126,6 +126,7 @@ library
     Tilia.Source.Lines
     Tilia.Span
     Tilia.Span.Ghc
+    Tilia.Stack
     Tilia.Utils
 
   hs-source-dirs: src
@@ -226,6 +227,7 @@ test-suite tests
     Tilia.RenderSpec
     Tilia.RunSpec
     Tilia.SpanSpec
+    Tilia.StackSpec
     Tilia.TestConfig
     Tilia.TestUtils
     Tilia.WithProjectPlan

@@ -1,5 +1,10 @@
 ## Unreleased
 
+* A package under a `stack.yaml`, with no `cabal.project` above it, is
+  formatted with the compiler Stack builds it with, which need not be on the
+  path, and Tilia has Stack write the `.cabal` file of such a package that
+  has only a `package.yaml`.
+  [Issue 351](https://github.com/mrkkrp/tilia/issues/351).
 * Where `UnicodeSyntax` is in force, through a module's own pragmas or its
   component's `default-extensions`, the symbols that have Unicode forms come
   out in them throughout the module: `∷`, `⇒`, `→`, `←` and `∀`, `⊸` for a

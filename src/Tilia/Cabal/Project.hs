@@ -7,13 +7,15 @@ module Tilia.Cabal.Project
     Marker (..),
     markerFile,
     findProjectRoot,
+    stackConfigAbove,
+    stackOutputIn,
     startingDirectory,
     cabalFilesIn,
     projectConfigFiles,
   )
 where
 
-import Control.Monad (filterM)
+import Control.Monad (filterM, void)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.Either (fromRight)
@@ -39,6 +41,7 @@ import System.Directory
   )
 import System.FilePath (takeDirectory, takeFileName, (</>))
 
+import Tilia.Process (readProgramOutputIn)
 import Tilia.Utils (quietly, tshow)
 
 -- | A project, and what marked it out.
@@ -64,26 +67,59 @@ markerFile = \case
   ProjectFile -> "cabal.project"
   PackageFile named -> named
 
--- | Walk upwards from a file or directory looking for a project.
+-- | Walk upwards from a file or directory looking for a project, having
+-- Stack write the @.cabal@ file of a package that has only a
+-- @package.yaml@.
 findProjectRoot :: FilePath -> IO (Maybe ProjectRoot)
 findProjectRoot start = quietly Nothing $ do
   from <- startingDirectory =<< canonicalizePath start
   found <- traverse markersIn (from : ancestorsOf from)
   pure (listToMaybe (concatMap fst found <> concatMap snd found))
   where
-    ancestorsOf directory =
-      let parent = takeDirectory directory
-       in if parent == directory then [] else parent : ancestorsOf parent
-
     markersIn directory = quietly ([], []) $ do
       entries <- listDirectory directory
-      packages <- cabalFilesAmong directory entries
+      packages <-
+        cabalFilesAmong directory entries >>= \case
+          [] | "package.yaml" `elem` entries -> writtenByStack directory
+          written -> pure written
       pure
         ( [ProjectRoot directory ProjectFile | "cabal.project" `elem` entries],
           [ ProjectRoot directory (PackageFile (takeFileName p))
           | p <- take 1 packages
           ]
         )
+
+-- | The @.cabal@ files Stack writes from the @package.yaml@ in a directory,
+-- where a @stack.yaml@ at or above it makes the package one Stack builds.
+writtenByStack :: FilePath -> IO [FilePath]
+writtenByStack directory =
+  stackConfigAbove directory >>= \case
+    Nothing -> pure []
+    Just _ -> do
+      void (stackOutputIn directory ["ide", "packages"])
+      cabalFilesIn directory
+
+-- | What Stack prints when run in a directory, never installing a compiler
+-- or writing a lock file.
+stackOutputIn :: FilePath -> [String] -> IO (Maybe Text)
+stackOutputIn directory args =
+  readProgramOutputIn directory "stack" $
+    ["--no-install-ghc", "--lock-file", "read-only"] <> args
+
+-- | The @stack.yaml@ in a directory or the nearest one above it.
+stackConfigAbove :: FilePath -> IO (Maybe FilePath)
+stackConfigAbove directory = quietly Nothing $ do
+  from <- canonicalizePath directory
+  listToMaybe
+    <$> filterM
+      doesFileExist
+      [d </> "stack.yaml" | d <- from : ancestorsOf from]
+
+-- | The directories above one, nearest first.
+ancestorsOf :: FilePath -> [FilePath]
+ancestorsOf directory =
+  let parent = takeDirectory directory
+   in if parent == directory then [] else parent : ancestorsOf parent
 
 -- | Where a walk upwards from a path starts: the path itself if it names a
 -- directory, else the directory holding it.

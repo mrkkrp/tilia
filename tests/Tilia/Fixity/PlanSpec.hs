@@ -36,22 +36,16 @@ import Data.Time (addUTCTime, getCurrentTime)
 import System.Directory
   ( canonicalizePath,
     createDirectoryIfMissing,
-    doesFileExist,
-    getPermissions,
     setModificationTime,
-    setOwnerExecutable,
-    setPermissions,
   )
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath
   ( dropExtension,
-    searchPathSeparator,
     takeBaseName,
     takeDirectory,
     (</>),
   )
 import System.IO.Temp (withSystemTempDirectory)
-import System.Info qualified
 import System.Timeout (timeout)
 import Test.Hspec
 
@@ -80,6 +74,7 @@ import Tilia.TestUtils
     unreadOnly,
     withEnvironment,
     withOpsProject,
+    withStandIn,
   )
 import Tilia.Utils (inParallel, writeUtf8File)
 import Tilia.WithProjectPlan (withProjectPlan)
@@ -359,6 +354,12 @@ preparation = describe "preparing a project" $ do
       setModificationTime (dir </> "cabal.project") earlier
       imported <- canonicalizePath (dir </> "config" </> "more.config")
       checkReadiness [] dir `shouldReturn` PlanStale [imported]
+
+  it "takes a change to Stack's configuration as making the plan stale" $
+    withOwnPlan $ \dir -> do
+      writeUtf8File (dir </> "stack.yaml") ""
+      config <- canonicalizePath (dir </> "stack.yaml")
+      checkReadiness [] dir `shouldReturn` PlanStale [config]
 
   describe "a plan narrower than the run" $ do
     it "notices a component the plan says nothing about" $
@@ -902,26 +903,7 @@ runsCabal = runsCabalWith "exit 1"
 -- | 'runsCabal', with the stand-in going on to run the shell commands
 -- given.
 runsCabalWith :: String -> IO a -> IO ([String], a)
-runsCabalWith script act
-  | System.Info.os == "mingw32" =
-      expectationFailure "the stand-in for cabal is a shell script, which does not run on Windows"
-        >> (,) [] <$> act
-  | otherwise =
-      withSystemTempDirectory "tilia-cabal" $ \bin -> do
-        let stand = bin </> "cabal"
-            commandLog = bin </> "commands"
-        writeFile stand $
-          "#!/bin/sh\necho \"$1\" >> '"
-            <> commandLog
-            <> "'\n"
-            <> script
-            <> "\n"
-        setPermissions stand . setOwnerExecutable True =<< getPermissions stand
-        path <- maybe "" (searchPathSeparator :) <$> lookupEnv "PATH"
-        answer <- withEnvironment [("PATH", bin <> path)] act
-        ran <- doesFileExist commandLog
-        commands <- if ran then lines <$> readFile commandLog else pure []
-        pure (commands, answer)
+runsCabalWith = withStandIn "cabal"
 
 -- | Run something against a home and an XDG cache directory of its own,
 -- handing it both of the places a cache could then be in.

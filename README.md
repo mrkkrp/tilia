@@ -89,6 +89,16 @@ are often not enabled by default and that would be confusing. Where a
 project will not solve with those flags, Tilia settles for what Cabal builds
 by default, so you get a narrower plan rather than none.
 
+A package under a `stack.yaml`, with no `cabal.project` above it, is
+formatted with the compiler Stack builds it with, which need not be on the
+path. Tilia asks `stack path --compiler-bin` where it is, once until
+`stack.yaml` or `stack.yaml.lock` changes, and puts it first on the path of
+everything it runs, so that Cabal solves the plan for it. Where such a
+package has a `package.yaml` and no `.cabal` file, Tilia has Stack write the
+`.cabal` file, as any Stack command would. Stack is never asked to install a
+compiler or to write `stack.yaml.lock`. The plan is still Cabal's, so its
+versions can differ from those of the snapshot.
+
 Finally, here are some other flags that may be of interest:
 
 * `--check-ast` performs an AST-equivalence check.

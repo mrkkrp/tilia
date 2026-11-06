@@ -26,6 +26,8 @@ module Tilia.Fixity.Cache
     cachedPackageCache,
     storePackageCache,
     forgetPackageCache,
+    cachedStackCompiler,
+    storeStackCompiler,
   )
 where
 
@@ -514,6 +516,42 @@ forgetPackageCache cache projectDir =
     (quietly () . removeFile)
     (at cache (packageCacheFile cache projectDir))
 
+-- | The directory Stack last said holds the compiler it builds with, while
+-- the files it was asked about are as they were then.
+cachedStackCompiler :: Cache -> IO (Maybe FilePath)
+cachedStackCompiler cache = quietly Nothing $ do
+  readIfPresent (at cache (stackCompilerFile cache)) T.lines >>= \case
+    Just (dir : files) -> do
+      let written =
+            [ (T.unpack (T.drop 1 path), stamp)
+            | Just file <- fmap (T.stripPrefix "file ") files,
+              let (stamp, path) = T.breakOn " " file
+            ]
+      still <-
+        traverse (\(path, stamp) -> (== stamp) <$> stampIfAny path) written
+      pure (if and still then Just (T.unpack dir) else Nothing)
+    _ -> pure Nothing
+
+-- | Remember the directory Stack said holds the compiler it builds with,
+-- stamped with the files it was asked about.
+storeStackCompiler ::
+  -- | Where to remember it.
+  Cache ->
+  -- | The files Stack read, which a later answer has to find unchanged.
+  [FilePath] ->
+  -- | The directory.
+  FilePath ->
+  IO ()
+storeStackCompiler cache files dir = quietly () $ do
+  stamps <- traverse stampIfAny files
+  writeAtomically (at cache (stackCompilerFile cache)) . renderLines $
+    [T.pack dir]
+      : [["file", stamp, T.pack file] | (file, stamp) <- zip files stamps]
+
+-- | When a file last changed, or nothing where there is no such file.
+stampIfAny :: FilePath -> IO Text
+stampIfAny = quietly "-" . stampOf
+
 -- | Render a fixity declaration as fields.
 renderFixity :: ((Namespace, OpName), Fixity) -> [Text]
 renderFixity ((namespace, OpName op), Fixity direction precedence) =
@@ -632,6 +670,10 @@ packageCacheFile cache projectDir =
   [ "package-cache",
     tokenOf cache <> "-" <> T.take 16 (sha256Of (T.pack projectDir))
   ]
+
+-- | The path of the directory holding the compiler Stack builds with.
+stackCompilerFile :: Cache -> [Text]
+stackCompilerFile cache = ["stack-compilers", tokenOf cache]
 
 -- | The token a cache is kept under.
 tokenOf :: Cache -> Text

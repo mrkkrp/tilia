@@ -158,7 +158,8 @@ describeFormatError palette = \case
   NoProject path ->
     "no project above "
       <> file path
-      <> ": expected a cabal.project or a .cabal file"
+      <> ": expected a cabal.project or a .cabal file, which hpack writes from"
+      <> " a package.yaml"
   NoBuildPlan root reason ->
     "no build plan for " <> file root <> ": " <> reason
   NoOwnModules root problem ->

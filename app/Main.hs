@@ -65,6 +65,7 @@ import Tilia.Run
     stdinReport,
     writeBack,
   )
+import Tilia.Stack (useStackCompiler)
 import Tilia.Utils (asUtf8, lineWidth, quietly)
 
 -- | The program's entry point.
@@ -95,7 +96,7 @@ formatComponents ::
   IO [(FilePath, Outcome)]
 formatComponents palette opts@Opts{..} target = do
   (root, components) <-
-    componentsFor palette
+    componentsFor palette optUseCache
       =<< either
         (die usageExitCode palette)
         pure
@@ -128,6 +129,7 @@ formatStdin palette opts@Opts{..} file = do
   case asUtf8 input of
     Left why -> pure ("", [(file, Failed (Unreadable file why))])
     Right before -> do
+      traverse_ (useStackCompiler optUseCache) =<< findProjectRoot file
       outcomes <-
         editorSession
           file
@@ -215,12 +217,21 @@ putUtf8 :: Text -> IO ()
 putUtf8 = BS.putStr . T.encodeUtf8
 
 -- | Every component the target asks for, and the project they were found
--- in, which is where the run's settings are read from as well.
-componentsFor :: Palette -> Target -> IO (ProjectRoot, [Component])
-componentsFor palette target =
+-- in, which is where the run's settings are read from as well, with the
+-- compiler Stack builds the project with put first on the path.
+componentsFor ::
+  -- | How to say what went wrong.
+  Palette ->
+  -- | Whether to read from and write to the cache.
+  Choice "useCache" ->
+  -- | The components asked for.
+  Target ->
+  IO (ProjectRoot, [Component])
+componentsFor palette caching target =
   findProjectRoot "." >>= \case
     Nothing -> dieFormatting palette . NoProject =<< getCurrentDirectory
-    Just root ->
+    Just root -> do
+      useStackCompiler caching root
       componentsOfTarget root target >>= \case
         Left problem ->
           die usageExitCode palette (describeTargetProblem problem)

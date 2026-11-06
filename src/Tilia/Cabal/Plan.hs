@@ -99,7 +99,11 @@ import System.Process
   )
 
 import Tilia.Cabal.Package (readPackageDescription)
-import Tilia.Cabal.Project (cabalFilesIn, projectConfigFiles)
+import Tilia.Cabal.Project
+  ( cabalFilesIn,
+    projectConfigFiles,
+    stackConfigAbove,
+  )
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity.Cache
 import Tilia.Fixity.PackageDb
@@ -543,7 +547,8 @@ builtAlready installed p = any matches installed
     matches i = ipName i == ppName p && ipVersion i == ppVersion p
 
 -- | The project files that have changed since the plan was written, and
--- since the last solve, which leaves a plan it would not change as it was.
+-- since the last solve, which leaves a plan it would not change as it was,
+-- Stack's configuration among them, as it decides the compiler.
 filesNewerThanPlan :: BuildPlan -> FilePath -> Maybe UTCTime -> IO [FilePath]
 filesNewerThanPlan plan projectDir solved = quietly [] $ do
   written <- getModificationTime (planPathFor projectDir)
@@ -551,7 +556,12 @@ filesNewerThanPlan plan projectDir solved = quietly [] $ do
   configs <- traverse (projectConfigFiles . (projectDir </>)) projectFiles
   atRootPackage <- cabalFilesIn projectDir
   inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
-  let candidates = fmap fst (concat configs) <> atRootPackage <> inPackages
+  stack <- stackConfigAbove projectDir
+  let candidates =
+        fmap fst (concat configs)
+          <> atRootPackage
+          <> inPackages
+          <> foldMap (\config -> [config, config <> ".lock"]) stack
   newer <- traverse (isNewerThan planTime) candidates
   pure [f | Just f <- newer]
   where

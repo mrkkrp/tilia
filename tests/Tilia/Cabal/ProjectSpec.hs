@@ -7,7 +7,7 @@ import System.FilePath ((</>))
 import Test.Hspec
 
 import Tilia.Cabal.Project
-import Tilia.TestUtils (withFiles)
+import Tilia.TestUtils (withFiles, withStandIn)
 
 spec :: Spec
 spec = do
@@ -100,6 +100,32 @@ spec = do
       $ \dir -> do
         root <- findProjectRoot (dir </> "packages" </> "inner")
         (prMarker <$> root) `shouldBe` Just ProjectFile
+
+  describe "a package with only a package.yaml" $ do
+    it "has Stack write its .cabal file where a stack.yaml is above it" $
+      withFiles [("stack.yaml", ""), ("thing/package.yaml", "")] $ \dir -> do
+        (ran, root) <-
+          withStandIn "stack" "printf '' > thing.cabal" $
+            findProjectRoot (dir </> "thing")
+        length ran `shouldBe` 1
+        root
+          `shouldBe` Just
+            (ProjectRoot (dir </> "thing") (PackageFile "thing.cabal"))
+
+    it "is not a package where no stack.yaml is above it" $
+      withFiles [("thing/package.yaml", "")] $ \dir -> do
+        (ran, root) <-
+          withStandIn "stack" "printf '' > thing.cabal" $
+            findProjectRoot (dir </> "thing")
+        ran `shouldBe` []
+        prPath <$> root `shouldNotBe` Just (dir </> "thing")
+
+    it "leaves alone a package.yaml next to a .cabal file"
+      $ withFiles
+        [("stack.yaml", ""), ("thing.cabal", ""), ("package.yaml", "")]
+      $ \dir -> do
+        (ran, _) <- withStandIn "stack" "exit 1" (findProjectRoot dir)
+        ran `shouldBe` []
 
   describe "no project" $
     it "gives up rather than guessing" $
