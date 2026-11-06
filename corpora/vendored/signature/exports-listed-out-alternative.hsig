@@ -1,0 +1,12 @@
+signature Codec
+  ( Codec,
+    encode,
+    decode,
+  )
+where
+
+data Codec
+
+encode :: Codec -> String
+
+decode :: String -> Maybe Codec

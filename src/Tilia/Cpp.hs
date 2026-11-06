@@ -102,8 +102,6 @@ import Tilia.Span (spanEndLine, spanStartLine)
 -- resulting documents are merged. The conditionals, the comments, and the
 -- directives are then injected into the merged document.
 formatWithCpp ::
-  -- | What to print the module with.
-  Settings ->
   -- | What to parse each configuration with.
   ParserConfig ->
   -- | What to print each configuration with.
@@ -114,7 +112,7 @@ formatWithCpp ::
   Text ->
   -- | The formatted module, or why not.
   Either CppError Text
-formatWithCpp settings parser render path source = do
+formatWithCpp parser render path source = do
   traverse_ (Left . RuledOutBranch) (ruledOutBranch source)
   (document, found) <-
     evalState
@@ -125,14 +123,14 @@ formatWithCpp settings parser render path source = do
           )
       )
       (configurationBudget * linesHeld source)
-  formatted <- printDoc settings <$> restoreUnprinted source found document
+  formatted <-
+    printDoc (rcSettings render) <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
     formatter =
       Formatter
         { formatterParser = parser,
           formatterRender = known,
-          formatterSettings = settings,
           formatterPath = path
         }
     known =
@@ -221,8 +219,6 @@ data Formatter = Formatter
     formatterParser :: ParserConfig,
     -- | What to print it with.
     formatterRender :: RenderConfig,
-    -- | What the module is printed with in the end.
-    formatterSettings :: Settings,
     -- | The file this is, for the positions in a parse error.
     formatterPath :: FilePath
   }
@@ -432,7 +428,10 @@ separately formatter reached v (baseDoc, baseFound) = do
       maybe (pure (baseDoc, mempty)) (formatAllConfigs formatter)
   let merged =
         zipWith
-          (mergeOf (formatterSettings formatter) (reachedLines reached))
+          ( mergeOf
+              (rcSettings (formatterRender formatter))
+              (reachedLines reached)
+          )
           (vaGroups v)
           (fmap (fmap fst) groups)
   pure (foldr par merged merged, baseFound <> foldMap (foldMap snd) groups)
@@ -564,7 +563,7 @@ together formatter reached c
           varied = Varied (variedLines (cfgWholes c) <> ranges)
           merged =
             merge
-              (formatterSettings formatter)
+              (rcSettings (formatterRender formatter))
               (reachedLines reached)
               (cfgConditionals c)
               (cfgGuards c)

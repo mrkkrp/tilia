@@ -101,16 +101,20 @@ warned :: Ctx -> WarnDecl GhcPs -> Doc
 warned ctx (Warning (namespace, _) names wtxt) =
   category
     <> namespaceSpec namespace
-    <> commaSep (fmap (name ctx) names)
+    <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) names)
     <> breakOrSpace
-    <> literalList literals
+    <> literalList (ctxCommaStyle ctx) literals
   where
     (_, category, literals) = warningParts wtxt
 
 -- | A warning attached to a name in an export list or to an instance.
-warningTxt :: WarningTxt GhcPs -> Doc
-warningTxt wtxt =
-  indent (pragma keyword (indent (category <> literalList literals)))
+warningTxt :: Ctx -> WarningTxt GhcPs -> Doc
+warningTxt ctx wtxt =
+  indent
+    ( pragma
+        keyword
+        (indent (category <> literalList (ctxCommaStyle ctx) literals))
+    )
   where
     (keyword, category, literals) = warningParts wtxt
 
@@ -133,7 +137,14 @@ warningParts = \case
     written NoSourceText wc = txt ("\"" <> showGhc (unLoc wc) <> "\"")
 
 -- | One message is written bare; several go in a list.
-literalList :: [LocatedE StringLiteral] -> Doc
-literalList = \case
+literalList ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | The messages.
+  [LocatedE StringLiteral] ->
+  Doc
+literalList commas = \case
   [l] -> writtenString (unLoc l)
-  ls -> brackets (commaSep (fmap (writtenString . unLoc) ls))
+  ls ->
+    commaBracketWith commas Outdented "[" "]" $
+      commaSep commas (fmap (writtenString . unLoc) ls)

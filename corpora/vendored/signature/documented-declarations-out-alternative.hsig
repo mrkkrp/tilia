@@ -1,0 +1,7 @@
+signature Clock where
+
+-- | A reading of the wall clock.
+data Instant
+
+-- | The moment this was asked for.
+now :: IO Instant

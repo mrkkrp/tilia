@@ -3,16 +3,16 @@
 -- | The vocabulary printing code is written in.
 module Tilia.Doc.CombinatorsSpec (spec) where
 
-import Data.Text (Text)
 import Test.Hspec
 
 import Tilia.Doc
 import Tilia.Doc.Combinators
-import Tilia.Settings (defaultSettings)
 import Tilia.Span
+import Tilia.TestUtils (withEachSettings)
 
 spec :: Spec
-spec = do
+spec = withEachSettings $ \settings -> do
+  let out = printDoc settings
   describe "groups" $ do
     it "becomes a space when flat" $
       out (flat (txt "a" <> breakOrSpace <> txt "b")) `shouldBe` "a b\n"
@@ -41,16 +41,30 @@ spec = do
       out (flat (located s d)) `shouldBe` out (flat d)
 
   describe "combining" $ do
-    it "separates with commaSep when flat" $
-      out (flat (commaSep [txt "a", txt "b", txt "c"]))
+    it "separates with commaSep when flat" $ do
+      out (flat (commaSep TrailingCommas [txt "a", txt "b", txt "c"]))
         `shouldBe` "a, b, c\n"
-    it "keeps commas on the line above when broken" $
-      out (broken (commaSep [txt "a", txt "b"]))
+      out (flat (commaSep LeadingCommas [txt "a", txt "b", txt "c"]))
+        `shouldBe` "a, b, c\n"
+    it "keeps trailing commas on the line above when broken" $
+      out (broken (commaSep TrailingCommas [txt "a", txt "b"]))
         `shouldBe` "a,\nb\n"
+    it "starts the line below with a leading comma when broken" $
+      out (broken (commaSep LeadingCommas [txt "a", txt "b"]))
+        `shouldBe` "a\n, b\n"
     it "handles an empty list" $
-      out (flat (commaSep [])) `shouldBe` ""
+      out (flat (commaSep TrailingCommas [])) `shouldBe` ""
     it "handles a single element" $
-      out (broken (commaSep [txt "a"])) `shouldBe` "a\n"
+      out (broken (commaSep LeadingCommas [txt "a"])) `shouldBe` "a\n"
+    it "puts a separating comma before what follows" $
+      out (broken (txt "a" <> separatingComma LeadingCommas <> txt "b"))
+        `shouldBe` "a\n, b\n"
+    it "lines items up after a lead-in" $ do
+      let items = [txt "a", txt "b"]
+      out (broken (commaSepAfter TrailingCommas "|" items))
+        `shouldBe` "| a,\n  b\n"
+      out (broken (commaSepAfter LeadingCommas "|" items))
+        `shouldBe` "| a\n, b\n"
     it "joins with hsep" $
       out (flat (hsep [txt "a", txt "b"])) `shouldBe` "a b\n"
     it "joins with vsep" $
@@ -58,24 +72,34 @@ spec = do
 
   describe "brackets" $ do
     it "adds nothing when flat" $
-      out (flat (parens (commaSep [txt "a", txt "b"])))
+      out (flat (parens (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(a, b)\n"
     it "keeps the opening bracket company when broken" $
-      out (broken (parens (commaSep [txt "a", txt "b"])))
+      out (broken (parens (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "( a,\n  b\n)\n"
-    it "lines the body up under itself" $
-      out (broken (brackets (commaSep [txt "a", txt "b", txt "c"])))
+    it "lines the body up under itself" $ do
+      let items = [txt "a", txt "b", txt "c"]
+      out (broken (brackets (commaSep TrailingCommas items)))
         `shouldBe` "[ a,\n  b,\n  c\n]\n"
-    it "keeps the closing bracket in when asked" $
-      out (broken (parensWith Indented (commaSep [txt "a", txt "b"])))
+    it "keeps the closing bracket in when asked" $ do
+      let items = [txt "a", txt "b"]
+      out (broken (parensWith Indented (commaSep TrailingCommas items)))
         `shouldBe` "( a,\n  b\n  )\n"
+    it "puts leading commas under the opening bracket" $
+      out (broken (leading Outdented [txt "a", txt "b", txt "c"]))
+        `shouldBe` "[ a\n, b\n, c\n]\n"
+    it "puts leading commas a step in with the closing bracket" $
+      out (broken (leading Indented [txt "a", txt "b"]))
+        `shouldBe` "[ a\n  , b\n  ]\n"
+    it "adds nothing to leading commas when flat" $
+      out (flat (leading Outdented [txt "a", txt "b"])) `shouldBe` "[a, b]\n"
     it "renders an empty bracket pair flat" $
       out (flat (brackets mempty)) `shouldBe` "[]\n"
     it "spaces the unboxed pair" $
-      out (flat (unboxed (commaSep [txt "a", txt "b"])))
+      out (flat (unboxed (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(# a, b #)\n"
     it "gives a spaced pair its own lines when broken" $
-      out (broken (unboxed (commaSep [txt "a", txt "b"])))
+      out (broken (unboxed (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(#\n  a,\n  b\n#)\n"
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
@@ -90,5 +114,7 @@ spec = do
     it "inverts with includeUnless" $
       out (flat (includeUnless True (txt "a"))) `shouldBe` ""
 
-out :: Doc -> Text
-out = printDoc defaultSettings
+-- | Items in square brackets, with leading commas.
+leading :: ClosingIndent -> [Doc] -> Doc
+leading closing =
+  commaBracketWith LeadingCommas closing "[" "]" . commaSep LeadingCommas

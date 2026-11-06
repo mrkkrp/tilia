@@ -111,14 +111,23 @@ it has no `cabal.project`.
 ```toml
 # Break what runs past column 100 rather than 80.
 column-limit = 100
+# Start each line of a broken list with its comma.
+leading-commas = true
 ```
 
 The file is TOML, restricted to lines of `key = value` where a value is
 `true`, `false`, or a whole number, and to `#` comments.
 
-| Setting        | Values                 | Default |
-| -------------- | ---------------------- | ------- |
-| `column-limit` | a whole number above 0 | 80      |
+| Setting          | Values                 | Default |
+| ---------------- | ---------------------- | ------- |
+| `column-limit`   | a whole number above 0 | 80      |
+| `leading-commas` | `true` or `false`      | `false` |
+
+With `leading-commas = true` the lists, tuples, records, contexts,
+`deriving` clauses, guards and the like that Tilia breaks over several lines
+start each line but the first with a comma, and a record field's Haddock
+goes under it as `-- ^`. Import and export lists keep their commas at the
+ends of lines.
 
 ## Excluding files
 

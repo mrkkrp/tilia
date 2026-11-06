@@ -1,0 +1,8 @@
+{-# LANGUAGE RoleAnnotations #-}
+
+-- the parser leaves these in its own state, not in the tree
+signature Buffer where
+
+type role Buffer nominal
+
+data Buffer a

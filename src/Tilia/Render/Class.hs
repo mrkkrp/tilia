@@ -70,10 +70,15 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     classHead
       | isCTuple (unLoc tyCon) (length hsq_explicit) =
           layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit) $
-            parens
+            commaBracketWith
+              (ctxCommaStyle ctx)
+              Outdented
+              "("
+              ")"
               ( insideBrackets
                   (spanOf tyCon)
                   ( commaSep
+                      (ctxCommaStyle ctx)
                       (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit)
                   )
               )
@@ -108,9 +113,10 @@ funDeps :: Ctx -> [LHsFunDep GhcPs] -> Doc
 funDeps _ [] = mempty
 funDeps ctx fdeps =
   breakOrSpace
-    <> txt "|"
-    <> space
-    <> indent (commaSep (fmap (align . at_ ctx (funDep ctx)) fdeps))
+    <> commaSepAfter
+      (ctxCommaStyle ctx)
+      "|"
+      (fmap (align . at_ ctx (funDep ctx)) fdeps)
 
 -- | One functional dependency of a class, as in @a b -> c@.
 funDep :: Ctx -> FunDep GhcPs -> Doc
@@ -130,7 +136,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     whereSpan = spanOf (acid_where anns)
 
     head' =
-      foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning
+      foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
         <> breakOrSpace
         <> indent
           ( foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
@@ -165,7 +171,7 @@ standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
     instanceHead indented =
       indent $
         txt "instance"
-          <> foldMap (\w -> breakOrSpace <> at ctx w warningTxt) warning
+          <> foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
           <> breakOrSpace
           <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
           <> nest

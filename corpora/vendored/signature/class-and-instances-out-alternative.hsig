@@ -1,0 +1,10 @@
+signature Ordered where
+
+data Item
+
+class Sized a where
+  size :: a -> Int
+
+instance Sized Item
+
+instance Eq Item

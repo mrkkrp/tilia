@@ -450,7 +450,10 @@ defaultDecl ctx (DefaultDecl _ className types) =
   txt "default"
     <> foldMap (\c -> breakOrSpace <> name ctx c) className
     <> breakOrSpace
-    <> indent (parens (commaSep (fmap (align . hsType ctx) types)))
+    <> indent
+      ( commaBracketWith (ctxCommaStyle ctx) Outdented "(" ")" $
+          commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types)
+      )
 
 -- | An @ANN@ pragma.
 annDecl :: Ctx -> AnnDecl GhcPs -> Doc

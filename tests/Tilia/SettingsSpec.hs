@@ -32,6 +32,16 @@ spec = do
     it "reads a value with a sign" $
       "column-limit = +100" `limitsAt` 100
 
+    it "sets leading commas" $ do
+      parseSettings "leading-commas = true\n"
+        `shouldBe` Right defaultSettings{settingsCommaStyle = LeadingCommas}
+      parseSettings "leading-commas = false\n"
+        `shouldBe` Right defaultSettings{settingsCommaStyle = TrailingCommas}
+
+    it "sets several settings" $
+      parseSettings "column-limit = 100\nleading-commas = true\n"
+        `shouldBe` Right alternativeSettings
+
   describe "a settings file is refused where" $ do
     it "the column limit is not a whole number greater than 0" $ do
       let why = "column-limit is a whole number greater than 0"
@@ -39,6 +49,9 @@ spec = do
       "column-limit = -80" `fails` (1, why)
       "column-limit = true" `fails` (1, why)
       "column-limit = 99999999999999999999" `fails` (1, why)
+
+    it "leading commas are neither true nor false" $
+      "leading-commas = 1" `fails` (1, "leading-commas is true or false")
 
     it "a value is a string" $
       "column-limit = \"100\""
@@ -67,7 +80,8 @@ spec = do
 
     it "reads the project's settings file" $
       withFiles [(settingsFile, "column-limit = 100\n")] $ \root ->
-        readSettings root `shouldReturn` Right alternativeSettings
+        readSettings root
+          `shouldReturn` Right defaultSettings{settingsColumnLimit = 100}
 
 -- | Check that a settings file sets the column limit.
 limitsAt ::

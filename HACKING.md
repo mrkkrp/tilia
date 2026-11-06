@@ -34,6 +34,10 @@ be updated like this:
 $ TILIA_CORPUS_ACCEPT=1 cabal test
 ```
 
+Each example of our own in `corpora/vendored` comes with what it formats
+to, `name-out.hs` with the default settings and `name-out-alternative.hs`
+with the alternative ones.
+
 Finally, Tilia formats itself, so make sure to run this command before you
 open a PR:
 

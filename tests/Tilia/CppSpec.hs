@@ -18,8 +18,8 @@ import Tilia.Cpp.Place (regionsIn)
 import Tilia.Doc (Doc)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
-import Tilia.Render (defaultRenderConfig, renderModule)
-import Tilia.Settings (defaultSettings)
+import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
+import Tilia.Settings (Settings)
 import Tilia.Source (directiveOnLine)
 import Tilia.Span (Span)
 import Tilia.TestUtils
@@ -27,16 +27,17 @@ import Tilia.TestUtils
     leaves,
     linearLeaves,
     parses,
+    withEachSettings,
   )
 
--- | Format a module which uses the C preprocessor, configured with nothing.
-formatCpp :: Text -> Either Text Text
-formatCpp =
+-- | Format a module which uses the C preprocessor, configured with nothing
+-- but the settings.
+formatCpp :: Settings -> Text -> Either Text Text
+formatCpp settings =
   said
     . formatWithCpp
-      defaultSettings
       defaultParserConfig
-      defaultRenderConfig
+      defaultRenderConfig{rcSettings = settings}
       "example.hs"
 
 spec :: Spec
@@ -121,14 +122,15 @@ spec = do
     it "multiply, as configurations" $
       said (length <$> leaves twoConditionals) `shouldBe` Right 4
 
-    it "add, as formattings: twenty of them are twenty-one, not a million" $
-      formatCpp (sideBySide 20) `shouldSatisfy` isRight
+    withEachSettings $ \settings -> do
+      it "add, as formattings: twenty of them are twenty-one, not a million" $
+        formatCpp settings (sideBySide 20) `shouldSatisfy` isRight
 
-    it "cost only the declarations each of them reaches" $
-      formatCpp (apart 400) `shouldSatisfy` isRight
+      it "cost only the declarations each of them reaches" $
+        formatCpp settings (apart 400) `shouldSatisfy` isRight
 
-    it "are refused once even the sum is more than the budget allows" $
-      formatCpp (oneDeclaration 100 1000) `shouldSatisfy` isLeft
+      it "are refused once even the sum is more than the budget allows" $
+        formatCpp settings (oneDeclaration 100 1000) `shouldSatisfy` isLeft
 
   describe "counting the configurations" $ do
     it "agrees with enumerating them, where enumerating them is possible" $
@@ -279,42 +281,42 @@ spec = do
         )
         `shouldBe` Right True
 
-  describe "directives it cannot read" $ do
+  withEachSettings $ \settings -> describe "directives it cannot read" $ do
     it "refuses a module whose conditionals do not balance" $
-      formatCpp unbalanced
+      formatCpp settings unbalanced
         `shouldBe` Left "the #ifdef at line 3 is never closed"
 
     it "refuses an #endif with no conditional to close" $
-      formatCpp strayEndif
+      formatCpp settings strayEndif
         `shouldBe` Left "the #endif at line 4 has no conditional to belong to"
 
     it "refuses an #else that comes before an #elif" $
-      formatCpp elseBeforeElif
+      formatCpp settings elseBeforeElif
         `shouldBe` Left
           "the #elif at line 7 comes after the #else of its conditional"
 
     it "refuses a directive inside a quasiquote" $
-      formatCpp includeInQuasiquote
+      formatCpp settings includeInQuasiquote
         `shouldBe` Left
           "the #include at line 7 is inside a quasi-quote or a multi-line string"
 
     it "refuses an #include before a leading comma" $
-      formatCpp includeBeforeLeadingComma
+      formatCpp settings includeBeforeLeadingComma
         `shouldBe` Left
           "#include \"colors.h\" at line 5 comes before a leading comma, which formatting moves above it"
 
     it "refuses an alternative aborting with #error that it cannot format" $
-      formatCpp abortingAlternative
+      formatCpp settings abortingAlternative
         `shouldBe` Left
           "the alternative that the #error at line 7 aborts cannot be formatted without parsing it"
 
     it "names the line of an #error that settling a conditional leaves unguarded" $
-      formatCpp abortingWhereSettled
+      formatCpp settings abortingWhereSettled
         `shouldBe` Left
           "the alternative that the #error at line 10 aborts cannot be formatted without parsing it"
 
     it "refuses a branch that a conditional around it asking the same question rules out" $
-      formatCpp ruledOut
+      formatCpp settings ruledOut
         `shouldBe` Left
           "the branch at line 6 is ruled out by a conditional around it that asks the same question"
 

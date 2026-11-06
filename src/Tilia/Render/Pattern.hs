@@ -78,12 +78,19 @@ patBody ctx inParens closing here = \case
       (insideBrackets here (hsPatIn ctx (Is #inParens) Indented p))
   BangPat _ p -> txt "!" <> recur p
   ListPat _ ps ->
-    bracketsWith closing (insideBrackets here (commaSep (fmap recur ps)))
+    commaBracketWith (ctxCommaStyle ctx) closing "[" "]" $
+      insideBrackets
+        here
+        (commaSep (ctxCommaStyle ctx) (fmap (align . recur) ps))
   TuplePat _ ps boxity ->
     boxityBrackets
+      (ctxCommaStyle ctx)
       boxity
       closing
-      (insideBrackets here (commaSep (fmap (align . recur) ps)))
+      ( insideBrackets
+          here
+          (commaSep (ctxCommaStyle ctx) (fmap (align . recur) ps))
+      )
   OrPat _ ps ->
     itemsSepBy (fromBool (isTrue inParens)) NoBrace (fmap recur (NE.toList ps))
   SumPat _ p tag arity -> unboxedSum closing tag arity (recur p)
@@ -133,11 +140,13 @@ conPattern ctx inParens here con = \case
     name ctx con
       <> breakOrNothing
       <> indent
-        ( braces
-            ( insideBrackets
-                here
-                (commaSep (fmap field (visibleFields dotdot fields)))
-            )
+        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+            insideBrackets
+              here
+              ( commaSep
+                  (ctxCommaStyle ctx)
+                  (fmap field (visibleFields dotdot fields))
+              )
         )
   InfixCon l r ->
     layoutFrom ctx (spanOf l <> spanOf r) $
@@ -181,7 +190,16 @@ unboxedSum closing tag arity d =
     after = replicate (arity - tag) space
 
 -- | The brackets a tuple is written with.
-boxityBrackets :: Boxity -> ClosingIndent -> Doc -> Doc
-boxityBrackets = \case
-  Boxed -> parensWith
+boxityBrackets ::
+  -- | Where the commas go.
+  CommaStyle ->
+  -- | Whether the tuple is boxed.
+  Boxity ->
+  -- | Where the closing bracket goes.
+  ClosingIndent ->
+  -- | The items, separated.
+  Doc ->
+  Doc
+boxityBrackets commas = \case
+  Boxed -> \closing -> commaBracketWith commas closing "(" ")"
   Unboxed -> unboxedWith

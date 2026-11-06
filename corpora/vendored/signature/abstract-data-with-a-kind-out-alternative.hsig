@@ -1,0 +1,6 @@
+signature Shape where
+
+import Data.Kind (Type)
+
+data Shape :: Type
+data Pair :: Type -> Type -> Type

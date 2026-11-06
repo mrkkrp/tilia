@@ -1,0 +1,10 @@
+signature Ledger where
+
+-- the amounts are always in minor units
+data Amount
+
+data Entry -- one line of the journal
+
+-- posted before the period closes,
+-- and never after
+post :: Entry -> IO ()
