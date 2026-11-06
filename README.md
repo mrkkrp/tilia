@@ -239,13 +239,6 @@ every module of that component the next time it is formatted.
   its users find themselves running invocations like
   `ormolu -i $(git ls-files '*.hs' '*.hs-boot')`. Tilia focuses on Cabal
   components, which is arguably better ergonomics.
-* Ormolu supports magic comments `{- ORMOLU_DISABLE -}` and
-  `{- ORMOLU_ENABLE -}` while Tilia has no equivalent to those. The
-  comments were introduced to work around the weaknesses of Ormolu's CPP
-  support as well as its inability to respect grouping of certain types of
-  definitions that the users wanted to preserve. Tilia both respects
-  grouping in more situations and has first-class support for CPP, so
-  these comments are not needed.
 * Ormolu can be asked to format regions in a file with `--start-line` and
   `--end-line` options. Tilia has no such functionality since it operates
   at a higher level (Cabal components or whole projects), which is aligned
@@ -255,11 +248,28 @@ every module of that component the next time it is formatted.
   download packages, unless the build plan is given with `--build-plan`
   and downloads are ruled out with `--no-downloads`. Ormolu does none of
   this, which may be an advantage in some situations.
+* Tilia preserves grouping of declarations in more situations.
+* Tilia implements a number of layout improvements over Ormolu. E.g.
+  recognizing `let`/`in` chains and printing them nicely instead of letting
+  them “explode”.
+* Tilia breaks excessively long lines automatically.
+* Tilia is capable of handling comments with absolute fidelity—they never
+  move in unexpected ways and never disappear.
+* Tilia separates third-party and first-party imports with a blank line.
+* Tilia is configurable.
+* Tilia is more correct. For example, it never rearranges pragmas or GHC
+  options in a way that changes the meaning of the program, whereas Ormolu
+  does that. It is careful not to merge `hiding` clauses of otherwise
+  matching imports that hide different names—something Ormolu does, despite
+  it changing the meaning of the program. There are other examples as well.
 
 ### Fourmolu
 
 * Fourmolu is a configurable fork of Ormolu which shares the same
   architecture, strengths, and weaknesses.
+* Tilia's support for breaking long lines is always enabled and does not
+  suffer from idempotence problems.
+* Fourmolu is much more configurable.
 
 ## Suggested setup per use-case
 
