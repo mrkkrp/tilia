@@ -194,8 +194,8 @@ data Env = Env
     -- | Whether what is written now is a note, which goes to the margin
     -- right above a preprocessor directive.
     envNote :: !Bool,
-    -- | Whether a group around what is written now is laid out flat, which
-    -- keeps every 'Frangible' group inside it flat.
+    -- | Whether a group laid out flat holds what is written now on its
+    -- line, which keeps every 'Frangible' group in it flat.
     envHeldFlat :: !Bool,
     -- | What the document is printed with.
     envSettings :: !Settings
@@ -366,11 +366,12 @@ go env = \case
   DCppChoice cs branches fallback ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
+        unheld = env{envHeldFlat = False}
      in foldr (flip (.)) id . concat $
-          [ [directive type' ("#" <> guard'), go env taken]
+          [ [directive type' ("#" <> guard'), go unheld taken]
           | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
           ]
-            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go env fallback]
+            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go unheld fallback]
                | not (printsNothing fallback && T.null afterElse)
                ]
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
