@@ -74,6 +74,11 @@
   as an `INLINE` under the equations of a run of signatures, stays right
   under them, rather than getting an empty line above it where it shared a
   name with neither the first of them nor the one right above it.
+* A pragma such as `DEPRECATED`, `WARNING`, `ANN` or `INLINE` written
+  next to the type synonym, class, type family, standalone kind signature,
+  pattern synonym or foreign import it names stays next to it, as it already
+  did next to a function or a data declaration, rather than getting an
+  empty line between them.
 
 ## Tilia 0.1.4.0
 

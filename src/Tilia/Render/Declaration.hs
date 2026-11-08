@@ -325,7 +325,7 @@ declKind = \case
   InstD _ DataFamInstD{} -> (DataInstance, [])
   DerivD{} -> (DerivingDeclaration, [])
   SpliceD{} -> (SpliceDeclaration, [])
-  ForD{} -> (ForeignDeclaration, [])
+  ForD _ d -> (ForeignDeclaration, unLoc <$> hsForeignDeclsBinders [noLocA d])
   RoleAnnotD{} -> (RoleAnnotation, [])
   DefD{} -> (DefaultDeclaration, [])
   DocD _ (DocCommentPrev _) -> (DocumentsPrevious, [])
@@ -345,27 +345,25 @@ isDoc = \case
 relatedDecls :: LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 relatedDecls a b = case (kindA, kindB) of
   (_, DocumentsPrevious) -> True
-  pair | pair `elem` relatedKinds -> shareAName namesA namesB
+  pair
+    | pair `elem` relatedKinds
+        || PragmaDeclaration `elem` [kindA, kindB]
+          && FixityDeclaration `notElem` [kindA, kindB] ->
+        shareAName namesA namesB
   _ -> False
   where
     (kindA, namesA) = declKind (unLoc a)
     (kindB, namesB) = declKind (unLoc b)
 
 -- | The pairs of declaration kinds that group when they name something in
--- common.
+-- common, besides a pragma, which groups with whatever it names but a fixity
+-- declaration.
 relatedKinds :: [(Kind, Kind)]
 relatedKinds =
   [ (TypeSignature, FunctionBody),
     (TypeSignature, DefaultSignature),
     (DefaultSignature, TypeSignature),
     (DefaultSignature, FunctionBody),
-    (TypeSignature, PragmaDeclaration),
-    (PragmaDeclaration, TypeSignature),
-    (PragmaDeclaration, FunctionBody),
-    (FunctionBody, PragmaDeclaration),
-    (PragmaDeclaration, DataDeclaration),
-    (DataDeclaration, PragmaDeclaration),
-    (PragmaDeclaration, PragmaDeclaration),
     (PatternSignature, PatternDefinition),
     (KindSignature, DataDeclaration),
     (KindSignature, ClassDeclaration),
