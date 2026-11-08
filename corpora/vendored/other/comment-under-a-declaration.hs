@@ -35,6 +35,14 @@ shelves = 4 -- of silicon carbide
 posts :: Int
 posts = 12
 
+-- Between braces on one line as well.
+glazeFiring :: Int
+glazeFiring = 1220
+{- Cone 6, for porcelain. -}
+
+bisqueFiring :: Int
+bisqueFiring = 1000
+
 -- With no empty line under it, a comment is about what follows, and the
 -- empty line around a declaration over several lines goes above it.
 cones :: Int
