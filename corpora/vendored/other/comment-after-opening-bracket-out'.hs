@@ -1,6 +1,6 @@
 import Data.List
   ( -- on a line of its own
-    sort,
+    sort
   )
 
 parenthesised =
