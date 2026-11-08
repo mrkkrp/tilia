@@ -11,6 +11,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
+import Data.Bifunctor (bimap)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
@@ -185,16 +186,18 @@ merge settings written conditionals guards varied settledOthers = go Broken
        in mconcat (woven within layout stretches (fmap (go layout) anchors))
 
     woven within layout (s : ss) (c : cs)
-      | all (maybe False ((== DSpace) . snd) . unsnoc) s,
-        Just r <- regionOf c,
-        spanStartLine r == spanEndLine r,
+      | all (maybe False ((== DSpace) . snd) . unsnoc) s
+          || opensWithSpace layout c,
+        (line, rest) <- lineOf layout c,
+        printsOneToken layout line,
         Just (opening, ws, bs, e, gap) <- choiceAt written Last stretch,
         not (any printsNothing (e : fmap snd bs)) =
           opening
             <> Doc.cppChoice
               ws
-              [(g, b <> gap <> c) | (g, b) <- bs]
-              (e <> gap <> c)
+              [(g, b <> gap <> line) | (g, b) <- bs]
+              (e <> gap <> line)
+            <> rest
             : woven within layout ss cs
       | otherwise = stretch : c : woven within layout ss cs
       where
@@ -1020,6 +1023,32 @@ opensWithBreak layout d = case dropWhile (== DSpace) (spineAt layout d) of
         DCppChoice{} -> True
         _ -> False
   [] -> False
+
+-- | Is the first thing this document puts on the page a space?
+opensWithSpace :: Layout -> Doc -> Bool
+opensWithSpace layout d = case spineAt layout d of
+  x : _
+    | Just (w, y) <- unwrap x -> opensWithSpace (layoutInside layout w) y
+    | otherwise -> x == DSpace
+  [] -> False
+
+-- | What a document puts on the line it continues, and the rest of it, cut
+-- through the nests around it.
+lineOf :: Layout -> Doc -> (Doc, Doc)
+lineOf layout d = case spineAt layout d of
+  [DNest n x] -> bimap (DNest n) (DNest n) (lineOf layout x)
+  xs -> bimap mconcat mconcat (break (opensWithBreak layout) xs)
+
+-- | Does this document print one token, spaces aside?
+printsOneToken :: Layout -> Doc -> Bool
+printsOneToken layout d = case tokens layout d of
+  [DText _] -> True
+  _ -> False
+  where
+    tokens l = concatMap (leaf l) . spineAt l
+    leaf l x = case unwrap x of
+      Just (w, y) -> tokens (layoutInside l w) y
+      Nothing -> [x | x /= DSpace, not (printsNothing x)]
 
 -- | How much text this document holds, counting what a choice repeats once
 -- for each alternative that repeats it.
