@@ -31,7 +31,6 @@ module Tilia.Render.Type
   )
 where
 
-import Control.Monad (mfilter)
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
@@ -305,11 +304,7 @@ spine t =
 context :: Ctx -> LHsContext GhcPs -> Doc
 context ctx l =
   at ctx l $
-    contextOf
-      (ctxCommaStyle ctx)
-      (mfilter (holdsLineComment ctx) (spanOf l))
-      bare
-      (hsType ctx)
+    contextOf (ctxCommaStyle ctx) (spanOf l) bare (hsType ctx)
       . fmap unbracket
   where
     bare t = case unLoc t of
@@ -338,8 +333,7 @@ leftContext ctx ctxt = context ctx ctxt <> joinedBy (reserved ctx "=>")
 contextOf ::
   -- | Where the commas go.
   CommaStyle ->
-  -- | Where the context was written, if a comment written in it needs a
-  -- place before its closing parenthesis.
+  -- | Where the context was written.
   Maybe Span ->
   -- | Can this constraint, when it is the only one, go without parentheses?
   (a -> Bool) ->
