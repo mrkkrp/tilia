@@ -308,31 +308,46 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
 -- | The parenthesised list after a module name.
 exportList :: Ctx -> Maybe Span -> [LIE GhcPs] -> Doc
 exportList ctx enclosing xs =
-  layoutHere . parens . insideBrackets enclosing $
+  layoutHere . listParens ctx . insideBrackets enclosing $
     importExportItems ctx xs
   where
     layoutHere
       | any (isDocEntry . unLoc) xs = broken
       | otherwise = layoutFrom ctx enclosing
 
--- | The items of an import or export list.
+-- | The parentheses around an import or export list, or around the members
+-- of one of its items.
+listParens :: Ctx -> Doc -> Doc
+listParens ctx = commaBracketWith (ctxCommaStyle ctx) Outdented "(" ")"
+
+-- | The items of an import or export list, with the documentation among
+-- them lined up with the items rather than with leading commas.
 importExportItems :: Ctx -> [LIE GhcPs] -> Doc
-importExportItems ctx xs = variant (laidOut False) (laidOut True)
+importExportItems ctx xs = case ctxCommaStyle ctx of
+  TrailingCommas -> variant (laidOut False) (laidOut True)
+  LeadingCommas -> mconcat (zipWith3 commaLed previous afterItem xs)
   where
+    previous = Nothing : fmap Just xs
+    afterItem = scanl (||) False (fmap (not . isDocEntry . unLoc) xs)
     laidOut broken' =
-      sepBy
-        breakOrSpace
-        (zipWith (item broken') (Nothing : fmap Just xs) (positioned xs))
-    item broken' previous (position, x) =
-      gapAbove position (unLoc <$> previous) (unLoc x)
-        <> align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
-      where
-        withComma = comma' broken' position
-    gapAbove position previous here
-      | position == First || position == Only = mempty
-      | isSection here = hardBreak
-      | isPipe here, maybe False runsOn previous = hardBreak
-      | otherwise = mempty
+      sepBy breakOrSpace (zipWith (item broken') previous (positioned xs))
+    item broken' before (position, x) =
+      gapAbove before x <> entry (comma' broken' position) x
+    commaLed before afterAnItem x
+      | Nothing <- before = entry False x
+      | afterAnItem,
+        not (isDocEntry (unLoc x)) =
+          separatingComma LeadingCommas <> entry False x
+      | otherwise =
+          indent (breakOrSpace <> gapAbove before x <> entry False x)
+    entry withComma x =
+      align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
+    gapAbove before (L _ here) = case unLoc <$> before of
+      Nothing -> mempty
+      Just p
+        | isSection here -> hardBreak
+        | isPipe here, runsOn p -> hardBreak
+        | otherwise -> mempty
     isSection = \case
       IEGroup{} -> True
       _ -> False
@@ -377,18 +392,13 @@ ieItem ctx here withComma = \case
             here
             (spanOf open <> spanOf close <|> here)
             ( breakOrSpace
-                <> indent
-                  ( parens
-                      ( insideBrackets
-                          here
-                          (commaSep TrailingCommas (align <$> withWildcard))
-                      )
-                  )
+                <> indent (listParens ctx (insideBrackets here listed))
             )
           <> comma'
       )
       <> itemDocumentation doc
     where
+      listed = commaSep (ctxCommaStyle ctx) (align <$> withWildcard)
       rendered = fmap (at_ ctx (wrappedName ctx)) members
       withWildcard = case wildcard of
         NoIEWildcard -> rendered
@@ -493,7 +503,10 @@ importDecl ctx ImportDecl{..} =
               <> breakOrSpace
               <> fence
                 parensSpan
-                (parens (insideBrackets listSpan (importExportItems ctx xs)))
+                ( listParens
+                    ctx
+                    (insideBrackets listSpan (importExportItems ctx xs))
+                )
 
 -- | The keyword an import's level is written with.
 declLevel :: ImportDeclLevel -> Doc
