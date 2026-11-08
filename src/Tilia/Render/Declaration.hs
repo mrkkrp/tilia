@@ -13,6 +13,7 @@ module Tilia.Render.Declaration
 where
 
 import Data.Choice (pattern Don't)
+import Data.Foldable (toList)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NE
@@ -314,8 +315,8 @@ declKind = \case
   RuleD{} -> (PragmaDeclaration, [])
   WarningD _ (Warnings _ ws) ->
     (PragmaDeclaration, [unLoc n | L _ (Warning _ ns _) <- ws, n <- ns])
-  TyClD _ (DataDecl _ (L _ n) _ _ _) -> (DataDeclaration, [n])
-  TyClD _ (ClassDecl{tcdLName = L _ n}) -> (ClassDeclaration, [n])
+  TyClD _ d@(DataDecl _ (L _ n) _ _ _) -> (DataDeclaration, n : memberNames d)
+  TyClD _ d@ClassDecl{tcdLName = L _ n} -> (ClassDeclaration, n : memberNames d)
   TyClD _ (SynDecl _ (L _ n) _ _ _) -> (TypeSynonym, [n])
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) ->
     (FamilyDeclaration, [n])
@@ -370,6 +371,18 @@ relatedKinds =
     (KindSignature, FamilyDeclaration),
     (KindSignature, TypeSynonym)
   ]
+
+-- | The names a type declaration gives its constructors, fields, methods and
+-- associated types.
+memberNames :: TyClDecl GhcPs -> [RdrName]
+memberNames d =
+  fmap (unLoc . fst) tyDeclATs
+    <> fmap unLoc tyDeclOpSigs
+    <> fmap (unLoc . fst) consWithFieldIndices
+    <> fmap (unLoc . foLabel . unLoc) (toList consFields)
+  where
+    TyDeclBinders{..} = hsLTyClDeclBinders (noLocA d)
+    LConsWithFields{..} = tyDeclConsWithFields
 
 -- | Do the two declarations name anything in common?
 shareAName :: [RdrName] -> [RdrName] -> Bool
