@@ -78,7 +78,8 @@
   next to the type synonym, class, type family, standalone kind signature,
   pattern synonym or foreign import it names stays next to it, as it already
   did next to a function or a data declaration, rather than getting an
-  empty line between them.
+  empty line between them. So does a pragma naming one of a type's
+  constructors, fields or methods, next to that type.
 
 ## Tilia 0.1.4.0
 
