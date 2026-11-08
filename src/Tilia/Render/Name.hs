@@ -12,7 +12,7 @@ module Tilia.Render.Name
     moduleHeadName,
     wrappedName,
     namespaceSpec,
-    functionArrow,
+    joinedByFunctionArrow,
     multiplicity,
     defHead,
   )
@@ -119,12 +119,37 @@ namespaceSpec = \case
   TypeNamespaceSpecifier _ -> txt "type" <> space
   DataNamespaceSpecifier _ -> txt "data" <> space
 
--- | The arrow of a function type with the multiplicity written on it, which
--- @UnicodeSyntax@ lets a linear arrow spell as one symbol.
-functionArrow :: Ctx -> (mult -> Doc) -> HsMultAnnOf mult GhcPs -> Doc
-functionArrow ctx render = \case
-  HsLinearAnn _ | extensionOn ctx UnicodeSyntax -> txt "⊸"
-  multAnn -> multiplicity render multAnn <> space <> txt (reserved ctx "->")
+-- | 'joinedByArrow' with the arrow of a function type and the multiplicity
+-- written on it, which @UnicodeSyntax@ lets a linear arrow spell as one
+-- symbol.
+joinedByFunctionArrow ::
+  -- | The context.
+  Ctx ->
+  -- | How to print a multiplicity.
+  (mult -> Doc) ->
+  -- | Where the line may break.
+  Doc ->
+  -- | The argument.
+  Maybe Span ->
+  -- | What the arrow leads to.
+  Maybe Span ->
+  -- | The multiplicity.
+  HsMultAnnOf mult GhcPs ->
+  Doc
+joinedByFunctionArrow ctx render separator before after = \case
+  HsLinearAnn _ | extensionOn ctx UnicodeSyntax -> joined "⊸"
+  HsUnannotated _ -> joined (reserved ctx "->")
+  multAnn -> case ctxArrowStyle ctx of
+    TrailingArrows ->
+      space <> multiplicity render multAnn <> joined (reserved ctx "->")
+    LeadingArrows ->
+      separator
+        <> lineLed before after
+        <> multiplicity render multAnn
+        <> space
+        <> txt (reserved ctx "->" <> " ")
+  where
+    joined = joinedByArrow ctx separator before after
 
 -- | A multiplicity annotation on an arrow or a field.
 multiplicity :: (mult -> Doc) -> HsMultAnnOf mult GhcPs -> Doc

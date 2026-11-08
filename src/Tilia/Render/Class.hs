@@ -32,6 +32,7 @@ import Tilia.Render.Data (dataDecl)
 import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
+import Tilia.Span (Span)
 import Tilia.Span.Ghc
 
 -- | A type class declaration.
@@ -59,7 +60,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     head' =
       breakOrSpace
         <> indent
-          ( foldMap (leftContext ctx) ctxt
+          ( foldMap (leftContext ctx headSpan) ctxt
               <> layoutFrom ctx headSpan classHead
               <> indent (funDeps ctx fdeps)
               <> includeUnless
@@ -216,7 +217,12 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
   where
     -- @data instance forall k (a :: k). D a = …@ binds its variables ahead
     -- of the head, exactly as a type family instance does.
-    outerBinders = outerBndrs ctx breakOrSpace feqn_bndrs
+    outerBinders =
+      outerBndrs
+        ctx
+        breakOrSpace
+        (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats)
+        feqn_bndrs
 
 -- | A @data family@ or @type family@ declaration.
 famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
@@ -257,7 +263,7 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             )
           <> foldMap (const (breakOrSpace <> txt "where")) closedEqns
 
-    resultSig = familyResultSig ctx fdResultSig
+    resultSig = familyResultSig ctx headSpan fdResultSig
 
     equations = case closedEqns of
       Nothing -> mempty
@@ -271,11 +277,21 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
 
 -- | What the head of a family says of its result, a kind or a variable
 -- naming it, if anything.
-familyResultSig :: Ctx -> LFamilyResultSig GhcPs -> Maybe Doc
-familyResultSig ctx (L _ sig) = case sig of
+familyResultSig ::
+  -- | The context.
+  Ctx ->
+  -- | The head.
+  Maybe Span ->
+  -- | What it says.
+  LFamilyResultSig GhcPs ->
+  Maybe Doc
+familyResultSig ctx headSpan (L _ sig) = case sig of
   NoSig NoExtField -> Nothing
   KindSig NoExtField k ->
-    Just (txt (reserved ctx "::") <> breakOrSpace <> hsType ctx k)
+    Just
+      ( joinedByArrow ctx breakOrSpace headSpan (spanOf k) (reserved ctx "::")
+          <> hsType ctx k
+      )
   TyVarSig NoExtField bndr ->
     Just (txt "=" <> breakOrSpace <> at ctx bndr (tyVarBndr ctx))
 
@@ -295,7 +311,12 @@ tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc
 tyFamInstEqn ctx FamEqn{..} =
   binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
   where
-    binders = outerBndrs ctx breakOrSpace feqn_bndrs
+    binders =
+      outerBndrs
+        ctx
+        breakOrSpace
+        (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats)
+        feqn_bndrs
     hasBinders = case feqn_bndrs of
       HsOuterExplicit _ (_ : _) -> True
       _ -> False

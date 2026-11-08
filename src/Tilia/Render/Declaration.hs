@@ -478,7 +478,8 @@ foreignSig ctx fd =
   breakOrSpace
     <> indent
       ( layoutFrom ctx (spanOf (fd_name fd) <> spanOf (fd_sig_ty fd)) $
-          name ctx (fd_name fd) <> typeAscription ctx (fd_sig_ty fd)
+          name ctx (fd_name fd)
+            <> typeAscription ctx (spanOf (fd_name fd)) (fd_sig_ty fd)
       )
 
 -- | The head of a foreign import.

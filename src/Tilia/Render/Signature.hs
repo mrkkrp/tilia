@@ -39,7 +39,7 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span (startOf)
-import Tilia.Span.Ghc (spanOf)
+import Tilia.Span.Ghc (spanOf, spansOf)
 
 -- | A signature declaration.
 sigDecl :: Ctx -> Sig GhcPs -> Doc
@@ -76,7 +76,7 @@ typeSig ::
   Doc
 typeSig _ _ [] _ = error "Tilia: a signature names something"
 typeSig ctx indentTail (n : ns) sigType
-  | null ns = name ctx n <> typeAscription ctx sigType
+  | null ns = name ctx n <> typeAscription ctx (spanOf n) sigType
   | otherwise =
       layoutAcross ctx (n : ns) $
         variant
@@ -95,8 +95,9 @@ typeSig ctx indentTail (n : ns) sigType
     ascription =
       layoutFrom
         ctx
-        (spanOf (NE.last (n :| ns)) <> spanOf sigType)
-        (typeAscription ctx sigType)
+        (spanOf lastName <> spanOf sigType)
+        (typeAscription ctx (spanOf lastName) sigType)
+    lastName = NE.last (n :| ns)
 
 -- | @pattern P :: t@.
 patSynSig :: Ctx -> [LocatedN RdrName] -> LHsSigType GhcPs -> Doc
@@ -162,7 +163,12 @@ specialiseSig ctx binders target types InlinePragma{..} =
             <> hsExpr ctx target
             <> includeUnless
               (null types)
-              ( joinedBy (reserved ctx "::")
+              ( joinedByArrow
+                  ctx
+                  breakOrSpace
+                  (spanOf target)
+                  (spansOf types)
+                  (reserved ctx "::")
                   <> commaSep (ctxCommaStyle ctx) (fmap (hsSigType ctx) types)
               )
         )
@@ -231,7 +237,17 @@ completeSig ctx names ty =
   layoutAcross ctx names . pragma "COMPLETE" . indent $
     commaSep (ctxCommaStyle ctx) (fmap (name ctx) names)
       <> foldMap
-        (\t -> joinedBy (reserved ctx "::") <> indent (name ctx t))
+        ( \t ->
+            indent
+              ( joinedByArrow
+                  ctx
+                  breakOrSpace
+                  (spansOf names)
+                  (spanOf t)
+                  (reserved ctx "::")
+                  <> name ctx t
+              )
+        )
         ty
 
 -- | An @SCC@ pragma.
@@ -245,12 +261,8 @@ sccSig ctx n literal =
 standaloneKindSig :: Ctx -> StandaloneKindSig GhcPs -> Doc
 standaloneKindSig ctx (StandaloneKindSig _ n sigTy) =
   txt "type"
-    <> indent
-      ( space
-          <> name ctx n
-          <> joinedBy (reserved ctx "::")
-          <> hsSigType ctx sigTy
-      )
+    <> indent (space <> name ctx n)
+    <> typeAscription ctx (spanOf n) sigTy
 
 -- | A @RULES@ block.
 --
@@ -295,4 +307,4 @@ ruleBinder :: Ctx -> RuleBndr GhcPs -> Doc
 ruleBinder ctx = \case
   RuleBndr _ n -> name ctx n
   RuleBndrSig _ n HsPS{..} ->
-    parens (name ctx n <> typeAscription ctx (asSigType hsps_body))
+    parens (name ctx n <> typeAscription ctx (spanOf n) (asSigType hsps_body))

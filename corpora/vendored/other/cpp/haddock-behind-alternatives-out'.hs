@@ -24,15 +24,15 @@ data Kiln = Kiln
 #endif
   }
 
-fire ::
-  Kiln ->
+fire
+  :: Kiln
+  -> Int
 #ifdef ELECTRIC
-  -- | Minutes to cool.
+  -- ^ Minutes to cool.
 #else
-  -- | Hours to cool.
+  -- ^ Hours to cool.
 #endif
-  Int ->
-  Firing
+  -> Firing
 fire _ _ = Glaze
 
 -- The same for one written after what it documents.

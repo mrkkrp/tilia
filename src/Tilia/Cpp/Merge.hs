@@ -107,9 +107,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
         Just w <- joint wds =
           case (w, go (layoutInside layout w) (fmap snd wds)) of
             (WLocated _, merged)
-              | onlyChoice merged,
-                spans <- [s | (WLocated s, _) <- wds],
-                Just opened <- unwrapping layout spans xs ->
+              | spans <- [s | (WLocated s, _) <- wds],
+                Just opened <-
+                  unwrapping layout spans xs $ \parts ->
+                    onlyChoice merged || arrowLeadsInto spans parts ->
                   opened
             (WGroup l, DCppChoice{})
               | not (all (== l) (layoutsOf wds)),
@@ -135,13 +136,13 @@ merge settings written conditionals guards varied settledOthers = go Broken
             Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
       _
         | Just spans <- traverse regionOf xs,
-          Just opened <- unwrapping layout spans xs ->
+          Just opened <- unwrapping layout spans xs (const True) ->
             opened
         | otherwise -> choice xs
       where
         every f = traverse f xs
 
-    unwrapping layout spans xs = do
+    unwrapping layout spans xs accepted = do
       inside <-
         sole [i | (i, s) <- zip [0 :: Int ..] spans, all (covers s) spans]
       openedAgainst inside layout =<< listToMaybe (drop inside xs)
@@ -149,11 +150,12 @@ merge settings written conditionals guards varied settledOthers = go Broken
         openedAgainst inside l d = case unwrap d of
           Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
           Nothing -> case spineAt l d of
-            parts@(_ : _ : _) ->
-              Just . factored middle l $
-                [ if k == inside then tucked inside l parts else [e]
-                | (k, e) <- zip [0 ..] xs
-                ]
+            parts@(_ : _ : _)
+              | accepted parts ->
+                  Just . factored middle l $
+                    [ if k == inside then tucked inside l parts else [e]
+                    | (k, e) <- zip [0 ..] xs
+                    ]
             _ -> Nothing
 
         tucked inside l parts = case unsnoc parts of
@@ -247,13 +249,34 @@ merge settings written conditionals guards varied settledOthers = go Broken
 
     varying within layout ss =
       let (opening, ss1) = leadingCommaIn (sharedStart layout ss)
-          (ss2, closing) = sharedEnd layout ss1
-          (lead, ss3, trail) = hoisted layout ss2
-       in mconcat opening
-            <> mconcat lead
-            <> within layout ss3
-            <> mconcat trail
-            <> mconcat closing
+       in fromMaybe
+            (mconcat opening <> disagreement ss1)
+            (arrowAhead opening ss1)
+      where
+        disagreement ss1 =
+          let (ss2, closing) = sharedEnd layout ss1
+              (lead, ss3, trail) = hoisted layout ss2
+           in mconcat lead
+                <> within layout ss3
+                <> mconcat trail
+                <> mconcat closing
+
+        -- The arrow every configuration leads what they disagree over with,
+        -- after the break they share, at the end of the line before them
+        -- where one of them has nothing there.
+        arrowAhead opening ss1 = do
+          heads <- traverse ledByArrow ss1
+          (a, _) : others <- Just heads
+          guard (all ((== a) . fst) others)
+          (front, b) <- unsnoc opening
+          guard (onlyBreaks b)
+          let d = disagreement (fmap snd heads)
+          guard (maybe False (any printsNothing) (leadingAlternatives d))
+          Just (mconcat front <> mconcat (trailingArrow a) <> b <> d)
+
+        ledByArrow s = case dropWhile emptyRegion s of
+          a : more | leadingArrow a -> Just (a, more)
+          _ -> Nothing
 
     sharedStart layout ss
       | Just (h : hs) <- traverse listToMaybe ss,
@@ -307,7 +330,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
             (comparing (weigh layout))
             (apart : maybeToList (alongsideHeads layout ss) <> byLines)
       where
-        apart = choice (fmap (mconcat . commaGlued) ss)
+        apart = choice (fmap (mconcat . separatorGlued) ss)
         byLines
           | not (any continuing ss),
             not (null (foldr1 Set.intersection (foldMap writtenAt <$> ss))),
@@ -335,15 +358,22 @@ merge settings written conditionals guards varied settledOthers = go Broken
       (spacing, x : more) -> Just (spacing, x, more)
       _ -> Nothing
 
-    commaGlued = \case
+    -- An alternative with the comma or the arrow leading a line it ends
+    -- with put at the end of the line before instead.
+    separatorGlued = \case
       x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
       xs -> case reverse xs of
-        x : DSoftBreak : rest | x == leadingComma -> reverse (gluedTo rest)
+        x : DSoftBreak : rest
+          | x == leadingComma -> reverse (gluedTo [Doc.comma] rest)
+        x : rest
+          | leadingArrow x,
+            (_ : _, rest') <- span blank rest ->
+              reverse (gluedTo (reverse (trailingArrow x)) rest')
         _ -> xs
-      where
-        gluedTo = \case
-          d : DHardBreak : rest -> d : DHardBreak : Doc.comma : rest
-          rest -> Doc.comma : rest
+
+    gluedTo glue = \case
+      d : DHardBreak : rest -> d : DHardBreak : glue <> rest
+      rest -> glue <> rest
 
     commaLed layout ss = do
       views <- traverse (ledBy layout) ss
@@ -610,12 +640,26 @@ onlyChoice = \case
   DCppChoice{} -> True
   d -> maybe False (onlyChoice . snd) (unwrap d)
 
+-- | Does an arrow leading a line lead into one of these regions among
+-- these parts?
+arrowLeadsInto :: [Span] -> [Doc] -> Bool
+arrowLeadsInto spans parts =
+  or
+    [ leadingArrow a && maybe False (`elem` spans) (regionOf x)
+    | (a, x) <- zip parts (drop 1 parts)
+    ]
+
 -- | Does this document, laid out flat, print a choice before anything else?
 beginsWithChoice :: Doc -> Bool
-beginsWithChoice d = case filter (not . onlySpacing) (spineAt Flat d) of
-  DCppChoice{} : _ -> True
-  x : _ | Just (_, y) <- unwrap x -> beginsWithChoice y
-  _ -> False
+beginsWithChoice = isJust . leadingAlternatives
+
+-- | The alternatives of the choice this document, laid out flat, prints
+-- before anything else.
+leadingAlternatives :: Doc -> Maybe [Doc]
+leadingAlternatives d = case filter (not . onlySpacing) (spineAt Flat d) of
+  DCppChoice _ bs e : _ -> Just (e : fmap snd bs)
+  x : _ | Just (_, y) <- unwrap x -> leadingAlternatives y
+  _ -> Nothing
 
 -- | A region's span, stretched over the span it prints first, which the
 -- Haddock of a constructor, a field or an argument is, written above or
@@ -969,6 +1013,11 @@ partsOf layout = walk [[]] False
               (cut || cut' || length (filter (not . all blank) ps) > 1)
               place'
               xs
+        | place == Between,
+          a : more <- xs,
+          leadingArrow a,
+          emptyRegion x ->
+            walk ([x, a] : ls) cut Within more
         | printsNothing x || x == DSpace -> walk (onto [[x]] ls) cut place xs
         | opensWithBreak layout x,
           place == Between ->
@@ -1001,6 +1050,25 @@ partsOf layout = walk [[]] False
 -- | Where the regions a document holds were written.
 writtenAt :: Doc -> Set Span
 writtenAt = foldRegions (\s _ -> Set.insert s)
+
+-- | Is this an arrow that leads a line of a type, with the space after it?
+leadingArrow :: Doc -> Bool
+leadingArrow = \case
+  DText t -> t `elem` [":: ", "=> ", "-> ", " . ", "∷ ", "⇒ ", "→ ", "⊸ "]
+  _ -> False
+
+-- | A leading arrow, put at the end of a line instead.
+trailingArrow :: Doc -> [Doc]
+trailingArrow = \case
+  DText " . " -> [DText "."]
+  DText t -> [DSpace, DText (T.stripEnd t)]
+  d -> [d]
+
+-- | Is this a region with nothing in it?
+emptyRegion :: Doc -> Bool
+emptyRegion = \case
+  DLocated _ x -> printsNothing x
+  _ -> False
 
 -- | Does this document print nothing but space and what ends a line?
 blank :: Doc -> Bool
@@ -1107,6 +1175,7 @@ anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
   DText ", " -> False
+  d | leadingArrow d -> False
   DDeclarationsStart -> False
   DNest _ d -> located d || not (blank d)
   DAlign d -> located d || not (printsNothing d)

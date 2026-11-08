@@ -201,11 +201,13 @@ exprBody ctx site here = \case
   ExprWithTySig _ x HsWC{hswc_body} ->
     align $
       hsExprIn ctx (withBracing MayBrace plainSite) x
-        <> ( if endsWithBlock (unLoc x)
-               then breakOrSpace <> txt (reserved ctx "::") <> space
-               else joinedBy (reserved ctx "::")
-           )
-        <> indent (hsSigType ctx hswc_body)
+        <> if endsWithBlock (unLoc x)
+          then
+            breakOrSpace
+              <> txt (reserved ctx "::")
+              <> space
+              <> indent (hsSigType ctx hswc_body)
+          else typeAscription ctx (spanOf x) hswc_body
   ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
   HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" e (hsExpr ctx e)
     where
@@ -240,7 +242,8 @@ exprBody ctx site here = \case
     HoleVar n -> name ctx n
     HoleError ->
       error "Tilia: a nameless hole cannot come from a successful parse"
-  HsForAll _ tele e -> forallTelescope ctx tele <> breakOrSpace <> hsExpr ctx e
+  HsForAll _ tele e ->
+    forallTelescope ctx breakOrSpace (spanOf e) tele <> hsExpr ctx e
   HsQual _ qs e ->
     at
       ctx
@@ -252,13 +255,22 @@ exprBody ctx site here = \case
           (hsExpr ctx)
           . fmap unbracketed
       )
-      <> joinedBy (reserved ctx "=>")
+      <> joinedByArrow
+        ctx
+        breakOrSpace
+        (spanOf qs)
+        (spanOf e)
+        (reserved ctx "=>")
       <> hsExpr ctx e
   HsFunArr _ multAnn x y ->
     hsExpr ctx x
-      <> space
-      <> functionArrow ctx (hsExpr ctx) multAnn
-      <> breakOrSpace
+      <> joinedByFunctionArrow
+        ctx
+        (hsExpr ctx)
+        breakOrSpace
+        (spanOf x)
+        (spanOf y)
+        multAnn
       <> case unLoc y of
         HsFunArr{} -> exprBody ctx plainSite (spanOf y) (unLoc y)
         _ -> hsExpr ctx y

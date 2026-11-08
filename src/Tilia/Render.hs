@@ -24,10 +24,14 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
-  ( HsConDeclField (..),
+  ( ConDecl (..),
+    HsConDeclField (..),
+    HsConDeclGADTDetails (..),
     HsConDeclRecField (..),
     HsModule (..),
+    HsSigType (..),
     LHsConDeclRecField,
+    LHsSigType,
     XModulePs (..),
   )
 import GHC.Hs.Extension (GhcPs)
@@ -64,6 +68,7 @@ import Tilia.Render.Header
     takeStackHeader,
   )
 import Tilia.Render.Signature (sigDecl)
+import Tilia.Render.Type (documentedParts)
 import Tilia.Settings (Settings (..), defaultSettings)
 import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
@@ -158,7 +163,8 @@ renderConfiguration settings parsed =
               ],
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot,
-          ctxCommaStyle = settingsCommaStyle (rcSettings settings)
+          ctxCommaStyle = settingsCommaStyle (rcSettings settings),
+          ctxArrowStyle = settingsArrowStyle (rcSettings settings)
         }
 
 -- | What printing the top level of one configuration takes, and the
@@ -256,22 +262,44 @@ heldOff movedUnder haddocks = fmap holdOff
       where
         s = commentSpan c
 
--- | The last lines of the record fields whose Haddock leading commas put
--- under them.
+-- | The last lines of what has its Haddock put under it: the record fields
+-- of leading commas, and the arguments of leading arrows.
 documentedBelow ::
   -- | What the project sets.
   Settings ->
   -- | The module.
   HsModule GhcPs ->
   [Int]
-documentedBelow settings hsMod = case settingsCommaStyle settings of
-  TrailingCommas -> []
-  LeadingCommas ->
-    [ spanEndLine s
-    | field <- listify (const True :: LHsConDeclRecField GhcPs -> Bool) hsMod,
-      isJust (cdf_doc (cdrf_spec (unLoc field))),
-      Just s <- [spanOf field]
-    ]
+documentedBelow settings hsMod = fields <> arguments
+  where
+    fields = case settingsCommaStyle settings of
+      TrailingCommas -> []
+      LeadingCommas ->
+        [ spanEndLine s
+        | field <- listify documentedField hsMod,
+          Just s <- [spanOf field]
+        ]
+    arguments = case settingsArrowStyle settings of
+      TrailingArrows -> []
+      LeadingArrows ->
+        mapMaybe (fmap spanEndLine . spanOf) $
+          foldMap
+            (documentedParts . sig_body . unLoc)
+            (listify (const True :: LHsSigType GhcPs -> Bool) hsMod)
+            <> foldMap
+              gadtParts
+              (listify (const True :: ConDecl GhcPs -> Bool) hsMod)
+    gadtParts con = case con of
+      ConDeclGADT{con_g_args, con_res_ty} ->
+        [ cdf_type x
+        | PrefixConGADT _ xs <- [con_g_args],
+          x <- xs,
+          isJust (cdf_doc x)
+        ]
+          <> documentedParts con_res_ty
+      _ -> []
+    documentedField :: LHsConDeclRecField GhcPs -> Bool
+    documentedField = isJust . cdf_doc . cdrf_spec . unLoc
 
 -- | Hold the comment that comes out right under the module's own Haddock
 -- off it: the first one between the Haddock and the module line with no

@@ -15,9 +15,10 @@ data Kiln = Kiln
   {- ^ -}
   }
 
-fire ::
-  {- | -} Int ->
-  Kiln
+fire
+  :: Int
+  {- ^ -}
+  -> Kiln
 fire = Kiln
 
 -- One with nothing after its trigger stays as it is.

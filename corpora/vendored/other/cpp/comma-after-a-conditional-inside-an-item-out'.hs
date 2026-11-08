@@ -3,12 +3,12 @@
 module Options where
 
 data Options = Options
-  { optionsLevel ::
-      Maybe
+  { optionsLevel
+      :: Maybe
 #if MIN_VERSION_base(4,18,0)
-        Natural
+           Natural
 #else
-        Int
+           Int
 #endif
   , optionsName :: Text
   }

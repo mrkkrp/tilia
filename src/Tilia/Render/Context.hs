@@ -6,6 +6,7 @@ module Tilia.Render.Context
     Ctx (..),
     Knot (..),
     FamilyStyle (..),
+    ArrowStyle (..),
 
     -- * Sites
     Site (..),
@@ -40,6 +41,8 @@ module Tilia.Render.Context
     layoutAcross,
     writtenOnOneLine,
     attachOperator,
+    joinedByArrow,
+    lineLed,
 
     -- * Haddocks
     writtenHaddock,
@@ -74,6 +77,7 @@ import Tilia.Fixity
     qualifierOf,
   )
 import Tilia.Render.Layout (Bracing (..))
+import Tilia.Settings (ArrowStyle (..))
 import Tilia.Source
   ( Source,
     SourceType,
@@ -111,7 +115,9 @@ data Ctx = Ctx
     -- | The knot.
     ctxKnot :: Knot,
     -- | Where a list laid out on several lines puts its commas.
-    ctxCommaStyle :: CommaStyle
+    ctxCommaStyle :: CommaStyle,
+    -- | Where a type laid out on several lines puts its arrows.
+    ctxArrowStyle :: ArrowStyle
   }
 
 -- | The backward edges of the rendering knot.
@@ -408,9 +414,44 @@ attachOperator placement before here after op operand = case here of
             Normal
             (foldMap indentation after <> unclaimed op <> space <> operand)
   _ -> attach placement (op <> space <> operand)
-  where
-    indentation o =
-      located (mkSpan (spanStartLine o, 1) (startPoint o)) mempty
+
+-- | The @::@, @=>@ or @->@ that joins two parts of a type, at the end of a
+-- line or at the start of the next one, as the project asks.
+--
+-- A leading arrow is one fragment with the space after it, which the
+-- preprocessor merge tells from a trailing one by that space.
+joinedByArrow ::
+  -- | The context.
+  Ctx ->
+  -- | Where the line may break.
+  Doc ->
+  -- | What the arrow follows.
+  Maybe Span ->
+  -- | What it leads to.
+  Maybe Span ->
+  -- | The arrow.
+  Text ->
+  Doc
+joinedByArrow ctx separator before after arrow = case ctxArrowStyle ctx of
+  TrailingArrows -> space <> txt arrow <> separator
+  LeadingArrows -> separator <> lineLed before after <> txt (arrow <> " ")
+
+-- | A region over the indentation of the line a part begins, where that
+-- line is below the part before it, so that the comments written above it
+-- come before what leads it.
+lineLed ::
+  -- | The part before.
+  Maybe Span ->
+  -- | The part.
+  Maybe Span ->
+  Doc
+lineLed before after = case (before, after) of
+  (Just b, Just a) | spanEndLine b < spanStartLine a -> indentation a
+  _ -> mempty
+
+-- | A region over the indentation of the line a span begins on.
+indentation :: Span -> Doc
+indentation s = located (mkSpan (spanStartLine s, 1) (startPoint s)) mempty
 
 -- | Was the region written on one line, the lines of a quasi-quotation
 -- counting as one?
