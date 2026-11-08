@@ -39,6 +39,7 @@ module Tilia.Render.Context
     layoutWithin,
     layoutAcross,
     writtenOnOneLine,
+    holdsLineComment,
     attachOperator,
 
     -- * Haddocks

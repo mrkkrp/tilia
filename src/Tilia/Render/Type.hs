@@ -31,6 +31,7 @@ module Tilia.Render.Type
   )
 where
 
+import Control.Monad (mfilter)
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
@@ -302,8 +303,14 @@ spine t =
 
 -- | A class context, as it appears before a @=>@.
 context :: Ctx -> LHsContext GhcPs -> Doc
-context ctx =
-  at_ ctx (contextOf (ctxCommaStyle ctx) bare (hsType ctx) . fmap unbracket)
+context ctx l =
+  at ctx l $
+    contextOf
+      (ctxCommaStyle ctx)
+      (mfilter (holdsLineComment ctx) (spanOf l))
+      bare
+      (hsType ctx)
+      . fmap unbracket
   where
     bare t = case unLoc t of
       HsTyVar _ _ (L _ n) | isTvOcc (rdrNameOcc n) -> True
@@ -331,6 +338,9 @@ leftContext ctx ctxt = context ctx ctxt <> joinedBy (reserved ctx "=>")
 contextOf ::
   -- | Where the commas go.
   CommaStyle ->
+  -- | Where the context was written, if a comment written in it needs a
+  -- place before its closing parenthesis.
+  Maybe Span ->
   -- | Can this constraint, when it is the only one, go without parentheses?
   (a -> Bool) ->
   -- | How to print one.
@@ -338,11 +348,11 @@ contextOf ::
   -- | The constraints.
   [a] ->
   Doc
-contextOf commas bare render = \case
+contextOf commas here bare render = \case
   [] -> txt "()"
   [x] | bare x -> render x
   xs ->
-    commaBracketWith commas Outdented "(" ")" $
+    commaBracketWith commas Outdented "(" ")" . insideBrackets here $
       commaSep commas (fmap (align . render) xs)
 
 -- | The flags a type variable binder may carry.

@@ -16,6 +16,7 @@ module Tilia.Render.Expression
 where
 
 import Control.Applicative ((<|>))
+import Control.Monad (mfilter)
 import Data.Char (isSpace)
 import Data.Choice (Choice, fromBool, isTrue, pattern Is, pattern Isn't)
 import Data.Data (Data)
@@ -245,7 +246,11 @@ exprBody ctx site here = \case
     at
       ctx
       qs
-      ( contextOf (ctxCommaStyle ctx) loneVariableExpr (hsExpr ctx)
+      ( contextOf
+          (ctxCommaStyle ctx)
+          (mfilter (holdsLineComment ctx) (spanOf qs))
+          loneVariableExpr
+          (hsExpr ctx)
           . fmap unbracketed
       )
       <> joinedBy (reserved ctx "=>")

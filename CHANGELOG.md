@@ -48,6 +48,8 @@
   goes under it as `-- ^`. The section headings and the Haddocks among the
   items of an export list line up with the items. [Issue
   353](https://github.com/mrkkrp/tilia/issues/353).
+* A comment written before the closing parenthesis of a context stays
+  inside the parentheses, rather than going after the `=>`.
 
 ## Tilia 0.1.4.0
 
