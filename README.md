@@ -217,64 +217,70 @@ every module of that component the next time it is formatted.
 
 ## Comparison with other formatters
 
-### Ormolu
+### Fourmolu
 
-* Ormolu formats operator chains by consulting a hardcoded library of
-  operator fixities which it builds partly by running a rudimentary
-  analysis over some hand-picked packages and partly by consuming a Hoogle
-  dump. That hardcoded fixity library is built during development and then
-  bundled into the executable. The library is necessarily both incomplete
-  and prone to going out of date. Furthermore, Ormolu does not
-  automatically account for custom operators that occur in the code it is
-  asked to format. For that you need to write `.ormolu` files in which you
-  redeclare the fixities of your custom operators and any relevant
-  re-exports. Tilia guarantees resolution of operator fixities
-  automatically at all times.
-* Ormolu's CPP support is rudimentary. It splits the input file into
+* Fourmolu formats operator chains by consulting a hardcoded library of
+  operator fixities which it builds partly by running a rudimentary analysis
+  over some hand-picked packages and partly by consuming a Hoogle dump. That
+  hardcoded fixity library is built during development and then bundled into
+  the executable. The library is necessarily both incomplete and prone to
+  going out of date. Furthermore, Fourmolu does not automatically account
+  for custom operators that occur in the code it is asked to format. For
+  that you need to add `fixities` in `fourmolu.yaml` where you redeclare the
+  fixities of your custom operators and any relevant re-exports. Tilia
+  performs resolution of operator fixities automatically and needs no
+  hand-holding.
+* Fourmolu's CPP support is rudimentary. It splits the input file into
   sections that must be parseable on their own, then preserves CPP
   conditional blocks verbatim. First, the requirement for the sections to be
   parseable on their own is only sometimes satisfied—CPP directives tend to
-  fall at arbitrary points in the code, which makes Ormolu choke. Second,
+  fall at arbitrary points in the code, which makes Fourmolu choke. Second,
   preserving CPP conditional blocks verbatim is not good enough. For
-  example, if Ormolu re-indents the surrounding code and the CPP conditional
-  block stays as it was, the result is broken code. Tilia handles CPP as a
-  first-class formattable object and is capable of formatting 99% of
-  Hackage.
-* Ormolu has a very different CLI focused on explicit file names, so that
-  its users find themselves running invocations like
-  `ormolu -i $(git ls-files '*.hs' '*.hs-boot')`. Tilia focuses on Cabal
-  components, which is arguably better ergonomics.
-* Ormolu can be asked to format regions in a file with `--start-line` and
-  `--end-line` options. Tilia has no such functionality since it operates
-  at a higher level (Cabal components or whole projects), which is aligned
-  with the current trends in software development.
-* Ormolu is self-contained and makes no assumption about tools on the
+  example, if Fourmolu re-indents the surrounding code and the CPP
+  conditional block stays as it was, the result is broken code. Tilia
+  handles CPP as a first-class formattable object and is capable of
+  formatting 99% of Hackage.
+* Fourmolu has a very different CLI focused on explicit file names, so that
+  its users find themselves running invocations like `fourmolu -i $(git
+  ls-files '*.hs' '*.hs-boot')`. Tilia focuses on Cabal components, which is
+  arguably better ergonomics.
+* Fourmolu can be asked to format regions in a file with `--start-line` and
+  `--end-line` options. Tilia has no such functionality since it operates at
+  a higher level (Cabal components or whole projects), which is aligned with
+  the current trends in software development.
+* Fourmolu is self-contained and makes no assumption about tools on the
   system where it is run. Tilia needs Cabal: it shells out to it and may
-  download packages, unless the build plan is given with `--build-plan`
-  and downloads are ruled out with `--no-downloads`. Ormolu does none of
-  this, which may be an advantage in some situations.
-* Tilia preserves grouping of declarations in more situations.
-* Tilia implements a number of layout improvements over Ormolu: e.g.
+  download packages, unless the build plan is given with `--build-plan` and
+  downloads are ruled out with `--no-downloads`. Fourmolu does none of this,
+  which may be an advantage in some situations.
+* Fourmolu is much more configurable.
+* With `respectful: true`, its default, Fourmolu keeps together any
+  declarations written without an empty line between them unless one has a
+  Haddock, so a function spanning several lines stays glued to a data
+  declaration under it. With `respectful: false` it puts an empty line
+  between every two, a run of fixity declarations included. Tilia takes the
+  middle course: one-line declarations of one kind written together stay
+  together, while a declaration spanning several lines or having a Haddock,
+  and declarations of different kinds, get an empty line between them.
+* Tilia implements a number of layout improvements over Fourmolu: e.g.
   recognizing `let`/`in` chains and printing them nicely instead of letting
   them “explode”.
-* Tilia breaks excessively long lines automatically.
+* Tilia breaks excessively long lines automatically. This feature is always
+  on and is not known to introduce any problems with idempotence, whereas
+  Fourmolu warns that setting its `column-limit` option may break
+  idempotence.
 * Tilia is capable of handling comments with absolute fidelity—they never
   move in unexpected ways and never disappear.
 * Tilia separates third-party and first-party imports with a blank line.
-* Tilia is configurable.
+  This is analogous to `import-grouping: by-scope`, except Tilia takes all
+  packages in your `cabal.project` to be first-party, not only the current
+  package that is being formatted.
 * Tilia is more correct. For example, it never rearranges pragmas or GHC
-  options in a way that changes the meaning of the program, whereas Ormolu
+  options in a way that changes the meaning of the program, whereas Fourmolu
   does that. It is careful not to merge `hiding` clauses of otherwise
-  matching imports that hide different names—something Ormolu does, despite
-  it changing the meaning of the program. There are other examples as well.
-
-### Fourmolu
-
-* Fourmolu is a configurable fork of Ormolu which shares the same
-  architecture, strengths, and weaknesses.
-* Tilia's support for breaking long lines is always enabled and does not
-  suffer from idempotence problems.
-* Fourmolu is much more configurable.
+  matching imports that hide different names—something Fourmolu does,
+  despite it changing the meaning of the program. There are other examples
+  as well.
 
 ## Suggested setup per use-case
 
