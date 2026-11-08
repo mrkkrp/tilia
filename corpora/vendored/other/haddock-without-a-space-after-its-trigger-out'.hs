@@ -8,11 +8,11 @@ data Options = Options
   , strict :: Bool
   }
 
-parse ::
-  -- | Options to parse with.
+parse
+  :: Options
+  -- ^ Options to parse with.
   --
-  --  Strict ones reject what others let through.
-  Options ->
-  String ->
-  Maybe Int
+  -- Strict ones reject what others let through.
+  -> String
+  -> Maybe Int
 parse _ _ = Nothing

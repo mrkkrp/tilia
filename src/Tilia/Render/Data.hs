@@ -80,7 +80,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
         foreignType
           <> breakOrSpace
           <> outerBinders
-          <> foldMap (leftContext ctx) dd_ctxt
+          <> foldMap (leftContext ctx headSpan) dd_ctxt
           <> layoutFrom
             ctx
             headSpan
@@ -95,8 +95,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
             (isGadt && not (null cons))
             (breakOrSpace <> txt "where")
 
-    kindSignature k =
-      joinedBy (reserved ctx "::") <> indent (hsType ctx k)
+    kindSignature k = typeAscription ctx headSpan (asSigType k)
 
     foreignType = case unLoc <$> dd_cType of
       Nothing -> mempty
@@ -204,20 +203,32 @@ conDecl ctx _ ConDeclGADT{..} =
                   <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) cs)
               )
           )
-        <> joinedBy (reserved ctx "::")
         <> indent
-          (layoutFrom ctx sigSpan (brokenIfDocumented ctx documented signature))
+          ( joinedByArrow
+              ctx
+              breakOrSpace
+              (spansOf (NE.toList con_names))
+              sigSpan
+              (reserved ctx "::")
+              <> layoutFrom
+                ctx
+                sigSpan
+                (brokenIfDocumented ctx documented signature)
+          )
 
     signature =
-      outerBndrs ctx breakOrSpace (unLoc con_outer_bndrs)
-        <> foldMap (\tele -> forallTelescope ctx tele <> breakOrSpace) con_inner_bndrs
-        <> foldMap
-          (\qs -> context ctx qs <> joinedBy (reserved ctx "=>"))
-          con_mb_cxt
+      outerBndrs ctx breakOrSpace afterOuter (unLoc con_outer_bndrs)
+        <> foldMap (forallTelescope ctx breakOrSpace afterInner) con_inner_bndrs
+        <> foldMap (leftContext ctx argResSpan) con_mb_cxt
         <> layoutFrom
           ctx
           argResSpan
           (brokenIfDocumented ctx documented argsAndResult)
+    afterInner = foldMap spanOf con_mb_cxt <> argResSpan
+    afterOuter = foldMap telescopeSpan con_inner_bndrs <> afterInner
+    telescopeSpan = \case
+      HsForAllInvis _ bndrs -> spansOf bndrs
+      HsForAllVis _ bndrs -> spansOf bndrs
 
     argsAndResult = arguments <> resultType
 
@@ -230,20 +241,41 @@ conDecl ctx _ ConDeclGADT{..} =
       HsKindSig{} -> parens (hsType ctx con_res_ty)
       HsForAllTy{} | standsAlone -> parens (hsType ctx con_res_ty)
       HsQualTy{} | standsAlone -> parens (hsType ctx con_res_ty)
-      _ -> hsType ctx con_res_ty
+      _ -> signaturePart ctx (hsType ctx) con_res_ty
     standsAlone = case (unLoc con_outer_bndrs, con_g_args) of
       (HsOuterImplicit{}, PrefixConGADT _ []) ->
         null con_inner_bndrs && null con_mb_cxt
       _ -> False
     arguments = case con_g_args of
-      PrefixConGADT NoExtField xs -> foldMap argument xs
+      PrefixConGADT NoExtField xs ->
+        mconcat
+          ( zipWith
+              argument
+              xs
+              (fmap (spanOf . cdf_type) (drop 1 xs) <> [spanOf con_res_ty])
+          )
       RecConGADT _ x ->
-        recordFieldsAt ctx x <> joinedBy (reserved ctx "->")
-    argument x =
-      documentedConDeclField ctx x
-        <> space
-        <> functionArrow ctx (hsType ctx) (cdf_multiplicity x)
-        <> breakOrSpace
+        recordFieldsAt ctx x
+          <> joinedByArrow
+            ctx
+            breakOrSpace
+            (spanOf x)
+            (spanOf con_res_ty)
+            (reserved ctx "->")
+    argument x next =
+      documentedArgument x
+        <> joinedByFunctionArrow
+          ctx
+          (hsType ctx)
+          breakOrSpace
+          (spanOf (cdf_type x))
+          next
+          (cdf_multiplicity x)
+    documentedArgument x = case ctxArrowStyle ctx of
+      TrailingArrows -> documentedConDeclField ctx x
+      LeadingArrows ->
+        conDeclField ctx x
+          <> foldMap (\d -> hardBreak <> haddock ctx Caret Open d) (cdf_doc x)
 
     declSpan = spansOf (NE.toList con_names) <> sigSpan
     sigSpan = spanOf con_outer_bndrs <> foldMap spanOf con_mb_cxt <> argResSpan
@@ -317,8 +349,14 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       layoutFrom ctx contextSpan $
         includeWhen
           con_forall
-          (forallBndrs ctx Invisible (tyVarBndr ctx) con_ex_tvs <> breakOrSpace)
-          <> foldMap (leftContext ctx) con_mb_cxt
+          ( quantifier
+              ctx
+              breakOrSpace
+              Invisible
+              (maybe (spanOf con_name) spanOf con_mb_cxt)
+              con_ex_tvs
+          )
+          <> foldMap (leftContext ctx (spanOf con_name)) con_mb_cxt
 
     contextSpan =
       spanOfSrcSpan (getHasLoc (acdh_forall con_ext))

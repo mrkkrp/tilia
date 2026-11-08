@@ -5,6 +5,7 @@
 module Tilia.Settings
   ( Settings (..),
     CommaStyle (..),
+    ArrowStyle (..),
     defaultSettings,
     alternativeSettings,
     settingsFile,
@@ -35,7 +36,9 @@ data Settings = Settings
   { -- | The column past which what can break is broken.
     settingsColumnLimit :: !Int,
     -- | Where a list laid out on several lines puts its commas.
-    settingsCommaStyle :: !CommaStyle
+    settingsCommaStyle :: !CommaStyle,
+    -- | Where a type laid out on several lines puts its arrows.
+    settingsArrowStyle :: !ArrowStyle
   }
   deriving (Eq, Show)
 
@@ -48,18 +51,32 @@ data CommaStyle
     LeadingCommas
   deriving (Eq, Show)
 
+-- | Where a type laid out on several lines puts its @::@, @=>@ and @->@,
+-- and the @.@ of a @forall@.
+data ArrowStyle
+  = -- | At the end of each line but the last.
+    TrailingArrows
+  | -- | At the start of each line but the first.
+    LeadingArrows
+  deriving (Eq, Show)
+
 -- | What a project that sets nothing gets.
 defaultSettings :: Settings
 defaultSettings =
   Settings
     { settingsColumnLimit = 80,
-      settingsCommaStyle = TrailingCommas
+      settingsCommaStyle = TrailingCommas,
+      settingsArrowStyle = TrailingArrows
     }
 
 -- | Settings that differ from 'defaultSettings' in every one but the column
 -- limit, which the corpora are formatted with as well.
 alternativeSettings :: Settings
-alternativeSettings = defaultSettings{settingsCommaStyle = LeadingCommas}
+alternativeSettings =
+  defaultSettings
+    { settingsCommaStyle = LeadingCommas,
+      settingsArrowStyle = LeadingArrows
+    }
 
 -- | The file a project's settings are in, relative to its root.
 settingsFile :: FilePath
@@ -146,6 +163,12 @@ parseSettings written = do
             { settingsCommaStyle = if b then LeadingCommas else TrailingCommas
             }
       ("leading-commas", _) -> malformed n "leading-commas is true or false"
+      ("leading-arrows", Flag b) ->
+        Right
+          settings
+            { settingsArrowStyle = if b then LeadingArrows else TrailingArrows
+            }
+      ("leading-arrows", _) -> malformed n "leading-arrows is true or false"
       _ -> malformed n ("there is no setting " <> key)
     malformed n = Left . SettingsMalformed n
 

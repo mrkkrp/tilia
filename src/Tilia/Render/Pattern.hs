@@ -111,7 +111,7 @@ patBody ctx inParens closing here = \case
         <> breakOrSpace
         <> indent (txt "+" <> space <> at ctx k (outputable . ol_val))
   SigPat _ p HsPS{..} ->
-    recur p <> typeAscription ctx (asSigType hsps_body)
+    recur p <> typeAscription ctx (spanOf p) (asSigType hsps_body)
   EmbTyPat _ (HsTP _ ty) -> txt "type" <> space <> hsType ctx ty
   InvisPat _ (HsTP _ ty) -> txt "@" <> hsType ctx ty
   where

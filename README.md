@@ -113,6 +113,8 @@ it has no `cabal.project`.
 column-limit = 100
 # Start each line of a broken list with its comma.
 leading-commas = true
+# Start each line of a broken type with its arrow.
+leading-arrows = true
 ```
 
 The file is TOML, restricted to lines of `key = value` where a value is
@@ -122,6 +124,7 @@ The file is TOML, restricted to lines of `key = value` where a value is
 | ---------------- | ---------------------- | ------- |
 | `column-limit`   | a whole number above 0 | 80      |
 | `leading-commas` | `true` or `false`      | `false` |
+| `leading-arrows` | `true` or `false`      | `false` |
 
 ## Excluding files
 

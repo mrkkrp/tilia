@@ -57,6 +57,10 @@
   standing alone on a line after the `#endif`. For a case alternative this
   also stops its `->` from beginning the line where the next alternative
   would, which did not parse.
+* With `leading-arrows = true` in `tilia.toml`, a type broken over several
+  lines puts each `::`, `=>` and `->` in it, and the `.` of a `forall`, at
+  the start of a line, and an argument's Haddock goes under it as `-- ^`.
+  [Issue 380](https://github.com/mrkkrp/tilia/issues/380).
 
 ## Tilia 0.1.4.0
 

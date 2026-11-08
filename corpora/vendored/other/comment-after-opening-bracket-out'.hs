@@ -14,10 +14,10 @@ listed =
   , second
   ]
 
-typed ::
-  ( -- on a line of its own
-    Int
-  )
+typed
+  :: ( -- on a line of its own
+       Int
+     )
 typed = 0
 
 data Colour

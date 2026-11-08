@@ -38,12 +38,20 @@ spec = do
       parseSettings "leading-commas = false\n"
         `shouldBe` Right defaultSettings{settingsCommaStyle = TrailingCommas}
 
+    it "sets leading arrows" $ do
+      parseSettings "leading-arrows = true\n"
+        `shouldBe` Right defaultSettings{settingsArrowStyle = LeadingArrows}
+      parseSettings "leading-arrows = false\n"
+        `shouldBe` Right defaultSettings{settingsArrowStyle = TrailingArrows}
+
     it "sets several settings" $
-      parseSettings "column-limit = 100\nleading-commas = true\n"
+      parseSettings
+        "column-limit = 100\nleading-commas = true\nleading-arrows = true\n"
         `shouldBe` Right
           Settings
             { settingsColumnLimit = 100,
-              settingsCommaStyle = LeadingCommas
+              settingsCommaStyle = LeadingCommas,
+              settingsArrowStyle = LeadingArrows
             }
 
   describe "a settings file is refused where" $ do
@@ -56,6 +64,9 @@ spec = do
 
     it "leading commas are neither true nor false" $
       "leading-commas = 1" `fails` (1, "leading-commas is true or false")
+
+    it "leading arrows are neither true nor false" $
+      "leading-arrows = 1" `fails` (1, "leading-arrows is true or false")
 
     it "a value is a string" $
       "column-limit = \"100\""
