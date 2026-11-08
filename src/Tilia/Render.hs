@@ -43,10 +43,10 @@ import Tilia.Comments
     asOrdinary,
     bracketed,
     carriedOnFrom,
-    closesItself,
     commentTrailing,
     continuesHaddock,
     holdsOff,
+    sharesItsLine,
     widenTrigger,
   )
 import Tilia.Comments.Attach (attachComments)
@@ -154,7 +154,7 @@ renderConfiguration settings parsed =
           ctxScope = rcScope settings,
           ctxCaptured = capturedUses (pmGathered parsed),
           ctxSource = pmSource parsed,
-          ctxLineComments = indexOn (filter (not . closesItself) loose),
+          ctxLineComments = indexOn (filter (not . sharesItsLine) loose),
           ctxCarryingOn =
             Map.fromList
               [ (startPoint (commentSpan c), remark)
