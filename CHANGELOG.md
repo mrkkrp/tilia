@@ -47,6 +47,8 @@
   each comma at the start of a line when broken, and a record field's
   Haddock goes under it as `-- ^`. [Issue
   353](https://github.com/mrkkrp/tilia/issues/353).
+* A comment written before the closing parenthesis of a context stays
+  inside the parentheses, rather than going after the `=>`.
 
 ## Tilia 0.1.4.0
 
