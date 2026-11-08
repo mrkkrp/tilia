@@ -50,6 +50,13 @@
   353](https://github.com/mrkkrp/tilia/issues/353).
 * A comment written before the closing parenthesis of a context stays
   inside the parentheses, rather than going after the `=>`.
+* Where every branch of a conditional writes its own version of what comes
+  before the `<-` of a bind statement, the `=` of an equation, the `->` of
+  a case alternative or of a function type, or the `=>` of a context, that
+  `<-`, `=`, `->` or `=>` ends the line of each branch, rather than
+  standing alone on a line after the `#endif`. For a case alternative this
+  also stops its `->` from beginning the line where the next alternative
+  would, which did not parse.
 
 ## Tilia 0.1.4.0
 

@@ -4014,7 +4014,7 @@ formatted       be3577182124  resourcet-1.3.0/Data/Acquire/Internal.hs
 formatted       0a31bed0741a  resourcet-1.3.0/UnliftIO/Resource.hs
 formatted       ab581b5725be  resourcet-1.3.0/test/main.hs
 formatted       e865ae48f11b  retry-0.9.3.1/Setup.hs
-formatted       abcb29d52923  retry-0.9.3.1/src/Control/Retry.hs
+formatted       c2ffea71a0fe  retry-0.9.3.1/src/Control/Retry.hs
 formatted       d944aecd29d8  retry-0.9.3.1/src/UnliftIO/Retry.hs
 formatted       61c2359540dc  retry-0.9.3.1/test/Main.hs
 formatted       4c537106f955  retry-0.9.3.1/test/Tests/Control/Retry.hs
@@ -4298,12 +4298,12 @@ formatted       1be0856e3dfc  shake-0.19.9/src/Test/Util.hs
 formatted       6649fd7b7e4a  shake-0.19.9/src/Test/Verbosity.hs
 formatted       f062d6f30f44  shake-0.19.9/src/Test/Version.hs
 formatted       e865ae48f11b  singletons-3.0.4/Setup.hs
-partly-checked  0b42ce25bd82  singletons-3.0.4/src/Data/Singletons.hs
+partly-checked  41d8002da3df  singletons-3.0.4/src/Data/Singletons.hs
 formatted       49f7a05aa31a  singletons-3.0.4/src/Data/Singletons/Decide.hs
 formatted       c0c7e68be384  singletons-3.0.4/src/Data/Singletons/ShowSing.hs
-formatted       ceb9ad4d02b2  singletons-3.0.4/src/Data/Singletons/Sigma.hs
-formatted       37e501e5e25f  singletons-3.0.4/tests/ByHand.hs
-formatted       7458d9a7da57  singletons-3.0.4/tests/ByHand2.hs
+formatted       09ee5ae97f46  singletons-3.0.4/src/Data/Singletons/Sigma.hs
+formatted       c6c22fa47316  singletons-3.0.4/tests/ByHand.hs
+formatted       f5e2e34e7053  singletons-3.0.4/tests/ByHand2.hs
 formatted       92855df34052  singletons-3.0.4/tests/SingletonsTestSuite.hs
 formatted       a7151db2ed5c  split-0.2.5/src/Data/List/Split.hs
 formatted       dd978f7f12ab  split-0.2.5/src/Data/List/Split/Internals.hs
