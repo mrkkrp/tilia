@@ -6,13 +6,13 @@ import Options (Options (..), defaultOptions)
 
 settings :: Options
 settings =
-  defaultOptions
-    { optionA = True
+    defaultOptions
+        { optionA = True
 -- Highlighting is on by default, as it was
 -- in earlier releases.
 #if MIN_VERSION_base(4,20,0)
-    , optionB = True
+        , optionB = True
 #else
-    , optionB = False
+        , optionB = False
 #endif
-    }
+        }

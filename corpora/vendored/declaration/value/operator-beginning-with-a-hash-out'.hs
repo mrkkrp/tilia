@@ -4,11 +4,11 @@
 -- after an opening parenthesis, and # alone the space before a closing one,
 -- so that neither reads as half of an unboxed tuple.
 module Builder.Append
-  ( ( #<| )
-  , (<|#)
-  , ( # )
-  , prepended
-  )
+    ( ( #<| )
+    , (<|#)
+    , ( # )
+    , prepended
+    )
 where
 
 ( #<| ), (<|#), ( # ) :: String -> String -> String
@@ -20,4 +20,4 @@ infixr 5 #<|
 
 prepended :: [String] -> [String]
 prepended =
-  map ( #<| "!") . map ("?" <|#) . map ("a" # ) . foldr (( #<| ) . pure) []
+    map ( #<| "!") . map ("?" <|#) . map ("a" # ) . foldr (( #<| ) . pure) []

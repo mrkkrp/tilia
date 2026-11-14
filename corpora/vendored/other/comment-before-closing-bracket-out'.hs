@@ -1,41 +1,41 @@
 oneElement =
-  [ first
-    -- and nothing after it
-  ]
+    [ first
+      -- and nothing after it
+    ]
 
 severalElements =
-  [ first
-  , second
-    -- and nothing after them
-  ]
+    [ first
+    , second
+      -- and nothing after them
+    ]
 
 blockComment =
-  [ first
-    {- room
-       for more -}
-  ]
+    [ first
+      {- room
+         for more -}
+    ]
 
 nested =
-  [ outer
-  , [ inner
-      -- innermost
+    [ outer
+    , [ inner
+        -- innermost
+      ]
     ]
-  ]
 
 comprehension =
-  [ x | x <- xs
-  -- and only those
-  ]
-    ++ rest
+    [ x | x <- xs
+    -- and only those
+    ]
+        ++ rest
 
 comprehensionAlone =
-  [ x | x <- xs
-  -- and nothing after it
-  ]
+    [ x | x <- xs
+    -- and nothing after it
+    ]
 
 openSequence =
-  [ first
-    ..
-    -- and on from there
-  ]
-    ++ rest
+    [ first
+      ..
+      -- and on from there
+    ]
+        ++ rest

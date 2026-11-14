@@ -1,15 +1,15 @@
 module Weather.Station (station) where
 
 import Data.Map.Strict
-  ( Map
+    ( Map
 
-    -- Construction
-  , empty
-  , insert
+      -- Construction
+    , empty
+    , insert
 
-    -- Query
-  , member
-  )
+      -- Query
+    , member
+    )
 
 station :: Map String Int
 station = insert "Oslo" 1 empty

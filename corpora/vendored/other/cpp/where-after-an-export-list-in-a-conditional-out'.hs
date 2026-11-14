@@ -3,9 +3,9 @@
 -- | Shapes, with an export list unless the doctests read the module.
 module Shapes
 #ifndef DOCTEST
-  ( Shape (..)
-  , area
-  )
+    ( Shape (..)
+    , area
+    )
 #endif
 where
 

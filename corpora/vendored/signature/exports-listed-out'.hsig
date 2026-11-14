@@ -1,8 +1,8 @@
 signature Codec
-  ( Codec
-  , encode
-  , decode
-  )
+    ( Codec
+    , encode
+    , decode
+    )
 where
 
 data Codec

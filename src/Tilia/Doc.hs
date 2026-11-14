@@ -3,6 +3,7 @@
 -- | Documents: what they hold, and turning them into source text.
 module Tilia.Doc
   ( Doc (..),
+    Nesting (..),
     Spill (..),
     Conditional (..),
     conditionalRange,
@@ -33,6 +34,7 @@ import Tilia.Doc.Internal
     Doc (..),
     Layout (..),
     LineStart (..),
+    Nesting (..),
     Spill (..),
     TrailingWhitespace (..),
     conditionalRange,
@@ -164,7 +166,7 @@ onlyBreaks = \case
 data Wrapper
   = WLocated !Span
   | WFence !Span
-  | WNest !Int
+  | WNest !Nesting
   | WAlign
   | WCppMarginNote
   | WGroup !Layout

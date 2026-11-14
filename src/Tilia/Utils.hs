@@ -22,6 +22,7 @@ module Tilia.Utils
     wrapTo,
     wrappedUnder,
     visibleLength,
+    opensLineComment,
     spellList,
     collected,
     tshow,
@@ -57,6 +58,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import GHC.Lexeme (okSymChar)
 import System.Directory (doesFileExist)
 import System.FilePath (equalFilePath, normalise, splitDirectories)
 import System.IO.Error (ioeGetErrorString)
@@ -200,6 +202,13 @@ visibleLength = go 0
         | Just after <- T.stripPrefix "[" rest ->
             go n (T.drop 1 (T.dropWhile (/= 'm') after))
       Just (_, rest) -> go (n + 1) rest
+
+-- | Does a line comment begin here, rather than an operator made of dashes?
+opensLineComment :: Text -> Bool
+opensLineComment t = case T.stripPrefix "--" t of
+  Nothing -> False
+  Just rest ->
+    maybe True (not . okSymChar . fst) (T.uncons (T.dropWhile (== '-') rest))
 
 -- | Join items the way a sentence lists them: @a and b@, @a, b, and c@.
 spellList :: [Text] -> Text

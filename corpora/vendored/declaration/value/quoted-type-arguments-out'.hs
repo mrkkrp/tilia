@@ -19,18 +19,18 @@ linearUnicode = describe (Char ⊸ Bool)
 multiplicity = describe (∀ n. Char %n → Bool)
 
 wrapped =
-  describe
-    ( ( ∀ k
-         . Holder k
-      )
-    )
+    describe
+        ( ( ∀ k
+             . Holder k
+          )
+        )
 
 sprawling =
-  describe
-    ( ∀ k n
-       . (Readable k, Countable k)
-      ⇒ Holder k
-      %n → Maybe
-        (Char, Word)
-      ⊸ Text
-    )
+    describe
+        ( ∀ k n
+           . (Readable k, Countable k)
+          ⇒ Holder k
+          %n → Maybe
+            (Char, Word)
+          ⊸ Text
+        )

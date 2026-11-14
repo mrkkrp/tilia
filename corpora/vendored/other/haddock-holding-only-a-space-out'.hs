@@ -6,19 +6,19 @@ module Kiln.Glaze where
 -- out as a block comment. The same goes before a constructor, a field and
 -- an argument.
 data Finish
-  = {- | -}
-    Matte
-  | Gloss
+    = {- | -}
+      Matte
+    | Gloss
 
 data Kiln = Kiln
-  { temperature :: Int
-    {- ^ -}
-  }
+    { temperature :: Int
+      {- ^ -}
+    }
 
 fire
-  :: Int
-  {- ^ -}
-  -> Kiln
+    :: Int
+    {- ^ -}
+    -> Kiln
 fire = Kiln
 
 -- One with nothing after its trigger stays as it is.

@@ -13,17 +13,17 @@ assertEqual :: CALLSTACK (Eq a, Show a) => a -> a -> IO ()
 assertEqual expected actual = print (expected == actual)
 
 firstOf
-  :: CALLSTACK
-       Foldable
-       t
-  => t a -> a
+    :: CALLSTACK
+        Foldable
+        t
+    => t a -> a
 firstOf = foldr const (error "empty")
 
 same :: (Eq a) => a -> a -> Bool
 same = (==)
 
 class Pretty a where
-  pretty :: a -> String
+    pretty :: a -> String
 
 instance OVERLAPS (Pretty a, Pretty b) => Pretty (a, b) where
-  pretty (a, b) = pretty a <> pretty b
+    pretty (a, b) = pretty a <> pretty b

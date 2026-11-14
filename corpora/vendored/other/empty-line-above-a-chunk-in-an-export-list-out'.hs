@@ -1,19 +1,19 @@
 module Ledger
-  ( -- * Accounts
+    ( -- * Accounts
 
-    -- | Opening and closing.
-    open
-  , close
+      -- | Opening and closing.
+      open
+    , close
 
-    -- | Moving money.
-  , transfer
-    -- | Undoing a transfer.
-  , reverse
+      -- | Moving money.
+    , transfer
+      -- | Undoing a transfer.
+    , reverse
 
-    -- * Journals
-    -- | Writing it all down.
-  , record
-  )
+      -- * Journals
+      -- | Writing it all down.
+    , record
+    )
 where
 
 import Prelude hiding (reverse)

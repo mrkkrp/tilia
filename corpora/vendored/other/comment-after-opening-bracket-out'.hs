@@ -1,31 +1,31 @@
 import Data.List
-  ( -- on a line of its own
-    sort
-  )
+    ( -- on a line of its own
+      sort
+    )
 
 parenthesised =
-  ( -- on a line of its own
-    value
-  )
+    ( -- on a line of its own
+      value
+    )
 
 listed =
-  [ -- on a line of its own
-    first
-  , second
-  ]
+    [ -- on a line of its own
+      first
+    , second
+    ]
 
 typed
-  :: ( -- on a line of its own
-       Int
-     )
+    :: ( -- on a line of its own
+         Int
+       )
 typed = 0
 
 data Colour
-  = Red
-  | -- on a line of its own
-    Green
+    = Red
+    | -- on a line of its own
+      Green
 
 data Shape = Circle
-  { -- on a line of its own
-    radius :: Int
-  }
+    { -- on a line of its own
+      radius :: Int
+    }

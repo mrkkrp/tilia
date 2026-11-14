@@ -1,13 +1,13 @@
 module Terminal.Size
-  ( -- * Getting started
-    -- $intro
-    --
+    ( -- * Getting started
+      -- $intro
+      --
 
-    -- * Measuring
-    -- $measuring
-    rows
-  , columns
-  )
+      -- * Measuring
+      -- $measuring
+      rows
+    , columns
+    )
 where
 
 rows :: Int

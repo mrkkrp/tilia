@@ -4,15 +4,15 @@ module Flags where
 
 flags :: [Flag]
 flags =
-  [ verbose
+    [ verbose
 #ifdef WINDOWS
 #if WORD_SIZE_IN_BITS == 64
-  , wide
+    , wide
 #else
-  , narrow
+    , narrow
 #endif
 #else
-  , posix
+    , posix
 #endif
-  , quiet
-  ]
+    , quiet
+    ]

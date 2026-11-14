@@ -4,8 +4,8 @@
 module Loom.Signatures where
 
 tension
-  , shuttleCount
-  , spoolLength
-  , beamWidth
-  , beamDepth
-  , warpCount :: Loom -> Int
+    , shuttleCount
+    , spoolLength
+    , beamWidth
+    , beamDepth
+    , warpCount :: Loom -> Int

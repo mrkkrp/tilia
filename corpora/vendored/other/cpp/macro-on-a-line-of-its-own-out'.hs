@@ -9,15 +9,15 @@ module Survey.Result where
 #endif
 
 data Result = Result
-  { passed :: Bool
-  , message :: String
-    TRACE(:: [String])
-  }
+    { passed :: Bool
+    , message :: String
+      TRACE(:: [String])
+    }
 
 done :: Result
 done =
-  Result
-    { passed = True
-    , message = ""
-      TRACE(= [])
-    }
+    Result
+        { passed = True
+        , message = ""
+          TRACE(= [])
+        }

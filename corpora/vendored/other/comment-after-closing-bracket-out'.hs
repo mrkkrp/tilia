@@ -1,27 +1,27 @@
 tupleOfHalves =
-  combine
-    ( north
-    , south
-    ) -- the two halves
-    ( east
-    , west
-    ) -- and the other two
+    combine
+        ( north
+        , south
+        ) -- the two halves
+        ( east
+        , west
+        ) -- and the other two
 
 nestedRuns =
-  render
-    [ [ alpha
-      , beta
-      ] -- the inner run
-    ] -- the outer run
+    render
+        [ [ alpha
+          , beta
+          ] -- the inner run
+        ] -- the outer run
 
 runningTotal =
-  weigh
-    ( heavier
-        + lighter
-    ) -- everything so far
+    weigh
+        ( heavier
+            + lighter
+        ) -- everything so far
 
 blockAfterBracket =
-  measure
-    ( width
-    , height
-    ) {- taken at the widest point -}
+    measure
+        ( width
+        , height
+        ) {- taken at the widest point -}

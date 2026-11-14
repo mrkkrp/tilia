@@ -14,6 +14,6 @@ typedef struct _KEY_EVENT_RECORD {
 KEY_EVENT_RECORD;
 -}
 data KeyEvent = KeyEvent
-  { keyDown :: Bool
-  , keyRepeat :: Int
-  }
+    { keyDown :: Bool
+    , keyRepeat :: Int
+    }

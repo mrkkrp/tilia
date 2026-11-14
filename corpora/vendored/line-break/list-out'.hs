@@ -3,8 +3,8 @@
 module Loom.Lists where
 
 looms =
-  [ Loom "warp" 120 Cotton
-  , Loom "weft" 80 Wool
-  , Loom "tapestry" 200 Silk
-  , Loom "rug" 90 Jute
-  ]
+    [ Loom "warp" 120 Cotton
+    , Loom "weft" 80 Wool
+    , Loom "tapestry" 200 Silk
+    , Loom "rug" 90 Jute
+    ]

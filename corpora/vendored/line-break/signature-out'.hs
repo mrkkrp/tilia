@@ -3,17 +3,18 @@
 module Loom.Signatures where
 
 weave
-  :: (Ord thread, Show colour)
-  => Map thread colour -> thread -> colour -> Either String Int
+    :: (Ord thread, Show colour)
+    => Map thread colour -> thread -> colour -> Either String Int
 weave = undefined
 
 class Shuttle shuttle where
-  throw
-    :: (Ord thread, Show colour)
-    => shuttle -> Map thread colour -> thread -> Either String Int
+    throw
+        :: (Ord thread, Show colour)
+        => shuttle -> Map thread colour -> thread -> Either String Int
 
 selvedge loom = edgeThreads loom
-  where
-    edgeThreads
-      :: (Ord thread) => Loom thread -> Map thread Colour -> [(thread, Colour)]
-    edgeThreads = undefined
+    where
+        edgeThreads
+            :: (Ord thread)
+            => Loom thread -> Map thread Colour -> [(thread, Colour)]
+        edgeThreads = undefined

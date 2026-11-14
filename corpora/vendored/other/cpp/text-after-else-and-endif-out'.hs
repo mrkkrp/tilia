@@ -1,11 +1,11 @@
 {-# LANGUAGE CPP #-}
 
 module Terminal.Features
-  ( supportsColour
+    ( supportsColour
 #ifndef NO_PASTE
-  , supportsPaste
+    , supportsPaste
 #endif /* NO_PASTE */
-  )
+    )
 where
 
 #ifdef WINDOWS /* the console */

@@ -15,7 +15,7 @@ import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Parser
 import Tilia.Span
-import Tilia.TestUtils (commentsIn, parsed, withEachSettings)
+import Tilia.TestUtils (commentsIn, indentedBy, parsed, withEachSettings)
 
 spec :: Spec
 spec = do
@@ -158,6 +158,7 @@ spec = do
 
   withEachSettings $ \settings -> describe "attachment" $ do
     let render = printDoc settings
+        step = indentedBy settings
     it "puts a comment before the node it precedes" $
       let c = one "module M where\n-- note\nx = 1\n"
           d = located (mkSpan (3, 1) (3, 5)) (txt "x = 1")
@@ -175,7 +176,8 @@ spec = do
             located
               (mkSpan (2, 1) (4, 4))
               (txt "x =" <> indent (hardBreak <> inner))
-       in render (attachComments [c] d) `shouldBe` "x =\n  -- note\n  1\n"
+       in render (attachComments [c] d)
+            `shouldBe` "x =\n" <> step 1 <> "-- note\n" <> step 1 <> "1\n"
 
     it "appends a comment that follows every node rather than dropping it" $
       let c = one "module M where\nx = 1\n-- after\n"

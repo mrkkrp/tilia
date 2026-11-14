@@ -94,7 +94,7 @@ genDoc withVariant withBreaks = go
         half = n `div` 2
         branches =
           [ DCat <$> go half <*> go half,
-            DNest <$> choose (0, 2) <*> go (n - 1),
+            DNest . Steps <$> choose (0, 2) <*> go (n - 1),
             DAlign <$> go (n - 1),
             DCppMarginNote <$> go (n - 1),
             DLocated <$> genSpan <*> go (n - 1),

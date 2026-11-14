@@ -88,6 +88,7 @@ import Tilia.Doc
     Doc (..),
     Layout (..),
     LineStart (..),
+    Nesting (..),
     TrailingWhitespace (..),
     mapChildren,
     printsNothing,
@@ -260,11 +261,11 @@ attach Normal body = breakOrSpace <> indent body
 
 -- | Indent by the given number of steps, relative to the current level.
 nest :: Int -> Doc -> Doc
-nest = DNest
+nest = DNest . Steps
 
 -- | Indent by one step.
 indent :: Doc -> Doc
-indent = DNest 1
+indent = DNest (Steps 1)
 
 -- | Indent to the column the line has already reached, so that a broken
 -- construct lines up under its own beginning rather than under the start of
@@ -330,15 +331,12 @@ bracketWith ::
   -- | Body.
   Doc ->
   Doc
-bracketWith closing open close body =
-  align $
-    txt open
-      <> variant body (space <> align body <> hardBreak)
-      <> nest (closingSteps closing) (txt close)
+bracketWith = commaBracketWith TrailingCommas
 
--- | 'bracketWith' around items separated by 'commaSep', with leading commas
--- a step in where the closing bracket is, since there no line may begin at
--- the bracket's column.
+-- | A bracket pair around items separated by 'commaSep' in the given style,
+-- lined up after the opening bracket, or with leading commas a step in where
+-- the closing bracket is, since there no line may begin at the bracket's
+-- column.
 commaBracketWith ::
   -- | Where the commas go.
   CommaStyle ->
@@ -351,10 +349,15 @@ commaBracketWith ::
   -- | The items, separated.
   Doc ->
   Doc
-commaBracketWith commas closing open close =
-  bracketWith closing open close . case closing of
-    Indented -> hangingCommas commas
-    Outdented -> id
+commaBracketWith commas closing open close body =
+  align $
+    txt open
+      <> variant body (space <> linedUp body <> hardBreak)
+      <> nest (closingSteps closing) (txt close)
+  where
+    linedUp = case (commas, closing) of
+      (LeadingCommas, Indented) -> indent . hangingCommas commas
+      _ -> align
 
 -- | Surround with a bracket pair whose brackets are held off the body.
 --
@@ -440,7 +443,7 @@ separatingComma ::
   Doc
 separatingComma = \case
   TrailingCommas -> comma <> breakOrSpace
-  LeadingCommas -> breakOrNothing <> nest (-1) (txt ", ")
+  LeadingCommas -> breakOrNothing <> DNest (Columns (-2)) (txt ", ")
 
 -- | Move items separated by 'commaSep' right by the width of a leading
 -- comma, so that the commas, not the items, come where the items would
@@ -453,7 +456,7 @@ hangingCommas ::
   Doc
 hangingCommas = \case
   TrailingCommas -> id
-  LeadingCommas -> indent
+  LeadingCommas -> DNest (Columns 2)
 
 -- | Separate by 'separatingComma', with leading commas under the first
 -- item rather than to the left of it.

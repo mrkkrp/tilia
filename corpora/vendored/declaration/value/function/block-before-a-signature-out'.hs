@@ -14,19 +14,19 @@ d = x <> do { y } :: T
 e = \case { A -> y } :: T -> U
 
 f =
-  do
-    x
-    y
-  :: IO ()
+    do
+        x
+        y
+    :: IO ()
 
 g =
-  run do
-    x
-    y
-  :: IO ()
+    run do
+        x
+        y
+    :: IO ()
 
 h =
-  f
-    x
-    y
-    :: Int
+    f
+        x
+        y
+        :: Int

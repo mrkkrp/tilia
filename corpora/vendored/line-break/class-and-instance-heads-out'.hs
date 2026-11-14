@@ -3,12 +3,13 @@
 module Loom.Heads where
 
 class
-  (Ord thread, Show thread, Hashable thread, Monoid (Spool thread))
-  => Threadable thread
-  where
-  spin :: thread -> Spool thread
+    (Ord thread, Show thread, Hashable thread, Monoid (Spool thread))
+    => Threadable thread
+    where
+    spin :: thread -> Spool thread
 
 instance
-  (Ord thread, Show thread, Hashable thread) => Threadable (Warp thread Cotton)
-  where
-  spin = spinWarp
+    (Ord thread, Show thread, Hashable thread)
+    => Threadable (Warp thread Cotton)
+    where
+    spin = spinWarp

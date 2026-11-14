@@ -3,20 +3,20 @@
 module Geometry.Line (Line (..), corners) where
 
 data Line = Line
-  { lineFrom :: Point
+    { lineFrom :: Point
 #ifdef WITH_STYLE
-  , lineStyle :: Style
+    , lineStyle :: Style
 #endif
-  , lineTo :: Point
-  }
+    , lineTo :: Point
+    }
 
 corners :: [Point]
 corners =
-  [ topLeft
+    [ topLeft
 #if WIDE
-  , wideTopRight
+    , wideTopRight
 #else
-  , topRight
+    , topRight
 #endif
-  , bottomRight
-  ]
+    , bottomRight
+    ]

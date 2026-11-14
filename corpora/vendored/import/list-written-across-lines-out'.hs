@@ -1,22 +1,22 @@
 module Inventory.Ledger where
 
 import Data.Map.Strict
-  ( Map
-  , insertWith
-  )
+    ( Map
+    , insertWith
+    )
 import Data.Sequence
-  ( Seq
-  , empty
-  , fromList
-  )
+    ( Seq
+    , empty
+    , fromList
+    )
 import Data.Text
-  ( Text
-  , pack
-  )
+    ( Text
+    , pack
+    )
 import Data.Time
-  ( UTCTime
-  , getCurrentTime
-  )
+    ( UTCTime
+    , getCurrentTime
+    )
 
 record :: Text -> Int -> Map Text Int -> Map Text Int
 record = insertWith (+)

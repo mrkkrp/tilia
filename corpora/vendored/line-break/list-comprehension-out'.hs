@@ -3,8 +3,8 @@
 module Loom.Comprehensions where
 
 spools looms =
-  [ spool
-  | loom <- looms
-  , spool <- loomSpools loom
-  , spoolLength spool > minimumLength
-  ]
+    [ spool
+    | loom <- looms
+    , spool <- loomSpools loom
+    , spoolLength spool > minimumLength
+    ]

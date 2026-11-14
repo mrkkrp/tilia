@@ -4,18 +4,18 @@
 #endif
 
 module Terminal.Key
-  ( Key (..)
-  , keyCode
+    ( Key (..)
+    , keyCode
 #ifndef NO_NAMES
-  , keyName
-  , keyLabel
+    , keyName
+    , keyLabel
 #if defined(HAVE_PATTERNS)
-  , pattern Escape
-  , pattern Enter
+    , pattern Escape
+    , pattern Enter
 #endif
-  , keyGlyph
+    , keyGlyph
 #endif
-  )
+    )
 where
 
 data Key = Key Int

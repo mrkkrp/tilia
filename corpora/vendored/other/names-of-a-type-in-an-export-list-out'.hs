@@ -1,11 +1,11 @@
 module Shapes.Kind
-  ( Shape (Circle, Square)
-  , Side
-      ( Top
-      , Bottom
-      )
-  , area
-  )
+    ( Shape (Circle, Square)
+    , Side
+        ( Top
+        , Bottom
+        )
+    , area
+    )
 where
 
 data Shape = Circle Double | Square Double

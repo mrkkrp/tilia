@@ -3,11 +3,11 @@
 module Report.Render where
 
 render
-  :: Settings
+    :: Settings
 #if MIN_VERSION_text(2,0,0)
-  -> Text
+    -> Text
 #else
-  -> String
+    -> String
 #endif
-  -> Builder
+    -> Builder
 render settings = build settings . fromText

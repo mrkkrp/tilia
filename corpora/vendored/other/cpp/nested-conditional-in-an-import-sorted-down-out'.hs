@@ -4,13 +4,13 @@ module Terminal.Mask where
 
 import qualified Control.Concurrent as C
 import Control.Exception hiding
-  ( throwIO
+    ( throwIO
 #if MIN_VERSION_base(4,3,0)
-  , mask
+    , mask
 #if MIN_VERSION_base(4,4,0)
-  , allowInterrupt
+    , allowInterrupt
 #endif
 #else
-  , block
+    , block
 #endif
-  )
+    )

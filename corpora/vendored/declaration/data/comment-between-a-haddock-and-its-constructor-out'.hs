@@ -1,21 +1,21 @@
 module Shape.Kind where
 
 data Shape
-  = Circle Double
-  | -- | A rectangle, given its width and height.
+    = Circle Double
+    | -- | A rectangle, given its width and height.
 
-    -- Squares are rectangles too, for now.
-    Rectangle Double Double
-  | -- | A polygon, given its corners,
-    -- in clockwise order.
+      -- Squares are rectangles too, for now.
+      Rectangle Double Double
+    | -- | A polygon, given its corners,
+      -- in clockwise order.
 
-    -- Corners may repeat.
-    Polygon [(Double, Double)]
+      -- Corners may repeat.
+      Polygon [(Double, Double)]
 
 data Style = Style
-  { strokeWidth :: Double
+    { strokeWidth :: Double
 
-    -- Transparent when absent.
-  , fill :: Maybe String
-    -- ^ The colour of the fill.
-  }
+      -- Transparent when absent.
+    , fill :: Maybe String
+      -- ^ The colour of the fill.
+    }
