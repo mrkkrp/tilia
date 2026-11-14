@@ -11,7 +11,7 @@ module Survey.Result where
 data Result = Result
   { passed :: Bool
   , message :: String
-  TRACE(:: [String])
+    TRACE(:: [String])
   }
 
 done :: Result
@@ -19,5 +19,5 @@ done =
   Result
     { passed = True
     , message = ""
-    TRACE(= [])
+      TRACE(= [])
     }

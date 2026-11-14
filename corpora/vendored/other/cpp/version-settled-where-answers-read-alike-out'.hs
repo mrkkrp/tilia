@@ -6,7 +6,7 @@
 module Data.Compat
   (
 #if !(MIN_VERSION_base(4,16,0))
-  Solo (..)
+    Solo (..)
 #endif
 #if !(MIN_VERSION_base(4,14,0))
   , Pair (..)

@@ -15,7 +15,7 @@ wildcardLast =
 wildcardWithARemarkAbove =
   Shape
     { name = "square"
-    -- the sides are already bound
+      -- the sides are already bound
     , .. -- so they need no mention
     }
 

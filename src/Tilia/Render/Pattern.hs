@@ -140,7 +140,7 @@ conPattern ctx inParens here con = \case
     name ctx con
       <> breakOrNothing
       <> indent
-        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+        ( bracketWith Outdented "{" "}" $
             insideBrackets
               here
               ( commaSep
@@ -202,4 +202,4 @@ boxityBrackets ::
   Doc
 boxityBrackets commas = \case
   Boxed -> \closing -> commaBracketWith commas closing "(" ")"
-  Unboxed -> unboxedWith
+  Unboxed -> \closing -> unboxedWith closing . hangingCommas commas

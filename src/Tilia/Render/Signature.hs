@@ -86,8 +86,11 @@ typeSig ctx indentTail (n : ns) sigType
           ( name ctx n
               <> nest
                 (if isTrue indentTail then 1 else 0)
-                ( separatingComma (ctxCommaStyle ctx)
-                    <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) ns)
+                ( hangingCommas
+                    (ctxCommaStyle ctx)
+                    ( separatingComma (ctxCommaStyle ctx)
+                        <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) ns)
+                    )
                     <> ascription
                 )
           )
@@ -119,7 +122,7 @@ fixitySig ctx written (FixitySig namespace names (Fixity prec direction)) =
     <> space
     <> foldMap (const (outputable prec <> space)) written
     <> namespaceSpec namespace
-    <> align (commaSep (ctxCommaStyle ctx) (fmap (name ctx) names))
+    <> align (commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names))
   where
     keyword = case direction of
       InfixL -> "infixl"
@@ -169,7 +172,9 @@ specialiseSig ctx binders target types InlinePragma{..} =
                   (spanOf target)
                   (spansOf types)
                   (reserved ctx "::")
-                  <> commaSep (ctxCommaStyle ctx) (fmap (hsSigType ctx) types)
+                  <> commaSepUnderFirst
+                    (ctxCommaStyle ctx)
+                    (fmap (hsSigType ctx) types)
               )
         )
   where
@@ -222,7 +227,10 @@ booleanFormula ctx = \case
   Var n -> name ctx n
   And xs ->
     align
-      (commaSep (ctxCommaStyle ctx) (fmap (at_ ctx (booleanFormula ctx)) xs))
+      ( commaSepUnderFirst
+          (ctxCommaStyle ctx)
+          (fmap (at_ ctx (booleanFormula ctx)) xs)
+      )
   Or xs ->
     align
       ( sepBy
@@ -235,7 +243,7 @@ booleanFormula ctx = \case
 completeSig :: Ctx -> [LIdP GhcPs] -> Maybe (LocatedN RdrName) -> Doc
 completeSig ctx names ty =
   layoutAcross ctx names . pragma "COMPLETE" . indent $
-    commaSep (ctxCommaStyle ctx) (fmap (name ctx) names)
+    commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
       <> foldMap
         ( \t ->
             indent

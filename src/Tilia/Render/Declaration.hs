@@ -464,7 +464,7 @@ defaultDecl ctx (DefaultDecl _ className types) =
     <> foldMap (\c -> breakOrSpace <> name ctx c) className
     <> breakOrSpace
     <> indent
-      ( commaBracketWith (ctxCommaStyle ctx) Outdented "(" ")" $
+      ( bracketWith Outdented "(" ")" $
           commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types)
       )
 

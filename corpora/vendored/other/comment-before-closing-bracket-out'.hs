@@ -1,24 +1,24 @@
 oneElement =
   [ first
-  -- and nothing after it
+    -- and nothing after it
   ]
 
 severalElements =
   [ first
   , second
-  -- and nothing after them
+    -- and nothing after them
   ]
 
 blockComment =
   [ first
-  {- room
-     for more -}
+    {- room
+       for more -}
   ]
 
 nested =
   [ outer
   , [ inner
-    -- innermost
+      -- innermost
     ]
   ]
 
@@ -35,7 +35,7 @@ comprehensionAlone =
 
 openSequence =
   [ first
-  ..
-  -- and on from there
+    ..
+    -- and on from there
   ]
     ++ rest

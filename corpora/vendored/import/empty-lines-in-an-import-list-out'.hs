@@ -3,11 +3,11 @@ module Weather.Station (station) where
 import Data.Map.Strict
   ( Map
 
-  -- Construction
+    -- Construction
   , empty
   , insert
 
-  -- Query
+    -- Query
   , member
   )
 

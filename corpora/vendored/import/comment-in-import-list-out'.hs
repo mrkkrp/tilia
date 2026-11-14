@@ -3,5 +3,5 @@ import Alpha
   )
 import Beta
   ( one
-  -- and nothing else
+    -- and nothing else
   )

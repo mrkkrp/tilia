@@ -11,10 +11,10 @@ module Terminal.Key
   , keyLabel
   ,
 #if defined(HAVE_PATTERNS)
-  pattern Escape
+    pattern Escape
   , pattern Enter,
 #endif
-  keyGlyph
+    keyGlyph
 #endif
   )
 where

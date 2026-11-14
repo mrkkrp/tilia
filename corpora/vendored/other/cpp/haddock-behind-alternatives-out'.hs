@@ -18,9 +18,9 @@ data Kiln = Kiln
   { temperature :: Int
   , draw :: Int
 #ifdef ELECTRIC
-  -- ^ Watts drawn.
+    -- ^ Watts drawn.
 #else
-  -- ^ Gas burnt in an hour.
+    -- ^ Gas burnt in an hour.
 #endif
   }
 
