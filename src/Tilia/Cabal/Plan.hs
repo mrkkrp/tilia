@@ -568,15 +568,13 @@ filesNewerThanPlan :: BuildPlan -> FilePath -> Maybe UTCTime -> IO [FilePath]
 filesNewerThanPlan plan projectDir solved = quietly [] $ do
   written <- getModificationTime (planPathFor projectDir)
   let planTime = maybe written (max written) solved
-  configs <- traverse (projectConfigFiles . (projectDir </>)) projectFiles
+  configs <- projectConfigFiles projectDir
   atRootPackage <- cabalFilesIn projectDir
   inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
-  let candidates = fmap fst (concat configs) <> atRootPackage <> inPackages
+  let candidates = fmap fst configs <> atRootPackage <> inPackages
   newer <- traverse (isNewerThan planTime) candidates
   pure [f | Just f <- newer]
   where
-    projectFiles =
-      ["cabal.project", "cabal.project.local", "cabal.project.freeze"]
     localDirs p =
       Data.List.nub [dir | LocalPackage dir <- fmap ppSource (bpPackages p)]
     isNewerThan planTime path = quietly Nothing $ do

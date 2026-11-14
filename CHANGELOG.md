@@ -65,6 +65,11 @@
   are settled with the value the build plan gives the flag, as
   `cabal.project` sets it or Cabal's solver picks it, rather than with the
   flag's default.
+* A package that the `packages` or `optional-packages` field of a
+  `cabal.project.local` names is part of the project, as it is for `cabal`,
+  whether the file sits beside a `cabal.project` or beside a package with
+  none: it is formatted, it can be named as a target, and its modules
+  count as the project's own.
 
 ## Tilia 0.1.4.0
 

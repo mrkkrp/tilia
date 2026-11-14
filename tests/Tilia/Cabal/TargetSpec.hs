@@ -306,6 +306,31 @@ spec = do
           Right cs ->
             sort (fmap componentPackage cs) `shouldBe` ["one", "three", "two"]
 
+    it "reads the packages a cabal.project.local adds, as cabal does"
+      $ withProject
+        [ ("cabal.project", "packages: one\n"),
+          ("cabal.project.local", "packages: two\n"),
+          ("one/one.cabal", package "one" "src"),
+          ("two/two.cabal", package "two" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
+
+    it "reads a cabal.project.local beside a package with no cabal.project"
+      $ withProject
+        [ ("one.cabal", package "one" "src"),
+          ("cabal.project.local", "packages: two\n"),
+          ("two/two.cabal", package "two" "src")
+        ]
+      $ \root ->
+        componentsOfTarget root Everything >>= \case
+          Left problem ->
+            expectationFailure (T.unpack (describeTargetProblem problem))
+          Right cs -> sort (fmap componentPackage cs) `shouldBe` ["one", "two"]
+
     it "reads a file imported in a cycle once"
       $ withProject
         [ ("cabal.project", "packages: one\nimport: more.config\n"),
