@@ -5,8 +5,8 @@ module M where
 -- and a note under it
 data T = T
   { a :: Int -- the first
-  , -- the second
-    b :: Int
+  -- the second
+  , b :: Int
   }
 
 f x -- what to do with this?

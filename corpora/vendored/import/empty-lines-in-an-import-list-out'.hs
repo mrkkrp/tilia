@@ -2,11 +2,13 @@ module Weather.Station (station) where
 
 import Data.Map.Strict
   ( Map
-  , -- Construction
-    empty
+
+  -- Construction
+  , empty
   , insert
-  , -- Query
-    member
+
+  -- Query
+  , member
   )
 
 station :: Map String Int

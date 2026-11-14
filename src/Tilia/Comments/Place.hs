@@ -7,6 +7,7 @@ module Tilia.Comments.Place
     Placements,
     placeComments,
     claimPlaced,
+    claimOwnLines,
     unclaimedByEither,
     unplaced,
     nothingPlaced,
@@ -16,7 +17,7 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (minimumBy, sortOn)
+import Data.List (minimumBy, partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -307,6 +308,23 @@ claimPlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
   (found, rest) -> (concat found, p{placedAt = rest})
   where
     forget _ _ = Nothing
+
+-- | Claim the comments to be written before the given 'Span' on lines of
+-- their own, up to the first that is to stay in place, leaving it the rest.
+claimOwnLines ::
+  -- | The region.
+  Span ->
+  -- | The placements to claim them from.
+  Placements ->
+  ([Comment], Placements)
+claimOwnLines s p =
+  (fmap snd mine, p{placedAt = Map.update kept s (placedAt p)})
+  where
+    (before, others) =
+      partition ((== Before) . fst) (Map.findWithDefault [] s (placedAt p))
+    (mine, later) = span ((/= InPlace) . shapeOf Before . snd) before
+    rest = later <> others
+    kept _ = if null rest then Nothing else Just rest
 
 -- | The placements neither of two walks from the same placements claimed.
 unclaimedByEither ::
