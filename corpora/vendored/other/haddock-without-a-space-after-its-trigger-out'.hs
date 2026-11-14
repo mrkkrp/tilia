@@ -2,9 +2,9 @@ module Options where
 
 data Options = Options
   { recover :: Bool
-  -- ^ Recover from errors.
-  --
-  -- Invalid input is taken literally.
+    -- ^ Recover from errors.
+    --
+    -- Invalid input is taken literally.
   , strict :: Bool
   }
 

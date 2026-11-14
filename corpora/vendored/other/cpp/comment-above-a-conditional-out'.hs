@@ -4,16 +4,15 @@ module Terminal.Colour
   ( -- * Colours
     Colour (..)
 
-  -- A terminal without true colour knows only the sixteen named ones.
+    -- A terminal without true colour knows only the sixteen named ones.
   ,
 #ifdef TRUE_COLOUR
-  rgb
+    rgb
 #else
-  named
+    named
 
 -- The bright ones are an extension of their own.
 #ifdef BRIGHT
-
     -- ** Bright
   , bright
 #endif

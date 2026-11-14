@@ -157,7 +157,7 @@ exprBody ctx site here = \case
     name ctx rcon_con
       <> breakOrNothing
       <> indent
-        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+        ( bracketWith Outdented "{" "}" $
             insideBrackets
               here
               (commaSep (ctxCommaStyle ctx) (fmap align (fields <> wildcard)))
@@ -175,7 +175,7 @@ exprBody ctx site here = \case
     hsExpr ctx rupd_expr
       <> breakOrNothing
       <> indent
-        ( commaBracketWith (ctxCommaStyle ctx) Outdented "{" "}" $
+        ( bracketWith Outdented "{" "}" $
             insideBrackets here updates
         )
     where
@@ -1250,8 +1250,7 @@ patSynBind ctx PSB{..} =
               ctx
               (vars args)
               ( includeUnless (null args) breakOrNothing
-                  <> commaBracketWith
-                    (ctxCommaStyle ctx)
+                  <> bracketWith
                     Outdented
                     "{"
                     "}"

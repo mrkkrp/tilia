@@ -2,7 +2,7 @@ module Cache.Stats where
 
 data Stats = Stats
   { hits :: Int
-  -- Misc
+    -- Misc
   , misses :: Int
-  -- ^ lookups that found nothing
+    -- ^ lookups that found nothing
   }

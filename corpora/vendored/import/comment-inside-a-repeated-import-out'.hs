@@ -3,13 +3,13 @@ module Cache.Report where
 import Cache.Entry
   ( Entry
       ( key
-      -- the path the entry was read from
+        -- the path the entry was read from
       )
   )
 import Cache.Entry
   ( Entry
       ( hits
-      -- counted since the last eviction
+        -- counted since the last eviction
       )
   )
 

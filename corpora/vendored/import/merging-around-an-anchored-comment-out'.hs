@@ -6,7 +6,7 @@ import Ledger.Rule
   )
 import Ledger.Rule
   ( ruleMatcher
-  -- matched against the whole description
+    -- matched against the whole description
   )
 
 named :: Rule -> String

@@ -15,7 +15,7 @@ data Shape
 data Style = Style
   { strokeWidth :: Double
 
-  -- Transparent when absent.
+    -- Transparent when absent.
   , fill :: Maybe String
-  -- ^ The colour of the fill.
+    -- ^ The colour of the fill.
   }

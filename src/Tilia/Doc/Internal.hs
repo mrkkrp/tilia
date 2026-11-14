@@ -633,8 +633,16 @@ completing trailing indent out =
     columnFor previous = \case
       SpillAtIndentation
         | T.null (lineBody finished) -> indent
-        | otherwise -> lineIndent finished
+        | otherwise -> lineIndent finished + commaLed (lineBody finished)
       SpillUnderPrevious -> previous
+
+-- | The width of the leading comma a line begins with, if it begins with
+-- one, which what lines up with the line lines up past.
+commaLed ::
+  -- | What the line holds after its indentation.
+  Text ->
+  Int
+commaLed body = if ", " `T.isPrefixOf` body then 2 else 0
 
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool

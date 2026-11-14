@@ -71,8 +71,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     classHead
       | isCTuple (unLoc tyCon) (length hsq_explicit) =
           layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit) $
-            commaBracketWith
-              (ctxCommaStyle ctx)
+            bracketWith
               Outdented
               "("
               ")"

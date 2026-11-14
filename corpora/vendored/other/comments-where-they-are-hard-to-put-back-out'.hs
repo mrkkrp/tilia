@@ -5,7 +5,7 @@ module M where
 -- and a note under it
 data T = T
   { a :: Int -- the first
-  -- the second
+    -- the second
   , b :: Int
   }
 
@@ -21,5 +21,5 @@ f x -- what to do with this?
 xs =
   [ one
   , {- inline -} two
-  -- last
+    -- last
   ]

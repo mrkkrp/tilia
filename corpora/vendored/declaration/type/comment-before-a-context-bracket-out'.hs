@@ -5,7 +5,7 @@ module Server.Route where
 route
   :: ( Monad m
      , MonadIO m -- for the effects
-     -- that run around each request
+       -- that run around each request
      )
   => Handler m
   -> m ()
@@ -14,6 +14,6 @@ route = undefined
 instance
   ( Show a
   , Eq a
-  -- and nothing else
+    -- and nothing else
   )
   => Render (Box a)

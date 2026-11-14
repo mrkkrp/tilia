@@ -101,7 +101,7 @@ warned :: Ctx -> WarnDecl GhcPs -> Doc
 warned ctx (Warning (namespace, _) names wtxt) =
   category
     <> namespaceSpec namespace
-    <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) names)
+    <> commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
     <> breakOrSpace
     <> literalList (ctxCommaStyle ctx) literals
   where
@@ -146,5 +146,5 @@ literalList ::
 literalList commas = \case
   [l] -> writtenString (unLoc l)
   ls ->
-    commaBracketWith commas Outdented "[" "]" $
+    bracketWith Outdented "[" "]" $
       commaSep commas (fmap (writtenString . unLoc) ls)

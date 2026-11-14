@@ -149,8 +149,7 @@ typeBody ctx documented here = \case
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
   HsExplicitListTy _ promoted xs ->
     tick promoted
-      <> commaBracketWith
-        (ctxCommaStyle ctx)
+      <> bracketWith
         Outdented
         "["
         "]"
@@ -162,8 +161,7 @@ typeBody ctx documented here = \case
         )
   HsExplicitTupleTy _ promoted xs ->
     tick promoted
-      <> commaBracketWith
-        (ctxCommaStyle ctx)
+      <> bracketWith
         Outdented
         "("
         ")"
@@ -262,8 +260,8 @@ tupleBrackets ::
   Doc ->
   Doc
 tupleBrackets commas = \case
-  HsUnboxedTuple -> unboxed
-  HsBoxedOrConstraintTuple -> commaBracketWith commas Outdented "(" ")"
+  HsUnboxedTuple -> unboxed . hangingCommas commas
+  HsBoxedOrConstraintTuple -> bracketWith Outdented "(" ")"
 
 -- | The tick in front of a promoted list or tuple.
 tick :: PromotionFlag -> Doc
@@ -395,7 +393,7 @@ contextOf commas here bare render = \case
   [] -> txt "()"
   [x] | bare x -> render x
   xs ->
-    commaBracketWith commas Outdented "(" ")" . insideBrackets here $
+    bracketWith Outdented "(" ")" . insideBrackets here $
       commaSep commas (fmap (align . render) xs)
 
 -- | The flags a type variable binder may carry.
@@ -627,11 +625,11 @@ recordFieldsAt :: Ctx -> XRec GhcPs [LHsConDeclRecField GhcPs] -> Doc
 recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
 
 -- | The fields of a record, each documented above it or, with leading
--- commas, below it, under the comma in front of it.
+-- commas, below it.
 recordFields :: Ctx -> Maybe Span -> [LHsConDeclRecField GhcPs] -> Doc
 recordFields ctx enclosing xs =
   brokenIfDocumented ctx xs
-    . commaBracketWith commas Outdented "{" "}"
+    . bracketWith Outdented "{" "}"
     . insideBrackets enclosing
     $ commaSep commas (fmap field xs)
   where
@@ -658,7 +656,7 @@ recordFields ctx enclosing xs =
 recordField :: Ctx -> HsConDeclRecField GhcPs -> Doc
 recordField ctx HsConDeclRecField{..} =
   align
-    ( commaSep
+    ( commaSepUnderFirst
         (ctxCommaStyle ctx)
         (fmap (at_ ctx (name ctx . foLabel)) cdrf_names)
     )

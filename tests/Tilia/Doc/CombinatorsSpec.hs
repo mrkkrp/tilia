@@ -86,13 +86,14 @@ spec = withEachSettings $ \settings -> do
       out (broken (parensWith Indented (commaSep TrailingCommas items)))
         `shouldBe` "( a,\n  b\n  )\n"
     it "puts leading commas under the opening bracket" $
-      out (broken (leading Outdented [txt "a", txt "b", txt "c"]))
+      out (broken (ledByCommas Outdented [txt "a", txt "b", txt "c"]))
         `shouldBe` "[ a\n, b\n, c\n]\n"
     it "puts leading commas a step in with the closing bracket" $
-      out (broken (leading Indented [txt "a", txt "b"]))
+      out (broken (ledByCommas Indented [txt "a", txt "b"]))
         `shouldBe` "[ a\n  , b\n  ]\n"
     it "adds nothing to leading commas when flat" $
-      out (flat (leading Outdented [txt "a", txt "b"])) `shouldBe` "[a, b]\n"
+      out (flat (ledByCommas Outdented [txt "a", txt "b"]))
+        `shouldBe` "[a, b]\n"
     it "renders an empty bracket pair flat" $
       out (flat (brackets mempty)) `shouldBe` "[]\n"
     it "spaces the unboxed pair" $
@@ -115,6 +116,6 @@ spec = withEachSettings $ \settings -> do
       out (flat (includeUnless True (txt "a"))) `shouldBe` ""
 
 -- | Items in square brackets, with leading commas.
-leading :: ClosingIndent -> [Doc] -> Doc
-leading closing =
+ledByCommas :: ClosingIndent -> [Doc] -> Doc
+ledByCommas closing =
   commaBracketWith LeadingCommas closing "[" "]" . commaSep LeadingCommas

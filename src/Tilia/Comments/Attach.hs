@@ -211,8 +211,8 @@ leadingComma ::
   Doc ->
   Bool
 leadingComma = \case
-  DText t -> t == ", "
-  DCat DSoftBreak (DText t) -> t == ", "
+  DNest _ (DText t) -> t == ", "
+  DCat DSoftBreak (DNest _ (DText t)) -> t == ", "
   _ -> False
 {-# INLINE leadingComma #-}
 

@@ -4,7 +4,7 @@ data Size
   = MkSize
   -- static
   { rows :: Int
-  -- ^ how tall the terminal is
+    -- ^ how tall the terminal is
   , columns :: Int
-  -- ^ how wide it is
+    -- ^ how wide it is
   }

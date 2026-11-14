@@ -12,7 +12,7 @@ data Finish
 
 data Kiln = Kiln
   { temperature :: Int
-  {- ^ -}
+    {- ^ -}
   }
 
 fire

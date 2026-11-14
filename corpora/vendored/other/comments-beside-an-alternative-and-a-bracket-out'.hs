@@ -12,5 +12,5 @@ onItsOwnLine = case x of
 beforeTheClosingBracket =
   [ a
   , b
-  -- and that is all
+    -- and that is all
   ]

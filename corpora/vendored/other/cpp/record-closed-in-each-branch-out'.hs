@@ -4,9 +4,9 @@ module Network.Address where
 
 data Address = Address
   { addressHost :: String
-  -- ^ @www.haskell.org@
+    -- ^ @www.haskell.org@
   , addressPort :: Int
-  -- ^ @42@
+    -- ^ @42@
   }
 #if __GLASGOW_HASKELL__ >= 702
   deriving (Eq, Ord, Show, Generic)

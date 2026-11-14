@@ -305,8 +305,6 @@ merge settings written conditionals guards varied settledOthers = go Broken
                   else "," `T.isSuffixOf` code
       _ -> False
 
-    leadingComma = Doc.txt ", "
-
     sharedEnd layout ss =
       let (c, ss') = sharedStart layout (fmap reverse ss)
           ends = fmap reverse ss'
@@ -1063,6 +1061,10 @@ leadingArrow = \case
   DText t -> t `elem` [":: ", "=> ", "-> ", " . ", "∷ ", "⇒ ", "→ ", "⊸ "]
   _ -> False
 
+-- | A comma leading the item after it.
+leadingComma :: Doc
+leadingComma = Doc.nest (-1) (Doc.txt ", ")
+
 -- | A leading arrow, put at the end of a line instead.
 trailingArrow :: Doc -> [Doc]
 trailingArrow = \case
@@ -1180,7 +1182,7 @@ anchoring :: Doc -> Bool
 anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
-  DText ", " -> False
+  d | d == leadingComma -> False
   d | leadingArrow d -> False
   DDeclarationsStart -> False
   DNest _ d -> located d || not (blank d)
