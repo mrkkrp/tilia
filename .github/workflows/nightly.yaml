@@ -1,0 +1,47 @@
+name: Nightly
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  orthogonality:
+    name: Orthogonality of the settings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+      - uses: cachix/cachix-action@v17
+        with:
+          name: tilia
+          authToken: '${{ secrets.CACHIX_TIILA_AUTH_TOKEN }}'
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/cabal/packages/*/*
+            !~/.cache/cabal/packages/*/01-index.*
+            !~/.cache/cabal/packages/*/*.json
+          key: cabal-ghc9141-${{ hashFiles('cabal.project', 'tilia.cabal') }}
+          restore-keys: |
+            cabal-ghc9141-
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/tilia/*
+            !~/.cache/tilia/corpus
+          key: tilia-ghc9141-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
+          restore-keys: |
+            tilia-ghc9141-
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/tilia/corpus
+          key: corpus-${{ hashFiles('tests/Tilia/Corpus.hs') }}
+          restore-keys: |
+            corpus-
+      - name: Test
+        run: |
+          tests="$(nix build -L --no-link --print-out-paths .#ghc9141.tests-exe)"
+          nix develop -L .#ghc9141 -c bash -c "cabal update && TILIA_ORTHOGONALITY=1 $tests/bin/tests"

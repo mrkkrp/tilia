@@ -47,6 +47,27 @@ open a PR:
 $ nix run .#format
 ```
 
+## Settings
+
+Every setting Tilia takes has to be orthogonal to every other one. A setting
+A is orthogonal to a setting B if enabling them together introduces no new
+bugs and makes no bugs disappear in comparison to A and B being in force
+separately. This is what lets the tests cover the settings without a
+combinatorial explosion: the corpora are formatted with `defaultSettings`
+and with `alternativeSettings`, which change every setting at once, and a
+bug of any combination of settings is then a bug of `alternativeSettings` as
+well.
+
+A nightly job checks that this holds. Since master passes the whole suite
+with `defaultSettings` and `alternativeSettings`, the job runs it with every
+combination of settings in their place and fails where any of them fails. It
+leaves out our own examples, whose expected outputs are for those two alone.
+To run it yourself:
+
+```console
+$ TILIA_ORTHOGONALITY=1 cabal test
+```
+
 ## Benchmarks
 
 The benchmarks format a fixed sample of the Hackage corpus, check what most

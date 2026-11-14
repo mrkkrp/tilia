@@ -7,7 +7,7 @@
 module Tilia.CorpusSpec (spec) where
 
 import Control.Exception (SomeException, evaluate, try)
-import Control.Monad (join, unless)
+import Control.Monad (foldM, join, unless)
 import Data.ByteString qualified as BS
 import Data.Choice (isTrue, pattern Do, pattern Don't)
 import Data.Foldable (for_)
@@ -32,7 +32,7 @@ import Tilia.Format (FormatError (..), describeFormatError, refused)
 import Tilia.Palette (Color (Meta), Palette (Plain), paint, paletteFor)
 import Tilia.Parser (ParseError (..))
 import Tilia.Pragma (Defaults)
-import Tilia.Settings (alternativeSettings, defaultSettings)
+import Tilia.Settings (Settings, defaultSettings)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig
@@ -41,12 +41,16 @@ import Tilia.TestConfig
     formatExample,
   )
 import Tilia.TestUtils
-  ( switchedOn,
+  ( orthogonalityMode,
+    switchedOn,
+    testedSettings,
     withEnvironment,
   )
 
 spec :: Spec
 spec = do
+  orthogonality <- runIO orthogonalityMode
+  others <- runIO (filter ((/= defaultSettings) . snd) <$> testedSettings)
   describe "obtaining Hackage releases" $
     it "takes in only the releases listed, whatever else is in the cache" $
       withSystemTempDirectory "tilia-corpus" $ \cache -> do
@@ -59,14 +63,22 @@ spec = do
           withEnvironment [("TILIA_CORPUS_DIR", cache)] . obtain $
             hackagePackages{corpusSource = HackageReleases ["listed-1.0"]}
         fmap (fmap exampleName) obtained `shouldBe` Right ["listed-1.0/M.hs"]
-  corpusSpec vendoredExamples
-  corpusSpec ormoluExamples
-  corpusSpec ghcTestSuite
-  corpusSpec hackagePackages
+  -- Our own examples say what they come out as with the default and the
+  -- alternative settings alone.
+  unless orthogonality (corpusSpec others vendoredExamples)
+  corpusSpec others ormoluExamples
+  corpusSpec others ghcTestSuite
+  corpusSpec others hackagePackages
 
 -- | Every example of one corpus.
-corpusSpec :: Corpus -> Spec
-corpusSpec corpus =
+corpusSpec ::
+  -- | The settings other than the defaults to check it with, each with its
+  -- name.
+  [(String, Settings)] ->
+  -- | The corpus.
+  Corpus ->
+  Spec
+corpusSpec others corpus =
   describe (corpusName corpus) $
     runIO (obtain corpus) >>= \case
       Left problem ->
@@ -76,10 +88,10 @@ corpusSpec corpus =
       Right examples -> do
         palette <- runIO (paletteFor stdout)
         case corpusExpectations corpus of
-          Listed lists -> againstLists lists (check palette) examples
+          Listed lists -> againstLists lists (check palette others) examples
           -- Plain, so that what a record says does not depend on whether the
           -- run that wrote it printed to a terminal.
-          Recorded path -> againstRecord path (check Plain) examples
+          Recorded path -> againstRecord path (check Plain others) examples
 
 -- | A corpus small enough to name its exceptions in "Tilia.Corpus".
 againstLists :: Lists -> (Example -> IO Result) -> [Example] -> Spec
@@ -296,14 +308,16 @@ verdict False declines (Result outcome why _) = case outcome of
         <> ", and the corpus does not list it under expectUnreadable"
 
 -- | What formatting one example, with every check, establishes, with the
--- default settings and then with 'alternativeSettings'.
+-- default settings and then with each of the others.
 check ::
   -- | How to color the diffs it reports.
   Palette ->
+  -- | The settings other than the defaults, each with its name.
+  [(String, Settings)] ->
   -- | The example.
   Example ->
   IO Result
-check palette example = do
+check palette others example = do
   source <- readUtf8 (exampleInput example)
   expected <- traverse readUtf8 (exampleReference example)
   expectedAlternatively <-
@@ -326,9 +340,9 @@ check palette example = do
                 (pure . Left)
                 (format (Don't #check) defaultSettings)
                 printed
-          alternatively result
+          alternatively result (name, settings)
             | resultOutcome result `elem` [Formatted, PartlyChecked] =
-                format (Do #check) alternativeSettings text <&> \case
+                format (Do #check) settings text <&> \case
                   Right formatted
                     | Just reference <- expectedAlternatively,
                       reference /= formatted ->
@@ -347,15 +361,17 @@ check palette example = do
               broken why =
                 result
                   { resultOutcome = Broken,
-                    resultWhy = "with the alternative settings: " <> why
+                    resultWhy = "with " <> T.pack name <> ": " <> why
                   }
       checked <- format (Do #check) defaultSettings text
       passes <- case checked of
         Left NotEquivalent{} -> Just <$> unchecked
         Left NotIdempotent{} -> Just <$> unchecked
         _ -> pure Nothing
-      alternatively
+      foldM
+        alternatively
         (checkPure palette package text (join expected) checked passes)
+        others
 
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)

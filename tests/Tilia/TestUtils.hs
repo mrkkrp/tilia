@@ -9,6 +9,8 @@ module Tilia.TestUtils
     withOpsProject,
     switchedOn,
     underAsciiLocale,
+    orthogonalityMode,
+    testedSettings,
     withEachSettings,
     defaultParserConfig,
     parsed,
@@ -52,7 +54,7 @@ import System.Environment.Blank (setEnv, unsetEnv)
 import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (mkTextEncoding)
 import System.IO.Temp (withSystemTempDirectory)
-import Test.Hspec (Spec, describe)
+import Test.Hspec (Spec, describe, runIO)
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
 import Tilia.Cabal.Plan (BuildPlan, plannedCompiler, plannedFlags)
@@ -67,7 +69,7 @@ import Tilia.Parser
     parseModule,
   )
 import Tilia.Pragma (defaultsOf)
-import Tilia.Settings (Settings, alternativeSettings, defaultSettings)
+import Tilia.Settings (Settings (..), alternativeSettings, defaultSettings)
 import Tilia.Source (comments)
 import Tilia.Utils (quietly, writeUtf8File)
 
@@ -163,15 +165,42 @@ underAsciiLocale act = do
   bracket getLocaleEncoding setLocaleEncoding $ \_ ->
     setLocaleEncoding ascii >> act
 
--- | Run specs once with 'defaultSettings' and once with
--- 'alternativeSettings'.
+-- | Is the suite to try every combination of the settings, as
+-- @TILIA_ORTHOGONALITY@ asks?
+orthogonalityMode :: IO Bool
+orthogonalityMode = switchedOn "TILIA_ORTHOGONALITY"
+
+-- | The settings the suite formats with, each with its name:
+-- 'defaultSettings' and 'alternativeSettings', or every combination of the
+-- settings but the column limit in the 'orthogonalityMode'.
+testedSettings :: IO [(String, Settings)]
+testedSettings = do
+  orthogonality <- orthogonalityMode
+  pure $
+    if orthogonality
+      then
+        [ ( show commas <> ", " <> show arrows,
+            defaultSettings
+              { settingsCommaStyle = commas,
+                settingsArrowStyle = arrows
+              }
+          )
+        | commas <- [minBound .. maxBound],
+          arrows <- [minBound .. maxBound]
+        ]
+      else
+        [ ("the default settings", defaultSettings),
+          ("the alternative settings", alternativeSettings)
+        ]
+
+-- | Run specs once with each of the 'testedSettings'.
 withEachSettings ::
   -- | The specs, given the settings.
   (Settings -> Spec) ->
   Spec
 withEachSettings specs = do
-  describe "with the default settings" (specs defaultSettings)
-  describe "with the alternative settings" (specs alternativeSettings)
+  tested <- runIO testedSettings
+  for_ tested $ \(name, settings) -> describe ("with " <> name) (specs settings)
 
 -- | What to parse a module of no package with: GHC2021.
 defaultParserConfig :: ParserConfig
