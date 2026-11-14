@@ -20,6 +20,7 @@ module Tilia.Cabal.Plan
     macrosOf,
     versionMacros,
     plannedCompiler,
+    plannedFlags,
     generatedModules,
 
     -- * Readiness
@@ -47,6 +48,7 @@ import Data.Aeson
     decodeStrict,
     eitherDecodeFileStrict,
     withObject,
+    (.!=),
     (.:),
     (.:?),
   )
@@ -70,7 +72,13 @@ import Data.Text.Encoding qualified as T
 import Data.Text.Read qualified as T
 import Data.Time (UTCTime, getCurrentTime)
 import Distribution.Package (pkgName, pkgVersion, unPackageName)
-import Distribution.PackageDescription (package, packageDescription)
+import Distribution.PackageDescription
+  ( FlagAssignment,
+    mkFlagAssignment,
+    mkFlagName,
+    package,
+    packageDescription,
+  )
 import Distribution.Pretty (prettyShow)
 import Distribution.Version (Version, mkVersion)
 import GHC.IO.Handle (hDuplicate)
@@ -124,7 +132,9 @@ data PlanPackage = PlanPackage
     -- with a @Custom@ build type, whose @Setup.hs@ is entitled to do as it
     -- pleases—is planned whole instead, and its entry is about every
     -- component at once.
-    ppComponents :: [Text]
+    ppComponents :: [Text],
+    -- | The value the plan gives each of its flags.
+    ppFlags :: FlagAssignment
   }
   deriving (Eq, Show)
 
@@ -240,11 +250,13 @@ instance FromJSON PlanPackage where
     repoPath <- traverse (traverse (.:? "path")) repo
     named <- o .:? "component-name"
     whole <- o .:? "components"
+    flags <- o .:? "flags" .!= Map.empty
     pure
       PlanPackage
         { ppName = name,
           ppVersion = version,
           ppComponents = componentsOf named whole,
+          ppFlags = mkFlagAssignment (first mkFlagName <$> Map.toList flags),
           ppSource = case (kind :: Maybe Text, sourceKind :: Maybe Text) of
             (Just "pre-existing", _) -> PreExisting
             (_, Just "repo-tar") ->
@@ -407,6 +419,14 @@ plannedCompiler :: BuildPlan -> Maybe Version
 plannedCompiler plan =
   mkVersion . fmap fromInteger
     <$> (numberedVersion =<< T.stripPrefix "ghc-" (bpCompiler plan))
+
+-- | The flags the plan gives each of the project's own packages, by name.
+plannedFlags :: BuildPlan -> Map Text FlagAssignment
+plannedFlags plan =
+  Map.fromList
+    [ (ppName p, ppFlags p)
+    | p@PlanPackage{ppSource = LocalPackage _} <- bpPackages plan
+    ]
 
 -- | The modules @cabal@ writes itself for a plan's packages.
 generatedModules :: BuildPlan -> Set Text

@@ -61,6 +61,10 @@
   lines puts each `::`, `=>` and `->` in it, and the `.` of a `forall`, at
   the start of a line, and an argument's Haddock goes under it as `-- ^`.
   [Issue 380](https://github.com/mrkkrp/tilia/issues/380).
+* The extensions and the language a component puts in force behind a flag
+  are settled with the value the build plan gives the flag, as
+  `cabal.project` sets it or Cabal's solver picks it, rather than with the
+  flag's default.
 
 ## Tilia 0.1.4.0
 

@@ -33,6 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Time (addUTCTime, getCurrentTime)
+import Distribution.PackageDescription (mkFlagAssignment)
 import System.Directory
   ( canonicalizePath,
     createDirectoryIfMissing,
@@ -137,7 +138,8 @@ tokens = describe "the token a plan is cached under" $ do
                 { ppName = "containers",
                   ppVersion = "0.7",
                   ppSource = PreExisting,
-                  ppComponents = []
+                  ppComponents = [],
+                  ppFlags = mempty
                 }
             ]
         }
@@ -165,7 +167,8 @@ plannedMacros = describe "the macros a plan settles" $ do
                 { ppName = name,
                   ppVersion = "1.0",
                   ppSource = PreExisting,
-                  ppComponents = []
+                  ppComponents = [],
+                  ppFlags = mempty
                 }
             | name <- ["base", "data-default"]
             ]
@@ -1476,6 +1479,10 @@ withPlan plan = do
     it "gives every fetchable package a source hash to check against" $ do
       let fetchable = filter isFetchable (bpPackages plan)
       filter (null . sourceHashOf) fetchable `shouldBe` []
+
+    it "gives the project the flags its cabal.project sets, and no more" $
+      plannedFlags plan
+        `shouldBe` Map.singleton "tilia" (mkFlagAssignment [("dev", True)])
 
     it "does not mark the project itself as fetchable" $ do
       let locals = filter (\p -> ppName p == "tilia") (bpPackages plan)
