@@ -194,7 +194,7 @@ fixityBenchmarks dir toResolve held = do
         BuildPlan
           { bpCompiler = "ghc-9.10.3",
             bpPackages =
-              [PlanPackage n v PreExisting [] | (n, v) <- dependencies]
+              [PlanPackage n v PreExisting [] mempty | (n, v) <- dependencies]
                 <> fmap fst tarballs
           }
       fetched release = corpus </> release <.> "tar.gz"
@@ -209,7 +209,8 @@ fixityBenchmarks dir toResolve held = do
       cache <- cacheUnder (dir </> "cache")
       interfaces <- interfacesOf decoded
       let reading kept modules = do
-            packageReader <- newPackageReader (plannedCompiler plan) []
+            packageReader <-
+              newPackageReader (plannedCompiler plan) (plannedFlags plan) []
             resolver <-
               newResolverWith [FromSource] kept [] tarballs packageReader plan
             pure $ do
@@ -248,7 +249,7 @@ fixityBenchmarks dir toResolve held = do
 planned :: String -> PlanPackage
 planned release =
   let (name, version) = T.breakOnEnd "-" (T.pack release)
-   in PlanPackage (T.dropEnd 1 name) version PreExisting []
+   in PlanPackage (T.dropEnd 1 name) version PreExisting [] mempty
 
 -- | A cache of fixities in a directory.
 cacheUnder :: FilePath -> IO Cache

@@ -54,6 +54,7 @@ import Tilia.Cabal.Plan
     loadPlan,
     macrosOf,
     plannedCompiler,
+    plannedFlags,
     readGivenPlan,
     versionMacros,
   )
@@ -390,7 +391,9 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
               <$ liftIO (fetchUninstalled caching root plan)
           else pure [FromInterface]
       pure (plan, routes)
-  packageReader <- liftIO (newPackageReader (plannedCompiler plan) packages)
+  packageReader <-
+    liftIO
+      (newPackageReader (plannedCompiler plan) (plannedFlags plan) packages)
   resolver <- liftIO (newResolverVia caching routes packageReader root plan)
   notes <-
     if isTrue debugFixity

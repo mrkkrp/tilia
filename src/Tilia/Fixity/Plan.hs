@@ -119,7 +119,8 @@ newResolver ::
   BuildPlan ->
   IO Resolver
 newResolver plan = do
-  packageReader <- newPackageReader (plannedCompiler plan) []
+  packageReader <-
+    newPackageReader (plannedCompiler plan) (plannedFlags plan) []
   newResolverVia
     (Do #useCache)
     [FromInterface, FromSource]

@@ -55,7 +55,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec (Spec, describe)
 
 import Tilia.Cabal.Package (newPackageReader, sourceExtensions)
-import Tilia.Cabal.Plan (BuildPlan, plannedCompiler)
+import Tilia.Cabal.Plan (BuildPlan, plannedCompiler, plannedFlags)
 import Tilia.Comments (Comment)
 import Tilia.Cpp.Directives (CppError, answeredLeaves, answeredLinearLeaves)
 import Tilia.Fixity (Fixities, Fixity, ModuleChain (..), Namespace (..), OpName)
@@ -227,7 +227,8 @@ fingerprint = foldl' step 14695981039346656037
 -- it reads.
 routedResolver :: [Route] -> BuildPlan -> IO Resolver
 routedResolver routes plan = do
-  packageReader <- newPackageReader (plannedCompiler plan) []
+  packageReader <-
+    newPackageReader (plannedCompiler plan) (plannedFlags plan) []
   newResolverVia (Do #useCache) routes packageReader "." plan
 
 -- | Every configuration of a module, with every conditional resolved.

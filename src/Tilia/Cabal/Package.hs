@@ -28,6 +28,7 @@ module Tilia.Cabal.Package
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Control.Monad ((<=<))
 import Data.ByteString qualified as BS
@@ -56,6 +57,7 @@ import Distribution.PackageDescription
     CondTree (..),
     ConfVar (..),
     Executable (..),
+    FlagAssignment,
     ForeignLib (..),
     GenericPackageDescription (..),
     Library (..),
@@ -63,6 +65,7 @@ import Distribution.PackageDescription
     PackageFlag (..),
     TestSuite (..),
     TestSuiteInterface (..),
+    lookupFlagAssignment,
     pkgName,
     unPackageName,
     unUnqualComponentName,
@@ -127,11 +130,13 @@ newPackageReader ::
   -- | The compiler's version, where the build plan names it, which spares
   -- asking the compiler.
   Maybe Version ->
+  -- | The flags the build plan gives each package, by name.
+  Map Text FlagAssignment ->
   -- | The @.cabal@ files of the project, which a module no @.cabal@ file
   -- above it claims is looked for in.
   [FilePath] ->
   IO PackageReader
-newPackageReader planned project = do
+newPackageReader planned flags project = do
   covering <- newIORef Map.empty
   described <- newIORef Map.empty
   known <- newMVar (Just <$> planned)
@@ -141,7 +146,7 @@ newPackageReader planned project = do
           version <- compilerVersion
           pure (Just version, version)
       elsewhere file problem = do
-        found <- traverse (componentBranchesOf compiler described) project
+        found <- traverse (componentBranchesOf compiler flags described) project
         pure $ case claiming file (concat (rights found)) of
           Just c -> Right (componentExtensions c)
           Nothing -> Left problem
@@ -151,7 +156,7 @@ newPackageReader planned project = do
     findCabalFile covering from >>= \case
       Nothing -> elsewhere file NoPackageFile
       Just cabalFile ->
-        componentBranchesOf compiler described cabalFile >>= \case
+        componentBranchesOf compiler flags described cabalFile >>= \case
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
@@ -246,11 +251,16 @@ findCabalFile ref = climb []
 
 -- | What a @.cabal@ file amounts to.
 componentBranchesOf ::
+  -- | The compiler's version, asked for only where a condition names it.
   IO (Maybe Version) ->
+  -- | The flags the build plan gives each package, by name.
+  Map Text FlagAssignment ->
+  -- | What is known already, by @.cabal@ file.
   IORef (Map FilePath (Either PackageProblem [ComponentBranch])) ->
+  -- | The @.cabal@ file.
   FilePath ->
   IO (Either PackageProblem [ComponentBranch])
-componentBranchesOf compiler ref cabalFile = do
+componentBranchesOf compiler flags ref cabalFile = do
   known <- readIORef ref
   case Map.lookup cabalFile known of
     Just answer -> pure answer
@@ -263,7 +273,11 @@ componentBranchesOf compiler ref cabalFile = do
       readPackageDescription cabalFile >>= \case
         Left problem -> pure (Left problem)
         Right description -> do
-          valueOf <- conditionValues compiler description
+          valueOf <-
+            conditionValues
+              compiler
+              (Map.findWithDefault mempty (packageOf description) flags)
+              description
           Right
             <$> traverse
               (componentBranch (takeDirectory cabalFile))
@@ -296,10 +310,12 @@ parsePackageDescription cabalFile bytes =
 conditionValues ::
   -- | The compiler's version, asked for only where a condition names it.
   IO (Maybe Version) ->
-  -- | The package, whose flags take their defaults.
+  -- | The flags the build plan gives the package.
+  FlagAssignment ->
+  -- | The package, whose flags the plan does not set take their defaults.
   GenericPackageDescription ->
   IO (ConfVar -> Either ConfVar Bool)
-conditionValues compiler described = do
+conditionValues compiler planned described = do
   version <-
     if null (listify namesCompiler described)
       then pure Nothing
@@ -307,7 +323,11 @@ conditionValues compiler described = do
   pure $ \case
     OS os -> Right (os == buildOS)
     Arch arch -> Right (arch == buildArch)
-    v@(PackageFlag name) -> maybe (Left v) Right (lookup name defaults)
+    v@(PackageFlag name) ->
+      maybe
+        (Left v)
+        Right
+        (lookupFlagAssignment name planned <|> lookup name defaults)
     v@(Impl GHC range) -> maybe (Left v) (Right . (`withinRange` range)) version
     Impl _ _ -> Right False
   where

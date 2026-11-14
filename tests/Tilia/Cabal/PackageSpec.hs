@@ -7,8 +7,10 @@ module Tilia.Cabal.PackageSpec (spec) where
 import Data.Either (isRight)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
+import Distribution.PackageDescription (mkFlagAssignment)
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.FilePath ((</>))
@@ -145,10 +147,22 @@ spec = do
 
     it "take the compiler's version from the plan where it names one" $
       inPackage conditionalExtensions ["src"] $ \root -> do
-        ask <- newPackageReader (plannedCompiler (BuildPlan "ghc-8.4.4" [])) []
+        ask <-
+          newPackageReader
+            (plannedCompiler (BuildPlan "ghc-8.4.4" []))
+            Map.empty
+            []
         library <- ask (root </> "src" </> "M.hs")
         (has StarIsType library, has BangPatterns library)
           `shouldBe` (True, True)
+
+    it "take the flags from the plan where it sets them" $
+      inPackage conditionalExtensions ["src"] $ \root -> do
+        let flags = mkFlagAssignment [("fast", False), ("strict", True)]
+        ask <- newPackageReader Nothing (Map.singleton "demo" flags) []
+        library <- ask (root </> "src" </> "M.hs")
+        (has MagicHash library, has Strict library)
+          `shouldBe` (False, True)
 
     it "take in their own branch's too, for a module only it declares" $
       inPackage conditionalExtensions ["src", "old"] $ \root -> do
@@ -177,7 +191,8 @@ spec = do
           ("common/Common.hs", "module Common where\n")
         ]
       $ \root -> do
-        ask <- newPackageReader Nothing [root </> "one" </> "one.cabal"]
+        ask <-
+          newPackageReader Nothing Map.empty [root </> "one" </> "one.cabal"]
         (has LambdaCase <$> ask (root </> "common" </> "Common.hs"))
           `shouldReturn` True
 
@@ -191,6 +206,7 @@ spec = do
         ask <-
           newPackageReader
             Nothing
+            Map.empty
             [root </> "one" </> "one.cabal", root </> "two" </> "two.cabal"]
         (has LambdaCase <$> ask (root </> "two" </> "shared" </> "Common.hs"))
           `shouldReturn` True
@@ -201,27 +217,28 @@ spec = do
           ("other/Other.hs", "module Other where\n")
         ]
       $ \root -> do
-        ask <- newPackageReader Nothing [root </> "one" </> "one.cabal"]
+        ask <-
+          newPackageReader Nothing Map.empty [root </> "one" </> "one.cabal"]
         ask (root </> "other" </> "Other.hs") `shouldReturn` Left NoPackageFile
 
   describe "a reader kept between files" $ do
     it "answers as a fresh one would" $
       inPackage twoComponents ["src", "test"] $ \root -> do
-        ask <- newPackageReader Nothing []
+        ask <- newPackageReader Nothing Map.empty []
         kept <- traverse ask (modules root)
         fresh <- traverse asked (modules root)
         kept `shouldBe` fresh
 
     it "reads a package once, not once per file" $
       inPackage twoComponents ["src"] $ \root -> do
-        ask <- newPackageReader Nothing []
+        ask <- newPackageReader Nothing Map.empty []
         first <- ask (root </> "src" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` first
 
     it "remembers every directory the walk went through" $
       inPackage twoComponents ["src" </> "deep"] $ \root -> do
-        ask <- newPackageReader Nothing []
+        ask <- newPackageReader Nothing Map.empty []
         deep <- ask (root </> "src" </> "deep" </> "A.hs")
         removeFile (root </> "demo.cabal")
         ask (root </> "src" </> "B.hs") `shouldReturn` deep
@@ -470,7 +487,7 @@ inPackage contents dirs use =
 -- is not about caching wants.
 asked :: FilePath -> IO (Either PackageProblem Defaults)
 asked path = do
-  ask <- newPackageReader Nothing []
+  ask <- newPackageReader Nothing Map.empty []
   ask path
 
 -- | One module in each of the two components.
