@@ -349,7 +349,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
     whole layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
       | Just splits <- traverse firstPart ss,
-        not (any (\(_, x, _) -> printsOnOneLine layout x) splits) =
+        not (any (\(_, x, _) -> printsOnOneLine layout x) splits),
+        all continued splits || not (any continued splits) =
           go layout [mconcat (spacing <> [x]) | (spacing, x, _) <- splits]
             <> whole layout [more | (_, _, more) <- splits]
       | otherwise = choice (fmap mconcat ss)
@@ -357,6 +358,11 @@ merge settings written conditionals guards varied settledOthers = go Broken
     firstPart parts = case break (not . blank) parts of
       (spacing, x : more) -> Just (spacing, x, more)
       _ -> Nothing
+
+    -- Where some configurations print more after their first part and
+    -- others nothing, what more there is carries the first part on, and
+    -- goes in its alternative rather than in one of its own.
+    continued (_, _, more) = not (all blank more)
 
     -- An alternative with the comma or the arrow leading a line it ends
     -- with put at the end of the line before instead.
