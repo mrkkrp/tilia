@@ -322,7 +322,12 @@ listParens ctx = commaBracketWith (ctxCommaStyle ctx) Outdented "(" ")"
 
 -- | The items of an import or export list, with the documentation among
 -- them lined up with the items rather than with leading commas.
-importExportItems :: Ctx -> [LIE GhcPs] -> Doc
+importExportItems ::
+  -- | The context.
+  Ctx ->
+  -- | The items.
+  [LIE GhcPs] ->
+  Doc
 importExportItems ctx xs = case ctxCommaStyle ctx of
   TrailingCommas -> variant (laidOut False) (laidOut True)
   LeadingCommas -> mconcat (zipWith3 commaLed previous afterItem xs)
@@ -342,11 +347,13 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
           indent (breakOrSpace <> gapAbove before x <> entry False x)
     entry withComma x =
       align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
-    gapAbove before (L _ here) = case unLoc <$> before of
+    gapAbove before x@(L _ here) = case before of
       Nothing -> mempty
       Just p
         | isSection here -> hardBreak
-        | isPipe here, runsOn p -> hardBreak
+        | isPipe here,
+          runsOn (unLoc p) || separatedByBlank ctx (spanOf p) (spanOf x) ->
+            hardBreak
         | otherwise -> mempty
     isSection = \case
       IEGroup{} -> True
