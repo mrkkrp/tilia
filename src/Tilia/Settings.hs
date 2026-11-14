@@ -49,7 +49,7 @@ data CommaStyle
   | -- | At the start of each line but the first, two columns left of the
     -- items.
     LeadingCommas
-  deriving (Eq, Show)
+  deriving (Eq, Show, Bounded, Enum)
 
 -- | Where a type laid out on several lines puts its @::@, @=>@ and @->@,
 -- and the @.@ of a @forall@.
@@ -58,7 +58,7 @@ data ArrowStyle
     TrailingArrows
   | -- | At the start of each line but the first.
     LeadingArrows
-  deriving (Eq, Show)
+  deriving (Eq, Show, Bounded, Enum)
 
 -- | What a project that sets nothing gets.
 defaultSettings :: Settings
