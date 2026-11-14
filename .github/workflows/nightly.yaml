@@ -6,7 +6,17 @@ on:
 
 jobs:
   orthogonality:
-    name: Orthogonality of the settings
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ghc: ghc9103
+            shard: 1/3
+          - ghc: ghc9124
+            shard: 2/3
+          - ghc: ghc9141
+            shard: 3/3
+    name: Orthogonality of the settings on ${{ matrix.ghc }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -24,17 +34,17 @@ jobs:
             ~/.cache/cabal/packages/*/*
             !~/.cache/cabal/packages/*/01-index.*
             !~/.cache/cabal/packages/*/*.json
-          key: cabal-ghc9141-${{ hashFiles('cabal.project', 'tilia.cabal') }}
+          key: cabal-${{ matrix.ghc }}-${{ hashFiles('cabal.project', 'tilia.cabal') }}
           restore-keys: |
-            cabal-ghc9141-
+            cabal-${{ matrix.ghc }}-
       - uses: actions/cache@v6
         with:
           path: |
             ~/.cache/tilia/*
             !~/.cache/tilia/corpus
-          key: tilia-ghc9141-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
+          key: tilia-${{ matrix.ghc }}-${{ hashFiles('cabal.project', 'tilia.cabal', 'src/**') }}
           restore-keys: |
-            tilia-ghc9141-
+            tilia-${{ matrix.ghc }}-
       - uses: actions/cache@v6
         with:
           path: ~/.cache/tilia/corpus
@@ -43,5 +53,5 @@ jobs:
             corpus-
       - name: Test
         run: |
-          tests="$(nix build -L --no-link --print-out-paths .#ghc9141.tests-exe)"
-          nix develop -L .#ghc9141 -c bash -c "cabal update && TILIA_ORTHOGONALITY=1 $tests/bin/tests"
+          tests="$(nix build -L --no-link --print-out-paths .#${{ matrix.ghc }}.tests-exe)"
+          nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_ORTHOGONALITY=1 TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
