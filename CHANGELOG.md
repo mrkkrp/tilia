@@ -83,6 +83,10 @@
 * An empty line written above a `-- |` Haddock in an export list, under a
   section heading or under an item, stays, rather than being left out
   unless another such Haddock came right above it.
+* A comment written right under an item or a section heading of an export
+  list, with an empty line under it, stays right under it where a section
+  heading follows, rather than going down to that heading with an empty
+  line above it.
 
 ## Tilia 0.1.4.0
 

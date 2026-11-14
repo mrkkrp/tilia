@@ -4139,7 +4139,7 @@ formatted       2fbd14b119a4  servant-0.20.3.0/test/Spec.hs
 formatted       e865ae48f11b  servant-server-0.20.3.0/Setup.hs
 formatted       d7d92d13cc9f  servant-server-0.20.3.0/example/greet.hs
 formatted       6c49b4364650  servant-server-0.20.3.0/src/Servant.hs
-formatted       4cbe76cd9f48  servant-server-0.20.3.0/src/Servant/Server.hs
+formatted       6acdb9ebb4a4  servant-server-0.20.3.0/src/Servant/Server.hs
 formatted       0105b86e1d64  servant-server-0.20.3.0/src/Servant/Server/Experimental/Auth.hs
 formatted       e441259cdb2a  servant-server-0.20.3.0/src/Servant/Server/Generic.hs
 formatted       ff8ecdf7c106  servant-server-0.20.3.0/src/Servant/Server/Internal.hs
@@ -4414,7 +4414,7 @@ formatted       13c6ca2f04f1  statistics-0.16.5.0/Statistics/Sample.hs
 formatted       a053f0c5f739  statistics-0.16.5.0/Statistics/Sample/Histogram.hs
 formatted       922c4d36b464  statistics-0.16.5.0/Statistics/Sample/Internal.hs
 formatted       42273746a685  statistics-0.16.5.0/Statistics/Sample/KernelDensity.hs
-formatted       dff50423213d  statistics-0.16.5.0/Statistics/Sample/KernelDensity/Simple.hs
+formatted       9d2933780af5  statistics-0.16.5.0/Statistics/Sample/KernelDensity/Simple.hs
 formatted       247700fc42ce  statistics-0.16.5.0/Statistics/Sample/Normalize.hs
 formatted       3c8cedc2a02d  statistics-0.16.5.0/Statistics/Sample/Powers.hs
 formatted       f66ab9978b3b  statistics-0.16.5.0/Statistics/Test/Bartlett.hs
@@ -4611,7 +4611,7 @@ formatted       82d7fa3baee4  text-2.1.4/src/Data/Text/Internal/Unsafe/Char.hs
 formatted       c3e06b63b59d  text-2.1.4/src/Data/Text/Internal/Validate.hs
 formatted       202f4bac46f8  text-2.1.4/src/Data/Text/Internal/Validate/Native.hs
 formatted       530d639cfd22  text-2.1.4/src/Data/Text/Internal/Validate/Simd.hs
-formatted       7b5033fcb7c4  text-2.1.4/src/Data/Text/Lazy.hs
+formatted       e21c427b7c13  text-2.1.4/src/Data/Text/Lazy.hs
 formatted       38ff2d7cb674  text-2.1.4/src/Data/Text/Lazy/Builder.hs
 formatted       12c637d6844b  text-2.1.4/src/Data/Text/Lazy/Builder/Int.hs
 formatted       bdc9227a862d  text-2.1.4/src/Data/Text/Lazy/Builder/RealFloat.hs

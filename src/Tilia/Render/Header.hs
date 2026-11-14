@@ -345,7 +345,9 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
     gapAbove before x@(L _ here) = case before of
       Nothing -> mempty
       Just p
-        | isSection here -> hardBreak
+        | isSection here,
+          not (remarkUnder ctx (spanOf p) (spanOf x)) ->
+            hardBreak
         | isPipe here,
           runsOn (unLoc p) || separatedByBlank ctx (spanOf p) (spanOf x) ->
             hardBreak
