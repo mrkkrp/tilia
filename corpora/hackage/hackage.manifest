@@ -108,7 +108,7 @@ formatted       026f0e0360c1  Agda-2.8.0/src/full/Agda/Syntax/Builtin.hs
 formatted       f4e19e4d0f59  Agda-2.8.0/src/full/Agda/Syntax/Common.hs
 formatted       cf7769241013  Agda-2.8.0/src/full/Agda/Syntax/Common/Aspect.hs
 formatted       e6a9bd33ea26  Agda-2.8.0/src/full/Agda/Syntax/Common/KeywordRange.hs
-formatted       7c567dbf9f17  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty.hs
+formatted       46807bc2149b  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty.hs
 formatted       2e8f5cce7ff0  Agda-2.8.0/src/full/Agda/Syntax/Common/Pretty/ANSI.hs
 formatted       921825962e64  Agda-2.8.0/src/full/Agda/Syntax/Concrete.hs
 formatted       06559e110b47  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Attribute.hs
@@ -1538,7 +1538,7 @@ formatted       399ba6b451c3  cassava-0.5.5.0/examples/NamedBasedGeneric.hs
 formatted       63aea286ec75  cassava-0.5.5.0/examples/StreamingIndexBasedDecode.hs
 formatted       6761b46de85e  cassava-0.5.5.0/src/Data/Csv.hs
 formatted       430c73c15d72  cassava-0.5.5.0/src/Data/Csv/Builder.hs
-formatted       3a423a8a4c5a  cassava-0.5.5.0/src/Data/Csv/Conversion.hs
+formatted       5f0b0ca9e49a  cassava-0.5.5.0/src/Data/Csv/Conversion.hs
 formatted       7fdd0b309f65  cassava-0.5.5.0/src/Data/Csv/Conversion/Internal.hs
 formatted       725492a89733  cassava-0.5.5.0/src/Data/Csv/Encoding.hs
 formatted       4e2a17c627f3  cassava-0.5.5.0/src/Data/Csv/Incremental.hs
@@ -4599,7 +4599,7 @@ formatted       dc4dfdb3dc0a  text-2.1.4/src/Data/Text/Internal/Lazy/Encoding/Fu
 formatted       49888c7f9fd4  text-2.1.4/src/Data/Text/Internal/Lazy/Fusion.hs
 formatted       fcc9bb412204  text-2.1.4/src/Data/Text/Internal/Lazy/Search.hs
 formatted       b22fbbc99523  text-2.1.4/src/Data/Text/Internal/Measure.hs
-formatted       fbd05c08bb80  text-2.1.4/src/Data/Text/Internal/PrimCompat.hs
+formatted       5243fb95379d  text-2.1.4/src/Data/Text/Internal/PrimCompat.hs
 formatted       d0b81ff531ad  text-2.1.4/src/Data/Text/Internal/Private.hs
 formatted       a41bd3d7edab  text-2.1.4/src/Data/Text/Internal/Read.hs
 formatted       1083d48502d1  text-2.1.4/src/Data/Text/Internal/Reverse.hs

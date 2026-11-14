@@ -220,25 +220,27 @@ groupDecls ctx isSignatureFile (d : ds)
         | isDoc (unLoc (NE.head g)) -> (d :| []) : g : gs
         | otherwise -> (d <| g) : gs
   | otherwise =
-      let (together, rest) = gather d ds
+      let (together, rest) = gather (d :| []) ds
        in (d :| together) : groupDecls ctx isSignatureFile rest
   where
-    gather previous = \case
+    gather gathered = \case
       current : more
-        | belongs previous current ->
-            let (together, rest) = gather current more
+        | belongs gathered current ->
+            let (together, rest) = gather (current <| gathered) more
              in (current : together, rest)
       remaining -> ([], remaining)
     isDocNext = \case
       DocD _ (DocCommentNext _) -> True
       _ -> False
-    belongs previous current =
+    belongs gathered current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
         || isSeries ctx previous current
-        || ( relatedDecls d current
+        || ( any (`relatedDecls` current) gathered
                && not (separatedByBlank ctx (spanOf previous) (spanOf current))
            )
         || relatedDecls previous current
+      where
+        previous = NE.head gathered
 
 -- | A run of type signatures with nothing between them is a list, and a
 -- list reads better without gaps in it.

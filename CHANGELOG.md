@@ -70,6 +70,10 @@
   whether the file sits beside a `cabal.project` or beside a package with
   none: it is formatted, it can be named as a target, and its modules
   count as the project's own.
+* A pragma or an equation written right under declarations it belongs with,
+  as an `INLINE` under the equations of a run of signatures, stays right
+  under them, rather than getting an empty line above it where it shared a
+  name with neither the first of them nor the one right above it.
 
 ## Tilia 0.1.4.0
 
