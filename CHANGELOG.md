@@ -80,6 +80,17 @@
   did next to a function or a data declaration, rather than getting an
   empty line between them. So does a pragma naming one of a type's
   constructors, fields or methods, next to that type.
+* An empty line written above a `-- |` Haddock in an export list, under a
+  section heading or under an item, stays, rather than being left out
+  unless another such Haddock came right above it.
+* A comment written right under an item or a section heading of an export
+  list, with an empty line under it, stays right under it where a section
+  heading follows, rather than going down to that heading with an empty
+  line above it.
+* With `leading-commas = true`, a comment written right under an item of
+  an import or export list, with an empty line under it, stays under that
+  item, rather than going after the comma that leads the next item and
+  leaving the empty line between that comma and its item.
 
 ## Tilia 0.1.4.0
 

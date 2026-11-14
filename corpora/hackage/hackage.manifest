@@ -460,7 +460,7 @@ formatted       b6bb4876477b  QuickCheck-2.18.0.0/examples/Lambda.hs
 formatted       670949ea2160  QuickCheck-2.18.0.0/examples/Merge.hs
 formatted       a2c247377da6  QuickCheck-2.18.0.0/examples/Set.hs
 formatted       02865c8c0f82  QuickCheck-2.18.0.0/examples/Simple.hs
-partly-checked  9da7c6c96a36  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
+partly-checked  67552a36e342  QuickCheck-2.18.0.0/src/Test/QuickCheck.hs
 formatted       08f6689b7318  QuickCheck-2.18.0.0/src/Test/QuickCheck/All.hs
 partly-checked  7e6665c13a47  QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
 formatted       b394fbd4debb  QuickCheck-2.18.0.0/src/Test/QuickCheck/Compat.hs
@@ -1828,7 +1828,7 @@ formatted       2f7b40346950  diagrams-core-1.5.1.2/src/Diagrams/Core/Query.hs
 formatted       d19a1e0e94a2  diagrams-core-1.5.1.2/src/Diagrams/Core/Style.hs
 formatted       88c30e9fedbf  diagrams-core-1.5.1.2/src/Diagrams/Core/Trace.hs
 formatted       5ad65cbf4156  diagrams-core-1.5.1.2/src/Diagrams/Core/Transform.hs
-formatted       83babbf1d9e7  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
+formatted       daeb38e11fd6  diagrams-core-1.5.1.2/src/Diagrams/Core/Types.hs
 formatted       ab00880899b4  diagrams-core-1.5.1.2/src/Diagrams/Core/V.hs
 formatted       927b9d26c4aa  distributed-process-0.7.8/benchmarks/Channels.hs
 formatted       f1d669408d85  distributed-process-0.7.8/benchmarks/Latency.hs
@@ -2669,12 +2669,12 @@ formatted       e99a8368fef1  http-client-0.7.19/test-nonet/Network/HTTP/ClientS
 formatted       2fbd14b119a4  http-client-0.7.19/test-nonet/Spec.hs
 formatted       f01cb08dd7a3  http-client-0.7.19/test/Network/HTTP/ClientSpec.hs
 formatted       2fbd14b119a4  http-client-0.7.19/test/Spec.hs
-formatted       13d151556922  http-types-0.12.6/Network/HTTP/Types.hs
-formatted       f2f27a97031b  http-types-0.12.6/Network/HTTP/Types/Header.hs
-formatted       26f2850b0a92  http-types-0.12.6/Network/HTTP/Types/Method.hs
+formatted       5949ab295e23  http-types-0.12.6/Network/HTTP/Types.hs
+formatted       5f36c268479d  http-types-0.12.6/Network/HTTP/Types/Header.hs
+formatted       f663d80aac8d  http-types-0.12.6/Network/HTTP/Types/Method.hs
 formatted       670d3966112b  http-types-0.12.6/Network/HTTP/Types/QueryLike.hs
 formatted       973c6368ae63  http-types-0.12.6/Network/HTTP/Types/Status.hs
-formatted       a4d0b0bcdc86  http-types-0.12.6/Network/HTTP/Types/URI.hs
+formatted       1ca04d204cd4  http-types-0.12.6/Network/HTTP/Types/URI.hs
 formatted       f437cc36b9fa  http-types-0.12.6/Network/HTTP/Types/Version.hs
 formatted       e865ae48f11b  http-types-0.12.6/Setup.hs
 formatted       294636e25a6b  http-types-0.12.6/test/Network/HTTP/Types/HeaderSpec.hs
@@ -3054,7 +3054,7 @@ formatted       83cf3116dcc6  mtl-2.3.2/Control/Monad/Writer/Strict.hs
 formatted       e865ae48f11b  mtl-2.3.2/Setup.hs
 formatted       8192db879b7a  optics-0.4.2.1/benchmarks/folds.hs
 formatted       c179cd12b60d  optics-0.4.2.1/benchmarks/traversals.hs
-formatted       4601cc47078f  optics-0.4.2.1/src/Optics.hs
+formatted       d247521778c1  optics-0.4.2.1/src/Optics.hs
 formatted       e60bc1a34fef  optics-0.4.2.1/tests/Optics/Tests.hs
 formatted       d2147355e124  optics-0.4.2.1/tests/Optics/Tests/Computation.hs
 formatted       cc9fedfef43d  optics-0.4.2.1/tests/Optics/Tests/Core.hs
@@ -3073,7 +3073,7 @@ formatted       f46c80ffe909  optparse-applicative-0.19.0.0/src/Options/Applicat
 formatted       d15fb6d1ee07  optparse-applicative-0.19.0.0/src/Options/Applicative/Builder/Internal.hs
 formatted       9080a2ad6fe2  optparse-applicative-0.19.0.0/src/Options/Applicative/Common.hs
 formatted       72ec675669aa  optparse-applicative-0.19.0.0/src/Options/Applicative/Extra.hs
-formatted       02404b06b751  optparse-applicative-0.19.0.0/src/Options/Applicative/Help.hs
+formatted       657b574ab8fd  optparse-applicative-0.19.0.0/src/Options/Applicative/Help.hs
 formatted       357d97ad5a54  optparse-applicative-0.19.0.0/src/Options/Applicative/Help/Chunk.hs
 formatted       9f754c0c5fa2  optparse-applicative-0.19.0.0/src/Options/Applicative/Help/Core.hs
 formatted       c6289fc77a0b  optparse-applicative-0.19.0.0/src/Options/Applicative/Help/Levenshtein.hs
@@ -3440,8 +3440,8 @@ formatted       bd712852d7a3  parser-combinators-1.3.1/Control/Monad/Combinators
 formatted       640a72771529  parser-combinators-1.3.1/Control/Monad/Combinators/Expr.hs
 formatted       c5e20cf5022e  parser-combinators-1.3.1/Control/Monad/Combinators/NonEmpty.hs
 formatted       2ce12720b575  parser-combinators-1.3.1/Control/Monad/Permutations.hs
-formatted       e563087e35e4  persistent-2.18.1.0/Database/Persist.hs
-formatted       af7417196697  persistent-2.18.1.0/Database/Persist/Class.hs
+formatted       a09243c3bb10  persistent-2.18.1.0/Database/Persist.hs
+formatted       23633d872eee  persistent-2.18.1.0/Database/Persist/Class.hs
 formatted       54883fd0bae8  persistent-2.18.1.0/Database/Persist/Class/PersistConfig.hs
 formatted       c8a36a5905f5  persistent-2.18.1.0/Database/Persist/Class/PersistEntity.hs
 formatted       0bffe3c5e454  persistent-2.18.1.0/Database/Persist/Class/PersistField.hs
@@ -3465,10 +3465,10 @@ formatted       acd3911e2b84  persistent-2.18.1.0/Database/Persist/Quasi/Interna
 formatted       6c4d21fcfb19  persistent-2.18.1.0/Database/Persist/Quasi/Internal/TypeParser.hs
 formatted       21110acf54fd  persistent-2.18.1.0/Database/Persist/Quasi/PersistSettings.hs
 formatted       a989b4e01cce  persistent-2.18.1.0/Database/Persist/Quasi/PersistSettings/Internal.hs
-formatted       6d619cb7c5f5  persistent-2.18.1.0/Database/Persist/Sql.hs
+formatted       957155c138d5  persistent-2.18.1.0/Database/Persist/Sql.hs
 formatted       463600d59544  persistent-2.18.1.0/Database/Persist/Sql/Class.hs
 formatted       e29db4bd94e4  persistent-2.18.1.0/Database/Persist/Sql/Internal.hs
-formatted       6c9af468809c  persistent-2.18.1.0/Database/Persist/Sql/Migration.hs
+formatted       e47dfeb99b74  persistent-2.18.1.0/Database/Persist/Sql/Migration.hs
 formatted       0083d567f091  persistent-2.18.1.0/Database/Persist/Sql/Orphan/PersistQuery.hs
 formatted       4514f95fa9e9  persistent-2.18.1.0/Database/Persist/Sql/Orphan/PersistStore.hs
 formatted       43c215f769e2  persistent-2.18.1.0/Database/Persist/Sql/Orphan/PersistUnique.hs
@@ -3489,7 +3489,7 @@ formatted       26584be3a1b2  persistent-2.18.1.0/Database/Persist/SqlBackend/Sq
 formatted       717f5d592a99  persistent-2.18.1.0/Database/Persist/SqlBackend/StatementCache.hs
 formatted       c43972a3241b  persistent-2.18.1.0/Database/Persist/TH.hs
 formatted       8e6e434bc03c  persistent-2.18.1.0/Database/Persist/TH/Internal.hs
-formatted       77a302ec7d11  persistent-2.18.1.0/Database/Persist/Types.hs
+formatted       5d5db2214d47  persistent-2.18.1.0/Database/Persist/Types.hs
 formatted       6b47dfb1b0ea  persistent-2.18.1.0/Database/Persist/Types/Base.hs
 formatted       b8189bc0e07d  persistent-2.18.1.0/Database/Persist/Types/SourceSpan.hs
 formatted       97d7934b792b  persistent-2.18.1.0/bench/Main.hs
@@ -4139,7 +4139,7 @@ formatted       2fbd14b119a4  servant-0.20.3.0/test/Spec.hs
 formatted       e865ae48f11b  servant-server-0.20.3.0/Setup.hs
 formatted       d7d92d13cc9f  servant-server-0.20.3.0/example/greet.hs
 formatted       6c49b4364650  servant-server-0.20.3.0/src/Servant.hs
-formatted       4cbe76cd9f48  servant-server-0.20.3.0/src/Servant/Server.hs
+formatted       6acdb9ebb4a4  servant-server-0.20.3.0/src/Servant/Server.hs
 formatted       0105b86e1d64  servant-server-0.20.3.0/src/Servant/Server/Experimental/Auth.hs
 formatted       e441259cdb2a  servant-server-0.20.3.0/src/Servant/Server/Generic.hs
 formatted       ff8ecdf7c106  servant-server-0.20.3.0/src/Servant/Server/Internal.hs
@@ -4298,7 +4298,7 @@ formatted       1be0856e3dfc  shake-0.19.9/src/Test/Util.hs
 formatted       6649fd7b7e4a  shake-0.19.9/src/Test/Verbosity.hs
 formatted       f062d6f30f44  shake-0.19.9/src/Test/Version.hs
 formatted       e865ae48f11b  singletons-3.0.4/Setup.hs
-partly-checked  41d8002da3df  singletons-3.0.4/src/Data/Singletons.hs
+partly-checked  09694045c42f  singletons-3.0.4/src/Data/Singletons.hs
 formatted       49f7a05aa31a  singletons-3.0.4/src/Data/Singletons/Decide.hs
 formatted       c0c7e68be384  singletons-3.0.4/src/Data/Singletons/ShowSing.hs
 formatted       09ee5ae97f46  singletons-3.0.4/src/Data/Singletons/Sigma.hs
@@ -4414,7 +4414,7 @@ formatted       13c6ca2f04f1  statistics-0.16.5.0/Statistics/Sample.hs
 formatted       a053f0c5f739  statistics-0.16.5.0/Statistics/Sample/Histogram.hs
 formatted       922c4d36b464  statistics-0.16.5.0/Statistics/Sample/Internal.hs
 formatted       42273746a685  statistics-0.16.5.0/Statistics/Sample/KernelDensity.hs
-formatted       dff50423213d  statistics-0.16.5.0/Statistics/Sample/KernelDensity/Simple.hs
+formatted       9d2933780af5  statistics-0.16.5.0/Statistics/Sample/KernelDensity/Simple.hs
 formatted       247700fc42ce  statistics-0.16.5.0/Statistics/Sample/Normalize.hs
 formatted       3c8cedc2a02d  statistics-0.16.5.0/Statistics/Sample/Powers.hs
 formatted       f66ab9978b3b  statistics-0.16.5.0/Statistics/Test/Bartlett.hs
@@ -4611,7 +4611,7 @@ formatted       82d7fa3baee4  text-2.1.4/src/Data/Text/Internal/Unsafe/Char.hs
 formatted       c3e06b63b59d  text-2.1.4/src/Data/Text/Internal/Validate.hs
 formatted       202f4bac46f8  text-2.1.4/src/Data/Text/Internal/Validate/Native.hs
 formatted       530d639cfd22  text-2.1.4/src/Data/Text/Internal/Validate/Simd.hs
-formatted       7b5033fcb7c4  text-2.1.4/src/Data/Text/Lazy.hs
+formatted       e21c427b7c13  text-2.1.4/src/Data/Text/Lazy.hs
 formatted       38ff2d7cb674  text-2.1.4/src/Data/Text/Lazy/Builder.hs
 formatted       12c637d6844b  text-2.1.4/src/Data/Text/Lazy/Builder/Int.hs
 formatted       bdc9227a862d  text-2.1.4/src/Data/Text/Lazy/Builder/RealFloat.hs
@@ -4669,7 +4669,7 @@ formatted       576493c582f6  time-1.16.0.1/lib/Data/Time/Calendar/Quarter.hs
 formatted       60d39a26918f  time-1.16.0.1/lib/Data/Time/Calendar/Types.hs
 formatted       392f00519a3b  time-1.16.0.1/lib/Data/Time/Calendar/Week.hs
 formatted       cf7add95407c  time-1.16.0.1/lib/Data/Time/Calendar/WeekDate.hs
-formatted       c2de888ee84b  time-1.16.0.1/lib/Data/Time/Clock.hs
+formatted       a851a6ae102d  time-1.16.0.1/lib/Data/Time/Clock.hs
 formatted       036ae6eac0d2  time-1.16.0.1/lib/Data/Time/Clock/Internal/AbsoluteTime.hs
 formatted       f06f728ef74a  time-1.16.0.1/lib/Data/Time/Clock/Internal/CTimeval.hs
 formatted       3b84bb3a894a  time-1.16.0.1/lib/Data/Time/Clock/Internal/DiffTime.hs
@@ -4880,7 +4880,7 @@ formatted       44e4b90e62b7  transformers-0.6.3.0/legacy/pre711/Data/Functor/Co
 partly-checked  720c7bce1737  transformers-0.6.3.0/legacy/pre711/Data/Functor/Product.hs
 formatted       630e7232f793  transformers-0.6.3.0/legacy/pre711/Data/Functor/Sum.hs
 formatted       e865ae48f11b  typed-process-0.2.13.0/Setup.hs
-formatted       bf577c8bf69a  typed-process-0.2.13.0/src/System/Process/Typed.hs
+formatted       ad43671d9110  typed-process-0.2.13.0/src/System/Process/Typed.hs
 formatted       15c2b44e8c94  typed-process-0.2.13.0/src/System/Process/Typed/Internal.hs
 formatted       2fbd14b119a4  typed-process-0.2.13.0/test/Spec.hs
 formatted       03ed9d907755  typed-process-0.2.13.0/test/System/Process/TypedSpec.hs
@@ -5045,7 +5045,7 @@ formatted       4059840b9201  wai-3.2.5/Network/Wai.hs
 formatted       77e84afde090  wai-3.2.5/Network/Wai/Internal.hs
 formatted       23ecfb6dd0d4  wai-3.2.5/test/Network/WaiSpec.hs
 formatted       2fbd14b119a4  wai-3.2.5/test/Spec.hs
-formatted       a20df3f2a2f4  warp-3.4.15/Network/Wai/Handler/Warp.hs
+formatted       af81a4a19ee7  warp-3.4.15/Network/Wai/Handler/Warp.hs
 formatted       400d518b6dcb  warp-3.4.15/Network/Wai/Handler/Warp/Buffer.hs
 formatted       686b3d90fa33  warp-3.4.15/Network/Wai/Handler/Warp/Conduit.hs
 formatted       b1522f28804a  warp-3.4.15/Network/Wai/Handler/Warp/Counter.hs
@@ -5064,7 +5064,7 @@ formatted       69c55babd99e  warp-3.4.15/Network/Wai/Handler/Warp/HashMap.hs
 formatted       0c695f890e12  warp-3.4.15/Network/Wai/Handler/Warp/Header.hs
 formatted       66f8fd1e9501  warp-3.4.15/Network/Wai/Handler/Warp/IO.hs
 formatted       d92af26eb2ec  warp-3.4.15/Network/Wai/Handler/Warp/Imports.hs
-formatted       dfa8803fcd3d  warp-3.4.15/Network/Wai/Handler/Warp/Internal.hs
+formatted       a80a6d26bf16  warp-3.4.15/Network/Wai/Handler/Warp/Internal.hs
 formatted       e8583e08a2e4  warp-3.4.15/Network/Wai/Handler/Warp/MultiMap.hs
 formatted       09a436f38377  warp-3.4.15/Network/Wai/Handler/Warp/PackInt.hs
 formatted       230a656223b3  warp-3.4.15/Network/Wai/Handler/Warp/ReadInt.hs

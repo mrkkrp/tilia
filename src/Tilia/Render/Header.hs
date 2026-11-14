@@ -337,16 +337,30 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
       | Nothing <- before = entry False x
       | afterAnItem,
         not (isDocEntry (unLoc x)) =
-          separatingComma LeadingCommas <> entry False x
+          foldMap (`remarkAnchor` x) before
+            <> separatingComma LeadingCommas
+            <> entry False x
       | otherwise =
           indent (breakOrSpace <> gapAbove before x <> entry False x)
     entry withComma x =
       align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
-    gapAbove before (L _ here) = case unLoc <$> before of
+    remarkAnchor p x
+      | remarkUnder ctx (spanOf p) (spanOf x),
+        Just a <- spanOf p,
+        Just b <- spanOf x,
+        c : _ <- reverse (filter commentGapBelow (printedBetween ctx a b)) =
+          let l = spanEndLine (commentSpan c) + 1
+           in indent (located (mkSpan (l, 1) (l, 2)) mempty)
+      | otherwise = mempty
+    gapAbove before x@(L _ here) = case before of
       Nothing -> mempty
       Just p
-        | isSection here -> hardBreak
-        | isPipe here, runsOn p -> hardBreak
+        | isSection here,
+          not (remarkUnder ctx (spanOf p) (spanOf x)) ->
+            hardBreak
+        | isPipe here,
+          runsOn (unLoc p) || separatedByBlank ctx (spanOf p) (spanOf x) ->
+            hardBreak
         | otherwise -> mempty
     isSection = \case
       IEGroup{} -> True
