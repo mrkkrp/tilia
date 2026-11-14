@@ -15,8 +15,8 @@ wildcardLast =
 wildcardWithARemarkAbove =
   Shape
     { name = "square"
-    , -- the sides are already bound
-      .. -- so they need no mention
+    -- the sides are already bound
+    , .. -- so they need no mention
     }
 
 wildcardInAPattern Shape{..} = name -- bound by the wildcard

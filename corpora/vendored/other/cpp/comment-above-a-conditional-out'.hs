@@ -3,7 +3,9 @@
 module Terminal.Colour
   ( -- * Colours
     Colour (..)
-  , -- A terminal without true colour knows only the sixteen named ones.
+
+  -- A terminal without true colour knows only the sixteen named ones.
+  ,
 #ifdef TRUE_COLOUR
   rgb
 #else

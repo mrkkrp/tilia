@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Attaching a stream of comments to a 'Doc'.
 --
@@ -29,6 +30,8 @@ import Tilia.Comments.Place
 import Tilia.Doc
   ( Doc (..),
     foldChildren,
+    printsNothing,
+    unwrap,
   )
 import Tilia.Doc.Combinators
 import Tilia.Span
@@ -156,6 +159,16 @@ walk margin = go
       | nothingPlaced p = (d, p)
       | otherwise = step p d
     step p = \case
+      DCat a b
+        | leadingComma a,
+          Just s <- openingRegion b,
+          (lifted@(_ : _), p0) <- claimOwnLines s p ->
+            let (a', p') = go p0 a
+                (b', p'') = go p' b
+             in ( foldMap (\c -> commentDoc c (ownLines margin False c)) lifted
+                    <> DCat a' b',
+                  p''
+                )
       DCat a b ->
         let (a', p') = go p a
             (b', p'') = go p' b
@@ -190,6 +203,31 @@ walk margin = go
             (b', p') = go p b
          in (DVariant a' b', p')
       d -> (d, p)
+
+-- | Does this print a leading comma, but for the break before it, and
+-- nothing else?
+leadingComma ::
+  -- | The document.
+  Doc ->
+  Bool
+leadingComma = \case
+  DText t -> t == ", "
+  DCat DSoftBreak (DText t) -> t == ", "
+  _ -> False
+{-# INLINE leadingComma #-}
+
+-- | The outermost region a document prints first.
+openingRegion ::
+  -- | The document.
+  Doc ->
+  Maybe Span
+openingRegion = \case
+  DLocated s _ -> Just s
+  DCat a b
+    | printsNothing a -> openingRegion a <|> openingRegion b
+    | otherwise -> openingRegion a
+  DVariant _ b -> openingRegion b
+  d -> openingRegion . snd =<< unwrap d
 
 -- | Hold the last comment, if written as @--@ lines, off a Haddock about to
 -- be written under it.
@@ -243,15 +281,27 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     _ -> space <> body
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
   HeldBack spill -> DHoldBack spill (renderComment c)
-  OnItsOwnLines ->
-    DCloseLineUnlessAfterOpener (commentGapAbove c)
-      <> body
-      <> DCloseLine
-      <> gapBelow
+  OnItsOwnLines -> ownLines margin atTheEnd c
   where
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
+
+-- | A comment on lines of its own, with the empty lines its author left
+-- around it.
+ownLines ::
+  -- | What goes at the margin.
+  Margin ->
+  -- | Does what follows only mark where the construct ends?
+  Bool ->
+  -- | The comment.
+  Comment ->
+  Doc
+ownLines margin atTheEnd c =
+  DCloseLineUnlessAfterOpener (commentGapAbove c)
+    <> commentText margin c
+    <> DCloseLine
+    <> includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
 -- | A comment, and the spacing that goes with it, as one region.
 commentDoc :: Comment -> Doc -> Doc
