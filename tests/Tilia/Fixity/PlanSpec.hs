@@ -363,6 +363,12 @@ preparation = describe "preparing a project" $ do
       imported <- canonicalizePath (dir </> "config" </> "more.config")
       checkReadiness [] dir `shouldReturn` PlanStale [imported]
 
+  it "takes a change to cabal.project.local as making the plan stale" $
+    withOwnPlan $ \dir -> do
+      writeUtf8File (dir </> "cabal.project.local") ""
+      local <- canonicalizePath (dir </> "cabal.project.local")
+      checkReadiness [] dir `shouldReturn` PlanStale [local]
+
   describe "a plan narrower than the run" $ do
     it "notices a component the plan says nothing about" $
       withTempProject (Just twoComponents) $ \dir ->

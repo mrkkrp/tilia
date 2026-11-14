@@ -104,13 +104,22 @@ cabalFilesAmong directory entries =
     doesFileExist
     (fmap (directory </>) (sort (filter (".cabal" `isSuffixOf`) entries)))
 
--- | A project configuration file and the files it imports, directly or
--- through one another, each once, with its fields or why they do not
--- parse.
+-- | The configuration files @cabal@ reads in a project's directory and the
+-- files they import, directly or through one another, each once, with its
+-- fields or why they do not parse.
 --
--- A file that cannot be read, such as an import from a URL, is passed over.
-projectConfigFiles :: FilePath -> IO [(FilePath, Either Text [Field Position])]
-projectConfigFiles = go Set.empty . pure
+-- A file that cannot be read, such as an absent one or an import from a
+-- URL, is passed over.
+projectConfigFiles ::
+  -- | The project's directory.
+  FilePath ->
+  IO [(FilePath, Either Text [Field Position])]
+projectConfigFiles directory =
+  go
+    Set.empty
+    [ directory </> name
+    | name <- ["cabal.project", "cabal.project.freeze", "cabal.project.local"]
+    ]
   where
     go _ [] = pure []
     go seen (given : rest) = do

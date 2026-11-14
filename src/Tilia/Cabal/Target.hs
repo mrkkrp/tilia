@@ -290,21 +290,27 @@ asDirectory = dropTrailingPathSeparator . normalise
 -- | The @.cabal@ files the project is made of, or which of its
 -- configuration files does not parse.
 --
--- A @cabal.project@ names them, possibly through globs; anything else means
--- the marker found by the walk upwards is itself the only package.
-packageFilesOf :: ProjectRoot -> IO (Either TargetProblem [FilePath])
-packageFilesOf root = case prMarker root of
-  PackageFile named -> pure (Right [prPath root </> named])
-  ProjectFile -> do
-    configs <- projectConfigFiles (prPath root </> "cabal.project")
-    case traverse (uncurry (first . ProjectMalformed)) configs of
-      Left problem -> pure (Left problem)
-      Right parsed -> do
-        found <-
-          traverse
-            (packageToCabalFile (prPath root))
-            (concatMap packagesInProjectConfig parsed)
-        pure (Right (Set.toList (Set.fromList (concat found))))
+-- Its configuration files name them, possibly through globs, and where the
+-- walk upwards found a @.cabal@ file rather than a @cabal.project@, that
+-- file is one of them too.
+packageFilesOf ::
+  -- | The project.
+  ProjectRoot ->
+  IO (Either TargetProblem [FilePath])
+packageFilesOf root = do
+  configs <- projectConfigFiles (prPath root)
+  case traverse (uncurry (first . ProjectMalformed)) configs of
+    Left problem -> pure (Left problem)
+    Right parsed -> do
+      found <-
+        traverse
+          (packageToCabalFile (prPath root))
+          (concatMap packagesInProjectConfig parsed)
+      pure (Right (Set.toList (Set.fromList (marked <> concat found))))
+  where
+    marked = case prMarker root of
+      PackageFile named -> [prPath root </> named]
+      ProjectFile -> []
 
 -- | The modules the project's own packages declare, whatever the conditions
 -- in their @.cabal@ files, each with the names of those that declare it.
