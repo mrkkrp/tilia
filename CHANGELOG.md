@@ -87,6 +87,10 @@
   list, with an empty line under it, stays right under it where a section
   heading follows, rather than going down to that heading with an empty
   line above it.
+* With `leading-commas = true`, a comment written right under an item of
+  an import or export list, with an empty line under it, stays under that
+  item, rather than going after the comma that leads the next item and
+  leaving the empty line between that comma and its item.
 
 ## Tilia 0.1.4.0
 

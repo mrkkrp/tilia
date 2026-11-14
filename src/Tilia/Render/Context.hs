@@ -24,6 +24,7 @@ module Tilia.Render.Context
     operatorFixity,
 
     -- * What lies between two spans
+    printedBetween,
     commentPrintedBetween,
     lineCommentWrittenBetween,
     commentRightUnder,
