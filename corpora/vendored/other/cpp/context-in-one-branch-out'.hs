@@ -8,19 +8,19 @@ import GHC.Stack (HasCallStack)
 
 traceMessage ::
 #ifdef WITH_CALLSTACK
-  (HasCallStack) =>
+    (HasCallStack) =>
 #endif
-  String
-  -> [(String, Int)]
-  -> IO ()
+    String
+    -> [(String, Int)]
+    -> IO ()
 traceMessage message _pairs = putStrLn message
 
 traceLevel
-  :: forall a.
+    :: forall a.
 #ifdef WITH_CALLSTACK
-  (HasCallStack) =>
+    (HasCallStack) =>
 #endif
-  (Show a)
-  => a
-  -> IO ()
+    (Show a)
+    => a
+    -> IO ()
 traceLevel = print

@@ -77,7 +77,7 @@ import Tilia.Fixity
     qualifierOf,
   )
 import Tilia.Render.Layout (Bracing (..))
-import Tilia.Settings (ArrowStyle (..))
+import Tilia.Settings (ArrowStyle (..), Indentation)
 import Tilia.Source
   ( Source,
     SourceType,
@@ -114,6 +114,8 @@ data Ctx = Ctx
     ctxHaddocks :: Map (Int, Int) Comment,
     -- | The knot.
     ctxKnot :: Knot,
+    -- | How far each level of nesting is indented.
+    ctxIndentation :: Indentation,
     -- | Where a list laid out on several lines puts its commas.
     ctxCommaStyle :: CommaStyle,
     -- | Where a type laid out on several lines puts its arrows.

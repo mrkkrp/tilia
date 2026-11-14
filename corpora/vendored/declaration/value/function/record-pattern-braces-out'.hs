@@ -13,11 +13,11 @@ heavier = \cases Box{boxWeight = a} Box{boxWeight = b} -> a > b; _ _ -> False
 describe p@Pallet{palletCrates = Crate{crateCount} : _} = (p, crateCount)
 
 counted crate = case crate of
-  Crate{crateCount = 0} -> "empty"
-  Crate{..} -> show crateCount
+    Crate{crateCount = 0} -> "empty"
+    Crate{..} -> show crateCount
 
 unwrap
-  Pallet
-    { palletCrates
-    , palletWrapped = True
-    } = palletCrates
+    Pallet
+        { palletCrates
+        , palletWrapped = True
+        } = palletCrates

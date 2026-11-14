@@ -16,7 +16,7 @@ deep m = m{origin.city = "Lyon", origin.postcode}
 byOperator s = s{(<+>) = max}
 
 spread c =
-  c
-    { crateCount = 3
-    , crateSku = Sku "z"
-    }
+    c
+        { crateCount = 3
+        , crateSku = Sku "z"
+        }

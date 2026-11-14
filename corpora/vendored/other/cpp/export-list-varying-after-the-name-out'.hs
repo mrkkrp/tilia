@@ -3,11 +3,11 @@
 -- | Things to export, or none.
 module Things
 #ifdef HIDE
-  () where
+    () where
 #else
-  ( thing
-  , other
-  )
+    ( thing
+    , other
+    )
 where
 
 thing :: Int

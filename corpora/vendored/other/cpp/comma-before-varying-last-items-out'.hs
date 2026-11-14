@@ -5,23 +5,23 @@ module Shapes.Derived where
 -- The comma before items that only some configurations have, where nothing
 -- follows them, goes on the line of the first of them.
 data Shape = Circle | Square
-  deriving
-    ( Eq
-    , Ord
+    deriving
+        ( Eq
+        , Ord
 #ifdef WITH_SHOW
-    , Show
+        , Show
 #endif
 #ifdef WITH_DATA
-    , Data
-    , Typeable
+        , Data
+        , Typeable
 #endif
-    )
+        )
 
 palette :: [Colour]
 palette =
-  [ red
-  , green
+    [ red
+    , green
 #ifdef WIDE_GAMUT
-  , teal
+    , teal
 #endif
-  ]
+    ]

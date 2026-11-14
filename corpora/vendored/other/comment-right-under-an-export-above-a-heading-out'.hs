@@ -1,12 +1,12 @@
 module Ledger
-  ( -- * Accounts
-    open
-  , close
-    ----------------------------------------------------------------------
+    ( -- * Accounts
+      open
+    , close
+      ----------------------------------------------------------------------
 
-    -- * Journals
-  , record
-  )
+      -- * Journals
+    , record
+    )
 where
 
 open, close, record :: Int

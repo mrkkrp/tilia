@@ -9,11 +9,12 @@ import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Span
-import Tilia.TestUtils (withEachSettings)
+import Tilia.TestUtils (indentedBy, withEachSettings)
 
 spec :: Spec
 spec = withEachSettings $ \settings -> do
   let out = printDoc settings
+      step = indentedBy settings
   describe "atoms" $ do
     it "renders nothing for an empty document" $
       out mempty `shouldBe` ""
@@ -54,48 +55,53 @@ spec = withEachSettings $ \settings -> do
   describe "indentation" $ do
     it "indents by one step" $
       out (broken (txt "a" <> indent (breakOrSpace <> txt "b")))
-        `shouldBe` "a\n  b\n"
+        `shouldBe` "a\n" <> step 1 <> "b\n"
     it "nests relative to the enclosing level" $
       out (broken (txt "a" <> indent (breakOrSpace <> txt "b" <> indent (breakOrSpace <> txt "c"))))
-        `shouldBe` "a\n  b\n    c\n"
+        `shouldBe` "a\n" <> step 1 <> "b\n" <> step 2 <> "c\n"
     it "aligns to the current column" $
       out (broken (txt "ab" <> space <> align (txt "c" <> breakOrSpace <> txt "d")))
         `shouldBe` "ab c\n   d\n"
     it "leaves no trailing whitespace on an empty line" $
       out (broken (indent (txt "a" <> hardBreak <> hardBreak <> txt "b")))
-        `shouldBe` "  a\n\n  b\n"
+        `shouldBe` step 1 <> "a\n\n" <> step 1 <> "b\n"
     it "does not indent a line with nothing on it" $
       out (broken (indent (txt "a" <> hardBreak)))
-        `shouldBe` "  a\n"
+        `shouldBe` step 1 <> "a\n"
     it "puts held-back text that spills onto lines of its own at the line's indentation" $
       out (indent (txt "  a" <> held "-- x" <> held "-- y" <> hardBreak))
-        `shouldBe` "    a -- x\n  -- y\n"
+        `shouldBe` step 1 <> "  a -- x\n" <> step 1 <> "-- y\n"
     it "lines spilled held-back text up with what was held back before it" $
       out (indent (txt "  a" <> held "-- x" <> underPrevious "-- y" <> hardBreak))
-        `shouldBe` "    a -- x\n      -- y\n"
+        `shouldBe` step 1 <> "  a -- x\n" <> step 1 <> "    -- y\n"
     it "lines it up with what was held back before it where that spilled too" $
       out (indent (txt "  a" <> held "-- x" <> held "-- y" <> underPrevious "-- z" <> hardBreak))
-        `shouldBe` "    a -- x\n  -- y\n  -- z\n"
+        `shouldBe` step 1
+          <> "  a -- x\n"
+          <> step 1
+          <> "-- y\n"
+          <> step 1
+          <> "-- z\n"
 
   describe "margin notes" $ do
     it "go to the margin right above a directive" $
       out (indent (txt "a" <> hardBreak <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
-        `shouldBe` "  a\n-- x\n#if X\n"
+        `shouldBe` step 1 <> "a\n-- x\n#if X\n"
     it "go to the margin together when several are right above a directive" $
       out (indent (cppMarginNote (txt "-- x") <> hardBreak <> cppMarginNote (txt "-- y") <> hardBreak <> directive))
         `shouldBe` "-- x\n-- y\n#if X\n"
     it "stay indented when a blank line is between them and a directive" $
       out (indent (cppMarginNote (txt "-- x") <> blankLine <> directive))
-        `shouldBe` "  -- x\n\n#if X\n"
+        `shouldBe` step 1 <> "-- x\n\n#if X\n"
     it "stay indented with no directive under them" $
       out (indent (cppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
-        `shouldBe` "  -- x\n  a\n"
+        `shouldBe` step 1 <> "-- x\n" <> step 1 <> "a\n"
     it "stay where they are on a line something else began" $
       out (indent (txt "a" <> space <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
-        `shouldBe` "  a -- x\n#if X\n"
+        `shouldBe` step 1 <> "a -- x\n#if X\n"
     it "stay indented when something else follows them on their line" $
       out (indent (cppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
-        `shouldBe` "  {- x -} a\n#if X\n"
+        `shouldBe` step 1 <> "{- x -} a\n#if X\n"
 
 held, underPrevious :: Text -> Doc
 held = DHoldBack SpillAtIndentation

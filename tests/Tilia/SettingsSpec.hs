@@ -32,6 +32,12 @@ spec = do
     it "reads a value with a sign" $
       "column-limit = +100" `limitsAt` 100
 
+    it "sets the indentation" $ do
+      parseSettings "indentation = 4\n"
+        `shouldBe` Right defaultSettings{settingsIndentation = FourColumns}
+      parseSettings "indentation = 2\n"
+        `shouldBe` Right defaultSettings{settingsIndentation = TwoColumns}
+
     it "sets leading commas" $ do
       parseSettings "leading-commas = true\n"
         `shouldBe` Right defaultSettings{settingsCommaStyle = LeadingCommas}
@@ -46,10 +52,12 @@ spec = do
 
     it "sets several settings" $
       parseSettings
-        "column-limit = 100\nleading-commas = true\nleading-arrows = true\n"
+        "column-limit = 100\nindentation = 4\nleading-commas = true\n\
+        \leading-arrows = true\n"
         `shouldBe` Right
           Settings
             { settingsColumnLimit = 100,
+              settingsIndentation = FourColumns,
               settingsCommaStyle = LeadingCommas,
               settingsArrowStyle = LeadingArrows
             }
@@ -61,6 +69,12 @@ spec = do
       "column-limit = -80" `fails` (1, why)
       "column-limit = true" `fails` (1, why)
       "column-limit = 99999999999999999999" `fails` (1, why)
+
+    it "the indentation is neither 2 nor 4" $ do
+      let why = "indentation is 2 or 4"
+      "indentation = 3" `fails` (1, why)
+      "indentation = 8" `fails` (1, why)
+      "indentation = true" `fails` (1, why)
 
     it "leading commas are neither true nor false" $
       "leading-commas = 1" `fails` (1, "leading-commas is true or false")

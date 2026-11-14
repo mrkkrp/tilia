@@ -1,7 +1,7 @@
 import Alpha
-  ( -- nothing taken yet
-  )
+    ( -- nothing taken yet
+    )
 import Beta
-  ( one
-    -- and nothing else
-  )
+    ( one
+      -- and nothing else
+    )

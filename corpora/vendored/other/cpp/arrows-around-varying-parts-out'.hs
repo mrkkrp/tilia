@@ -4,72 +4,72 @@ module Shape.Render where
 
 -- An argument only some configurations have.
 render
-  :: Shape
+    :: Shape
 #if defined(WITH_SCALE)
-  -> Double
+    -> Double
 #endif
-  -> IO ()
+    -> IO ()
 render = undefined
 
 -- An argument every configuration has its own of, with a comment above it.
 outline
-  :: Shape
+    :: Shape
 #if defined(WITH_DOUBLE)
-  -- In doubles.
-  -> Double
+    -- In doubles.
+    -> Double
 #else
-  -- In floats.
-  -> Float
+    -- In floats.
+    -> Float
 #endif
-  -> IO ()
+    -> IO ()
 outline = undefined
 
 -- A context only some configurations have, before a type over several
 -- lines and before one on a line of its own.
 trace ::
 #if defined(WITH_CALLSTACK)
-  (HasCallStack) =>
+    (HasCallStack) =>
 #endif
-  String
-  -> [(String, Int)]
-  -> IO ()
+    String
+    -> [(String, Int)]
+    -> IO ()
 trace = undefined
 
 traceShape ::
 #if defined(WITH_CALLSTACK)
-  (HasCallStack) =>
+    (HasCallStack) =>
 #endif
-  Shape -> IO ()
+    Shape -> IO ()
 traceShape = undefined
 
 -- A forall every configuration has its own of.
 measure
 #if defined(WITH_UNITS)
-  :: forall unit
-   . unit
+    :: forall unit
+     . unit
 #else
-  :: forall a
-   . a
+    :: forall a
+     . a
 #endif
-  -> Double
+    -> Double
 measure = undefined
 
 data Size = Size
-  { width
+    { width
 #if defined(WITH_DOUBLE)
-      :: Double
+        :: Double
 #else
-      :: Float
+        :: Float
 #endif
-  }
+    }
 
 -- Arguments only some configurations have, each with a Haddock.
 data Shape where
-  Square
-    :: Int
+    Square
+        :: Int
 #if defined(WITH_SIDE)
-    -- ^ The side.
-    -> Int
-    -- ^ The other side.
+        -- ^ The side.
+        -> Int
+        -- ^ The other side.
 #endif
-    -> Shape
+        -> Shape

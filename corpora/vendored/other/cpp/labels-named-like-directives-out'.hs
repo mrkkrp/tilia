@@ -11,12 +11,12 @@ import GHC.OverloadedLabels (IsLabel (..))
 
 columns :: [Column]
 columns =
-  [ #line
-  , #if
-  , #else
-  ]
+    [ #line
+    , #if
+    , #else
+    ]
 
 defined :: Column -> Bool
 defined =
-  hasValue
-    #define
+    hasValue
+        #define

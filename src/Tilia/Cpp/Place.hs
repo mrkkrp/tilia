@@ -53,6 +53,7 @@ import Tilia.Cpp.Directives
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),
+    Nesting (..),
     conditionalRange,
     foldChildren,
     mapChildren,
@@ -636,16 +637,20 @@ alternativeAt n cs = case branches of
         n < to
       ]
 
--- | How many steps further in than itself a document prints its first
--- text, if it prints any.
+-- | How many columns further in than itself a document prints its first
+-- text, if it prints any, counting a step as two.
 firstNesting :: Doc -> Maybe Int
 firstNesting = \case
   DText _ -> Just 0
   DCat a b -> firstNesting a <|> firstNesting b
-  DNest k x -> (+ k) <$> firstNesting x
+  DNest k x -> (+ depth k) <$> firstNesting x
   DVariant _ x -> firstNesting x
   DCppChoice _ bs e -> foldr ((<|>) . firstNesting . snd) (firstNesting e) bs
   d -> firstNesting . snd =<< unwrap d
+  where
+    depth = \case
+      Steps n -> 2 * n
+      Columns n -> n
 
 -- | The lines a document was printed from, first and last.
 boundsOf :: Doc -> Maybe (Int, Int)

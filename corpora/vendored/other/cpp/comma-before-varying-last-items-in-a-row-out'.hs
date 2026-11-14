@@ -9,13 +9,13 @@ module Shapes.Generic where
 -- that question come last in one answer and are followed by more in the
 -- other. The items before them still come out once, as written.
 data Shape = Circle | Square
-  deriving
-    ( Eq
-    , Ord
+    deriving
+        ( Eq
+        , Ord
 #if __GLASGOW_HASKELL__ >= 704
-    , Generic
+        , Generic
 #endif
 #if __GLASGOW_HASKELL__ >= 708
-    , Generic1
+        , Generic1
 #endif
-    )
+        )

@@ -8,11 +8,12 @@ import Test.Hspec
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Span
-import Tilia.TestUtils (withEachSettings)
+import Tilia.TestUtils (indentedBy, withEachSettings)
 
 spec :: Spec
 spec = withEachSettings $ \settings -> do
   let out = printDoc settings
+      step = indentedBy settings
   describe "groups" $ do
     it "becomes a space when flat" $
       out (flat (txt "a" <> breakOrSpace <> txt "b")) `shouldBe` "a b\n"
@@ -84,13 +85,13 @@ spec = withEachSettings $ \settings -> do
     it "keeps the closing bracket in when asked" $ do
       let items = [txt "a", txt "b"]
       out (broken (parensWith Indented (commaSep TrailingCommas items)))
-        `shouldBe` "( a,\n  b\n  )\n"
+        `shouldBe` "( a,\n  b\n" <> step 1 <> ")\n"
     it "puts leading commas under the opening bracket" $
       out (broken (ledByCommas Outdented [txt "a", txt "b", txt "c"]))
         `shouldBe` "[ a\n, b\n, c\n]\n"
     it "puts leading commas a step in with the closing bracket" $
       out (broken (ledByCommas Indented [txt "a", txt "b"]))
-        `shouldBe` "[ a\n  , b\n  ]\n"
+        `shouldBe` "[ a\n" <> step 1 <> ", b\n" <> step 1 <> "]\n"
     it "adds nothing to leading commas when flat" $
       out (flat (ledByCommas Outdented [txt "a", txt "b"]))
         `shouldBe` "[a, b]\n"
@@ -101,7 +102,7 @@ spec = withEachSettings $ \settings -> do
         `shouldBe` "(# a, b #)\n"
     it "gives a spaced pair its own lines when broken" $
       out (broken (unboxed (commaSep TrailingCommas [txt "a", txt "b"])))
-        `shouldBe` "(#\n  a,\n  b\n#)\n"
+        `shouldBe` "(#\n" <> step 1 <> "a,\n" <> step 1 <> "b\n#)\n"
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
 

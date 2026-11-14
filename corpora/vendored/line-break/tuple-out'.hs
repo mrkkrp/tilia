@@ -3,8 +3,8 @@
 module Loom.Tuples where
 
 counts =
-  ( countWarp defaultLoom
-  , countWeft defaultLoom
-  , countSelvedge defaultLoom
-  , shuttleCount
-  )
+    ( countWarp defaultLoom
+    , countWeft defaultLoom
+    , countSelvedge defaultLoom
+    , shuttleCount
+    )

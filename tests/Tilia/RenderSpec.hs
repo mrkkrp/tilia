@@ -10,7 +10,7 @@ import Test.Hspec
 import Tilia.Doc (printDoc)
 import Tilia.Render
 import Tilia.Settings (Settings)
-import Tilia.TestUtils (parsed, withEachSettings)
+import Tilia.TestUtils (indentedBy, parsed, withEachSettings)
 
 spec :: Spec
 spec =
@@ -30,10 +30,10 @@ spec =
         `shouldBe` [ "module M where",
                      "",
                      "f =",
-                     "  a",
-                     "    * b",
-                     "    + c",
-                     "    * d"
+                     indentedBy settings 1 <> "a",
+                     indentedBy settings 2 <> "* b",
+                     indentedBy settings 2 <> "+ c",
+                     indentedBy settings 2 <> "* d"
                    ]
 
 -- | Format the given lines with no fixities known and give the result back

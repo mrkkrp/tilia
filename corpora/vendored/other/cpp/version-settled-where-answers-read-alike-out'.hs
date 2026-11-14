@@ -4,14 +4,14 @@
 -- conditional and the branch of the second leaves a comma with nothing
 -- before it.
 module Data.Compat
-  (
+    (
 #if !(MIN_VERSION_base(4,16,0))
-    Solo (..)
+      Solo (..)
 #endif
 #if !(MIN_VERSION_base(4,14,0))
-  , Pair (..)
+    , Pair (..)
 #endif
-  )
+    )
 where
 
 #if !(MIN_VERSION_base(4,16,0))

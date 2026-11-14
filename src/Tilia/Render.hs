@@ -163,6 +163,7 @@ renderConfiguration settings parsed =
               ],
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot,
+          ctxIndentation = settingsIndentation (rcSettings settings),
           ctxCommaStyle = settingsCommaStyle (rcSettings settings),
           ctxArrowStyle = settingsArrowStyle (rcSettings settings)
         }

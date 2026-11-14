@@ -5,43 +5,43 @@ module Kiln.Firing where
 -- A Haddock that differs between the branches of a conditional is kept in
 -- each branch, before a constructor, a field and an argument.
 data Firing
-  = Bisque
-  |
+    = Bisque
+    |
 #ifdef GLAZE_ONLY
-    -- | Fired once, glazed.
+      -- | Fired once, glazed.
 #else
-    -- | Fired twice, the second time glazed.
+      -- | Fired twice, the second time glazed.
 #endif
-    Glaze
+      Glaze
 
 data Kiln = Kiln
-  { temperature :: Int
-  , draw :: Int
+    { temperature :: Int
+    , draw :: Int
 #ifdef ELECTRIC
-    -- ^ Watts drawn.
+      -- ^ Watts drawn.
 #else
-    -- ^ Gas burnt in an hour.
+      -- ^ Gas burnt in an hour.
 #endif
-  }
+    }
 
 fire
-  :: Kiln
-  -> Int
+    :: Kiln
+    -> Int
 #ifdef ELECTRIC
-  -- ^ Minutes to cool.
+    -- ^ Minutes to cool.
 #else
-  -- ^ Hours to cool.
+    -- ^ Hours to cool.
 #endif
-  -> Firing
+    -> Firing
 fire _ _ = Glaze
 
 -- The same for one written after what it documents.
 data Cone
-  =
+    =
 #ifdef METRIC
-    -- | Below 1100 degrees.
+      -- | Below 1100 degrees.
 #else
-    -- | Below 2000 degrees.
+      -- | Below 2000 degrees.
 #endif
-    Low
-  | High
+      Low
+    | High

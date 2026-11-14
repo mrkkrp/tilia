@@ -61,6 +61,14 @@
   lines puts each `::`, `=>` and `->` in it, and the `.` of a `forall`, at
   the start of a line, and an argument's Haddock goes under it as `-- ^`.
   [Issue 380](https://github.com/mrkkrp/tilia/issues/380).
+* With `indentation = 4` in `tilia.toml`, each level of nesting is indented
+  by four columns rather than two, and 2 and 4 are the only values it takes.
+  As in Fourmolu, a level is counted from the nearest multiple of four at or
+  left of where the code it nests in begins, the body of a guard goes one
+  level past its `|`, and the operators after a `do` block written on one
+  line stay at the indentation of their chain. Where that chain is itself a
+  statement, and its operators would begin statements of their own there,
+  the `do` block they follow is written with braces instead.
 * The extensions and the language a component puts in force behind a flag
   are settled with the value the build plan gives the flag, as
   `cabal.project` sets it or Cabal's solver picks it, rather than with the

@@ -54,6 +54,7 @@ import Tilia.Render.Name
 import Tilia.Render.Operator
 import Tilia.Render.Pattern
 import Tilia.Render.Type
+import Tilia.Settings (indentationColumns)
 import Tilia.Source.Lines (contentColumn)
 import Tilia.Span
 import Tilia.Span.Ghc
@@ -321,7 +322,8 @@ application ctx site f x =
     lastArgDoc = hsExprIn ctx (withBracing (siteBracing site) plainSite) lastArg
     initSpan = spanOf f <> (startOf <$> spanOf lastArg)
     placement
-      | maybe False (writtenOnOneLine ctx) initSpan = exprHangs (unLoc lastArg)
+      | maybe False (writtenOnOneLine ctx) initSpan =
+          exprHangs ctx (unLoc lastArg)
       | otherwise = Normal
     headAndInit bracing =
       hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
@@ -398,7 +400,7 @@ fieldBind ctx label HsFieldBind{..} =
       )
   where
     placement
-      | sameLine (spanOf hfbLHS) (spanOf hfbRHS) = exprHangs (unLoc hfbRHS)
+      | sameLine (spanOf hfbLHS) (spanOf hfbRHS) = exprHangs ctx (unLoc hfbRHS)
       | otherwise = Normal
 
 -- | One field name written after a dot.
@@ -449,11 +451,32 @@ renderExprChain ctx site = \case
             (if placement == Hanging then MayBrace else NoBrace)
             laidOut
     where
-      placement =
-        chainPlacement exprHangs (chainSpan spanOf firstOne) (NE.last operands)
+      placement = placementOf (chainSpan spanOf firstOne) (NE.last operands)
+      placementOf leader operand
+        | ledByDo operand = Normal
+        | otherwise = chainPlacement (exprHangs ctx) leader operand
+      ledByDo = \case
+        Chain (Operand e :| _) _ -> doWithinAStep ctx e
+        Chain (first :| _) _ -> ledByDo first
+        Operand _ -> False
       laidOut bracing =
-        infrangible (renderExprChain ctx (withBracing bracing site) firstOne)
+        infrangible
+          (renderExprChain ctx (withBracing (firstBracing bracing) site) firstOne)
           <> foldr (piece bracing) mempty (links operands operators)
+      -- A step would carry the operators on the last statement of a do
+      -- block written on one line before them. They stay at the chain's
+      -- indentation instead, as Fourmolu has them, but in a block, where
+      -- that would begin a statement, the do block is braced.
+      leadingDo = case firstOne of
+        Operand e -> doWithinAStep ctx e
+        Chain{} -> False
+      firstBracing bracing
+        | leadingDo && siteInBlock site = MayBrace
+        | otherwise = bracing
+      operatorLine attached
+        | leadingDo && not (siteInBlock site) =
+            breakOrSpace <> attached Hanging
+        | otherwise = attached placement
       piece bracing (previous, o, operand, isLast) rest' =
         let operandSite =
               withBracing
@@ -471,19 +494,22 @@ renderExprChain ctx site = \case
                     (tailPlacement isLast (chainSpan spanOf previous) o operand)
                     (rendered <> rest')
               else
-                attachOperator
-                  placement
-                  (chainSpan spanOf previous)
-                  (spanOf o)
-                  (chainSpan spanOf operand)
-                  (hsExpr ctx o)
-                  rendered
+                operatorLine
+                  ( \p ->
+                      attachOperator
+                        p
+                        (chainSpan spanOf previous)
+                        (spanOf o)
+                        (chainSpan spanOf operand)
+                        (hsExpr ctx o)
+                        rendered
+                  )
                   <> rest'
       tailPlacement isLast before o operand
         | isLast,
           not (maybe True isSingleLine (chainSpan spanOf operand)),
           not (lineCommentWrittenBetween ctx before (spanOf o)) =
-            chainPlacement exprHangs (spanOf o) operand
+            placementOf (spanOf o) operand
         | otherwise = Normal
       commentedOperators =
         or (zipWith commentedBefore (NE.toList operands) operators)
@@ -493,12 +519,25 @@ renderExprChain ctx site = \case
         (length operators == 1 || endsHanging)
           && not commentedOperators
           && and (zipWith couldTrail (NE.toList operands) operators)
-      endsHanging = exprHangs (unLoc (lastOperand chain)) == Hanging
+      endsHanging = exprHangs ctx (unLoc (lastOperand chain)) == Hanging
       couldTrail previous o =
         isSeparator (fixityOf ctx o)
           && maybe False (writtenOnOneLine ctx) (chainSpan spanOf previous)
           && placement == Normal
           && not (isDoBlock (lastOperand previous))
+
+-- | Is this a @do@ or @mdo@ block written on one line, with its statements
+-- nearer to where it begins than a step?
+doWithinAStep ::
+  -- | The context.
+  Ctx ->
+  -- | The expression.
+  LHsExpr GhcPs ->
+  Bool
+doWithinAStep ctx e =
+  indentationColumns (ctxIndentation ctx) > 2
+    && isDoBlock e
+    && maybe False (writtenOnOneLine ctx) (spanOf e)
 
 -- | Is this expression a @do@ or @mdo@ block?
 isDoBlock :: LHsExpr GhcPs -> Bool
@@ -1204,7 +1243,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         <> fence
           (fmap endOf separatorSpan <> spanOf body)
           ( nest
-              (if parentPlacement == Normal then 1 else 0)
+              (if parentPlacement == Normal && narrowSteps then 1 else 0)
               (attach placement (printBody bound))
           )
   where
@@ -1214,6 +1253,9 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         <> space
         <> indent (txt (reserved ctx separator))
     heldBesideTheHead = if parentPlacement == Normal then id else infrangible
+    -- Wider steps put the body only one step past the guards, as Fourmolu
+    -- does.
+    narrowSteps = indentationColumns (ctxIndentation ctx) <= 2
     headSpan = (<>) <$> (spanOf =<< ga_vbar) <*> separatorSpan
     bound = bodyIn mkBody bracing body
     separator = case style of
@@ -1408,7 +1450,7 @@ data ExprBody = ExprBody Ctx Site (LHsExpr GhcPs)
 
 instance Body ExprBody where
   printBody (ExprBody ctx site e) = hsExprIn ctx site e
-  bodyPlacement (ExprBody _ _ e) = exprHangs (unLoc e)
+  bodyPlacement (ExprBody ctx _ e) = exprHangs ctx (unLoc e)
 
 -- | A command standing as the body of an enclosing construct.
 data CmdBody = CmdBody Ctx Site (LHsCmd GhcPs)
@@ -1425,8 +1467,13 @@ instance Body CmdTopBody where
   bodyPlacement (CmdTopBody _ _ l) = cmdTopHangs (unLoc l)
 
 -- | Does this expression absorb the line break that introduces it?
-exprHangs :: HsExpr GhcPs -> Placement
-exprHangs = \case
+exprHangs ::
+  -- | The context.
+  Ctx ->
+  -- | The expression.
+  HsExpr GhcPs ->
+  Placement
+exprHangs ctx = \case
   HsDo _ (DoExpr _) _ -> Hanging
   HsDo _ (MDoExpr _) _ -> Hanging
   HsCase{} -> Hanging
@@ -1440,12 +1487,13 @@ exprHangs = \case
   HsProc _ p _
     | maybe False isSingleLine (spanOf p) -> Hanging
     | otherwise -> Normal
-  HsApp _ _ y -> exprHangs (unLoc y)
+  HsApp _ _ y -> exprHangs ctx (unLoc y)
   OpApp _ x op y
     | Just n <- operatorName op,
       occNameString (rdrNameOcc n) == "$" ->
-        exprHangs (unLoc y)
-    | otherwise -> exprHangs (unLoc x)
+        exprHangs ctx (unLoc y)
+    | doWithinAStep ctx x -> Normal
+    | otherwise -> exprHangs ctx (unLoc x)
   _ -> Normal
 
 -- | Does this expression end with a layout block, which takes in what is

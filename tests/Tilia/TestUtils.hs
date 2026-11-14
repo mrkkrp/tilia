@@ -12,6 +12,7 @@ module Tilia.TestUtils
     orthogonalityMode,
     settingsToTest,
     withEachSettings,
+    indentedBy,
     defaultParserConfig,
     parsed,
     parses,
@@ -69,7 +70,12 @@ import Tilia.Parser
     parseModule,
   )
 import Tilia.Pragma (defaultsOf)
-import Tilia.Settings (Settings (..), alternativeSettings, defaultSettings)
+import Tilia.Settings
+  ( Settings (..),
+    alternativeSettings,
+    defaultSettings,
+    indentationColumns,
+  )
 import Tilia.Source (comments)
 import Tilia.Utils (quietly, writeUtf8File)
 
@@ -179,13 +185,15 @@ settingsToTest = do
   pure $
     if orthogonality
       then
-        [ ( show commas <> ", " <> show arrows,
+        [ ( show indentation <> ", " <> show commas <> ", " <> show arrows,
             defaultSettings
-              { settingsCommaStyle = commas,
+              { settingsIndentation = indentation,
+                settingsCommaStyle = commas,
                 settingsArrowStyle = arrows
               }
           )
-        | commas <- [minBound .. maxBound],
+        | indentation <- [minBound .. maxBound],
+          commas <- [minBound .. maxBound],
           arrows <- [minBound .. maxBound]
         ]
       else
@@ -201,6 +209,16 @@ withEachSettings ::
 withEachSettings specs = do
   tested <- runIO settingsToTest
   for_ tested $ \(name, settings) -> describe ("with " <> name) (specs settings)
+
+-- | The indentation so many steps make under some settings.
+indentedBy ::
+  -- | The settings.
+  Settings ->
+  -- | How many steps.
+  Int ->
+  Text
+indentedBy settings n =
+  T.replicate (n * indentationColumns (settingsIndentation settings)) " "
 
 -- | What to parse a module of no package with: GHC2021.
 defaultParserConfig :: ParserConfig

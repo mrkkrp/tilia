@@ -33,7 +33,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Parser.Header (toArgs)
 import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 
-import Tilia.Utils (tshow)
+import Tilia.Utils (opensLineComment, tshow)
 
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with
 -- these extensions in force, and the lines GHC's lexer reads past at the
@@ -326,15 +326,6 @@ withoutComments t
   | otherwise =
       let (plain, rest) = T.break (\c -> c == '{' || c == '-') (T.drop 1 t)
        in T.take 1 t <> plain <> withoutComments rest
-
--- | Does a line comment begin here?
-opensLineComment :: Text -> Bool
-opensLineComment t = case T.stripPrefix "--" t of
-  Nothing -> False
-  Just rest ->
-    maybe True (not . symbolic . fst) (T.uncons (T.dropWhile (== '-') rest))
-  where
-    symbolic c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
 
 -- | What follows the end of a block comment this deep in comments.
 skipBlock :: Int -> Text -> Text

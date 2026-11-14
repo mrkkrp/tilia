@@ -4,6 +4,8 @@
 -- | The settings a project writes in its @tilia.toml@.
 module Tilia.Settings
   ( Settings (..),
+    Indentation (..),
+    indentationColumns,
     CommaStyle (..),
     ArrowStyle (..),
     defaultSettings,
@@ -35,12 +37,31 @@ import Tilia.Utils (tshow)
 data Settings = Settings
   { -- | The column past which what can break is broken.
     settingsColumnLimit :: !Int,
+    -- | How far each level of nesting is indented.
+    settingsIndentation :: !Indentation,
     -- | Where a list laid out on several lines puts its commas.
     settingsCommaStyle :: !CommaStyle,
     -- | Where a type laid out on several lines puts its arrows.
     settingsArrowStyle :: !ArrowStyle
   }
   deriving (Eq, Show)
+
+-- | How far each level of nesting is indented.
+data Indentation
+  = -- | Two columns.
+    TwoColumns
+  | -- | Four columns.
+    FourColumns
+  deriving (Eq, Show, Bounded, Enum)
+
+-- | The columns a level of nesting is indented by.
+indentationColumns ::
+  -- | The indentation.
+  Indentation ->
+  Int
+indentationColumns = \case
+  TwoColumns -> 2
+  FourColumns -> 4
 
 -- | Where a list laid out on several lines puts its commas.
 data CommaStyle
@@ -65,6 +86,7 @@ defaultSettings :: Settings
 defaultSettings =
   Settings
     { settingsColumnLimit = 80,
+      settingsIndentation = TwoColumns,
       settingsCommaStyle = TrailingCommas,
       settingsArrowStyle = TrailingArrows
     }
@@ -74,7 +96,8 @@ defaultSettings =
 alternativeSettings :: Settings
 alternativeSettings =
   defaultSettings
-    { settingsCommaStyle = LeadingCommas,
+    { settingsIndentation = FourColumns,
+      settingsCommaStyle = LeadingCommas,
       settingsArrowStyle = LeadingArrows
     }
 
@@ -157,6 +180,11 @@ parseSettings written = do
             Right settings{settingsColumnLimit = fromInteger i}
       ("column-limit", _) ->
         malformed n "column-limit is a whole number greater than 0"
+      ("indentation", Number 2) ->
+        Right settings{settingsIndentation = TwoColumns}
+      ("indentation", Number 4) ->
+        Right settings{settingsIndentation = FourColumns}
+      ("indentation", _) -> malformed n "indentation is 2 or 4"
       ("leading-commas", Flag b) ->
         Right
           settings

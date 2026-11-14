@@ -1,9 +1,9 @@
 module Inventory
-  ( -- * Items
-    -- in the order they come in
-    Item
-  , newItem
-  )
+    ( -- * Items
+      -- in the order they come in
+      Item
+    , newItem
+    )
 where
 
 count = 0

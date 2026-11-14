@@ -1,13 +1,13 @@
 module Ledger.Rules where
 
 import Ledger.Rule
-  ( ruleName
-  , rulePriority
-  )
+    ( ruleName
+    , rulePriority
+    )
 import Ledger.Rule
-  ( ruleMatcher
-    -- matched against the whole description
-  )
+    ( ruleMatcher
+      -- matched against the whole description
+    )
 
 named :: Rule -> String
 named = ruleName

@@ -5,6 +5,7 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
+    Nesting (..),
     Spill (..),
     printsNothing,
     Conditional (..),
@@ -24,8 +25,9 @@ import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Tilia.Settings (Settings (..))
+import Tilia.Settings (Settings (..), indentationColumns)
 import Tilia.Span (Span)
+import Tilia.Utils (opensLineComment)
 
 ----------------------------------------------------------------------------
 -- Documents
@@ -65,9 +67,8 @@ data Doc
     DVerbatimBreak !LineStart !TrailingWhitespace
   | -- | Concatenation. See the 'Semigroup' instance.
     DCat !Doc !Doc
-  | -- | Indent the enclosed document by the given number of steps, relative
-    -- to the current indentation.
-    DNest !Int !Doc
+  | -- | Indent the enclosed document relative to the current indentation.
+    DNest !Nesting !Doc
   | -- | Indent the enclosed document to whatever column the line has
     -- reached, so that it lines up under itself when broken.
     DAlign !Doc
@@ -182,8 +183,28 @@ data TrailingWhitespace
 -- Rendering
 
 -- | Columns per indentation step.
-indentStep :: Int
-indentStep = 2
+step ::
+  -- | What the document is printed with.
+  Settings ->
+  Int
+step = indentationColumns . settingsIndentation
+
+-- | The indentation a nesting leads to from another, where a step wider
+-- than two columns is taken from the nearest multiple of itself at or left
+-- of it, as Fourmolu does.
+nestedBy ::
+  -- | Columns per indentation step.
+  Int ->
+  -- | The nesting.
+  Nesting ->
+  -- | The indentation to step in from.
+  Int ->
+  Int
+nestedBy columns nesting indent = case nesting of
+  Steps n
+    | columns > 2, n > 0 -> indent `div` columns * columns + n * columns
+    | otherwise -> indent + n * columns
+  Columns n -> indent + n
 
 -- | What the engine carries while walking a document.
 data Env = Env
@@ -227,6 +248,14 @@ data Out = Out
     outClosed :: !Bool
   }
 
+-- | How far 'DNest' moves the indentation.
+data Nesting
+  = -- | So many indentation steps, as many columns each as the project asks.
+    Steps !Int
+  | -- | So many columns, whatever the indentation step.
+    Columns !Int
+  deriving (Eq, Show)
+
 -- | Where text held back for the end of a line goes when something was held
 -- back for it first.
 data Spill
@@ -252,7 +281,10 @@ data Line = Line
     -- anything was on it says.
     lineContinues :: !Bool,
     -- | Its type if it is a preprocessor directive.
-    lineDirective :: !(Maybe CppDirectiveType)
+    lineDirective :: !(Maybe CppDirectiveType),
+    -- | Where in its body a line comment held back for its end begins, where
+    -- one was and nothing went under it.
+    lineRemark :: !(Maybe Int)
   }
 
 -- | The type of a preprocessor directive.
@@ -275,7 +307,8 @@ newLine =
       linePinned = False,
       lineNote = False,
       lineContinues = False,
-      lineDirective = Nothing
+      lineDirective = Nothing,
+      lineRemark = Nothing
     }
 
 -- | A line as it is printed.
@@ -302,7 +335,7 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc settings doc = finish (go env doc emptyOut)
+printDoc settings doc = finish (step settings) (go env doc emptyOut)
   where
     env =
       Env
@@ -339,9 +372,13 @@ go env = \case
   DVerbatimBreak lineStart trailing ->
     verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
-  DNest n d -> go env{envIndent = envIndent env + n * indentStep} d
+  DNest n d ->
+    go env{envIndent = nestedBy (step (envSettings env)) n (envIndent env)} d
   DAlign d -> \out ->
-    go env{envIndent = max (envIndent env) (outColumn out)} d out
+    let column
+          | linePinned (outLine out) = outColumn out
+          | otherwise = max (envIndent env) (outColumn out)
+     in go env{envIndent = column} d out
   DCppMarginNote d -> \out ->
     go env{envNote = not (hasContent out)} d out
   DGroup l d -> \out ->
@@ -617,14 +654,19 @@ completing ::
 completing trailing indent out =
   fresh out{outLines = reverse (finished : spilledLines) <> outLines out}
   where
-    finished = (outLine out){lineBody = currentLine trailing out}
+    finished = (outLine out){lineBody = body, lineRemark = remark}
+    body = currentLine trailing out
+    heldBack = heldBackFirst trailing out
+    remark
+      | [_] <- outHeldBack out,
+        T.length body > T.length heldBack,
+        "--" `T.isPrefixOf` heldBack =
+          Just (T.length body - T.length heldBack)
+      | otherwise = Nothing
     spilled = drop 1 (outHeldBack out)
     spilledLines = zipWith below columns spilled
     columns = drop 1 (scanl columnFor firstColumn (fmap fst spilled))
-    firstColumn =
-      lineIndent finished
-        + T.length (lineBody finished)
-        - T.length (heldBackFirst trailing out)
+    firstColumn = lineIndent finished + T.length body - T.length heldBack
     below column (_, t) =
       newLine
         { lineIndent = column,
@@ -722,16 +764,28 @@ adjustTrailingWhitespace = \case
 
 -- | Assemble the final text: one trailing newline, no blank lines at the
 -- end, and trailing whitespace only where a verbatim line keeps it.
-finish :: Out -> Text
-finish out =
+finish ::
+  -- | Columns per indentation step.
+  Int ->
+  -- | What the walk wrote.
+  Out ->
+  Text
+finish columns out =
   case dropWhile (T.null . lineBody) (outLines (breakLine 0 out)) of
     [] -> ""
-    ls -> T.unlines (lineText <$> notesToMargin (continued (reverse ls)))
+    ls ->
+      T.unlines . fmap lineText $
+        remarksCarriedOn (notesToMargin (continued columns (reverse ls)))
 
 -- | Indent each alternative of a conditional that continues the line before
 -- the conditional further than that line.
-continued :: [Line] -> [Line]
-continued = walk [] 0 False
+continued ::
+  -- | Columns per indentation step.
+  Int ->
+  -- | The lines.
+  [Line] ->
+  [Line]
+continued columns = walk [] 0 False
   where
     walk frames previous pending = \case
       [] -> []
@@ -752,13 +806,54 @@ continued = walk [] 0 False
         | lineContinues l,
           not (linePinned l),
           at <= before ->
-            (before, before - at + indentStep) : rest
+            (before, before - at + columns) : rest
         where
           at = lineIndent l + sum (fmap snd rest)
       _ -> frames
     moved n l
       | n == 0 || linePinned l || T.null (lineBody l) = l
       | otherwise = l{lineIndent = lineIndent l + n}
+
+-- | Put the comments right under a line that ends with a remark at the
+-- remark's column where they would begin right of it, which is where a
+-- comment carrying the remark on goes and how they are read again.
+remarksCarriedOn ::
+  -- | The lines.
+  [Line] ->
+  [Line]
+remarksCarriedOn = \case
+  l : ls
+    | Just at <- lineRemark l,
+      not (linePinned l) ->
+        let column = lineIndent l + at
+            (under, rest) = span (rightOf column) ls
+         in l
+              : fmap (\c -> c{lineIndent = column}) under
+                <> remarksCarriedOn rest
+  l : ls -> l : remarksCarriedOn ls
+  [] -> []
+  where
+    rightOf column c =
+      not (linePinned c)
+        && lineIndent c > column
+        && maybe False plain (commentOpening (lineBody c))
+    plain =
+      maybe True ((`notElem` ['|', '^', '*', '$']) . fst)
+        . T.uncons
+        . T.stripStart
+
+-- | What follows the opening of a comment that text begins with, rather
+-- than an operator made of dashes or a pragma, if it begins with one.
+commentOpening ::
+  -- | The text.
+  Text ->
+  Maybe Text
+commentOpening t
+  | opensLineComment t = Just (T.dropWhile (== '-') t)
+  | Just inside <- T.stripPrefix "{-" t,
+    not ("#" `T.isPrefixOf` inside) =
+      Just inside
+  | otherwise = Nothing
 
 -- | Move every note right above a directive to the margin.
 notesToMargin :: [Line] -> [Line]

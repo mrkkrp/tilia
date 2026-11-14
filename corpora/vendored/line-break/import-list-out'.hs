@@ -3,13 +3,13 @@
 module Loom.Imports where
 
 import Data.Map.Strict
-  ( Map
-  , adjust
-  , alter
-  , delete
-  , empty
-  , findWithDefault
-  , fromList
-  , insert
-  )
+    ( Map
+    , adjust
+    , alter
+    , delete
+    , empty
+    , findWithDefault
+    , fromList
+    , insert
+    )
 import Data.Set (Set, member)

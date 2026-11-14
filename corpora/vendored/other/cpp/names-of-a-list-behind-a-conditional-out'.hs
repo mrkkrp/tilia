@@ -3,26 +3,26 @@
 module Terminal.Signals where
 
 import Data.List
-  ( nub
-  , sortOn
+    ( nub
+    , sortOn
 #if MIN_VERSION_base(4,8,0)
-  , foldl1
+    , foldl1
 #endif
-  , group
-  )
+    , group
+    )
 import System.Posix.Signals
-  ( Handler (..)
-  , installHandler
+    ( Handler (..)
+    , installHandler
 #if MIN_VERSION_unix(2,7,0)
-  , raiseSignal
-  , sigINT
+    , raiseSignal
+    , sigINT
 #if MIN_VERSION_unix(2,8,0)
-  , sigWINCH
+    , sigWINCH
 #endif
 #else
-  , sigTERM
-  , signalProcess
+    , sigTERM
+    , signalProcess
 #endif
-  , blockSignals
-  , emptySignalSet
-  )
+    , blockSignals
+    , emptySignalSet
+    )

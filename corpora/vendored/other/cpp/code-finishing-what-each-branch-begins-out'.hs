@@ -16,75 +16,75 @@ lookupKey (Just (k, _)) d =
 #else
 lookupKey (Just (k, _)) _d =
 #endif
-  k + 1
+    k + 1
 lookupKey Nothing d = d
 
 -- Alternatives of a case.
 expiry :: Maybe (Int, Int) -> Int
 expiry m = case m of
 #if MIN_VERSION_base(4,16,0)
-  Just (_, t) ->
+    Just (_, t) ->
 #else
-  Just (t, _) ->
+    Just (t, _) ->
 #endif
-    t * 60
-  Nothing -> 0
+        t * 60
+    Nothing -> 0
 
 -- Signatures.
 #if MIN_VERSION_base(4,16,0)
 store
-  :: (Show k, Ord k)
+    :: (Show k, Ord k)
 #else
 store
-  :: (Show k)
+    :: (Show k)
 #endif
-  => k -> String
+    => k -> String
 store = show
 
 -- Applications.
 #if MIN_VERSION_base(4,16,0)
 render k =
-  pad
-    4
+    pad
+        4
 #else
 render k =
-  pad
-    4
-    ' '
+    pad
+        4
+        ' '
 #endif
-    (show k)
+        (show k)
 
 -- Blocks.
 dump :: [Int] -> IO ()
 dump ks = do
 #if MIN_VERSION_base(4,16,0)
-  forM_ ks $ \k -> do
+    forM_ ks $ \k -> do
 #else
-  forM_ (reverse ks) $ \k -> do
+    forM_ (reverse ks) $ \k -> do
 #endif
-    print k
-    print (k * 2)
+        print k
+        print (k * 2)
 
 -- The alternatives of a lambda case.
 classify :: Int -> Int
 #if MIN_VERSION_base(4,16,0)
 classify =
-  negate >>> abs >>> \case
+    negate >>> abs >>> \case
 #else
 classify =
-  abs >>> \case
+    abs >>> \case
 #endif
-    0 -> 1
-    n -> n
+        0 -> 1
+        n -> n
 
 -- The qualifiers of a list comprehension.
 names :: [(Int, String)] -> [String]
 #if MIN_VERSION_base(4,16,0)
 names xs =
-  [ show n ++ s
+    [ show n ++ s
 #else
 names xs =
-  [ s
+    [ s
 #endif
-  | (n, s) <- xs
-  ]
+    | (n, s) <- xs
+    ]

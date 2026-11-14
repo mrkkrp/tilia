@@ -8,11 +8,11 @@ laws :: (Ring a) => Proxy a -> [Laws]
 laws :: Proxy a -> [Laws]
 #endif
 laws p =
-  [ eqLaws p
+    [ eqLaws p
 #ifdef MIN_VERSION_semirings
-  , ringLaws p
+    , ringLaws p
 #endif
 #ifdef MIN_VERSION_vector
-  , primLaws p
+    , primLaws p
 #endif
-  ]
+    ]
