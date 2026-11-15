@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Documents: what they hold, and turning them into source text.
 module Tilia.Doc
@@ -11,6 +12,7 @@ module Tilia.Doc
     TrailingWhitespace (..),
     Layout (..),
     printDoc,
+    leadingComma,
     printsNothing,
     printsOnOneLine,
     foldChildren,
@@ -46,6 +48,10 @@ import Tilia.Doc.Internal
     wrap,
   )
 import Tilia.Span (spanEndLine, spanStartLine)
+
+-- | A comma leading the item after it, hung two columns left of the item.
+leadingComma :: Doc
+leadingComma = DNest (Columns (-2)) (DText ", ")
 
 -- | Does this document print on one line, holding neither a line break nor
 -- a choice?
