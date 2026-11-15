@@ -9,6 +9,7 @@ module Tilia.Source.Lines
     linesOf,
     dropping,
     lineTexts,
+    lineTextsFrom,
     lineAt,
     blankAt,
     blankAcross,
@@ -86,6 +87,15 @@ dropping ranges ls =
 -- configuration has of them.
 lineTexts :: Lines -> [Text]
 lineTexts = IntMap.elems . lnWritten
+
+-- | The text of the lines from the given one on.
+lineTextsFrom ::
+  -- | The first line to give.
+  Int ->
+  -- | The lines.
+  Lines ->
+  [Text]
+lineTextsFrom n = IntMap.elems . snd . IntMap.split (n - 1) . lnWritten
 
 -- | The text of a line, if this configuration of the module has one.
 lineAt :: Int -> Lines -> Maybe Text

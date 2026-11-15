@@ -88,6 +88,10 @@
   did next to a function or a data declaration, rather than getting an
   empty line between them. So does a pragma naming one of a type's
   constructors, fields or methods, next to that type.
+* A module with many Haddocks takes time linear in its length to format
+  rather than quadratic: one with 16,000 Haddocks over 48,000 lines took 4.2
+  seconds to format, and takes 0.7.
+  [PR 421](https://github.com/mrkkrp/tilia/pull/421).
 
 ## Tilia 0.1.4.0
 

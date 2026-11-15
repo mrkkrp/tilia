@@ -51,7 +51,7 @@ import Tilia.Source.Lines
     contentColumn,
     isDirective,
     lineAt,
-    lineTexts,
+    lineTextsFrom,
     offsetOf,
   )
 import Tilia.Span (Span (..), covers)
@@ -126,7 +126,7 @@ mkComment ls spn = \case
   GHC.ITlineComment t _ -> Just (commentAt ls s LineComment (T.pack t))
   GHC.ITblockComment t _ -> Just (commentAt ls s BlockComment (T.pack t))
   GHC.ITdocComment _ _ ->
-    Just (commentAt ls s DocComment (sliceSpan (lineTexts ls) s))
+    Just (commentAt ls s DocComment (sliceSpan ls s))
   _ -> Nothing
   where
     s = spanOfReal spn
@@ -188,7 +188,7 @@ transcendentComment ls c = case commentStyle c of
           normalizeBody
             (spanStartColumn s)
             BlockComment
-            (sliceSpan (lineTexts ls) s)
+            (sliceSpan ls s)
       }
   _ -> c
   where
@@ -223,12 +223,16 @@ spaceAfterDashes _ t = case T.stripPrefix "--" t of
       | otherwise -> "-- " <> rest
 
 -- | The text a span covers.
-sliceSpan :: [Text] -> Span -> Text
-sliceSpan sourceLines spn =
+sliceSpan ::
+  -- | The module's lines.
+  Lines ->
+  -- | The span.
+  Span ->
+  Text
+sliceSpan ls spn =
   T.intercalate "\n" (zipWith clip [startLine ..] covered)
   where
-    covered =
-      take (endLine - startLine + 1) (drop (startLine - 1) sourceLines)
+    covered = take (endLine - startLine + 1) (lineTextsFrom startLine ls)
     clip n l =
       (if n == startLine then T.drop (offsetOf l startCol) else id)
         . (if n == endLine then T.take (offsetOf l endCol) else id)
@@ -406,7 +410,7 @@ asOrdinary ls c
                     then spanEndColumn s
                     else columnOf l (T.length l)
               }
-      pure (commentAt ls piece DocComment (sliceSpan (lineTexts ls) piece))
+      pure (commentAt ls piece DocComment (sliceSpan ls piece))
 
 -- | Has 'asOrdinary' escaped this comment's trigger?
 --
