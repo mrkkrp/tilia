@@ -32,7 +32,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Tilia.Cpp.Directives (Guard (..), Varied (..), untouched)
-import Tilia.Cpp.Place (foldRegions, regionOf)
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),
@@ -40,6 +39,7 @@ import Tilia.Doc
     Wrapper (..),
     conditionalRange,
     foldChildren,
+    foldRegions,
     layoutInside,
     leadingComma,
     mapChildren,
@@ -49,6 +49,7 @@ import Tilia.Doc
     printedFrom,
     printsNothing,
     printsOnOneLine,
+    regionOf,
     spine,
     spineAt,
     unwrap,

@@ -7,9 +7,6 @@ module Tilia.Cpp.Place
   ( CommentSummary,
     summarizeComments,
     restoreUnprinted,
-    regionOf,
-    regionsIn,
-    foldRegions,
   )
 where
 
@@ -59,6 +56,8 @@ import Tilia.Doc
     mapChildren,
     onlySpacing,
     printsNothing,
+    regionOf,
+    regionsIn,
     spine,
     unwrap,
     wrap,
@@ -392,28 +391,6 @@ anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
 -- everything written on its line.
 farRight :: Int
 farRight = maxBound `div` 2
-
--- | Every region a document records, and what it holds.
-regionsIn :: Doc -> [(Span, Doc)]
-regionsIn = foldRegions (\s d inside -> (s, d) : inside)
-
--- | Fold the regions a document records, giving each its span, what it
--- holds, and what the fold made of the regions inside it.
-foldRegions :: (Monoid m) => (Span -> Doc -> m -> m) -> Doc -> m
-foldRegions f = go
-  where
-    go = \case
-      DLocated s d -> f s d (go d)
-      DFence s d -> f s d (go d)
-      d -> foldChildren go d
-{-# INLINE foldRegions #-}
-
--- | The smallest span covering the outermost regions a document records.
-regionOf :: Doc -> Maybe Span
-regionOf = \case
-  DLocated s _ -> Just s
-  DFence s _ -> Just s
-  d -> foldChildren regionOf d
 
 -- | Make sure a conditional is in the document, putting it where it was
 -- written if the merge left it out.

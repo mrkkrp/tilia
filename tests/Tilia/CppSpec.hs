@@ -14,8 +14,7 @@ import Test.Hspec
 
 import Tilia.Cpp
 import Tilia.Cpp.Directives (configurations, implied)
-import Tilia.Cpp.Place (regionsIn)
-import Tilia.Doc (Doc)
+import Tilia.Doc (Doc, regionsIn)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)

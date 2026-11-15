@@ -17,6 +17,9 @@ module Tilia.Doc
     printsOnOneLine,
     foldChildren,
     mapChildren,
+    regionsIn,
+    foldRegions,
+    regionOf,
     spine,
     spineAt,
     printedFrom,
@@ -47,7 +50,7 @@ import Tilia.Doc.Internal
     unwrap,
     wrap,
   )
-import Tilia.Span (spanEndLine, spanStartLine)
+import Tilia.Span (Span, spanEndLine, spanStartLine)
 
 -- | A comma leading the item after it, hung two columns left of the item.
 leadingComma :: Doc
@@ -101,6 +104,40 @@ mapChildren f = \case
   DVariant a b -> DVariant (f a) (f b)
   DCppChoice cs bs e -> DCppChoice cs [(g, f d) | (g, d) <- bs] (f e)
   d -> maybe d (\(w, x) -> wrap w (f x)) (unwrap d)
+
+-- | Every region a document records, and what it holds.
+regionsIn ::
+  -- | The document.
+  Doc ->
+  [(Span, Doc)]
+regionsIn = foldRegions (\s d inside -> (s, d) : inside)
+
+-- | Fold the regions a document records, giving each its span, what it
+-- holds, and what the fold made of the regions inside it.
+foldRegions ::
+  (Monoid m) =>
+  -- | What to make of a region, given what was made of those inside it.
+  (Span -> Doc -> m -> m) ->
+  -- | The document.
+  Doc ->
+  m
+foldRegions f = go
+  where
+    go = \case
+      DLocated s d -> f s d (go d)
+      DFence s d -> f s d (go d)
+      d -> foldChildren go d
+{-# INLINE foldRegions #-}
+
+-- | The smallest span covering the outermost regions a document records.
+regionOf ::
+  -- | The document.
+  Doc ->
+  Maybe Span
+regionOf = \case
+  DLocated s _ -> Just s
+  DFence s _ -> Just s
+  d -> foldChildren regionOf d
 
 -- | A document as the sequence of things it concatenates.
 spine ::
