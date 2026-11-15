@@ -1,0 +1,9 @@
+{-# LANGUAGE TypeFamilies #-}
+
+signature Codec.Width where
+
+data Codec
+
+type family Width c where ..
+
+width :: Codec -> Int
