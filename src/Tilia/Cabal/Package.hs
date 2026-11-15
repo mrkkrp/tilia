@@ -11,7 +11,7 @@ module Tilia.Cabal.Package
     declaredModules,
     declaredModuleNames,
     packageSourceDirs,
-    packageExtensions,
+    moduleExtensions,
     PackageReader,
     newPackageReader,
     ComponentSection (..),
@@ -440,19 +440,41 @@ packageSourceDirs described = nub (named <> ["."])
         d <- hsSourceDirs (sectionInfo (ownSection branch))
       ]
 
--- | What any branch of a package puts in force, all together: every edition
--- it names and every extension it turns on or off, in order.
-packageExtensions :: GenericPackageDescription -> Defaults
-packageExtensions described =
-  defaultsOf
-    baseline
-    (mapMaybe extensionSwitch (concatMap usedExtensions infos))
+-- | What the components of a package that list a module put in force, or
+-- every component where none lists it, all together: every edition they
+-- name and every extension they turn on or off, in order.
+moduleExtensions ::
+  -- | The package.
+  GenericPackageDescription ->
+  -- | The module.
+  Text ->
+  Defaults
+moduleExtensions described = \modName ->
+  maybe whole (byListing Map.!) (Map.lookup modName listing)
   where
-    infos =
-      [sectionInfo (ownSection branch) | branch <- packageBranches described]
-    baseline = case mapMaybe (ghcLanguage <=< defaultLanguage) infos of
-      [] -> GHC.languageExtensions (Just GHC.Haskell98)
-      editions -> nub (concatMap (GHC.languageExtensions . Just) editions)
+    components = [branches | (_, _, branches) <- packageComponents described]
+    listing =
+      Map.fromListWith
+        (flip (<>))
+        [ (m, [i])
+        | (i, branches) <- zip [0 :: Int ..] components,
+          m <- nub (fmap fst (concatMap snd (declaredModules branches)))
+        ]
+    byListing =
+      Map.fromList
+        [ (is, inForce (concatMap (components !!) is))
+        | is <- nub (Map.elems listing)
+        ]
+    whole = inForce (concat components)
+    inForce branches =
+      defaultsOf
+        baseline
+        (mapMaybe extensionSwitch (concatMap usedExtensions infos))
+      where
+        infos = [sectionInfo (ownSection branch) | branch <- branches]
+        baseline = case mapMaybe (ghcLanguage <=< defaultLanguage) infos of
+          [] -> GHC.languageExtensions (Just GHC.Haskell98)
+          editions -> nub (concatMap (GHC.languageExtensions . Just) editions)
 
 -- | What one branch of a component declares.
 data ComponentSection = ComponentSection
