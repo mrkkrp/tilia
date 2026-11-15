@@ -169,6 +169,15 @@ spec = do
       lookupFixity (scopeOfBoth "import Types\n") InTerms Nothing (OpName ":>")
         `shouldBe` Resolved defaultFixity ReportDefault
 
+  describe "an equality nothing in scope declares" $ do
+    it "is infix 4 among types, as GHC takes it" $
+      lookupFixity (scopeOfBoth "import Terms\n") InTypes Nothing (OpName "~")
+        `shouldBe` Resolved (Fixity NoAssoc 4) BuiltIn
+
+    it "is not an equality among terms" $
+      lookupFixity (scopeOfBoth "import Terms\n") InTerms Nothing (OpName "~")
+        `shouldBe` Resolved defaultFixity ReportDefault
+
     it "prefers the type it finds to the term it could fall back on" $
       lookupFixity (scopeOfBoth "import Types\nimport Terms\n") InTypes Nothing (OpName ":>")
         `shouldBe` Resolved (Fixity RightAssoc 4) (DeclaredIn "Types")
