@@ -98,6 +98,10 @@
   command in parentheses broken over lines in a chain closes them under the
   opening one.
   [PR 422](https://github.com/mrkkrp/tilia/pull/422).
+* A long chain of operators takes time linear in its length to format
+  rather than quadratic: one of 16,000 operands took 6.1 seconds to format,
+  and takes 0.65.
+  [PR 422](https://github.com/mrkkrp/tilia/pull/422).
 
 ## Tilia 0.1.4.0
 
