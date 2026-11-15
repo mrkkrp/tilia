@@ -5,6 +5,7 @@
 module Tilia.CppSpec (spec) where
 
 import Data.Either (isLeft, isRight)
+import Data.List (sort)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, maybeToList)
@@ -13,7 +14,7 @@ import Data.Text qualified as T
 import Test.Hspec
 
 import Tilia.Cpp
-import Tilia.Cpp.Directives (configurations, implied)
+import Tilia.Cpp.Directives (configurations, coveringLeaves, implied)
 import Tilia.Doc (Doc, regionsIn)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
@@ -250,6 +251,22 @@ spec = do
     it "is their sum where enumerating them would be their product" $
       (said (length <$> branchLeaves (sideBySide 20)), said (countLeaves (sideBySide 20)))
         `shouldBe` (Right 21, Right (2 ^ (20 :: Int)))
+
+  describe "covering every branch in few configurations" $ do
+    it "takes as many as the widest conditional has branches" $
+      said (length <$> coveringLeaves (sideBySide 20)) `shouldBe` Right 2
+
+    it "takes a nested branch the others pass by on its own" $
+      declarationsIn coveringLeaves nested
+        `shouldBe` Right
+          [ ["a = 1", "after = 4"],
+            ["a = 1", "b = 2", "after = 4"],
+            ["a = 3", "after = 4"]
+          ]
+
+    it "takes the branches of one aborting with #error on their own" $
+      declarationsIn coveringLeaves behindAnError
+        `shouldBe` Right [["x = 1"], ["x = 2"]]
 
   describe "parsing every branch" $ do
     it "parses branches that parse together as one module" $
@@ -538,6 +555,28 @@ sideBySide n =
           ]
         | i <- [1 .. n]
         ]
+
+-- | A conditional whose first branch aborts with @#error@, before another.
+behindAnError :: Text
+behindAnError =
+  T.unlines
+    [ "module M where",
+      "#if A",
+      "#error \"no\"",
+      "#endif",
+      "#if B",
+      "x = 1",
+      "#else",
+      "x = 2",
+      "#endif"
+    ]
+
+-- | The declarations of each configuration some leaves give, in order.
+declarationsIn ::
+  (Text -> Either CppError [Text]) -> Text -> Either Text [[Text]]
+declarationsIn leavesOf source =
+  sort . fmap (filter (" = " `T.isInfixOf`) . T.lines)
+    <$> said (leavesOf source)
 
 -- | A module with @n@ conditionals, each around a declaration of its own
 -- and kept apart from the next by one that is not.

@@ -1797,6 +1797,29 @@ withPlan plan = do
         answer <- askModule rs Nothing "Partly"
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
 
+    it "reads a branch at a time where the first ones do not parse together"
+      $ withFakeProject
+        [ ( "src/Apart.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "module Apart ((<+>)) where",
+                "(<+>) :: Int -> Int -> Int",
+                "a <+> b = c",
+                "#ifdef FAST",
+                "  where c = a + b",
+                "#endif",
+                "#ifdef SLOW",
+                "  where c = b + a",
+                "#else",
+                "infixr 5 <+>",
+                "#endif"
+              ]
+          )
+        ]
+      $ \rs -> do
+        answer <- askModule rs Nothing "Apart"
+        unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
+
     it "keeps the fixity of a name only one configuration exports"
       $ withFakeProject
         [ ( "src/Partly.hs",
