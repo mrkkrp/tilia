@@ -144,16 +144,16 @@ vendoredExamples =
             { expectSkip = [],
               expectUnreadable = [],
               expectDeclined =
-                [ "other" </> "position-pragmas.hs",
-                  "other" </> "line-markers.hs",
-                  "other" </> "cpp" </> "unbalanced.hs",
-                  "other" </> "cpp" </> "define-in-a-quasiquote.hs",
-                  "other" </> "cpp" </> "macro-standing-for-a-bracket.hs",
-                  "other" </> "cpp" </> "macro-before-a-leading-comma.hs",
-                  "other" </> "cpp" </> "branch-opening-a-bracket-it-does-not-close.hs",
-                  "other" </> "cpp" </> "line-marker-passed-on-by-cpp.hs",
-                  "other" </> "magic-comment-inside-a-declaration.hs",
-                  "other" </> "cpp" </> "directive-left-as-written.hs"
+                [ "pragma" </> "position" </> "position-pragmas.hs",
+                  "pragma" </> "position" </> "line-markers.hs",
+                  "cpp" </> "directive" </> "unbalanced.hs",
+                  "cpp" </> "directive" </> "include-in-a-quasi-quotation.hs",
+                  "cpp" </> "macro" </> "macro-standing-for-a-bracket.hs",
+                  "cpp" </> "macro" </> "macro-before-a-leading-comma.hs",
+                  "cpp" </> "expression" </> "branch-opening-a-bracket-it-does-not-close.hs",
+                  "cpp" </> "directive" </> "line-marker-passed-on-by-cpp.hs",
+                  "magic-comment" </> "magic-comment-inside-a-declaration.hs",
+                  "cpp" </> "directive" </> "directive-left-as-written.hs"
                 ]
             },
       corpusInPackages = False
