@@ -102,6 +102,45 @@
   rather than quadratic: one of 16,000 operands took 6.1 seconds to format,
   and takes 0.65.
   [PR 422](https://github.com/mrkkrp/tilia/pull/422).
+* An operator that an imported module read from its source may declare in
+  a top-level Template Haskell splice, or that its export list names though
+  neither the module nor its imports define it, is left unsettled, so a
+  module using it is declined rather than formatted as if it were
+  `infixl 9`.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* A build plan solved for a compiler other than the one on the `PATH` is
+  solved again, rather than read with the version macros of the compiler
+  it was solved for. Where solving leaves it so, as when `with-compiler`
+  names another compiler, the next run does not solve it again.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* A build plan naming a directory of a project's package that no longer
+  holds a `.cabal` file, as after the package was moved or renamed, is
+  solved again. [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* A dependency's module is read with the extensions that the components
+  listing it put in force, rather than with those of every component of
+  its package, so a test suite turning `NoImplicitPrelude` on no longer
+  takes the Prelude's operators away from the library's modules.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* A module that exports another module's operator under a qualified name,
+  as in `(O.<+>)`, while declaring an operator of that name of its own
+  hands on the other module's fixity, rather than its own, whether its
+  source or its interface is read.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* `~` among types takes the fixity GHC gives its own equality, `infix 4`,
+  where nothing in scope declares it, rather than `infixl 9`.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* An operator that a module's CPP branches each declare a fixity for, and
+  not all the same one, is ambiguous and the module is declined, rather than
+  formatted throughout with the fixity of its last branch.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* A dependency's module full of conditionals is parsed a few times rather
+  than once for every branch, which takes reading every module of `lens`
+  out of its tarball 40% fewer instructions.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* What `ghc-pkg` says the compiler can see is remembered once for each
+  compiler, rather than once for each build plan, so a new plan no longer
+  runs `ghc-pkg` again or adds another copy of the answer to the cache.
+  [PR 423](https://github.com/mrkkrp/tilia/pull/423).
 
 ## Tilia 0.1.4.0
 
