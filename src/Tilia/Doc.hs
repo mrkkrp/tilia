@@ -37,11 +37,15 @@ import Tilia.Doc.Internal
     Nesting (..),
     Spill (..),
     TrailingWhitespace (..),
+    Wrapper (..),
     conditionalRange,
+    layoutInside,
     printDoc,
     printsNothing,
+    unwrap,
+    wrap,
   )
-import Tilia.Span (Span, spanEndLine, spanStartLine)
+import Tilia.Span (spanEndLine, spanStartLine)
 
 -- | Does this document print on one line, holding neither a line break nor
 -- a choice?
@@ -74,15 +78,9 @@ foldChildren ::
   m
 foldChildren f = \case
   DCat a b -> f a <> f b
-  DNest _ d -> f d
-  DAlign d -> f d
-  DCppMarginNote d -> f d
-  DGroup _ d -> f d
   DVariant _ d -> f d
-  DLocated _ d -> f d
-  DFence _ d -> f d
   DCppChoice _ bs e -> foldr ((<>) . f . snd) (f e) bs
-  _ -> mempty
+  d -> maybe mempty (f . snd) (unwrap d)
 
 -- | Rewrite the documents directly inside this one, both layouts of a
 -- variant included.
@@ -94,15 +92,9 @@ mapChildren ::
   Doc
 mapChildren f = \case
   DCat a b -> f a <> f b
-  DNest n d -> DNest n (f d)
-  DAlign d -> DAlign (f d)
-  DCppMarginNote d -> DCppMarginNote (f d)
-  DGroup l d -> DGroup l (f d)
   DVariant a b -> DVariant (f a) (f b)
-  DLocated s d -> DLocated s (f d)
-  DFence s d -> DFence s (f d)
   DCppChoice cs bs e -> DCppChoice cs [(g, f d) | (g, d) <- bs] (f e)
-  d -> d
+  d -> maybe d (\(w, x) -> wrap w (f x)) (unwrap d)
 
 -- | A document as the sequence of things it concatenates.
 spine ::
@@ -161,54 +153,3 @@ onlyBreaks = \case
   DCloseLine -> True
   DCloseLineUnlessAfterOpener _ -> True
   _ -> False
-
--- | A node holding exactly one document, less the document.
-data Wrapper
-  = WLocated !Span
-  | WFence !Span
-  | WNest !Nesting
-  | WAlign
-  | WCppMarginNote
-  | WGroup !Layout
-  deriving (Eq, Show)
-
--- | A document as the wrapper it is and the document it holds.
-unwrap ::
-  -- | The document.
-  Doc ->
-  Maybe (Wrapper, Doc)
-unwrap = \case
-  DLocated s d -> Just (WLocated s, d)
-  DFence s d -> Just (WFence s, d)
-  DNest n d -> Just (WNest n, d)
-  DAlign d -> Just (WAlign, d)
-  DCppMarginNote d -> Just (WCppMarginNote, d)
-  DGroup l d -> Just (WGroup l, d)
-  _ -> Nothing
-{-# INLINE unwrap #-}
-
--- | Put a document in a wrapper.
-wrap ::
-  -- | The wrapper.
-  Wrapper ->
-  -- | The document to put in it.
-  Doc ->
-  Doc
-wrap = \case
-  WLocated s -> DLocated s
-  WFence s -> DFence s
-  WNest n -> DNest n
-  WAlign -> DAlign
-  WCppMarginNote -> DCppMarginNote
-  WGroup l -> DGroup l
-
--- | The layout inside a wrapper laid out like this.
-layoutInside ::
-  -- | The layout of the group the wrapper is printed in.
-  Layout ->
-  -- | The wrapper.
-  Wrapper ->
-  Layout
-layoutInside layout = \case
-  WGroup l -> l
-  _ -> layout
