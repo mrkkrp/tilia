@@ -103,12 +103,7 @@ closingComments ::
   -- | The comments.
   [Comment] ->
   Doc
-closingComments margin = foldMap $ \c ->
-  commentDoc c $
-    DCloseLine
-      <> includeWhen (commentGapAbove c) blankLine
-      <> commentText margin c
-      <> DCloseLine
+closingComments margin = foldMap $ \c -> commentDoc c (ownLines margin True c)
 
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
 -- in that order.
