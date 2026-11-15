@@ -485,6 +485,9 @@ data Readiness
     PlanMissing
   | -- | The plan is older than the files that determine it.
     PlanStale [FilePath]
+  | -- | The plan was solved for a compiler other than the one at hand, and
+    -- names it.
+    PlanForeign Text
   | -- | The plan says nothing about components the run is about to format.
     PlanNarrow [Text]
   | -- | The plan is there, and the packages named have neither been
@@ -521,10 +524,17 @@ readinessOf caching wanted projectDir = \case
     cache <- openCache caching =<< tokenForBuildPlan plan
     solved <- cachedSolveTime cache
     newer <- filesNewerThanPlan plan projectDir solved
+    installed <- getInstalledPackages cache
     let covered = plannedComponents plan
         missing = [spellPlanComponent c | c <- wanted, c `notElem` covered]
+        forAnotherCompiler =
+          not (null installed)
+            && any
+              (\p -> ppName p == "base" && not (builtAlready installed p))
+              (bpPackages plan)
     case (newer, missing) of
       (_ : _, _) -> pure (PlanStale newer)
+      _ | forAnotherCompiler -> pure (PlanForeign (bpCompiler plan))
       ([], _ : _) -> pure (PlanNarrow missing)
       ([], []) ->
         sourcesShortOf cache projectDir plan >>= \case
@@ -583,9 +593,10 @@ filesNewerThanPlan plan projectDir solved = quietly [] $ do
 
 -- | An account of actions we know are not worth attempting.
 data Futility = Futility
-  { -- | Has solving this plan already been tried and left it as narrow?
+  { -- | Has solving this plan already been tried and left it as narrow, or
+    -- solved for another compiler?
     solveWasFutile :: IO Bool,
-    -- | Record that a solve has been run and left it narrow, which is what
+    -- | Record that a solve has been run and left it so, which is what
     -- 'solveWasFutile' answers from afterwards.
     rememberFutileSolve :: IO (),
     -- | The packages an earlier fetch was still short of afterwards.
@@ -655,11 +666,13 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
   SourcesMissing short -> fetch short
   PlanMissing -> solveThenFetch
   PlanStale _ -> solveThenFetch
-  PlanNarrow _ ->
-    solveWasFutile futility >>= \case
-      True -> fetchWhatIsShort
-      False -> solveThenFetch
+  PlanForeign _ -> solveUnlessFutile
+  PlanNarrow _ -> solveUnlessFutile
   where
+    solveUnlessFutile =
+      solveWasFutile futility >>= \case
+        True -> fetchWhatIsShort
+        False -> solveThenFetch
     wholeProject = ["--enable-tests", "--enable-benchmarks"]
     tryWholeProject args = do
       attempt <- cabal (args <> wholeProject)
@@ -697,6 +710,7 @@ prepareWith caching downloading cabal futility wanted projectDir = \case
           rememberSolveTime futility started
           checkReadiness caching wanted projectDir >>= \case
             SourcesMissing short -> fetch short
+            PlanForeign _ -> rememberFutileSolve futility >> fetchWhatIsShort
             PlanNarrow _ -> rememberFutileSolve futility >> fetchWhatIsShort
             _ -> pure (Right ())
 

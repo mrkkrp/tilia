@@ -457,7 +457,7 @@ cachedFutileSolve :: Cache -> IO Bool
 cachedFutileSolve cache =
   isJust <$> readIfPresent (at cache (solvesFile cache)) (const ())
 
--- | Remember that solving again did not widen the plan.
+-- | Remember that solving again did not mend the plan.
 storeFutileSolve :: Cache -> IO ()
 storeFutileSolve cache =
   writeAtomically (at cache (solvesFile cache)) ""
