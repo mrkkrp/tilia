@@ -24,7 +24,7 @@ import Control.Concurrent (MVar, getNumCapabilities)
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
-import Control.Monad (filterM, join)
+import Control.Monad (filterM, guard, join)
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (asum, toList)
@@ -774,13 +774,13 @@ withReexports reach modName summary =
             Map.fromList
               [ ((qualifier, parent), membersFrom listed qualifier parent)
               | ExportAll qualifier parent <- items,
-                Map.notMember parent declared
+                not (ownQualifier qualifier && Map.member parent declared)
               ]
           members =
             [ (qualifier, kid)
             | ((qualifier, _), Just kids) <- Map.toList reexported,
               kid <- Set.toList kids,
-              Set.notMember kid defined
+              not (local qualifier kid)
             ]
       more <- reached $ \i ->
         Map.notMember (importModule i) listed && any (suppliedBy i) members
@@ -791,7 +791,10 @@ withReexports reach modName summary =
           { establishedFixities =
               Map.restrictKeys
                 (summaryFixities summary)
-                (foldMap (certainNames . establishedCertain) parts),
+                ( foldMap
+                    (certainNames . establishedCertain . snd)
+                    (filter (ownQualifier . writtenUnder . fst) (zip items parts))
+                ),
             establishedMembers = summaryListedMembers summary
           }
           : parts
@@ -801,6 +804,13 @@ withReexports reach modName summary =
     defined =
       Set.map snd (summaryNames summary)
         <> Set.map snd (Map.keysSet (summaryFixities summary))
+    ownQualifier = all (`elem` (modName : toList (summaryName summary)))
+    local qualifier op = ownQualifier qualifier && Set.member op defined
+    writtenUnder = \case
+      ExportName _ qualifier _ -> qualifier
+      ExportAll qualifier _ -> qualifier
+      ExportSome qualifier _ _ -> qualifier
+      ExportModule m -> Just m
     own =
       mempty
         { establishedFixities = summaryFixities summary,
@@ -816,11 +826,11 @@ withReexports reach modName summary =
     suppliedBy i (qualifier, op) = maySupply Map.empty qualifier op i
     named = \case
       ExportName _ qualifier op ->
-        [(qualifier, op) | Set.notMember op defined]
+        [(qualifier, op) | not (local qualifier op)]
       ExportAll qualifier parent ->
-        [(qualifier, parent) | Set.notMember parent defined]
+        [(qualifier, parent) | not (local qualifier parent)]
       ExportSome qualifier parent kids ->
-        [(qualifier, op) | op <- parent : kids, Set.notMember op defined]
+        [(qualifier, op) | op <- parent : kids, not (local qualifier op)]
       ExportModule _ -> []
 
     exported answers reexported = \case
@@ -835,7 +845,9 @@ withReexports reach modName summary =
             }
           <> certainly (Set.singleton (namespace, op)) Map.empty
       ExportAll qualifier parent
-        | Just kids <- Map.lookup parent declared -> withMembers parent kids
+        | ownQualifier qualifier,
+          Just kids <- Map.lookup parent declared ->
+            withMembers parent kids
         | otherwise ->
             let found = settled answers True qualifier (InTypes, parent)
                 kids =
@@ -862,11 +874,12 @@ withReexports reach modName summary =
                 ((`elem` kids) . snd)
                 ( fromMaybe
                     (certainMembersOf answers qualifier parent)
-                    (Map.lookup parent declared)
+                    (guard (ownQualifier qualifier) *> Map.lookup parent declared)
                 )
                 <> Set.fromList
                   [ (InTerms, kid)
-                  | kid <- kids,
+                  | ownQualifier qualifier,
+                    kid <- kids,
                     Set.member (InTerms, kid) (summaryNames summary)
                   ]
             )
@@ -877,7 +890,7 @@ withReexports reach modName summary =
             [i | i <- imports, not (importQualified i), importAlias i == m]
 
     unseen answers qualifier name@(_, op) =
-      Set.notMember op defined
+      not (local qualifier op)
         && and
           [ Set.notMember name (certainNames (establishedCertain established))
               && null (unsettledThrough established name)
@@ -889,7 +902,7 @@ withReexports reach modName summary =
     withMembers parent kids =
       certainly (Set.insert (InTypes, parent) kids) (Map.singleton parent kids)
     member answers qualifier parent kid
-      | Set.member kid defined = mempty
+      | local qualifier kid = mempty
       | otherwise =
           case [ (i, established, certainKids)
                | (i, established) <- candidates answers qualifier parent,
@@ -921,7 +934,7 @@ withReexports reach modName summary =
       ]
 
     settled answers certain qualifier name@(_, op)
-      | Set.member op defined = mempty
+      | local qualifier op = mempty
       | otherwise = case [ (i, established)
                          | certain,
                            (i, established) <- found,

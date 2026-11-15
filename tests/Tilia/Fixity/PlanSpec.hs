@@ -577,6 +577,14 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M ((<+>)) where\nimport Control.Arrow\ninfixr 3 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"
       `shouldReturn` Just (Fixity RightAssoc 3)
 
+  it "comes from the import its qualifier names, though the module declares one too" $
+    chased "module M ((Disp.<+>)) where\nimport qualified Text.PrettyPrint as Disp\ninfixl 1 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"
+      `shouldReturn` Just (Fixity LeftAssoc 6)
+
+  it "is the module's own where its qualifier is the module's name" $
+    chased "module M ((M.<+>)) where\nimport qualified Text.PrettyPrint as Disp\ninfixl 1 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"
+      `shouldReturn` Just (Fixity LeftAssoc 1)
+
   it "is not the module's own where the module does not export it" $
     chased "module M (parser) where\ninfixr 3 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\nparser :: Int\nparser = 1 <+> 2\n"
       `shouldReturn` Nothing

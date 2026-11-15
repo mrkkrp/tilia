@@ -79,16 +79,14 @@ fromHiFile modName HiFile{..}
       Right
         Interface
           { interfaceDeclares =
-              Map.fromList
-                [ ((namespace, op), fixity)
-                | (namespace, op, fixity) <- hiFixities,
-                  Set.member (namespace, op) exportedHere
+              foldl'
+                (flip Map.delete)
+                fixities
+                [ (namespace, op)
+                | not (Map.null fixities),
+                  (_, namespace, op) <- reexports
                 ],
-            interfaceReexports =
-              [ (m, namespace, op)
-              | HiName m namespace op <- concatMap exportedNames hiExports,
-                m /= hiModule
-              ],
+            interfaceReexports = reexports,
             interfaceMembers = Map.map (Set.map snd) members,
             interfaceExports =
               Just
@@ -101,6 +99,17 @@ fromHiFile modName HiFile{..}
     exported = mapMaybe known (concatMap exportedNames hiExports)
     exportedHere =
       Set.fromList [(namespace, op) | (_, namespace, op) <- exported]
+    fixities =
+      Map.fromList
+        [ ((namespace, op), fixity)
+        | (namespace, op, fixity) <- hiFixities,
+          Set.member (namespace, op) exportedHere
+        ]
+    reexports =
+      [ (m, namespace, op)
+      | HiName m namespace op <- concatMap exportedNames hiExports,
+        m /= hiModule
+      ]
     members =
       Map.fromListWith
         Set.union
