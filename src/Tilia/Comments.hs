@@ -49,7 +49,7 @@ import Tilia.Source.Lines
     blankAt,
     columnOf,
     contentColumn,
-    directiveOnLine,
+    isDirective,
     lineAt,
     lineTexts,
     offsetOf,
@@ -168,7 +168,7 @@ commentAt ls spn style raw =
             takeWhile
               (isJust . snd)
               [(n, lineAt n ls) | n <- [spanEndLine spn + 1 ..]],
-          not (T.all isSpace l || isJust (directiveOnLine l))
+          not (T.all isSpace l || isDirective l)
         ]
     followed = case lineAt (spanEndLine spn) ls of
       Just l -> not (T.all isSpace (T.drop (offsetOf l (spanEndColumn spn)) l))

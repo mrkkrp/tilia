@@ -42,7 +42,6 @@ import Tilia.Cpp.Directives
     Guard (..),
     allGroups,
     dSpan,
-    isDirective,
     macroLines,
     opaqueDirectives,
     readConditionals,
@@ -63,7 +62,15 @@ import Tilia.Doc
     wrap,
   )
 import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen, indent)
-import Tilia.Source (Lines, Written (..), blankAt, lineAt, lineTexts, linesOf)
+import Tilia.Source
+  ( Lines,
+    Written (..),
+    blankAt,
+    isDirective,
+    lineAt,
+    lineTexts,
+    linesOf,
+  )
 import Tilia.Span (Span (..), mkSpan, startPoint)
 
 -- | What the configurations of a module had besides their code.

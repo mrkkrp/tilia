@@ -19,7 +19,7 @@ import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs
@@ -37,7 +37,7 @@ import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
-import Tilia.Source (directiveOnLine)
+import Tilia.Source (isDirective)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -94,7 +94,7 @@ docBody ctx style doc@(L l str) =
       | otherwise -> (writtenAt rebuilt, False)
   where
     margin = Margin directive (const False)
-    directive t = extensionOn ctx Cpp && isJust (directiveOnLine t)
+    directive t = extensionOn ctx Cpp && isDirective t
     writtenAt = fence (spanOfSrcSpan l)
     emptyBlock = txt (blockOpener style) <> space <> txt "-}"
     rebuilt =

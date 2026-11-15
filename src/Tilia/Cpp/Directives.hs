@@ -36,7 +36,6 @@ module Tilia.Cpp.Directives
     dSpan,
     readConditionals,
     scanConditionals,
-    isDirective,
     GroupSpec (..),
     gsOwnLines,
     gsCount,
@@ -70,6 +69,7 @@ import Tilia.Source.Lines
     contentColumn,
     continuesGroup,
     directiveOnLine,
+    isDirective,
     linesOf,
     opaqueKeywords,
     opensGroup,
@@ -683,10 +683,6 @@ data Open = Open
 -- | A module's conditionals, or 'Nothing' if they do not make sense.
 scanConditionals :: Text -> Maybe [GroupSpec]
 scanConditionals = either (const Nothing) Just . readConditionals
-
--- | Does this line begin with a preprocessor directive?
-isDirective :: Text -> Bool
-isDirective = isJust . directiveOnLine
 
 -- | One conditional group, read off the directives that make it up.
 data GroupSpec = GroupSpec
