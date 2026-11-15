@@ -10,7 +10,7 @@ module Tilia.TestUtils
     switchedOn,
     underAsciiLocale,
     orthogonalityMode,
-    testedSettings,
+    settingsToTest,
     withEachSettings,
     defaultParserConfig,
     parsed,
@@ -173,8 +173,8 @@ orthogonalityMode = switchedOn "TILIA_ORTHOGONALITY"
 -- | The settings the suite formats with, each with its name:
 -- 'defaultSettings' and 'alternativeSettings', or every combination of the
 -- settings but the column limit in the 'orthogonalityMode'.
-testedSettings :: IO [(String, Settings)]
-testedSettings = do
+settingsToTest :: IO [(String, Settings)]
+settingsToTest = do
   orthogonality <- orthogonalityMode
   pure $
     if orthogonality
@@ -193,13 +193,13 @@ testedSettings = do
           ("the alternative settings", alternativeSettings)
         ]
 
--- | Run specs once with each of the 'testedSettings'.
+-- | Run specs once with each of the 'settingsToTest'.
 withEachSettings ::
   -- | The specs, given the settings.
   (Settings -> Spec) ->
   Spec
 withEachSettings specs = do
-  tested <- runIO testedSettings
+  tested <- runIO settingsToTest
   for_ tested $ \(name, settings) -> describe ("with " <> name) (specs settings)
 
 -- | What to parse a module of no package with: GHC2021.
