@@ -42,15 +42,16 @@ import Tilia.TestConfig
   )
 import Tilia.TestUtils
   ( orthogonalityMode,
+    settingsToTest,
     switchedOn,
-    testedSettings,
     withEnvironment,
   )
 
 spec :: Spec
 spec = do
   orthogonality <- runIO orthogonalityMode
-  others <- runIO (filter ((/= defaultSettings) . snd) <$> testedSettings)
+  testedSettings <-
+    runIO (filter ((/= defaultSettings) . snd) <$> settingsToTest)
   describe "obtaining Hackage releases" $
     it "takes in only the releases listed, whatever else is in the cache" $
       withSystemTempDirectory "tilia-corpus" $ \cache -> do
@@ -65,10 +66,10 @@ spec = do
         fmap (fmap exampleName) obtained `shouldBe` Right ["listed-1.0/M.hs"]
   -- Our own examples say what they come out as with the default and the
   -- alternative settings alone.
-  unless orthogonality (corpusSpec others vendoredExamples)
-  corpusSpec others ormoluExamples
-  corpusSpec others ghcTestSuite
-  corpusSpec others hackagePackages
+  unless orthogonality (corpusSpec testedSettings vendoredExamples)
+  corpusSpec testedSettings ormoluExamples
+  corpusSpec testedSettings ghcTestSuite
+  corpusSpec testedSettings hackagePackages
 
 -- | Every example of one corpus.
 corpusSpec ::
@@ -78,7 +79,7 @@ corpusSpec ::
   -- | The corpus.
   Corpus ->
   Spec
-corpusSpec others corpus =
+corpusSpec testedSettings corpus =
   describe (corpusName corpus) $
     runIO (obtain corpus) >>= \case
       Left problem ->
@@ -88,10 +89,12 @@ corpusSpec others corpus =
       Right examples -> do
         palette <- runIO (paletteFor stdout)
         case corpusExpectations corpus of
-          Listed lists -> againstLists lists (check palette others) examples
+          Listed lists ->
+            againstLists lists (check palette testedSettings) examples
           -- Plain, so that what a record says does not depend on whether the
           -- run that wrote it printed to a terminal.
-          Recorded path -> againstRecord path (check Plain others) examples
+          Recorded path ->
+            againstRecord path (check Plain testedSettings) examples
 
 -- | A corpus small enough to name its exceptions in "Tilia.Corpus".
 againstLists :: Lists -> (Example -> IO Result) -> [Example] -> Spec
@@ -317,7 +320,7 @@ check ::
   -- | The example.
   Example ->
   IO Result
-check palette others example = do
+check palette testedSettings example = do
   source <- readUtf8 (exampleInput example)
   expected <- traverse readUtf8 (exampleReference example)
   expectedAlternatively <-
@@ -371,7 +374,7 @@ check palette others example = do
       foldM
         alternatively
         (checkPure palette package text (join expected) checked passes)
-        others
+        testedSettings
 
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)
