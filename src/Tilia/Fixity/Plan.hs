@@ -185,33 +185,84 @@ newResolverWith routes cache installed tarballs packageReader plan = do
       Just (_, path) ->
         bracket_ (waitQSem reading) (signalQSem reading) $
           readInterface modName path
-  let workings =
-        Workings
-          { wkRoutes = routes,
-            wkCache = cache,
-            wkImportable = importable,
-            wkIndex = index,
-            wkInterfaces = interfaces,
-            wkInterfaceOf = interfaceOf,
-            wkReach = reach,
-            wkSummariesOf = summariesOf,
-            wkModuleInArchive = moduleInArchive,
-            wkGenerated = generatedModules plan,
-            wkReexported =
-              Map.fromListWith
-                (\_ first' -> first')
-                [pair | i <- installed, pair <- ipReexports i]
-          }
+  let generated = generatedModules plan
+      reexported =
+        Map.fromListWith
+          (\_ first' -> first')
+          [pair | i <- installed, pair <- ipReexports i]
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
       reach visiting local modName
         | key `Set.member` visiting = pure mempty
         | otherwise =
             memoized flights answersRead mempty key $
-              resolveModule workings (Set.insert key visiting) found modName
+              resolveModule (Set.insert key visiting) found modName
         where
           found = local modName
           key = maybe modName T.pack found
+      resolveModule visiting found modName
+        | Just path <- found,
+          writtenForHsc path =
+            pure mempty
+        | Just path <- found =
+            readUtf8File path >>= \case
+              Nothing -> pure unreadable
+              Just source ->
+                fromSummaries (reach visiting (importable found)) modName
+                  =<< summariesOf found modName (snd (byteOrderMark source))
+        | Just original <- Map.lookup modName reexported,
+          Map.notMember modName interfaces =
+            reach visiting fromDependency original
+        | otherwise = answered <$> firstAnswer (fmap taking routes)
+        where
+          fromDependency = importable Nothing
+
+          taking = \case
+            FromInterface -> viaInterface
+            FromSource -> viaArchive
+
+          -- A route that read some of the module is kept in case no later
+          -- one reads all of it.
+          firstAnswer = go Nothing
+            where
+              go partial [] = pure (fromMaybe unreadable partial)
+              go partial (route : rest) =
+                route >>= \case
+                  Just established
+                    | settlesEverything established -> pure established
+                    | established /= unreadable ->
+                        go (partial <|> Just established) rest
+                  _ -> go partial rest
+
+          viaInterface = case Map.lookup modName interfaces of
+            Nothing -> pure Nothing
+            Just (key, _) ->
+              throughCache key (Just <$> fromInterface interfaceOf modName)
+
+          viaArchive = case Map.lookup modName index of
+            Nothing -> pure Nothing
+            Just (package, tarball) ->
+              throughCache package $
+                fromSource
+                  moduleInArchive
+                  (summariesOf Nothing)
+                  (reach visiting fromDependency)
+                  tarball
+                  modName
+
+          answered established
+            | settlesEverything established = established
+            | Set.member modName generated =
+                established
+                  { establishedFixities = Map.empty,
+                    establishedUnsettled = Map.empty,
+                    establishedUntold = Set.empty
+                  }
+            | otherwise = established
+          throughCache key =
+            recalled
+              (cachedEstablished cache key modName)
+              (storeEstablished cache key modName)
       summariesOf found modName text =
         extensionsOf found modName >>= \case
           Nothing -> pure Nothing
@@ -324,149 +375,6 @@ scopeFor resolver importer implicitPrelude configurations = do
       implicitPrelude
       (\m -> Map.findWithDefault unreadable m table)
       configurations
-
--- | Everything a resolver consults, and the way back into it.
---
--- None of it changes from one module to the next, which is why
--- 'newResolverWith' builds it once and hands it over whole. What comes back
--- out of that is the 'Resolver'; this is what is behind it.
-data Workings = Workings
-  { -- | Which readings to try, in the order given.
-    wkRoutes :: [Route],
-    -- | Where to remember answers between runs.
-    wkCache :: Cache,
-    -- | Where each module the file at the canonical path given, where it is
-    -- one of the project's own, imports from a directory rather than an
-    -- archive is. See 'localModules'.
-    wkImportable :: Maybe FilePath -> Text -> Maybe FilePath,
-    -- | Which package holds each module, and the tarball to find it in; the
-    -- package is the cache key, which carries the hash the tarball was
-    -- verified against.
-    wkIndex :: Map Text (Text, FilePath),
-    -- | What to file an answer read out of each module's interface under.
-    wkInterfaces :: Map Text (Text, FilePath),
-    -- | A module's interface, read at most once a run.
-    wkInterfaceOf :: Text -> IO (Maybe Interface),
-    -- | How to reach another module, given where each module the one
-    -- importing it imports from a directory is. Tied back on itself by
-    -- 'newResolverWith', so that the memo it keeps covers the recursive
-    -- calls too.
-    wkReach ::
-      Set Text ->
-      (Text -> Maybe FilePath) ->
-      Text ->
-      IO Established,
-    -- | What each configuration of a module says, given where it is if it
-    -- is one of the project's own, its name and its text, worked out once a
-    -- run.
-    wkSummariesOf ::
-      Maybe FilePath ->
-      Text ->
-      Text ->
-      IO (Maybe (NonEmpty ModuleSummary)),
-    -- | What a tarball holds for a module, each tarball read once a run.
-    wkModuleInArchive :: FilePath -> Text -> IO (Maybe InArchive),
-    -- | The modules @cabal@ writes itself, which are therefore in no
-    -- package's sources. See 'generatedModules'.
-    wkGenerated :: Set Text,
-    -- | The modules an installed package exposes that another one holds,
-    -- each with its name there.
-    wkReexported :: Map Text Text
-  }
-
--- | What reading a module establishes, by the cheapest route that settles
--- it.
-resolveModule ::
-  -- | Where to look, and how to get back to the resolver.
-  Workings ->
-  -- | Modules currently being resolved further up the call chain, this one
-  -- among them, each by its path if it is one of the project's own and by
-  -- its name otherwise.
-  Set Text ->
-  -- | Where the module is, if it is one of the project's own.
-  Maybe FilePath ->
-  -- | The module to resolve.
-  Text ->
-  IO Established
-resolveModule
-  Workings
-    { wkRoutes,
-      wkCache,
-      wkImportable,
-      wkIndex,
-      wkInterfaces,
-      wkInterfaceOf,
-      wkReach,
-      wkSummariesOf,
-      wkModuleInArchive,
-      wkGenerated,
-      wkReexported
-    }
-  visiting
-  found
-  modName
-    | Just path <- found,
-      writtenForHsc path =
-        pure mempty
-    | Just path <- found =
-        readUtf8File path >>= \case
-          Nothing -> pure unreadable
-          Just source ->
-            fromSummaries (wkReach visiting (wkImportable found)) modName
-              =<< wkSummariesOf found modName (snd (byteOrderMark source))
-    | Just original <- Map.lookup modName wkReexported,
-      Map.notMember modName wkInterfaces =
-        wkReach visiting fromDependency original
-    | otherwise = answered <$> firstAnswer (fmap taking wkRoutes)
-    where
-      fromDependency = wkImportable Nothing
-
-      taking = \case
-        FromInterface -> viaInterface
-        FromSource -> viaArchive
-
-      -- A route that read some of the module is kept in case no later one
-      -- reads all of it.
-      firstAnswer = go Nothing
-        where
-          go partial [] = pure (fromMaybe unreadable partial)
-          go partial (route : rest) =
-            route >>= \case
-              Just established
-                | settlesEverything established -> pure established
-                | established /= unreadable ->
-                    go (partial <|> Just established) rest
-              _ -> go partial rest
-
-      viaInterface = case Map.lookup modName wkInterfaces of
-        Nothing -> pure Nothing
-        Just (key, _) ->
-          throughCache key (Just <$> fromInterface wkInterfaceOf modName)
-
-      viaArchive = case Map.lookup modName wkIndex of
-        Nothing -> pure Nothing
-        Just (package, tarball) ->
-          throughCache package $
-            fromSource
-              wkModuleInArchive
-              (wkSummariesOf Nothing)
-              (wkReach visiting fromDependency)
-              tarball
-              modName
-
-      answered established
-        | settlesEverything established = established
-        | Set.member modName wkGenerated =
-            established
-              { establishedFixities = Map.empty,
-                establishedUnsettled = Map.empty,
-                establishedUntold = Set.empty
-              }
-        | otherwise = established
-      throughCache key =
-        recalled
-          (cachedEstablished wkCache key modName)
-          (storeEstablished wkCache key modName)
 
 -- | Which package and tarball holds each module.
 buildModuleIndex ::
@@ -599,9 +507,8 @@ fromSource ::
   (FilePath -> Text -> IO (Maybe InArchive)) ->
   -- | What each configuration of a module says, given its text.
   (Text -> Text -> IO (Maybe (NonEmpty ModuleSummary))) ->
-  -- | How to reach another module, for chasing re-exports. This is
-  -- 'resolveModule' tied back on itself, with the visiting set already
-  -- extended.
+  -- | How to reach another module, for chasing re-exports. This is the
+  -- resolver tied back on itself, with the visiting set already extended.
   (Text -> IO Established) ->
   -- | The tarball holding this module's source.
   FilePath ->
@@ -623,9 +530,8 @@ fromSource moduleInArchive summariesOf reach tarball modName =
 
 -- | What a module exports, out of what each of its configurations says.
 fromSummaries ::
-  -- | How to reach another module, for chasing re-exports. This is
-  -- 'resolveModule' tied back on itself, with the visiting set already
-  -- extended.
+  -- | How to reach another module, for chasing re-exports. This is the
+  -- resolver tied back on itself, with the visiting set already extended.
   (Text -> IO Established) ->
   -- | The name the module was looked up under.
   Text ->
