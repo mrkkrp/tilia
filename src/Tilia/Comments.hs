@@ -26,12 +26,14 @@ module Tilia.Comments
     afterOpener,
     triggerOn,
     commentsWithin,
+    commentRuns,
     Pragma (..),
     commentPragma,
   )
 where
 
 import Data.Char (isSpace)
+import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -465,6 +467,27 @@ triggerOn inside = case T.uncons inside of
 -- | The comments written inside a region.
 commentsWithin :: Span -> [Comment] -> [Comment]
 commentsWithin s = filter (covers s . commentSpan)
+
+-- | The first and the last comment of each run of comments written one
+-- right under another at one column, by the line each comment of the run
+-- begins on.
+commentRuns ::
+  -- | The comments, in the order they were written.
+  [Comment] ->
+  IntMap (Comment, Comment)
+commentRuns cs =
+  IntMap.fromList
+    [ (spanStartLine (commentSpan c), (NE.head run, NE.last run))
+    | run <- foldr joined [] cs,
+      c <- NE.toList run
+    ]
+  where
+    joined c ((d :| ds) : rest)
+      | continuedBy c d = (c :| d : ds) : rest
+    joined c rest = (c :| []) : rest
+    continuedBy c d =
+      spanStartLine (commentSpan d) == spanEndLine (commentSpan c) + 1
+        && spanStartColumn (commentSpan d) == spanStartColumn (commentSpan c)
 
 -- | A compiler pragma, which is written as a block comment but is not one.
 --

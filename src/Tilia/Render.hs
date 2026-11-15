@@ -11,10 +11,8 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Generics.Schemes (listify)
-import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -43,6 +41,7 @@ import Tilia.Comments
     asOrdinary,
     bracketed,
     carriedOnFrom,
+    commentRuns,
     commentTrailing,
     continuesHaddock,
     holdsOff,
@@ -208,10 +207,15 @@ moduleCtx settings parsed held =
         <|> fmap
           (\starts -> (NE.head starts, NE.last starts))
           (NE.nonEmpty (fmap spanStartLine imports))
-    blocks = blockEdges (filter among held)
+    blocks =
+      commentRuns (filter (\c -> among c && not (commentTrailing c)) held)
     heading c = do
       guard (among c)
-      edges <- IntMap.lookup (spanStartLine (commentSpan c)) blocks
+      (top, bottom) <- IntMap.lookup (spanStartLine (commentSpan c)) blocks
+      let edges =
+            ( spanStartLine (commentSpan top) - 1,
+              spanEndLine (commentSpan bottom) + 1
+            )
       guard $
         headsImports
           (rcImportBarriers settings)
@@ -397,26 +401,6 @@ headsImports barriers ls imports column (above, under) =
         spanStartColumn next == column
           && not (any (\b -> under < b && b < spanStartLine next) barriers)
       [] -> False
-
--- | The lines right above and right under each block of comments on lines
--- of their own, written one right under another at one column, by the line
--- each comment of the block begins on.
-blockEdges :: [Comment] -> IntMap (Int, Int)
-blockEdges cs =
-  IntMap.fromList
-    [ (spanStartLine (commentSpan c), (above, under))
-    | block <- foldr joined [] (filter (not . commentTrailing) cs),
-      let above = spanStartLine (commentSpan (NE.head block)) - 1
-          under = spanEndLine (commentSpan (NE.last block)) + 1,
-      c <- NE.toList block
-    ]
-  where
-    joined c ((d :| ds) : rest)
-      | continuedBy c d = (c :| d : ds) : rest
-    joined c rest = (c :| []) : rest
-    continuedBy c d =
-      spanStartLine (commentSpan d) == spanEndLine (commentSpan c) + 1
-        && spanStartColumn (commentSpan d) == spanStartColumn (commentSpan c)
 
 -- | Is a comment written between imports rather than inside one?
 amongImports ::
