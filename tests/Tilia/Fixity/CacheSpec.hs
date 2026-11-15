@@ -400,66 +400,60 @@ database :: Spec
 database = around withIsolatedCache $ do
   it "gives back what it was told, while the database sits still" $ \cache ->
     withDatabase $ \db -> do
-      storeInstalled cache (Installed [containers] [db])
-      cachedInstalled cache `shouldReturn` Just [containers]
+      storeInstalled cache "ghc" (Installed [containers] [db])
+      cachedInstalled cache "ghc" `shouldReturn` Just [containers]
 
   it "gives back nothing once a package has been registered" $ \cache ->
     withDatabase $ \db -> do
-      storeInstalled cache (Installed [containers] [db])
+      storeInstalled cache "ghc" (Installed [containers] [db])
       writeFile (db </> "new-1.0.conf") ""
-      cachedInstalled cache `shouldReturn` Nothing
+      cachedInstalled cache "ghc" `shouldReturn` Nothing
 
   it "gives back nothing once the database is gone" $ \cache -> do
     db <- withDatabase pure
-    storeInstalled cache (Installed [containers] [db])
-    cachedInstalled cache `shouldReturn` Nothing
+    storeInstalled cache "ghc" (Installed [containers] [db])
+    cachedInstalled cache "ghc" `shouldReturn` Nothing
 
   it "remembers nothing it has no way to stop believing" $ \cache -> do
-    storeInstalled cache (Installed [containers] [])
-    cachedInstalled cache `shouldReturn` Nothing
+    storeInstalled cache "ghc" (Installed [containers] [])
+    cachedInstalled cache "ghc" `shouldReturn` Nothing
 
-  it "gives back nothing to a token it was not written under" $ \_ ->
+  it "gives back nothing for a compiler it was not written for" $ \cache ->
+    withDatabase $ \db -> do
+      storeInstalled cache "one" (Installed [containers] [db])
+      cachedInstalled cache "two" `shouldReturn` Nothing
+
+  it "gives it back under another plan's token" $ \_ ->
     withSystemTempDirectory "tilia-cache" $ \dir ->
       withDatabase $ \db -> do
         before' <- open dir (PlanToken "one")
-        storeInstalled before' (Installed [containers] [db])
+        storeInstalled before' "ghc" (Installed [containers] [db])
         after' <- open dir (PlanToken "two")
-        cachedInstalled after' `shouldReturn` Nothing
+        cachedInstalled after' "ghc" `shouldReturn` Just [containers]
 
-  it "gives it back under the token it was written under" $ \_ ->
-    withSystemTempDirectory "tilia-cache" $ \dir ->
-      withDatabase $ \db -> do
-        before' <- open dir (PlanToken "one")
-        storeInstalled before' (Installed [containers] [db])
-        again <- open dir (PlanToken "one")
-        cachedInstalled again `shouldReturn` Just [containers]
-
-  it "keeps one token's answer when another writes its own" $ \_ ->
-    withSystemTempDirectory "tilia-cache" $ \dir ->
-      withDatabase $ \db -> do
-        one <- open dir (PlanToken "one")
-        storeInstalled one (Installed [containers] [db])
-        two <- open dir (PlanToken "two")
-        storeInstalled two (Installed [quiet] [db])
-        cachedInstalled one `shouldReturn` Just [containers]
-        cachedInstalled two `shouldReturn` Just [quiet]
+  it "keeps one compiler's answer when another writes its own" $ \cache ->
+    withDatabase $ \db -> do
+      storeInstalled cache "one" (Installed [containers] [db])
+      storeInstalled cache "two" (Installed [quiet] [db])
+      cachedInstalled cache "one" `shouldReturn` Just [containers]
+      cachedInstalled cache "two" `shouldReturn` Just [quiet]
 
   it "carries a package that exposes nothing" $ \cache ->
     withDatabase $ \db -> do
-      storeInstalled cache (Installed [containers, quiet] [db])
-      cachedInstalled cache `shouldReturn` Just [containers, quiet]
+      storeInstalled cache "ghc" (Installed [containers, quiet] [db])
+      cachedInstalled cache "ghc" `shouldReturn` Just [containers, quiet]
 
   it "carries what a package exposes that another one holds" $ \cache ->
     withDatabase $ \db -> do
-      storeInstalled cache (Installed [prim] [db])
-      cachedInstalled cache `shouldReturn` Just [prim]
+      storeInstalled cache "ghc" (Installed [prim] [db])
+      cachedInstalled cache "ghc" `shouldReturn` Just [prim]
 
   it "keeps the spaces in a path" $ \cache ->
     withSystemTempDirectory "tilia  db" $ \db -> do
       setModificationTime db =<< getModificationTime "/"
       let spaced = containers{ipImportDirs = ["/no where/containers  0.7"]}
-      storeInstalled cache (Installed [spaced] [db])
-      cachedInstalled cache `shouldReturn` Just [spaced]
+      storeInstalled cache "ghc" (Installed [spaced] [db])
+      cachedInstalled cache "ghc" `shouldReturn` Just [spaced]
   where
     containers =
       InstalledPackage
