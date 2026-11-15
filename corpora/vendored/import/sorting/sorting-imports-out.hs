@@ -12,7 +12,5 @@ import "base" Data.List (sort)
 import "containers" Data.Set (Set)
 import Prelude hiding (lookup)
 
-import "this" Weather.Units (Celsius)
-
 readings :: Map String Reading
 readings = mempty
