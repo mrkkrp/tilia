@@ -174,7 +174,7 @@ infrangible ::
   Doc ->
   Doc
 infrangible = \case
-  DGroup Frangible d -> DGroup Flat (infrangible d)
+  DGroup Frangible d -> DGroup Flat d
   d -> mapChildren infrangible d
 
 -- | Choose according to the layout the enclosing group settled on.
