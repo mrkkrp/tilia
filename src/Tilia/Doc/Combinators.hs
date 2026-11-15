@@ -15,7 +15,6 @@ module Tilia.Doc.Combinators
     blankLine,
     LineStart (..),
     TrailingWhitespace (..),
-    verbatimBreak,
     verbatimLines,
     verbatim,
     emptyAnchor,
@@ -42,25 +41,17 @@ module Tilia.Doc.Combinators
     nest,
     indent,
     align,
-    cppMarginNote,
 
     -- * Combining
-    hsep,
-    vsep,
     sepBy,
     joinedBy,
 
     -- * Wrapping
     ClosingIndent (..),
     parens,
-    parensWith,
-    brackets,
-    braces,
     bracketWith,
     commaBracketWith,
     spacedBracket,
-    unboxed,
-    unboxedWith,
     backticks,
 
     -- * Punctuation
@@ -71,7 +62,6 @@ module Tilia.Doc.Combinators
     hangingCommas,
     commaSepUnderFirst,
     commaSepAfter,
-    semi,
 
     -- * Conditionals
     includeWhen,
@@ -131,16 +121,17 @@ hardBreak = DHardBreak
 blankLine :: Doc
 blankLine = hardBreak <> hardBreak
 
--- | A line break between two lines of text that is being reproduced.
---
--- Only for text that is being reproduced rather than laid out: the lines of
--- a block comment, of a multi-line string literal, of a quasi-quotation.
-verbatimBreak :: LineStart -> TrailingWhitespace -> Doc
-verbatimBreak = DVerbatimBreak
-
--- | Lines of text reproduced, each break between them a 'verbatimBreak'.
-verbatimLines :: LineStart -> TrailingWhitespace -> [Text] -> Doc
-verbatimLines start trailing = sepBy (verbatimBreak start trailing) . fmap txt
+-- | Lines of text reproduced rather than laid out: the lines of a block
+-- comment, of a multi-line string literal, of a quasi-quotation.
+verbatimLines ::
+  -- | Where each line after the first begins.
+  LineStart ->
+  -- | What to do with the whitespace each line ends in.
+  TrailingWhitespace ->
+  -- | The lines.
+  [Text] ->
+  Doc
+verbatimLines start trailing = sepBy (DVerbatimBreak start trailing) . fmap txt
 
 -- | Text reproduced exactly, line breaks and all.
 verbatim :: Text -> Doc
@@ -273,21 +264,8 @@ indent = DNest (Steps 1)
 align :: Doc -> Doc
 align = DAlign
 
--- | Start the enclosed document's lines at the margin if they come out
--- right above a preprocessor directive.
-cppMarginNote :: Doc -> Doc
-cppMarginNote = DCppMarginNote
-
 ----------------------------------------------------------------------------
 -- Combining
-
--- | Concatenate, separated by 'space'.
-hsep :: [Doc] -> Doc
-hsep = sepBy space
-
--- | Concatenate, separated by 'hardBreak'.
-vsep :: [Doc] -> Doc
-vsep = sepBy hardBreak
 
 -- | Concatenate, separated by the given document.
 sepBy :: Doc -> [Doc] -> Doc
@@ -310,17 +288,6 @@ data ClosingIndent
   deriving (Eq, Show)
 
 -- | Surround with a bracket pair that opens up when broken.
-bracket ::
-  -- | Opening bracket.
-  Text ->
-  -- | Closing bracket.
-  Text ->
-  -- | Body.
-  Doc ->
-  Doc
-bracket = bracketWith Outdented
-
--- | 'bracket', with a say in where the closing bracket goes.
 bracketWith ::
   -- | Where the closing bracket goes.
   ClosingIndent ->
@@ -387,38 +354,11 @@ closingSteps = \case
   Indented -> 1
 
 -- | @(@ and @)@.
-parens :: Doc -> Doc
-parens = bracket "(" ")"
-
--- | @(@ and @)@, with a say in where the closing bracket goes.
-parensWith ::
-  -- | Where the closing parenthesis goes.
-  ClosingIndent ->
+parens ::
   -- | Body.
   Doc ->
   Doc
-parensWith closing = bracketWith closing "(" ")"
-
--- | @[@ and @]@.
-brackets :: Doc -> Doc
-brackets = bracket "[" "]"
-
--- | @{@ and @}@.
-braces :: Doc -> Doc
-braces = bracket "{" "}"
-
--- | @(#@ and @#)@, for unboxed tuples and sums.
-unboxed :: Doc -> Doc
-unboxed = unboxedWith Outdented
-
--- | @(#@ and @#)@, with a say in where the closing bracket goes.
-unboxedWith ::
-  -- | Where the closing bracket goes.
-  ClosingIndent ->
-  -- | Body.
-  Doc ->
-  Doc
-unboxedWith closing = spacedBracket closing "(#" "#)"
+parens = bracketWith Outdented "(" ")"
 
 -- | Surround with backticks.
 backticks :: Doc -> Doc
@@ -430,10 +370,6 @@ backticks d = txt "`" <> d <> txt "`"
 -- | @,@.
 comma :: Doc
 comma = txt ","
-
--- | @;@.
-semi :: Doc
-semi = txt ";"
 
 -- | A comma between two items, with the place the line may break: after
 -- it, or, with 'LeadingCommas', before it, at the indentation in force.

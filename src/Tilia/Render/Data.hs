@@ -165,7 +165,8 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
               )
     derivings =
       includeUnless (null dd_derivs) beforeDerivings
-        <> indent (vsep (fmap (at_ ctx (derivingClause ctx)) dd_derivs))
+        <> indent
+          (sepBy hardBreak (fmap (at_ ctx (derivingClause ctx)) dd_derivs))
     beforeDerivings
       | length dd_derivs > 1 = hardBreak
       | otherwise = breakOrSpace
@@ -380,7 +381,7 @@ derivingClause ctx HsDerivingClause{..} =
         brokenIfDocumented ctx tys $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
-            bracketWith Outdented "(" ")"
+            parens
               . insideBrackets (spanOf deriv_clause_tys)
               $ commaSep
                 (ctxCommaStyle ctx)

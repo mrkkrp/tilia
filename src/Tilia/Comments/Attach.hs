@@ -316,8 +316,8 @@ commentText margin c = note . align $ case NE.toList (commentBody c) of
   l : ls -> txt l <> foldMap (\x -> breakBefore x <> txt x) ls
   where
     breakBefore x
-      | marginLine margin x = verbatimBreak AtMargin TrimWhitespace
-      | otherwise = verbatimBreak AtIndent TrimWhitespace
+      | marginLine margin x = DVerbatimBreak AtMargin TrimWhitespace
+      | otherwise = DVerbatimBreak AtIndent TrimWhitespace
     note
-      | marginComment margin c = cppMarginNote
+      | marginComment margin c = DCppMarginNote
       | otherwise = id

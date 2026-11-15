@@ -121,7 +121,7 @@ typeBody ctx documented here = \case
         LeadingArrows -> id
   HsListTy _ t ->
     layoutWithin ctx here (spanOf t) $
-      brackets (insideBrackets here (hsType ctx t))
+      bracketWith Outdented "[" "]" (insideBrackets here (hsType ctx t))
   HsTupleTy _ sort xs ->
     layoutWithin ctx here (spansOf xs) $
       tupleBrackets
@@ -132,7 +132,11 @@ typeBody ctx documented here = \case
             (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs))
         )
   HsSumTy _ xs ->
-    unboxed (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
+    spacedBracket
+      Outdented
+      "(#"
+      "#)"
+      (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
   HsParTy _ t ->
     layoutWithin
@@ -161,10 +165,7 @@ typeBody ctx documented here = \case
         )
   HsExplicitTupleTy _ promoted xs ->
     tick promoted
-      <> bracketWith
-        Outdented
-        "("
-        ")"
+      <> parens
         ( insideBrackets
             here
             ( quoteGap promoted xs
@@ -260,8 +261,8 @@ tupleBrackets ::
   Doc ->
   Doc
 tupleBrackets commas = \case
-  HsUnboxedTuple -> unboxed . hangingCommas commas
-  HsBoxedOrConstraintTuple -> bracketWith Outdented "(" ")"
+  HsUnboxedTuple -> spacedBracket Outdented "(#" "#)" . hangingCommas commas
+  HsBoxedOrConstraintTuple -> parens
 
 -- | The tick in front of a promoted list or tuple.
 tick :: PromotionFlag -> Doc
@@ -393,7 +394,7 @@ contextOf commas here bare render = \case
   [] -> txt "()"
   [x] | bare x -> render x
   xs ->
-    bracketWith Outdented "(" ")" . insideBrackets here $
+    parens . insideBrackets here $
       commaSep commas (fmap (align . render) xs)
 
 -- | The flags a type variable binder may carry.
@@ -431,7 +432,7 @@ tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
       HsBndrNoKind _ -> (mempty, False)
       HsBndrKind _ k -> (typeAscription ctx binderSpan (asSigType k), True)
     enclosed
-      | flagIsInferred tvb_flag = braces
+      | flagIsInferred tvb_flag = bracketWith Outdented "{" "}"
       | kinded = parens
       | otherwise = id
 

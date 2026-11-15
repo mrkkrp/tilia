@@ -85,22 +85,22 @@ spec = withEachSettings $ \settings -> do
 
   describe "margin notes" $ do
     it "go to the margin right above a directive" $
-      out (indent (txt "a" <> hardBreak <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
+      out (indent (txt "a" <> hardBreak <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
         `shouldBe` step 1 <> "a\n-- x\n#if X\n"
     it "go to the margin together when several are right above a directive" $
-      out (indent (cppMarginNote (txt "-- x") <> hardBreak <> cppMarginNote (txt "-- y") <> hardBreak <> directive))
+      out (indent (DCppMarginNote (txt "-- x") <> hardBreak <> DCppMarginNote (txt "-- y") <> hardBreak <> directive))
         `shouldBe` "-- x\n-- y\n#if X\n"
     it "stay indented when a blank line is between them and a directive" $
-      out (indent (cppMarginNote (txt "-- x") <> blankLine <> directive))
+      out (indent (DCppMarginNote (txt "-- x") <> blankLine <> directive))
         `shouldBe` step 1 <> "-- x\n\n#if X\n"
     it "stay indented with no directive under them" $
-      out (indent (cppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
+      out (indent (DCppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
         `shouldBe` step 1 <> "-- x\n" <> step 1 <> "a\n"
     it "stay where they are on a line something else began" $
-      out (indent (txt "a" <> space <> cppMarginNote (txt "-- x") <> hardBreak <> directive))
+      out (indent (txt "a" <> space <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
         `shouldBe` step 1 <> "a -- x\n#if X\n"
     it "stay indented when something else follows them on their line" $
-      out (indent (cppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
+      out (indent (DCppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
         `shouldBe` step 1 <> "{- x -} a\n#if X\n"
 
 held, underPrevious :: Text -> Doc

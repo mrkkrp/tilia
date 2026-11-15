@@ -96,7 +96,11 @@ exprBody ctx site here = \case
       <> hsExpr ctx e
   HsPar _ e ->
     layoutWithin ctx here (spanOf e) $
-      parensWith (closingFor site) (insideBrackets here (apart (hsExpr ctx e)))
+      bracketWith
+        (closingFor site)
+        "("
+        ")"
+        (insideBrackets here (apart (hsExpr ctx e)))
     where
       apart d = case unLoc e of
         SectionR _ (L _ (HsVar _ (L _ (Unqual o)))) _
@@ -915,7 +919,7 @@ cmdBody ctx site = \case
       <> breakOrSpace
       <> indent (hsExprIn ctx (withBracing (siteBracing site) plainSite) e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
-  HsCmdPar _ c -> parensWith (closingFor site) (hsCmd ctx plainSite c)
+  HsCmdPar _ c -> bracketWith (closingFor site) "(" ")" (hsCmd ctx plainSite c)
   HsCmdCase anns e mg -> caseOf ctx site (CmdBody ctx) anns e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
