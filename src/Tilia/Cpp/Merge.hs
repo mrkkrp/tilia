@@ -15,8 +15,7 @@ import Data.Bifunctor (bimap)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
-  ( find,
-    groupBy,
+  ( groupBy,
     maximumBy,
     minimumBy,
     sortOn,
@@ -56,7 +55,7 @@ import Tilia.Doc
   )
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Settings (Settings)
-import Tilia.Source (Lines, directiveOnLine, lineAt, offsetOf)
+import Tilia.Source (Lines, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 
 -- | A conditional other than the one asked about that answering a question
@@ -286,24 +285,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
 
     leadingCommaIn (opening, ss) = case reverse opening of
       x : DSoftBreak : rest
-        | x == leadingComma,
-          any (any writtenAfterComma . find (not . onlySpacing)) ss ->
+        | x == leadingComma ->
             (reverse rest, fmap ([DSoftBreak, x] <>) ss)
       _ -> (opening, ss)
-
-    writtenAfterComma y = case regionOf y of
-      Just s -> commaBefore (spanStartLine s) (Just (spanStartColumn s))
-      Nothing -> False
-
-    commaBefore n column = case lineAt n written of
-      Just l
-        | Nothing <- directiveOnLine l ->
-            let before = maybe l (\c -> T.take (offsetOf l c) l) column
-                code = T.stripEnd (fst (T.breakOn "--" before))
-             in if T.null code
-                  then n > 1 && commaBefore (n - 1) Nothing
-                  else "," `T.isSuffixOf` code
-      _ -> False
 
     sharedEnd layout ss =
       let (c, ss') = sharedStart layout (fmap reverse ss)
