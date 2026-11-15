@@ -9,12 +9,11 @@ module Terminal.Key
 #ifndef NO_NAMES
   , keyName
   , keyLabel
-  ,
 #if defined(HAVE_PATTERNS)
-    pattern Escape
-  , pattern Enter,
+  , pattern Escape
+  , pattern Enter
 #endif
-    keyGlyph
+  , keyGlyph
 #endif
   )
 where
