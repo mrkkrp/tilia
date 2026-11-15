@@ -80,7 +80,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -759,7 +759,8 @@ data Provenance
     DeclaredHere
   | -- | An @infix@ declaration in the named imported module.
     DeclaredIn Text
-  | -- | The language itself, as for @:@, whatever is in scope.
+  | -- | The language itself: for @:@, whatever is in scope, and for @~@
+    -- among types where nothing in scope declares it.
     BuiltIn
   | -- | No declaration exists anywhere in scope, and every module in scope
     -- was successfully consulted, so the Report's @infixl 9@ applies.
@@ -791,7 +792,10 @@ lookupFixity scope namespace qualifier op =
     Just (_, (fixity, provenance)) -> Resolved fixity provenance
     Nothing -> case nonEmpty
       (unreadThatMightDeclare scope namespace qualifier op) of
-      Nothing -> Resolved defaultFixity ReportDefault
+      Nothing
+        | namespace == InTypes && isNothing qualifier && op == OpName "~" ->
+            Resolved (Fixity NoAssoc 4) BuiltIn
+        | otherwise -> Resolved defaultFixity ReportDefault
       Just missing -> Unresolved missing
 
 -- | What the scope itself has for a use, and the namespace it came from.
