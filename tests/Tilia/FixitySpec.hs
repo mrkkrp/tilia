@@ -169,6 +169,31 @@ spec = do
       lookupFixity (scopeOfBoth "import Types\n") InTerms Nothing (OpName ":>")
         `shouldBe` Resolved defaultFixity ReportDefault
 
+  describe "an operator the module declares differently in its branches" $ do
+    it "is ambiguous where the branches parse together" $
+      disagreement
+        (scopeOfBoth "infixl 6 <+>\ninfixr 5 <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n")
+        InTerms
+        Nothing
+        (OpName "<+>")
+        `shouldBe` Just
+          (("M", Fixity LeftAssoc 6) :| [("M", Fixity RightAssoc 5)])
+
+    it "is ambiguous where each branch is a configuration of its own" $ do
+      let configuration fixity =
+            pmModule . parsed $
+              "module M where\ninfix"
+                <> fixity
+                <> " <+>\n(<+>) :: Int -> Int -> Int\na <+> b = a + b\n"
+          scope =
+            resolveScope
+              (Is #implicitPrelude)
+              knowingExports
+              (configuration "l 6" :| [configuration "r 5"])
+      disagreement scope InTerms Nothing (OpName "<+>")
+        `shouldBe` Just
+          (("M", Fixity LeftAssoc 6) :| [("M", Fixity RightAssoc 5)])
+
   describe "an equality nothing in scope declares" $ do
     it "is infix 4 among types, as GHC takes it" $
       lookupFixity (scopeOfBoth "import Terms\n") InTypes Nothing (OpName "~")
