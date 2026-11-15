@@ -57,7 +57,7 @@ import Tilia.MagicComments (preservedLines)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
 import Tilia.Render.Declaration (decls, declsKeepingGroups)
-import Tilia.Render.Expression (hsExprIn, untypedSplice)
+import Tilia.Render.Expression (hsExpr, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header
   ( HeaderPragma (..),
@@ -429,7 +429,7 @@ prologue = foldMap (\l -> txt l <> hardBreak)
 knot :: Knot
 knot =
   Knot
-    { knotExpr = hsExprIn,
+    { knotExpr = hsExpr,
       knotSplice = untypedSplice,
       knotSig = sigDecl,
       knotDecls = decls,
