@@ -106,9 +106,12 @@ Finally, here are some other flags that may be of interest:
 
 A project can change how Tilia formats it in a `tilia.toml` file in its
 root: the directory holding its `cabal.project`, or its `.cabal` file where
-it has no `cabal.project`.
+it has no `cabal.project`. Here is an example that tweaks every available
+setting:
 
 ```toml
+# Use indentation step 4.
+indentation = 4
 # Break what runs past column 100 rather than 80.
 column-limit = 100
 # Start each line of a broken list with its comma.
@@ -122,6 +125,7 @@ The file is TOML, restricted to lines of `key = value` where a value is
 
 | Setting          | Values                 | Default |
 | ---------------- | ---------------------- | ------- |
+| `indentation`    | 2 or 4                 | 2       |
 | `column-limit`   | a whole number above 0 | 80      |
 | `leading-commas` | `true` or `false`      | `false` |
 | `leading-arrows` | `true` or `false`      | `false` |
