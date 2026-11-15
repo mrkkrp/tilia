@@ -5,6 +5,10 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
+    Wrapper (..),
+    unwrap,
+    wrap,
+    layoutInside,
     Nesting (..),
     Spill (..),
     printsNothing,
@@ -112,19 +116,67 @@ data Doc
   deriving (Eq, Show)
 
 -- | Does this document put nothing at all on the page?
-printsNothing :: Doc -> Bool
+printsNothing ::
+  -- | The document.
+  Doc ->
+  Bool
 printsNothing = \case
   DEmpty -> True
   DDeclarationsStart -> True
   DCat a b -> printsNothing a && printsNothing b
-  DNest _ d -> printsNothing d
-  DAlign d -> printsNothing d
-  DCppMarginNote d -> printsNothing d
-  DGroup _ d -> printsNothing d
-  DLocated _ d -> printsNothing d
-  DFence _ d -> printsNothing d
   DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
-  _ -> False
+  d -> maybe False (printsNothing . snd) (unwrap d)
+
+-- | A node holding exactly one document, less the document.
+data Wrapper
+  = WLocated !Span
+  | WFence !Span
+  | WNest !Nesting
+  | WAlign
+  | WCppMarginNote
+  | WGroup !Layout
+  deriving (Eq, Show)
+
+-- | A document as the wrapper it is and the document it holds.
+unwrap ::
+  -- | The document.
+  Doc ->
+  Maybe (Wrapper, Doc)
+unwrap = \case
+  DLocated s d -> Just (WLocated s, d)
+  DFence s d -> Just (WFence s, d)
+  DNest n d -> Just (WNest n, d)
+  DAlign d -> Just (WAlign, d)
+  DCppMarginNote d -> Just (WCppMarginNote, d)
+  DGroup l d -> Just (WGroup l, d)
+  _ -> Nothing
+{-# INLINE unwrap #-}
+
+-- | Put a document in a wrapper.
+wrap ::
+  -- | The wrapper.
+  Wrapper ->
+  -- | The document to put in it.
+  Doc ->
+  Doc
+wrap = \case
+  WLocated s -> DLocated s
+  WFence s -> DFence s
+  WNest n -> DNest n
+  WAlign -> DAlign
+  WCppMarginNote -> DCppMarginNote
+  WGroup l -> DGroup l
+
+-- | The layout inside a wrapper laid out like this.
+layoutInside ::
+  -- | The layout of the group the wrapper is printed in.
+  Layout ->
+  -- | The wrapper.
+  Wrapper ->
+  Layout
+layoutInside layout = \case
+  WGroup l -> l
+  _ -> layout
 
 instance Semigroup Doc where
   DEmpty <> b = b
@@ -518,11 +570,10 @@ columnReached limit bound = walk
             DEmpty -> walk column spaceDue rest
             DHoldBack{} -> walk column spaceDue rest
             DDeclarationsStart -> walk column spaceDue rest
-            DNest _ y -> walk column spaceDue ((layout, held, y) : rest)
-            DAlign y -> walk column spaceDue ((layout, held, y) : rest)
-            DCppMarginNote y -> walk column spaceDue ((layout, held, y) : rest)
-            DLocated _ y -> walk column spaceDue ((layout, held, y) : rest)
-            DFence _ y -> walk column spaceDue ((layout, held, y) : rest)
+            _
+              | Just (_, y) <- unwrap x ->
+                  walk column spaceDue ((layout, held, y) : rest)
+              | otherwise -> (column, spaceDue, True)
     space column spaceDue rest
       | spaceDue = walk (column + 1) False rest
       | otherwise = walk column spaceDue rest

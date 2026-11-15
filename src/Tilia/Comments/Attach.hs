@@ -30,8 +30,10 @@ import Tilia.Comments.Place
 import Tilia.Doc
   ( Doc (..),
     foldChildren,
+    layoutInside,
     printsNothing,
     unwrap,
+    wrap,
   )
 import Tilia.Doc.Combinators
 import Tilia.Span
@@ -188,21 +190,19 @@ walk margin = go
          in ( write before' <> withUnder (DLocated s d' <> write after'),
               p''
             )
-      DFence s d -> first (DFence s) (go p d)
       DCppChoice cs bs e ->
         let bs' = [(c, go p d) | (c, d) <- bs]
             (e', pe) = go p e
          in ( DCppChoice cs [(c, d') | (c, (d', _)) <- bs'] e',
               foldr (unclaimedByEither . snd . snd) pe bs'
             )
-      DNest n d -> first (DNest n) (go p d)
-      DAlign d -> first DAlign (go p d)
-      DGroup l d -> first (DGroup l) (go p d)
       DVariant a b ->
         let (a', _) = go p a
             (b', p') = go p b
          in (DVariant a' b', p')
-      d -> (d, p)
+      d
+        | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
+        | otherwise -> (d, p)
 
 -- | Does this print a leading comma, but for the break before it, and
 -- nothing else?
@@ -251,18 +251,15 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DCat a b -> case firstLine layout a of
         (before, True) -> (before, True)
         (before, False) -> first (before <>) (firstLine layout b)
-      DNest _ x -> firstLine layout x
-      DAlign x -> firstLine layout x
-      DLocated _ x -> firstLine layout x
-      DFence _ x -> firstLine layout x
-      DGroup l x -> firstLine l x
       DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
       DCloseLineUnlessAfterOpener _ -> ([], True)
       DBreak -> ([], layout == Broken)
       DSoftBreak -> ([], layout == Broken)
-      _ -> ([], False)
+      y
+        | Just (w, x) <- unwrap y -> firstLine (layoutInside layout w) x
+        | otherwise -> ([], False)
 
 -- | Render one 'Comment' where it was placed.
 writtenAs ::
