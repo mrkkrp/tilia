@@ -308,7 +308,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
 -- | The parenthesised list after a module name.
 exportList :: Ctx -> Maybe Span -> [LIE GhcPs] -> Doc
 exportList ctx enclosing xs =
-  layoutHere . listParens . insideBrackets enclosing $
+  layoutHere . parens . insideBrackets enclosing $
     importExportItems ctx xs
   where
     layoutHere
@@ -317,9 +317,6 @@ exportList ctx enclosing xs =
 
 -- | The parentheses around an import or export list, or around the members
 -- of one of its items.
-listParens :: Doc -> Doc
-listParens = bracketWith Outdented "(" ")"
-
 -- | The items of an import or export list, with the documentation among
 -- them lined up with the items rather than with leading commas.
 importExportItems ::
@@ -400,7 +397,7 @@ ieItem ctx here withComma = \case
             here
             (spanOf open <> spanOf close <|> here)
             ( breakOrSpace
-                <> indent (listParens (insideBrackets here listed))
+                <> indent (parens (insideBrackets here listed))
             )
           <> comma'
       )
@@ -511,7 +508,7 @@ importDecl ctx ImportDecl{..} =
               <> breakOrSpace
               <> fence
                 parensSpan
-                ( listParens
+                ( parens
                     (insideBrackets listSpan (importExportItems ctx xs))
                 )
 

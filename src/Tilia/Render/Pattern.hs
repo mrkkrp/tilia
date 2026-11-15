@@ -73,8 +73,10 @@ patBody ctx inParens closing here = \case
   LazyPat _ p -> txt "~" <> recur p
   AsPat _ n p -> name ctx n <> txt "@" <> recur p
   ParPat _ p ->
-    parensWith
+    bracketWith
       closing
+      "("
+      ")"
       (insideBrackets here (hsPatIn ctx (Is #inParens) Indented p))
   BangPat _ p -> txt "!" <> recur p
   ListPat _ ps ->
@@ -182,8 +184,10 @@ fieldOcc ctx FieldOcc{..} = name ctx foLabel
 -- one that is not.
 unboxedSum :: ClosingIndent -> ConTag -> Arity -> Doc -> Doc
 unboxedSum closing tag arity d =
-  unboxedWith
+  spacedBracket
     closing
+    "(#"
+    "#)"
     (sepBy (txt "|") (before <> [space <> d <> space] <> after))
   where
     before = replicate (tag - 1) space
@@ -202,4 +206,4 @@ boxityBrackets ::
   Doc
 boxityBrackets commas = \case
   Boxed -> \closing -> commaBracketWith commas closing "(" ")"
-  Unboxed -> \closing -> unboxedWith closing . hangingCommas commas
+  Unboxed -> \closing -> spacedBracket closing "(#" "#)" . hangingCommas commas

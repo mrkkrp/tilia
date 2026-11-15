@@ -46,9 +46,9 @@ itemsSepBy semisWhenBroken bracing xs = case (bracing, xs) of
       (NoBrace, []) -> mempty
       (MayBrace, _) -> txt "{" <> space <> joined <> space <> txt "}"
       (NoBrace, _) -> joined
-    joined = sepBy (semi <> space) xs
+    joined = sepBy (txt ";" <> space) xs
     brokenForm =
-      sepBy (includeWhen (isTrue semisWhenBroken) semi <> hardBreak) xs
+      sepBy (includeWhen (isTrue semisWhenBroken) (txt ";") <> hardBreak) xs
 
 -- | Put back the empty lines the author left between items.
 keepBlanks ::

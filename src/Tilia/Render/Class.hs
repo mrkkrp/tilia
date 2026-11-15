@@ -71,10 +71,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
     classHead
       | isCTuple (unLoc tyCon) (length hsq_explicit) =
           layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit) $
-            bracketWith
-              Outdented
-              "("
-              ")"
+            parens
               ( insideBrackets
                   (spanOf tyCon)
                   ( commaSep
@@ -121,11 +118,11 @@ funDeps ctx fdeps =
 -- | One functional dependency of a class, as in @a b -> c@.
 funDep :: Ctx -> FunDep GhcPs -> Doc
 funDep ctx (FunDep _ before after) =
-  hsep (fmap (name ctx) before)
+  sepBy space (fmap (name ctx) before)
     <> space
     <> txt (reserved ctx "->")
     <> space
-    <> hsep (fmap (name ctx) after)
+    <> sepBy space (fmap (name ctx) after)
 
 -- | A class instance.
 clsInstDecl :: Ctx -> ClsInstDecl GhcPs -> Doc
@@ -272,7 +269,8 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
           Just given ->
             includeUnless (null given) $
               hardBreak
-                <> indent (vsep (fmap (at_ ctx (tyFamInstEqn ctx)) given))
+                <> indent
+                  (sepBy hardBreak (fmap (at_ ctx (tyFamInstEqn ctx)) given))
 
 -- | What the head of a family says of its result, a kind or a variable
 -- naming it, if anything.
@@ -303,7 +301,7 @@ injectivityAnn ctx (InjectivityAnn _ from to) =
     <> space
     <> txt (reserved ctx "->")
     <> space
-    <> hsep (fmap (name ctx) to)
+    <> sepBy space (fmap (name ctx) to)
 
 -- | One equation of a type family.
 tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc

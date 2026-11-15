@@ -66,10 +66,8 @@ spec = withEachSettings $ \settings -> do
         `shouldBe` "| a,\n  b\n"
       out (broken (commaSepAfter LeadingCommas "|" items))
         `shouldBe` "| a\n, b\n"
-    it "joins with hsep" $
-      out (flat (hsep [txt "a", txt "b"])) `shouldBe` "a b\n"
-    it "joins with vsep" $
-      out (flat (vsep [txt "a", txt "b"])) `shouldBe` "a\nb\n"
+    it "joins with a separator" $
+      out (flat (sepBy hardBreak [txt "a", txt "b"])) `shouldBe` "a\nb\n"
 
   describe "brackets" $ do
     it "adds nothing when flat" $
@@ -80,11 +78,11 @@ spec = withEachSettings $ \settings -> do
         `shouldBe` "( a,\n  b\n)\n"
     it "lines the body up under itself" $ do
       let items = [txt "a", txt "b", txt "c"]
-      out (broken (brackets (commaSep TrailingCommas items)))
+      out (broken (bracketWith Outdented "[" "]" (commaSep TrailingCommas items)))
         `shouldBe` "[ a,\n  b,\n  c\n]\n"
     it "keeps the closing bracket in when asked" $ do
       let items = [txt "a", txt "b"]
-      out (broken (parensWith Indented (commaSep TrailingCommas items)))
+      out (broken (bracketWith Indented "(" ")" (commaSep TrailingCommas items)))
         `shouldBe` "( a,\n  b\n" <> step 1 <> ")\n"
     it "puts leading commas under the opening bracket" $
       out (broken (ledByCommas Outdented [txt "a", txt "b", txt "c"]))
@@ -96,12 +94,12 @@ spec = withEachSettings $ \settings -> do
       out (flat (ledByCommas Outdented [txt "a", txt "b"]))
         `shouldBe` "[a, b]\n"
     it "renders an empty bracket pair flat" $
-      out (flat (brackets mempty)) `shouldBe` "[]\n"
+      out (flat (bracketWith Outdented "[" "]" mempty)) `shouldBe` "[]\n"
     it "spaces the unboxed pair" $
-      out (flat (unboxed (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (flat (spacedBracket Outdented "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(# a, b #)\n"
     it "gives a spaced pair its own lines when broken" $
-      out (broken (unboxed (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (broken (spacedBracket Outdented "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(#\n" <> step 1 <> "a,\n" <> step 1 <> "b\n#)\n"
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
