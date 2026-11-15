@@ -369,6 +369,37 @@ preparation = describe "preparing a project" $ do
       local <- canonicalizePath (dir </> "cabal.project.local")
       checkReadiness [] dir `shouldReturn` PlanStale [local]
 
+  describe "a plan solved for another compiler" $ do
+    it "notices that the compiler at hand has a base of another version" $
+      withTempProject (Just foreignPlan) $ \dir ->
+        checkReadiness [] dir `shouldReturn` PlanForeign "ghc-0.0"
+
+    it "is not what this very project has" $ do
+      plan' <- readBuildPlan (planPathFor ".")
+      case plan' of
+        Left _ -> expectationFailure "no build plan; run cabal build first"
+        Right p ->
+          checkReadiness [] "." `shouldNotReturn` PlanForeign (bpCompiler p)
+
+    it "solves only the once when solving leaves it so" $
+      withTempProject (Just foreignPlan) $ \dir -> do
+        steps <- newIORef []
+        futile <- newIORef False
+        let cabal args = do
+              record steps args
+              when (args == solving) (writePlan dir foreignPlan)
+              pure (Right ())
+            futility =
+              undiscoveredFutility
+                { solveWasFutile = readIORef futile,
+                  rememberFutileSolve = writeIORef futile True
+                }
+            once = prepareWith cabal futility [] dir (PlanForeign "ghc-0.0")
+        once `shouldReturn` Right ()
+        readIORef futile `shouldReturn` True
+        once `shouldReturn` Right ()
+        readIORef steps `shouldReturn` [solving]
+
   describe "a plan narrower than the run" $ do
     it "notices a component the plan says nothing about" $
       withTempProject (Just twoComponents) $ \dir ->
@@ -2413,6 +2444,12 @@ wantingATarball =
   "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
   \[{\"pkg-name\":\"tilia-phantom\",\"pkg-version\":\"9.9.9\",\
   \\"pkg-src\":{\"type\":\"repo-tar\"}}]}"
+
+-- | A plan solved for a compiler whose @base@ no compiler has.
+foreignPlan :: Text
+foreignPlan =
+  "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
+  \[{\"type\":\"pre-existing\",\"pkg-name\":\"base\",\"pkg-version\":\"0.0\"}]}"
 
 -- | A plan holding a local package with a library and an executable, and
 -- no test suite.
