@@ -475,7 +475,10 @@ operatorChain ctx outerSite mkBody isDo =
                 (if placement == Hanging then MayBrace else NoBrace)
                 laidOut
         where
-          placement = placementOf (chainSpan spanOf firstOne) (NE.last operands)
+          placement
+            | leadingDo && not (siteInBlock site) = Normal
+            | otherwise =
+                placementOf (chainSpan spanOf firstOne) (NE.last operands)
           placementOf leader operand
             | ledByDo operand = Normal
             | otherwise = chainPlacement hangs leader operand
