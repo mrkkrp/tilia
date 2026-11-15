@@ -797,6 +797,7 @@ withReexports reach modName summary =
     own =
       mempty
         { establishedFixities = summaryFixities summary,
+          establishedUntold = Set.fromList [[] | summarySpliced summary],
           establishedCertain = Certain (summaryNames summary) declared,
           establishedMembers = Map.map (Set.map snd) declared
         }
@@ -818,6 +819,13 @@ withReexports reach modName summary =
     exported answers reexported = \case
       ExportName namespace qualifier op ->
         settled answers True qualifier (namespace, op)
+          <> mempty
+            { establishedUnsettled =
+                Map.fromList
+                  [ ([], Set.singleton (namespace, op))
+                  | unseen answers qualifier (namespace, op)
+                  ]
+            }
           <> certainly (Set.singleton (namespace, op)) Map.empty
       ExportAll qualifier parent
         | Just kids <- Map.lookup parent declared -> withMembers parent kids
@@ -827,6 +835,7 @@ withReexports reach modName summary =
                   Map.findWithDefault Nothing (qualifier, parent) reexported
              in found
                   <> mempty{establishedUntold = Map.keysSet (establishedUnsettled found)}
+                  <> untoldIf (unseen answers qualifier (InTypes, parent))
                   <> foldMap (member answers qualifier parent) (foldMap Set.toList kids)
                   <> case kids of
                     Nothing ->
@@ -838,6 +847,7 @@ withReexports reach modName summary =
                           }
       ExportSome qualifier parent kids ->
         settled answers True qualifier (InTypes, parent)
+          <> untoldIf (unseen answers qualifier (InTypes, parent))
           <> foldMap (member answers qualifier parent) kids
           <> withMembers
             parent
@@ -858,6 +868,15 @@ withReexports reach modName summary =
           <> foldMap
             (whole answers)
             [i | i <- imports, not (importQualified i), importAlias i == m]
+
+    unseen answers qualifier name@(_, op) =
+      Set.notMember op defined
+        && and
+          [ Set.notMember name (certainNames (establishedCertain established))
+              && null (unsettledThrough established name)
+          | (_, established) <- candidates answers qualifier op
+          ]
+    untoldIf b = mempty{establishedUntold = Set.fromList [[] | b]}
 
     certainly names members = mempty{establishedCertain = Certain names members}
     withMembers parent kids =

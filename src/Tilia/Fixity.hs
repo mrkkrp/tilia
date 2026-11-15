@@ -197,6 +197,9 @@ declaredNamespaces hsModule =
             : [opName (unLoc (fdLName (unLoc f))) | f <- tcdATs]
       _ -> []
     terms = \case
+      ValD _ b@(PatSynBind _ PSB{psb_args = RecCon fields}) ->
+        fmap opName (collectHsBindBinders CollNoDictBinders b)
+          <> [opName (unLoc (foLabel (recordPatSynField f))) | f <- fields]
       ValD _ b -> fmap opName (collectHsBindBinders CollNoDictBinders b)
       SigD _ sig -> signedNames sig
       ForD _ f -> [opName (unLoc (fd_name f))]
@@ -240,18 +243,21 @@ constructorsOf = concatMap (fromCon . unLoc) . consOf . dd_cons
 
     fromCon :: ConDecl GhcPs -> [OpName]
     fromCon = \case
-      ConDeclGADT{con_names} -> fmap (opName . unLoc) (toList con_names)
+      ConDeclGADT{con_names, con_g_args} ->
+        fmap (opName . unLoc) (toList con_names) <> case con_g_args of
+          RecConGADT _ fields -> fieldNames fields
+          _ -> []
       ConDeclH98{con_name, con_args} ->
-        opName (unLoc con_name) : fieldNames con_args
+        opName (unLoc con_name) : case con_args of
+          RecCon fields -> fieldNames fields
+          _ -> []
 
-    fieldNames :: HsConDeclH98Details GhcPs -> [OpName]
-    fieldNames = \case
-      RecCon fields ->
-        [ opName (unLoc (foLabel (unLoc n)))
-        | f <- unLoc fields,
-          n <- cdrf_names (unLoc f)
-        ]
-      _ -> []
+    fieldNames :: LocatedL [LHsConDeclRecField GhcPs] -> [OpName]
+    fieldNames fields =
+      [ opName (unLoc (foLabel (unLoc n)))
+      | f <- unLoc fields,
+        n <- cdrf_names (unLoc f)
+      ]
 
 -- | The names a signature is about, leaving fixity declarations aside.
 signedNames :: Sig GhcPs -> [OpName]
@@ -1090,7 +1096,9 @@ data ModuleSummary = ModuleSummary
     -- | The members of each type or class it declares.
     summaryDeclaredMembers :: Map OpName (Set (Namespace, OpName)),
     -- | The members its export list offers with each name.
-    summaryListedMembers :: Map OpName (Set OpName)
+    summaryListedMembers :: Map OpName (Set OpName),
+    -- | Whether a declaration splice at its top level may declare more.
+    summarySpliced :: Bool
   }
   deriving (Eq, Show, Generic)
 
@@ -1112,7 +1120,9 @@ summarize implicitPrelude hsModule =
       summaryFixities = declaredFixities hsModule,
       summaryNames = declaredNames hsModule,
       summaryDeclaredMembers = declaredMembers hsModule,
-      summaryListedMembers = listedMembers hsModule
+      summaryListedMembers = listedMembers hsModule,
+      summarySpliced =
+        any (\case L _ SpliceD{} -> True; _ -> False) (hsmodDecls hsModule)
     }
 
 ----------------------------------------------------------------------------
