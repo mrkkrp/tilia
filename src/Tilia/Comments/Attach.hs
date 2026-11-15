@@ -31,6 +31,7 @@ import Tilia.Doc
   ( Doc (..),
     foldChildren,
     layoutInside,
+    leadingComma,
     printsNothing,
     unwrap,
     wrap,
@@ -162,7 +163,7 @@ walk margin = go
       | otherwise = step p d
     step p = \case
       DCat a b
-        | leadingComma a,
+        | a == leadingComma || a == breakOrNothing <> leadingComma,
           Just s <- openingRegion b,
           (lifted@(_ : _), p0) <- claimOwnLines s p ->
             let (a', p') = go p0 a
@@ -203,18 +204,6 @@ walk margin = go
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
-
--- | Does this print a leading comma, but for the break before it, and
--- nothing else?
-leadingComma ::
-  -- | The document.
-  Doc ->
-  Bool
-leadingComma = \case
-  DNest _ (DText t) -> t == ", "
-  DCat DSoftBreak (DNest _ (DText t)) -> t == ", "
-  _ -> False
-{-# INLINE leadingComma #-}
 
 -- | The outermost region a document prints first.
 openingRegion ::

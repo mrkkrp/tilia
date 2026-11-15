@@ -80,6 +80,7 @@ import Tilia.Doc
     LineStart (..),
     Nesting (..),
     TrailingWhitespace (..),
+    leadingComma,
     mapChildren,
     printsNothing,
   )
@@ -379,7 +380,7 @@ separatingComma ::
   Doc
 separatingComma = \case
   TrailingCommas -> comma <> breakOrSpace
-  LeadingCommas -> breakOrNothing <> DNest (Columns (-2)) (txt ", ")
+  LeadingCommas -> breakOrNothing <> leadingComma
 
 -- | Move items separated by 'commaSep' right by the width of a leading
 -- comma, so that the commas, not the items, come where the items would

@@ -37,11 +37,11 @@ import Tilia.Doc
   ( Conditional (..),
     Doc (..),
     Layout (..),
-    Nesting (..),
     Wrapper (..),
     conditionalRange,
     foldChildren,
     layoutInside,
+    leadingComma,
     mapChildren,
     onlyBreaks,
     onlySpacing,
@@ -1045,10 +1045,6 @@ leadingArrow :: Doc -> Bool
 leadingArrow = \case
   DText t -> t `elem` [":: ", "=> ", "-> ", " . ", "∷ ", "⇒ ", "→ ", "⊸ "]
   _ -> False
-
--- | A comma leading the item after it.
-leadingComma :: Doc
-leadingComma = DNest (Columns (-2)) (Doc.txt ", ")
 
 -- | A leading arrow, put at the end of a line instead.
 trailingArrow :: Doc -> [Doc]
