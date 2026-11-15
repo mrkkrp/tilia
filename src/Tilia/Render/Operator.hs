@@ -43,14 +43,13 @@ flatten ::
   -- | The root of the tree.
   a ->
   (NonEmpty a, [op])
-flatten split = go
+flatten split x = go x [] []
   where
-    go x = case split x of
-      Nothing -> (x :| [], [])
+    go y operands ops = case split y of
+      Nothing -> (y :| operands, ops)
       Just (l, op, r) ->
-        let (ls, lops) = go l
-            (rs, rops) = go r
-         in (ls <> rs, lops <> [op] <> rops)
+        let (r' :| rs, rops) = go r operands ops
+         in go l (r' : rs) (op : rops)
 
 -- | 'flatten' for a node the caller has already taken apart.
 --
