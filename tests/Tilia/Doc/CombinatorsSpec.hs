@@ -104,6 +104,17 @@ spec = withEachSettings $ \settings -> do
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
 
+  describe "attach" $ do
+    it "hands over the line when hanging" $
+      out (broken (txt "=" <> attach Hanging (txt "do" <> indent (hardBreak <> txt "s"))))
+        `shouldBe` "= do\n" <> step 1 <> "s\n"
+    it "breaks and indents when normal" $
+      out (broken (txt "=" <> attach Normal (txt "f" <> space <> txt "x")))
+        `shouldBe` "=\n" <> step 1 <> "f x\n"
+    it "stays on one line when flat, either way" $ do
+      out (flat (txt "=" <> attach Normal (txt "x"))) `shouldBe` "= x\n"
+      out (flat (txt "=" <> attach Hanging (txt "x"))) `shouldBe` "= x\n"
+
   describe "inclusion" $ do
     it "includes when the condition holds" $
       out (flat (txt "a" <> includeWhen True (space <> txt "b")))

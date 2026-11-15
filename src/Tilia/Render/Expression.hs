@@ -41,7 +41,6 @@ import GHC.Types.SrcLoc
   )
 import Language.Haskell.Syntax.Basic (field_label)
 
-import Tilia.Doc.Body
 import Tilia.Doc.Combinators
 import Tilia.Fixity
   ( Fixity,
@@ -1460,6 +1459,22 @@ bracedForSite site render
 
 ----------------------------------------------------------------------------
 -- Bodies
+
+-- | Something that can appear as the body of an enclosing construct.
+class Body a where
+  -- | Print it.
+  printBody :: a -> Doc
+
+  -- | Whether it absorbs its own line break.
+  bodyPlacement :: a -> Placement
+
+-- | Print a body and join it to whatever precedes it.
+attachBody ::
+  (Body a) =>
+  -- | The body.
+  a ->
+  Doc
+attachBody x = attach (bodyPlacement x) (printBody x)
 
 -- | An expression standing as the body of an enclosing construct.
 data ExprBody = ExprBody Ctx Site (LHsExpr GhcPs)
