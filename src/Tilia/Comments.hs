@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Extracting comments from a parsed module.
+-- | Comments: what the lexer finds, and how each is written back.
 module Tilia.Comments
   ( Comment (..),
     CommentStyle (..),

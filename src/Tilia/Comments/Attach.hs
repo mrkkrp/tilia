@@ -1,11 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Attaching a stream of comments to a 'Doc'.
---
--- Attachment happens once, on the finished document, before anything is
--- rendered. A comment becomes an ordinary part of the document like any
--- other, and from then on nothing distinguishes it.
+-- | Attaching comments to a 'Doc'.
 module Tilia.Comments.Attach
   ( attachComments,
     attachScopedComments,
