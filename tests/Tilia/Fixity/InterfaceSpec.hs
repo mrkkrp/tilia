@@ -251,6 +251,19 @@ spec = do
         )
         `shouldBe` Right [((InTerms, OpName "<+>"), Fixity LeftAssoc 3)]
 
+    it "is left out of a decoded interface that passes on another spelled the same" $
+      fmap
+        (Map.toList . interfaceDeclares)
+        ( fromHiFile
+            "M"
+            ( HiFile
+                "M"
+                [Avail (inN InTerms "<+>")]
+                [(InTerms, OpName "<+>", Fixity LeftAssoc 1)]
+            )
+        )
+        `shouldBe` Right []
+
     it "is left out of what ghc --show-iface prints" $
       declares "exports:\n  <+>\n  parser\nfixities infixl 3 <+>, infixr 2 <~>\n"
         `shouldBe` [(OpName "<+>", Fixity LeftAssoc 3)]
