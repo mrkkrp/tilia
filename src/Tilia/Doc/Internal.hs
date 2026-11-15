@@ -223,7 +223,7 @@ data LineStart
     AtMargin
   deriving (Eq, Show)
 
--- | What do to with the whitespace a finished line ends in.
+-- | What to do with the whitespace a finished line ends in.
 data TrailingWhitespace
   = -- | Trim it.
     TrimWhitespace
@@ -277,8 +277,9 @@ data Env = Env
 -- | Output built so far.
 --
 -- Lines are finished one at a time and never revisited while the document
--- is walked. Whatever about a line depends on the lines around it is
--- settled only once they are all there, in 'finish'.
+-- is walked, but for the empty lines a directive drops right above itself.
+-- Whatever about a line depends on the lines around it is settled only
+-- once they are all there, in 'finish'.
 data Out = Out
   { -- | Completed lines, most recent first.
     outLines :: [Line],

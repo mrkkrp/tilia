@@ -104,7 +104,7 @@ spec = withEachSettings $ \settings -> do
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
 
-  describe "conditionals" $ do
+  describe "inclusion" $ do
     it "includes when the condition holds" $
       out (flat (txt "a" <> includeWhen True (space <> txt "b")))
         `shouldBe` "a b\n"

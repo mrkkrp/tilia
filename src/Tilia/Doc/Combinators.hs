@@ -63,7 +63,7 @@ module Tilia.Doc.Combinators
     commaSepUnderFirst,
     commaSepAfter,
 
-    -- * Conditionals
+    -- * Inclusion
     includeWhen,
     includeUnless,
   )
@@ -430,7 +430,7 @@ commaSepAfter commas leadIn items =
   txt leadIn <> space <> align (commaSep commas items)
 
 ----------------------------------------------------------------------------
--- Conditionals
+-- Inclusion
 
 -- | The document if the condition holds, nothing otherwise.
 includeWhen :: Bool -> Doc -> Doc
