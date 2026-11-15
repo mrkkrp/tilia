@@ -11,6 +11,7 @@ module Tilia.Source
     linesOf,
     dropping,
     lineTexts,
+    lineTextsFrom,
     sourceLines,
     lineAt,
     blankAt,

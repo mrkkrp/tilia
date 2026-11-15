@@ -68,7 +68,7 @@ import Tilia.Source
     blankAt,
     isDirective,
     lineAt,
-    lineTexts,
+    lineTextsFrom,
     linesOf,
   )
 import Tilia.Span (Span (..), mkSpan, startPoint)
@@ -443,8 +443,13 @@ putMacroLine written doc (n, t)
 
 -- | Does the code under a line open with a comma, which the printer puts at
 -- the end of the item above the line instead?
-commaUnder :: Lines -> Int -> Bool
-commaUnder written n = case dropWhile passed (drop n (lineTexts written)) of
+commaUnder ::
+  -- | The module as written.
+  Lines ->
+  -- | The line.
+  Int ->
+  Bool
+commaUnder written n = case dropWhile passed (lineTextsFrom (n + 1) written) of
   l : _ -> T.isPrefixOf "," (T.stripStart l)
   [] -> False
   where
