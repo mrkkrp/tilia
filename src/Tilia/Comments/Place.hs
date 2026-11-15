@@ -18,7 +18,6 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (minimumBy, partition, sortOn)
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -31,6 +30,7 @@ import Tilia.Comments
     carriedOnFrom,
     carriesOn,
     closesItself,
+    commentRuns,
     commentTrailing,
     singleLine,
   )
@@ -254,22 +254,8 @@ placeComments regions leads fences comments =
         ]
 
     runs =
-      IntMap.fromList
-        [ (spanStartLine (commentSpan c), (NE.head run, NE.last run))
-        | run <- foldr joined [] (sortOn (startPoint . commentSpan) comments),
-          c <- NE.toList run
-        ]
-      where
-        joined c rest
-          | commentTrailing c || commentFollowed c = rest
-          | (d :| ds) : rest' <- rest, continuedBy c d = (c :| d : ds) : rest'
-          | otherwise = (c :| []) : rest
-        continuedBy c d =
-          spanStartLine below == spanEndLine above + 1
-            && spanStartColumn below == spanStartColumn above
-          where
-            above = commentSpan c
-            below = commentSpan d
+      commentRuns
+        (filter (\c -> not (commentTrailing c || commentFollowed c)) comments)
 
     enclosingRegions = enclosures regions (fmap commentSpan comments)
     enclosingFences = enclosures fences (fmap commentSpan comments)
