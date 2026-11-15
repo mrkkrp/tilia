@@ -17,6 +17,7 @@ module Tilia.Source.Lines
     contentColumn,
     directivePresentOnLine,
     directiveOnLine,
+    isDirective,
     definedMacros,
     conditionalKeywords,
     opensGroup,
@@ -129,8 +130,13 @@ afterChar ch c
   | otherwise = c + 1
 
 -- | Does this line hold a preprocessor directive?
-directivePresentOnLine :: Int -> Lines -> Bool
-directivePresentOnLine n ls = isJust (directiveOnLine =<< lineAt n ls)
+directivePresentOnLine ::
+  -- | The line's number.
+  Int ->
+  -- | The lines.
+  Lines ->
+  Bool
+directivePresentOnLine n ls = any isDirective (lineAt n ls)
 
 -- | The names the module defines with @#define@, in whichever configuration.
 definedMacros :: Lines -> Set Text
@@ -149,6 +155,13 @@ directiveOnLine l = case T.uncons l of
       body = T.stripStart rest
       keyword = T.takeWhile isAsciiLower body
   _ -> Nothing
+
+-- | Does this line begin with a preprocessor directive?
+isDirective ::
+  -- | The line.
+  Text ->
+  Bool
+isDirective = isJust . directiveOnLine
 
 -- | Every directive the C preprocessor takes, whether or not this module
 -- can do anything with the ones it names.

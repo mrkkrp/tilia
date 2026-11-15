@@ -23,7 +23,7 @@ import GHC.Hs (HsModule (..))
 
 import Tilia.Comments (Comment (..), CommentStyle (..), commentTrailing)
 import Tilia.Parser (ParsedModule (..))
-import Tilia.Source (Source, comments, directiveOnLine, lineTexts, sourceLines)
+import Tilia.Source (Source, comments, isDirective, lineTexts, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc (spanOf)
 
@@ -142,7 +142,7 @@ misplacedMagicComment written configurations
         directives =
           [ (from, AroundDirective)
           | (from, to) <- preservedLines source,
-            any (isJust . directiveOnLine) (between from to ls)
+            any isDirective (between from to ls)
           ]
         declared = mapMaybe spanOf (hsmodDecls hsMod)
         headerEnd =
