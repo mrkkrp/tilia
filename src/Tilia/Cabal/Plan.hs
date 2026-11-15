@@ -179,13 +179,17 @@ isFetchable p = case ppSource p of
   _ -> False
 
 -- | Every package the compiler can see.
-getInstalledPackages :: Cache -> IO [InstalledPackage]
-getInstalledPackages cache =
-  cachedInstalled cache >>= \case
+getInstalledPackages ::
+  -- | Where what @ghc-pkg@ said is remembered.
+  Cache ->
+  IO [InstalledPackage]
+getInstalledPackages cache = do
+  compiler <- compilerIdentity
+  cachedInstalled cache compiler >>= \case
     Just packages -> pure packages
     Nothing -> do
       found <- readInstalledPackages
-      storeInstalled cache found
+      storeInstalled cache compiler found
       pure (installedPackages found)
 
 -- | Summarize a 'BuildPlan', and the environment it will be read in, by

@@ -400,9 +400,14 @@ parseSummaries = \case
 
 -- | What packages the compiler could see when last asked, if it can still
 -- see it.
-cachedInstalled :: Cache -> IO (Maybe [InstalledPackage])
-cachedInstalled cache = quietly Nothing $ do
-  readIfPresent (at cache (installedFile cache)) T.lines >>= \case
+cachedInstalled ::
+  -- | The cache.
+  Cache ->
+  -- | The compiler, by its identity.
+  Text ->
+  IO (Maybe [InstalledPackage])
+cachedInstalled cache compiler = quietly Nothing $ do
+  readIfPresent (at cache (installedFile compiler)) T.lines >>= \case
     Nothing -> pure Nothing
     Just ls -> do
       let (databases, packages) = span (T.isPrefixOf "db ") ls
@@ -431,12 +436,19 @@ cachedInstalled cache = quietly Nothing $ do
 
 -- | Remember a package the compiler can see, stamped so that a later run
 -- can tell whether it still does.
-storeInstalled :: Cache -> Installed -> IO ()
-storeInstalled cache found
+storeInstalled ::
+  -- | The cache.
+  Cache ->
+  -- | The compiler, by its identity.
+  Text ->
+  -- | What it can see.
+  Installed ->
+  IO ()
+storeInstalled cache compiler found
   | null databases = pure ()
   | otherwise = quietly () $ do
       stamps <- traverse stampOf databases
-      writeAtomically (at cache (installedFile cache)) . renderLines $
+      writeAtomically (at cache (installedFile compiler)) . renderLines $
         [["db", stamp, T.pack path] | (path, stamp) <- zip databases stamps]
           <> concatMap packageLines (installedPackages found)
   where
@@ -613,9 +625,9 @@ establishedFile package modName = ["established", package, modName]
 summariesFile :: Text -> [Text]
 summariesFile key = ["summaries", key]
 
--- | The path of the packages the compiler can see.
-installedFile :: Cache -> [Text]
-installedFile cache = ["installed", tokenOf cache]
+-- | The path of the packages a compiler, given by its identity, can see.
+installedFile :: Text -> [Text]
+installedFile compiler = ["installed", T.take 16 (sha256Of compiler)]
 
 -- | The path of the mark that solving again did not widen the plan.
 solvesFile :: Cache -> [Text]
