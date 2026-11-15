@@ -8,9 +8,3 @@ onItsOwnLine = case x of
     a ->
         -- why
         b
-
-beforeTheClosingBracket =
-    [ a
-    , b
-      -- and that is all
-    ]

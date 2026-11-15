@@ -34,17 +34,3 @@ type Debugged :: Type -> Type
 newtype Debugged a = Debugged (Witness a)
   deriving (Show)
 #endif
-
--- Bindings lined up after a let leave the conditional in two.
-trace :: Witness a -> IO ()
-trace w = do
-  let name = "witness"
-#if WITNESS_DEBUG
-      shown = show (Debugged w)
-#endif
-#if WITNESS_DEBUG
-#if __GLASGOW_HASKELL__ >= 810
-  putStrLn shown
-#endif
-#endif
-  putStrLn name

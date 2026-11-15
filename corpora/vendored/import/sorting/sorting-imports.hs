@@ -3,7 +3,6 @@
 module Weather.Station where
 
 import Prelude hiding (lookup)
-import "this" Weather.Units (Celsius)
 import Data.Map.Strict (Map)
 import "containers" Data.Set (Set)
 import Control.Monad (forM_)
