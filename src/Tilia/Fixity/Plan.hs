@@ -95,13 +95,13 @@ import Tilia.Utils
 
 -- | Where a module's fixities can be read from.
 data Route
-  = -- | The compiled interface the package database points at. Cheap, and
-    -- authoritative where it exists, since it is the compiler's own account
-    -- of what it settled on.
+  = -- | The compiled interface the global or user package database points
+    -- at. Cheap, and authoritative where it exists, since it is the
+    -- compiler's own account of what it settled on.
     FromInterface
   | -- | The module's source, out of the package's tarball in Cabal's
-    -- package cache. Slower, and the only route for a package that is
-    -- planned but not built.
+    -- package cache. Slower, and the only route for a package outside
+    -- those databases, such as every one Cabal builds into its store.
     FromSource
   deriving (Eq, Show)
 
