@@ -99,7 +99,7 @@ patBody ctx inParens closing here = \case
   ConPat _ con details -> conPattern ctx inParens here con details
   ViewPat _ e p ->
     align $
-      knotExpr (ctxKnot ctx) ctx plainSite e
+      knotExpr (ctxKnot ctx) ctx e
         <> joinedBy (reserved ctx "->")
         <> indent (recur p)
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice

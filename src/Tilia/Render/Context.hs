@@ -125,7 +125,7 @@ data Ctx = Ctx
 -- | The backward edges of the rendering knot.
 data Knot = Knot
   { -- | Expressions, needed by patterns.
-    knotExpr :: Ctx -> Site -> LHsExpr GhcPs -> Doc,
+    knotExpr :: Ctx -> LHsExpr GhcPs -> Doc,
     -- | Splices, needed by types and patterns, defined with expressions.
     knotSplice :: Ctx -> SpliceDecoration -> HsUntypedSplice GhcPs -> Doc,
     -- | Signature declarations, needed by @let@ and @where@ bodies.

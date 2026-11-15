@@ -923,7 +923,7 @@ cmdBody ctx site = \case
   HsCmdArrApp _ body input arrow rightToLeft ->
     let writtenFirst = if rightToLeft then body else input
         writtenSecond = if rightToLeft then input else body
-     in hsExprIn ctx site{siteApplicand = False} writtenFirst
+     in hsExprIn ctx site writtenFirst
           <> breakOrSpace
           <> indent
             ( txt (reserved ctx (arrowText arrow rightToLeft))
