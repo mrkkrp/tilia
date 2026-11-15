@@ -20,6 +20,7 @@ module Tilia.Cpp.Directives
     Varied (..),
     untouched,
     branchLeaves,
+    coveringLeaves,
     implied,
     settledBranch,
     correspondingBranches,
@@ -292,16 +293,47 @@ untouched (Varied ranges) s = not (any reaches ranges)
 branchLeaves :: Text -> Either CppError [Text]
 branchLeaves source = do
   forest <- readConditionals source
-  pure
-    [ withoutOpaque leaf
-    | leaf <-
-        distinct
-          [ configurationOf forest a source
-          | a <- branchAssignments forest,
-            possible forest (completed forest a)
-          ],
-      null (unconditionalErrors leaf)
-    ]
+  pure (leavesOf forest (branchAssignments forest) source)
+
+-- | Configurations enough for every branch of every conditional to be taken
+-- in one of them: the @k@-th takes the @k@-th branch of each, or its last
+-- where it has fewer, and a branch none of those takes is taken as in
+-- 'branchLeaves'.
+coveringLeaves :: Text -> Either CppError [Text]
+coveringLeaves source = do
+  forest <- readConditionals source
+  let groups = allGroups forest
+      broad =
+        [ (a, leaf)
+        | k <- [0 .. maximum (1 : fmap gsCount groups) - 1],
+          let a =
+                Map.fromList
+                  [(gsGuards gs, min k (gsCount gs - 1)) | gs <- groups],
+          possible forest a,
+          let leaf = configurationOf forest a source,
+          null (unconditionalErrors leaf)
+        ]
+      taken = Set.fromList (concatMap (reachedBy forest . fst) broad)
+      rest =
+        [ a
+        | a <- branchAssignments forest,
+          any (`Set.notMember` taken) (reachedBy forest (completed forest a))
+        ]
+  pure (fmap (withoutOpaque . snd) broad <> leavesOf forest rest source)
+
+-- | The distinct configurations of a module that the assignments select and
+-- the preprocessor could produce, leaving out those that end in @#error@.
+leavesOf :: [GroupSpec] -> [Assignment] -> Text -> [Text]
+leavesOf forest assignments source =
+  [ withoutOpaque leaf
+  | leaf <-
+      distinct
+        [ configurationOf forest a source
+        | a <- assignments,
+          possible forest (completed forest a)
+        ],
+    null (unconditionalErrors leaf)
+  ]
   where
     distinct = Map.elems . Map.fromList . fmap (\t -> (t, t))
 

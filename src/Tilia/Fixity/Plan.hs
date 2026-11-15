@@ -55,7 +55,11 @@ import Tilia.Cabal.Package
   )
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
-import Tilia.Cpp.Directives (branchLeaves, withoutRuledOut)
+import Tilia.Cpp.Directives
+  ( branchLeaves,
+    coveringLeaves,
+    withoutRuledOut,
+  )
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Fixity
 import Tilia.Fixity.Archive
@@ -1064,8 +1068,12 @@ inhabited names
   | Set.null names = Nothing
   | otherwise = Just names
 
--- | Every configuration the preprocessor allows of a module's text that is
--- Haskell, parsed and summarized.
+-- | Configurations of a module's text that between them take every branch
+-- the preprocessor allows, parsed and summarized.
+--
+-- Where one of the few that 'coveringLeaves' gives is not Haskell, it is
+-- one configuration per branch instead, so that only the branch at fault
+-- goes unread.
 configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
@@ -1077,9 +1085,12 @@ configurationsOf ::
   Text ->
   Maybe (NonEmpty ModuleSummary)
 configurationsOf macros extensions modName text =
-  NE.nonEmpty . mapMaybe parsed
-    =<< whatParsed (branchLeaves (withoutRuledOut macros text))
+  NE.nonEmpty
+    =<< (traverse parsed =<< covering) <|> (mapMaybe parsed <$> each)
   where
+    covering = whatParsed (coveringLeaves settled)
+    each = whatParsed (branchLeaves settled)
+    settled = withoutRuledOut macros text
     parsed leaf =
       summarize (hasImplicitPrelude extensions leaf) . pmModule
         <$> whatParsed (parseModule (ParserConfig extensions) named leaf)
