@@ -483,7 +483,8 @@ data Readiness
     Ready
   | -- | No build plan; @cabal@ has not solved this project yet.
     PlanMissing
-  | -- | The plan is older than the files that determine it.
+  | -- | The plan is older than the files that determine it, or names a
+    -- package directory that holds none.
     PlanStale [FilePath]
   | -- | The plan was solved for a compiler other than the one at hand, and
     -- names it.
@@ -573,20 +574,22 @@ builtAlready installed p = any matches installed
     matches i = ipName i == ppName p && ipVersion i == ppVersion p
 
 -- | The project files that have changed since the plan was written, and
--- since the last solve, which leaves a plan it would not change as it was.
+-- since the last solve, which leaves a plan it would not change as it was,
+-- and the directories of the plan's local packages that hold none.
 filesNewerThanPlan :: BuildPlan -> FilePath -> Maybe UTCTime -> IO [FilePath]
 filesNewerThanPlan plan projectDir solved = quietly [] $ do
   written <- getModificationTime (planPathFor projectDir)
   let planTime = maybe written (max written) solved
   configs <- projectConfigFiles projectDir
   atRootPackage <- cabalFilesIn projectDir
-  inPackages <- concat <$> traverse cabalFilesIn (localDirs plan)
-  let candidates = fmap fst configs <> atRootPackage <> inPackages
+  inPackages <- traverse cabalFilesIn localDirs
+  let candidates = fmap fst configs <> atRootPackage <> concat inPackages
+      gone = [dir | (dir, []) <- zip localDirs inPackages]
   newer <- traverse (isNewerThan planTime) candidates
-  pure [f | Just f <- newer]
+  pure (gone <> [f | Just f <- newer])
   where
-    localDirs p =
-      Data.List.nub [dir | LocalPackage dir <- fmap ppSource (bpPackages p)]
+    localDirs =
+      Data.List.nub [dir | LocalPackage dir <- fmap ppSource (bpPackages plan)]
     isNewerThan planTime path = quietly Nothing $ do
       t <- getModificationTime path
       pure (if t > planTime then Just path else Nothing)

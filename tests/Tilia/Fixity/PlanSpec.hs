@@ -39,6 +39,7 @@ import System.Directory
     createDirectoryIfMissing,
     doesFileExist,
     getPermissions,
+    removeFile,
     setModificationTime,
     setOwnerExecutable,
     setPermissions,
@@ -368,6 +369,11 @@ preparation = describe "preparing a project" $ do
       writeUtf8File (dir </> "cabal.project.local") ""
       local <- canonicalizePath (dir </> "cabal.project.local")
       checkReadiness [] dir `shouldReturn` PlanStale [local]
+
+  it "takes a package moved away from where the plan has it as making it stale" $
+    withOwnPlan $ \dir -> do
+      removeFile (dir </> "package" </> "package.cabal")
+      checkReadiness [] dir `shouldReturn` PlanStale [dir </> "package"]
 
   describe "a plan solved for another compiler" $ do
     it "notices that the compiler at hand has a base of another version" $
@@ -2407,11 +2413,18 @@ withTempProject :: Maybe Text -> (FilePath -> IO a) -> IO a
 withTempProject plan act =
   withSystemTempDirectory "tilia-prepare" $ \dir -> do
     createDirectoryIfMissing True (takeDirectory (planPathFor dir))
+    createDirectoryIfMissing True (dir </> "package")
+    writeUtf8File (dir </> "package" </> "package.cabal") ""
+    earlier <- addUTCTime (-120) <$> getCurrentTime
+    setModificationTime (dir </> "package" </> "package.cabal") earlier
     traverse_ (writePlan dir) plan
     act dir
 
+-- | Write a project's plan, its local packages in its @package@ directory.
 writePlan :: FilePath -> Text -> IO ()
-writePlan dir = writeUtf8File (planPathFor dir)
+writePlan dir =
+  writeUtf8File (planPathFor dir)
+    . T.replace "@package" (T.pack (dir </> "package"))
 
 -- | A project whose @.cabal@ file changed after its plan was written.
 withChangedPackage :: (FilePath -> IO a) -> IO a
@@ -2432,7 +2445,7 @@ withOwnPlan act =
       \[{\"pkg-name\":\""
         <> T.pack (takeBaseName dir)
         <> "\",\"pkg-version\":\"1.0\",\"component-name\":\"lib\",\
-           \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
+           \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}}]}"
     now <- getCurrentTime
     setModificationTime (planPathFor dir) (addUTCTime (-60) now)
     act dir
@@ -2457,20 +2470,20 @@ twoComponents :: Text
 twoComponents =
   "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
   \[{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"lib\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}},\
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}},\
   \{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"exe:thing\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}}]}"
 
 -- | The same, with a component a solve could go on to add.
 threeComponents :: Text
 threeComponents =
   "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
   \[{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"lib\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}},\
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}},\
   \{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"exe:thing\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}},\
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}},\
   \{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"test:tests\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}}]}"
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}}]}"
 
 -- | Narrow and short at once: two components, neither of them the one a
 -- run wants, and a dependency whose tarball is nowhere.
@@ -2481,7 +2494,7 @@ narrowAndWanting :: Text
 narrowAndWanting =
   "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
   \[{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"component-name\":\"lib\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"}},\
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"}},\
   \{\"pkg-name\":\"tilia-phantom\",\"pkg-version\":\"9.9.9\",\
   \\"pkg-src\":{\"type\":\"repo-tar\"}}]}"
 
@@ -2491,7 +2504,7 @@ plannedWhole :: Text
 plannedWhole =
   "{\"compiler-id\":\"ghc-0.0\",\"install-plan\":\
   \[{\"pkg-name\":\"thing\",\"pkg-version\":\"1.0\",\"type\":\"configured\",\
-  \\"pkg-src\":{\"type\":\"local\",\"path\":\"/nowhere\"},\
+  \\"pkg-src\":{\"type\":\"local\",\"path\":\"@package\"},\
   \\"components\":{\"lib\":{},\"test:spec\":{},\"setup\":{}}}]}"
 
 -- | A component of that package, by the name a plan gives it.
