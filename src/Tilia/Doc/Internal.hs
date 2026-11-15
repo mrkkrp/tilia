@@ -601,13 +601,13 @@ endsWithSpace out = case outCurrent out of
 breakLine ::
   -- | Where the line after this one begins.
   Int ->
+  -- | The output so far.
   Out ->
   Out
 breakLine indent out
   | outClosed out = discontinued out{outClosed = False}
-  | atStart out = discontinued out
   | not (hasContent out), repeatsBlank out || opensABlock indent out = fresh out
-  | otherwise = completing TrimWhitespace indent out
+  | otherwise = completing TrimWhitespace out
 
 -- | Close the current line, if there is anything on it.
 --
@@ -646,36 +646,42 @@ fresh out =
 completing ::
   -- | What to do with whitespace the lines end in.
   TrailingWhitespace ->
-  -- | Where the line after these would begin, used only if there is no line
-  -- to take the indentation from.
-  Int ->
+  -- | The output so far.
   Out ->
   Out
-completing trailing indent out =
+completing trailing out =
   fresh out{outLines = reverse (finished : spilledLines) <> outLines out}
   where
     finished = (outLine out){lineBody = body, lineRemark = remark}
-    body = currentLine trailing out
-    heldBack = heldBackFirst trailing out
+    body
+      | T.null written = heldBack
+      | T.null heldBack = written
+      | otherwise = written <> " " <> heldBack
+    written =
+      adjustTrailingWhitespace trailing (T.concat (reverse (outCurrent out)))
+    heldBack =
+      maybe
+        ""
+        (adjustTrailingWhitespace trailing . snd)
+        (listToMaybe (outHeldBack out))
+    heldAt = T.length body - T.length heldBack
     remark
       | [_] <- outHeldBack out,
-        T.length body > T.length heldBack,
+        heldAt > 0,
         "--" `T.isPrefixOf` heldBack =
-          Just (T.length body - T.length heldBack)
+          Just heldAt
       | otherwise = Nothing
     spilled = drop 1 (outHeldBack out)
     spilledLines = zipWith below columns spilled
-    columns = drop 1 (scanl columnFor firstColumn (fmap fst spilled))
-    firstColumn = lineIndent finished + T.length body - T.length heldBack
+    columns =
+      drop 1 (scanl columnFor (lineIndent finished + heldAt) (fmap fst spilled))
     below column (_, t) =
       newLine
         { lineIndent = column,
           lineBody = adjustTrailingWhitespace trailing t
         }
     columnFor previous = \case
-      SpillAtIndentation
-        | T.null (lineBody finished) -> indent
-        | otherwise -> lineIndent finished + commaLed (lineBody finished)
+      SpillAtIndentation -> lineIndent finished + commaLed body
       SpillUnderPrevious -> previous
 
 -- | The width of the leading comma a line begins with, if it begins with
@@ -701,20 +707,20 @@ verbatimBreakLine ::
   Out ->
   Out
 verbatimBreakLine note lineStart trailing out =
-  (completing trailing 0 out)
+  (completing trailing out)
     { outLine = newLine{linePinned = lineStart == AtMargin, lineNote = note},
       outClosed = False
     }
 
--- | Would this empty line be a second one in a row?
-repeatsBlank :: Out -> Bool
+-- | Would this empty line be the first line or a second empty one in a
+-- row?
+repeatsBlank ::
+  -- | The output so far.
+  Out ->
+  Bool
 repeatsBlank out = case outLines out of
   (l : _) -> T.null (lineBody l)
-  _ -> False
-
--- | Is the output still empty?
-atStart :: Out -> Bool
-atStart out = null (outLines out) && not (hasContent out)
+  [] -> True
 
 -- | Has the current line begun, with something written to it or with what
 -- it reproduces starting it at the margin?
@@ -733,28 +739,6 @@ endsWithOpener out =
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool
 hasContent out = started out || not (null (outHeldBack out))
-
--- | What the current line holds: what was written to it, then whatever was
--- held back for its end, with one space between them.
-currentLine :: TrailingWhitespace -> Out -> Text
-currentLine trailingWhitespace out
-  | T.null written = heldBack
-  | T.null heldBack = written
-  | otherwise = written <> " " <> heldBack
-  where
-    written =
-      adjustTrailingWhitespace
-        trailingWhitespace
-        (T.concat (reverse (outCurrent out)))
-    heldBack = heldBackFirst trailingWhitespace out
-
--- | What was held back first for the end of the current line.
-heldBackFirst :: TrailingWhitespace -> Out -> Text
-heldBackFirst trailingWhitespace out =
-  maybe
-    ""
-    (adjustTrailingWhitespace trailingWhitespace . snd)
-    (listToMaybe (outHeldBack out))
 
 -- | Handle the given line according to the 'TrailingWhitespace' style.
 adjustTrailingWhitespace :: TrailingWhitespace -> Text -> Text
