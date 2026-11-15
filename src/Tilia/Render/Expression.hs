@@ -424,9 +424,12 @@ exprChain ::
   LHsExpr GhcPs ->
   Doc
 exprChain ctx site x op y =
-  renderExprChain ctx site (uncurry (associate (fixityOf ctx)) chain)
-  where
-    chain = flattenAround splitOpApp x op y
+  operatorChain
+    ctx
+    site
+    (ExprBody ctx)
+    isDoBlock
+    (flattenAround splitOpApp x op y)
 
 -- | Take an operator application apart, if that is what this is.
 splitOpApp ::
@@ -442,105 +445,130 @@ fixityOf ctx o =
   (spanOf o >>= (`Map.lookup` ctxCaptured ctx))
     <|> (operatorName o >>= operatorFixity ctx InTerms)
 
--- | Print a chain of operators once precedence has regrouped it.
-renderExprChain :: Ctx -> Site -> OpChain (LHsExpr GhcPs) (LHsExpr GhcPs) -> Doc
-renderExprChain ctx site = \case
-  Operand e -> hsExprIn ctx site e
-  chain@(Chain operands@(firstOne :| _) operators) ->
-    layoutFrom ctx (chainSpan spanOf chain) $
-      if trailing
-        then laidOut MayBrace
-        else
-          mayBraceWhenFlat
-            (if placement == Hanging then MayBrace else NoBrace)
-            laidOut
-    where
-      placement = placementOf (chainSpan spanOf firstOne) (NE.last operands)
-      placementOf leader operand
-        | ledByDo operand = Normal
-        | otherwise = chainPlacement (exprHangs ctx) leader operand
-      ledByDo = \case
-        Chain (Operand e :| _) _ -> doWithinAStep ctx e
-        Chain (first :| _) _ -> ledByDo first
-        Operand _ -> False
-      laidOut bracing =
-        infrangible
-          (renderExprChain ctx (withBracing (firstBracing bracing) site) firstOne)
-          <> foldr (piece bracing) mempty (links operands operators)
-      -- A step would carry the operators on the last statement of a do
-      -- block written on one line before them. They stay at the chain's
-      -- indentation instead, as Fourmolu has them, but in a block, where
-      -- that would begin a statement, the do block is braced.
-      leadingDo = case firstOne of
-        Operand e -> doWithinAStep ctx e
-        Chain{} -> False
-      firstBracing bracing
-        | leadingDo && siteInBlock site = MayBrace
-        | otherwise = bracing
-      operatorLine attached
-        | leadingDo && not (siteInBlock site) =
-            breakOrSpace <> attached Hanging
-        | otherwise = attached placement
-      piece bracing (previous, o, operand, isLast) rest' =
-        let operandSite =
-              withBracing
-                (if isLast then siteBracing site else bracing)
-                plainSite
-            kept
-              | isLast = id
-              | otherwise = infrangible
-            rendered = kept (renderExprChain ctx operandSite operand)
-         in if trailing
-              then
-                space
-                  <> hsExpr ctx o
-                  <> attach
-                    (tailPlacement isLast (chainSpan spanOf previous) o operand)
-                    (rendered <> rest')
-              else
-                operatorLine
-                  ( \p ->
-                      attachOperator
-                        p
-                        (chainSpan spanOf previous)
-                        (spanOf o)
-                        (chainSpan spanOf operand)
-                        (hsExpr ctx o)
-                        rendered
-                  )
-                  <> rest'
-      tailPlacement isLast before o operand
-        | isLast,
-          not (maybe True isSingleLine (chainSpan spanOf operand)),
-          not (lineCommentWrittenBetween ctx before (spanOf o)) =
-            placementOf (spanOf o) operand
-        | otherwise = Normal
-      commentedOperators =
-        or (zipWith commentedBefore (NE.toList operands) operators)
-      commentedBefore operand o =
-        commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
-      trailing =
-        (length operators == 1 || endsHanging)
-          && not commentedOperators
-          && and (zipWith couldTrail (NE.toList operands) operators)
-      endsHanging = exprHangs ctx (unLoc (lastOperand chain)) == Hanging
-      couldTrail previous o =
-        isSeparator (fixityOf ctx o)
-          && maybe False (writtenOnOneLine ctx) (chainSpan spanOf previous)
-          && placement == Normal
-          && not (isDoBlock (lastOperand previous))
+-- | Regroup a run of operators applied to expressions or commands by
+-- precedence, and print it.
+operatorChain ::
+  (Body b, HasLoc a) =>
+  -- | The context.
+  Ctx ->
+  -- | Where the chain stands.
+  Site ->
+  -- | An operand, as a body.
+  (Site -> a -> b) ->
+  -- | Is this operand a @do@ block?
+  (a -> Bool) ->
+  -- | The operands, and the operators between them.
+  (NonEmpty a, [LHsExpr GhcPs]) ->
+  Doc
+operatorChain ctx outerSite mkBody isDo =
+  render outerSite . uncurry (associate (fixityOf ctx))
+  where
+    hangs = bodyPlacement . mkBody plainSite
+    render site = \case
+      Operand e -> printBody (mkBody site e)
+      chain@(Chain operands@(firstOne :| _) operators) ->
+        layoutFrom ctx (chainSpan spanOf chain) $
+          if trailing
+            then laidOut MayBrace
+            else
+              mayBraceWhenFlat
+                (if placement == Hanging then MayBrace else NoBrace)
+                laidOut
+        where
+          placement = placementOf (chainSpan spanOf firstOne) (NE.last operands)
+          placementOf leader operand
+            | ledByDo operand = Normal
+            | otherwise = chainPlacement hangs leader operand
+          ledByDo = \case
+            Chain (Operand e :| _) _ -> doWithinAStep ctx isDo e
+            Chain (first :| _) _ -> ledByDo first
+            Operand _ -> False
+          laidOut bracing =
+            infrangible
+              (render (withBracing (firstBracing bracing) site) firstOne)
+              <> foldr (piece bracing) mempty (links operands operators)
+          -- A step would carry the operators on the last statement of a do
+          -- block written on one line before them. They stay at the chain's
+          -- indentation instead, as Fourmolu has them, but in a block, where
+          -- that would begin a statement, the do block is braced.
+          leadingDo = case firstOne of
+            Operand e -> doWithinAStep ctx isDo e
+            Chain{} -> False
+          firstBracing bracing
+            | leadingDo && siteInBlock site = MayBrace
+            | otherwise = bracing
+          operatorLine attached
+            | leadingDo && not (siteInBlock site) =
+                breakOrSpace <> attached Hanging
+            | otherwise = attached placement
+          piece bracing (previous, o, operand, isLast) rest' =
+            let operandSite =
+                  withBracing
+                    (if isLast then siteBracing site else bracing)
+                    plainSite
+                kept
+                  | isLast = id
+                  | otherwise = infrangible
+                rendered = kept (render operandSite operand)
+             in if trailing
+                  then
+                    space
+                      <> hsExpr ctx o
+                      <> attach
+                        ( tailPlacement
+                            isLast
+                            (chainSpan spanOf previous)
+                            o
+                            operand
+                        )
+                        (rendered <> rest')
+                  else
+                    operatorLine
+                      ( \p ->
+                          attachOperator
+                            p
+                            (chainSpan spanOf previous)
+                            (spanOf o)
+                            (chainSpan spanOf operand)
+                            (hsExpr ctx o)
+                            rendered
+                      )
+                      <> rest'
+          tailPlacement isLast before o operand
+            | isLast,
+              not (maybe True isSingleLine (chainSpan spanOf operand)),
+              not (lineCommentWrittenBetween ctx before (spanOf o)) =
+                placementOf (spanOf o) operand
+            | otherwise = Normal
+          commentedOperators =
+            or (zipWith commentedBefore (NE.toList operands) operators)
+          commentedBefore operand o =
+            commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
+          trailing =
+            (length operators == 1 || endsHanging)
+              && not commentedOperators
+              && and (zipWith couldTrail (NE.toList operands) operators)
+          endsHanging = hangs (lastOperand chain) == Hanging
+          couldTrail previous o =
+            isSeparator (fixityOf ctx o)
+              && maybe False (writtenOnOneLine ctx) (chainSpan spanOf previous)
+              && placement == Normal
+              && not (isDo (lastOperand previous))
 
 -- | Is this a @do@ or @mdo@ block written on one line, with its statements
 -- nearer to where it begins than a step?
 doWithinAStep ::
+  (HasLoc a) =>
   -- | The context.
   Ctx ->
-  -- | The expression.
-  LHsExpr GhcPs ->
+  -- | Is this a @do@ block?
+  (a -> Bool) ->
+  -- | The expression or command.
+  a ->
   Bool
-doWithinAStep ctx e =
+doWithinAStep ctx isDo e =
   indentationColumns (ctxIndentation ctx) > 2
-    && isDoBlock e
+    && isDo e
     && maybe False (writtenOnOneLine ctx) (spanOf e)
 
 -- | Is this expression a @do@ or @mdo@ block?
@@ -553,13 +581,13 @@ isDoBlock e = case unLoc e of
 -- | Whether an operand hangs, which it can only where it starts on the line
 -- the given span starts on.
 chainPlacement ::
-  (HasLoc l) =>
+  (HasLoc a) =>
   (a -> Placement) ->
   Maybe Span ->
-  OpChain (GenLocated l a) op ->
+  OpChain a op ->
   Placement
 chainPlacement placer leader operand = case operand of
-  Operand (L _ n) | startsTogether -> placer n
+  Operand x | startsTogether -> placer x
   Chain (first :| _) _ -> chainPlacement placer leader first
   _ -> Normal
   where
@@ -954,38 +982,19 @@ cmdChain ::
   LHsCmdTop GhcPs ->
   Doc
 cmdChain ctx site l op r =
-  render (uncurry (associate (fixityOf ctx)) (flattenAround splitCmd l op r))
+  operatorChain
+    ctx
+    site
+    (CmdTopBody ctx)
+    isCmdDo
+    (flattenAround splitCmd l op r)
   where
     splitCmd c = case unLoc c of
       HsCmdTop _ (L _ (HsCmdArrForm _ o Infix [a, b])) -> Just (a, o, b)
       _ -> Nothing
-    render = \case
-      Operand c -> at ctx c (cmdTop ctx site)
-      chain@(Chain operands@(firstOne :| _) operators) ->
-        layoutFrom ctx (chainSpan spanOf chain) $
-          mayBraceWhenFlat
-            (if placement == Hanging then MayBrace else NoBrace)
-            laidOut
-        where
-          placement =
-            chainPlacement
-              cmdTopHangs
-              (chainSpan spanOf firstOne)
-              (NE.last operands)
-          laidOut bracing =
-            renderIn bracing firstOne
-              <> foldMap (piece bracing) (links operands operators)
-          piece bracing (previous, o, operand, isLast) =
-            attachOperator
-              placement
-              (chainSpan spanOf previous)
-              (spanOf o)
-              (chainSpan spanOf operand)
-              (hsExpr ctx o)
-              (renderIn (if isLast then siteBracing site else bracing) operand)
-          renderIn bracing = \case
-            Operand c -> at ctx c (cmdTop ctx (withBracing bracing site))
-            inner -> render inner
+    isCmdDo c = case unLoc c of
+      HsCmdTop _ (L _ HsCmdDo{}) -> True
+      _ -> False
 
 -- | A value binding.
 valDecl :: Ctx -> Bracing -> HsBind GhcPs -> Doc
@@ -1496,7 +1505,7 @@ exprHangs ctx = \case
     | Just n <- operatorName op,
       occNameString (rdrNameOcc n) == "$" ->
         exprHangs ctx (unLoc y)
-    | doWithinAStep ctx x -> Normal
+    | doWithinAStep ctx isDoBlock x -> Normal
     | otherwise -> exprHangs ctx (unLoc x)
   _ -> Normal
 

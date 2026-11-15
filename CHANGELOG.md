@@ -92,6 +92,12 @@
   rather than quadratic: one with 16,000 Haddocks over 48,000 lines took 4.2
   seconds to format, and takes 0.7.
   [PR 421](https://github.com/mrkkrp/tilia/pull/421).
+* In arrow notation, a chain of commands is laid out as a chain of
+  expressions is. A `do` block in braces that ends a chain inside another
+  keeps its braces rather than losing them and with them the parse, and a
+  command in parentheses broken over lines in a chain closes them under the
+  opening one.
+  [PR 422](https://github.com/mrkkrp/tilia/pull/422).
 
 ## Tilia 0.1.4.0
 
