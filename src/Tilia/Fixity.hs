@@ -80,7 +80,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -150,13 +150,17 @@ spellFixity (Fixity direction precedence) =
 
 -- | The fixities a module declares for its own operators.
 declaredFixities :: HsModule GhcPs -> Fixities
-declaredFixities hsModule =
-  Map.fromList
-    [ ((namespace, op), fixity)
-    | (specifier, op, fixity) <-
-        concatMap (fromDecl . unLoc) (hsmodDecls hsModule),
-      namespace <- namespacesOf specifier op
-    ]
+declaredFixities = Map.fromList . fixityDeclarations
+
+-- | Every fixity declaration of a module, more than one for an operator
+-- where its CPP branches, parsed together, each declare one.
+fixityDeclarations :: HsModule GhcPs -> [((Namespace, OpName), Fixity)]
+fixityDeclarations hsModule =
+  [ ((namespace, op), fixity)
+  | (specifier, op, fixity) <-
+      concatMap (fromDecl . unLoc) (hsmodDecls hsModule),
+    namespace <- namespacesOf specifier op
+  ]
   where
     (types, terms) = declaredNamespaces hsModule
     namespacesOf specifier op = case specifier of
@@ -662,19 +666,31 @@ resolveScope implicitPrelude known configurations =
     }
   where
     imports = moduleImports implicitPrelude configurations
-    declared = Map.unions (fmap declaredFixities configurations)
+    declaredEach =
+      Map.fromListWith
+        (flip (<>))
+        [ (name, pure fixity)
+        | c <- toList configurations,
+          (name, fixity) <- fixityDeclarations c
+        ]
+    declared = Map.map NE.last declaredEach
 
     reachAmong namespace =
       Reach
         { reachUnqualified = Map.union own (Map.map settled unqualified),
           reachQualified = qualified,
           reachAmbiguous =
-            Map.union
-              (Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified))
-              ( Map.mapKeys
+            Map.unions
+              [ Map.fromList
+                  [ ((qualifier, op), offers)
+                  | (op, offers) <- Map.toList ownDisagreeing,
+                    qualifier <- Nothing : fmap Just ownNames
+                  ],
+                Map.mapKeys (Nothing,) (Map.mapMaybe disagreeing unqualified),
+                Map.mapKeys
                   (first Just)
                   (Map.mapMaybe disagreeing qualifiedFrom)
-              ),
+              ],
           reachDecided =
             Set.fromList $
               [ (qualifier, op)
@@ -701,6 +717,10 @@ resolveScope implicitPrelude known configurations =
           InTerms -> snd
         ownNames = concatMap (toList . moduleName) configurations
         own = Map.map (,DeclaredHere) (fixitiesIn namespace declared)
+        ownDisagreeing =
+          Map.mapMaybe
+            (disagreeing . fmap (fromMaybe "Main" (listToMaybe ownNames),))
+            (fixitiesIn namespace declaredEach)
         offered m = fixitiesIn namespace (establishedFixities (known m))
         unqualified =
           Map.unionsWith
@@ -738,7 +758,7 @@ resolveScope implicitPrelude known configurations =
         )
 
 -- | The fixities in one namespace, by the operator alone.
-fixitiesIn :: Namespace -> Fixities -> Map OpName Fixity
+fixitiesIn :: Namespace -> Map (Namespace, OpName) a -> Map OpName a
 fixitiesIn namespace declared =
   Map.fromList
     [ (op, fixity)
