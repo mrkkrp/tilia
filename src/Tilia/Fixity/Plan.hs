@@ -48,9 +48,9 @@ import Tilia.Cabal.Package
   ( Kind (Lib),
     PackageReader,
     declaredModules,
+    moduleExtensions,
     newPackageReader,
     packageComponents,
-    packageExtensions,
     readPackageDescription,
   )
 import Tilia.Cabal.Plan
@@ -231,8 +231,15 @@ newResolverWith routes cache installed tarballs packageReader plan = do
         | Just path <- found =
             either (const Nothing) Just <$> packageReader path
         | Just (package, tarball) <- Map.lookup modName index =
-            memoized flights extensionsRead Nothing package $
-              fmap packageExtensions . (archiveCabal =<<) <$> archiveOf tarball
+            fmap ($ modName)
+              <$> memoized
+                flights
+                extensionsRead
+                Nothing
+                package
+                ( fmap moduleExtensions . (archiveCabal =<<)
+                    <$> archiveOf tarball
+                )
         | otherwise = pure Nothing
       archiveOf tarball =
         memoized

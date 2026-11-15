@@ -21,7 +21,7 @@ import Test.Hspec
 import Tilia.Cabal.Package
   ( declaredModuleNames,
     describePackageProblem,
-    packageExtensions,
+    moduleExtensions,
     packageSourceDirs,
     parsePackageDescription,
   )
@@ -278,7 +278,23 @@ spec = do
       extensions "library\n  default-extensions: LambdaCase, NotAnExtension\n"
         `shouldSatisfy` elem LambdaCase
 
-    it "takes every component's, since it does not know which one asks" $ do
+    it "takes only the components that list the module" $ do
+      let found =
+            extensions
+              "library\n\
+              \  exposed-modules: M\n\
+              \  default-extensions: LambdaCase\n\
+              \  if impl(ghc >= 9)\n\
+              \    default-extensions: MultiWayIf\n\
+              \test-suite t\n\
+              \  type: exitcode-stdio-1.0\n\
+              \  main-is: T.hs\n\
+              \  default-extensions: NoImplicitPrelude\n"
+      found `shouldSatisfy` elem LambdaCase
+      found `shouldSatisfy` elem MultiWayIf
+      found `shouldSatisfy` elem ImplicitPrelude
+
+    it "takes every component's where none lists the module" $ do
       let found =
             extensions
               "library\n\
@@ -311,7 +327,7 @@ sourceDirs = packageSourceDirs . described
 
 -- | What a @.cabal@ of this shape puts in force.
 extensions :: Text -> [Extension]
-extensions = (`effectiveExtensions` "") . packageExtensions . described
+extensions = (`effectiveExtensions` "") . (`moduleExtensions` "M") . described
 
 -- | The text an archive of these files gives for a module, where its
 -- @.cabal@ file names this source directory.
