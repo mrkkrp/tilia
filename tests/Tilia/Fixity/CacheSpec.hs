@@ -378,12 +378,14 @@ crowded =
             (OpName "Empty", Set.empty)
           ],
       summaryListedMembers =
-        Map.fromList [(OpName "T", Set.singleton (OpName "A"))]
+        Map.fromList [(OpName "T", Set.singleton (OpName "A"))],
+      summarySpliced = True
     }
 
 -- | A summary with nothing in it, not even a name.
 bare :: ModuleSummary
-bare = ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty
+bare =
+  ModuleSummary Nothing Nothing [] Map.empty Set.empty Map.empty Map.empty False
 
 -- | One whose export list lists nothing, which is not the same as having
 -- no export list.

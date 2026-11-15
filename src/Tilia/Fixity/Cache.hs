@@ -80,7 +80,7 @@ newtype PlanToken = PlanToken Text
 
 -- | Bumped whenever cache format changes.
 formatVersion :: FilePath
-formatVersion = "v3"
+formatVersion = "v4"
 
 -- | Open, creating the directory if need be.
 --
@@ -269,6 +269,7 @@ renderSummaries = \case
            ]
         <> fmap declares (Map.toList (summaryDeclaredMembers s))
         <> fmap offers (Map.toList (summaryListedMembers s))
+        <> [["spliced"] | summarySpliced s]
     declares (OpName parent, kids) = "declares" : parent : renderNamespaced kids
     offers (OpName parent, kids) =
       "offers" : parent : [kid | OpName kid <- Set.toAscList kids]
@@ -316,6 +317,7 @@ parseSummaries = \case
             Set.empty
             Map.empty
             Map.empty
+            False
     go s = \case
       [] ->
         Just
@@ -363,6 +365,7 @@ parseSummaries = \case
                 Map.insert (OpName parent) (names kids) (summaryListedMembers s)
             }
           rest
+      ["spliced"] : rest -> go s{summarySpliced = True} rest
       _ -> Nothing
     names = Set.fromList . fmap OpName
     qualifier q = if q == "-" then Nothing else Just q

@@ -610,6 +610,30 @@ reexports = describe "an operator a module passes on" $ do
     Map.lookup (InTerms, OpName "<+>") (establishedFixities answer)
       `shouldBe` Just (Fixity LeftAssoc 6)
 
+  it "is unsettled where nothing but a splice could have declared it" $ do
+    answer <-
+      chasedModule
+        "{-# LANGUAGE TemplateHaskell #-}\nmodule M ((<+>)) where\n$(pure [])\n"
+    unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
+
+  it "is unsettled where it may be a member of a type only a splice declares" $ do
+    answer <-
+      chasedModule
+        "{-# LANGUAGE TemplateHaskell #-}\nmodule M (C (..)) where\n$(pure [])\n"
+    unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
+
+  it "is unsettled where a module with no export list holds a splice" $ do
+    answer <-
+      chasedModule
+        "{-# LANGUAGE TemplateHaskell #-}\nmodule M where\n$(pure [])\n"
+    unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
+
+  it "leaves no record field of a GADT or a pattern synonym unsettled" $ do
+    answer <-
+      chasedModule
+        "{-# LANGUAGE PatternSynonyms #-}\nmodule M (T (..), size, pattern P, px) where\ndata T where\n  T :: {size :: Int} -> T\npattern P {px} = Just px\n"
+    settlesEverything answer `shouldBe` True
+
   it "comes from a type handed on whole, of which it is a member" $
     chased "module M (Doc (..)) where\nimport Text.PrettyPrint\n"
       `shouldReturn` Just (Fixity LeftAssoc 6)
