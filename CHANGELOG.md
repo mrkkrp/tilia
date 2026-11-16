@@ -216,6 +216,11 @@
   pattern's last line, as it does after the patterns of a lambda, rather
   than taking a line of its own.
   [PR 428](https://github.com/mrkkrp/tilia/pull/428).
+* A data declaration whose only constructor is a record with a `forall`
+  written beside its `=` keeps it there, rather than putting the `=` and
+  the constructor on a line of their own wherever the constructor's name
+  comes on a later line than the `forall`.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A `then` qualifier of a comprehension written on one line stays on one
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.

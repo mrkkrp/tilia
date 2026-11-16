@@ -125,10 +125,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
             [L _ ConDeclH98{con_args = RecCon{}}] -> True
             _ -> False
           compactAroundEquals =
-            sameLine (fmap endOf wholeHeadSpan) (conNamesSpan (unLoc firstCon))
-          conNamesSpan = \case
-            ConDeclGADT{..} -> spansOf (NE.toList con_names)
-            ConDeclH98{..} -> spanOf con_name
+            sameLine (fmap endOf wholeHeadSpan) (fmap startOf (spanOf firstCon))
 
           equalsSpan = spanOf (andd_equal dd_ext)
 
@@ -383,7 +380,10 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       spanOfSrcSpan (getHasLoc (acdh_forall con_ext))
         <> spansOf con_ex_tvs
         <> foldMap spanOf con_mb_cxt
-        <> spanOf con_name
+        <> fmap startOf (spanOf con_name <> leftOperand)
+    leftOperand = case con_args of
+      InfixCon l _ -> spanOf (cdf_type l)
+      _ -> Nothing
 
     declSpan = spanOf con_name <> argSpans
     argSpans = case con_args of
