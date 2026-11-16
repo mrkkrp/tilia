@@ -190,6 +190,9 @@
 * The keyword of a `CTYPE` pragma comes out in capitals after `{-# `, as
   the keywords of other pragmas do, rather than as written, as in
   `{-#ctype`. [Issue 417](https://github.com/mrkkrp/tilia/issues/417).
+* The `|` alternatives of a `MINIMAL` pragma written across lines come out
+  one under another, rather than each a step deeper than the one above
+  it. [Issue 431](https://github.com/mrkkrp/tilia/issues/431).
 
 ## Tilia 0.1.4.0
 

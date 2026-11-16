@@ -235,9 +235,13 @@ booleanFormula ctx = \case
     align
       ( sepBy
           (breakOrSpace <> txt "|" <> space)
-          (fmap (at_ ctx (booleanFormula ctx)) xs)
+          (fmap (at_ ctx (booleanFormula ctx)) (concatMap alternatives xs))
       )
   Parens l -> at ctx l (parens . booleanFormula ctx)
+  where
+    alternatives = \case
+      L _ (Or ys) -> concatMap alternatives ys
+      x -> [x]
 
 -- | A @COMPLETE@ pragma.
 completeSig :: Ctx -> [LIdP GhcPs] -> Maybe (LocatedN RdrName) -> Doc
