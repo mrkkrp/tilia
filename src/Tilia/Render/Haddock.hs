@@ -12,7 +12,6 @@ module Tilia.Render.Haddock
     haddockInline,
     blockHaddock,
     docSectionName,
-    brokenIfDocumented,
     printsWholeLineDocs,
     haddockSpans,
   )
@@ -224,23 +223,6 @@ triggerFor = \case
 -- | May code follow a Haddock on the line it ends?
 selfClosing :: Comment -> Bool
 selfClosing c = bracketed c && singleLine c
-
--- | Lay the document out on several lines if printing this fragment will
--- emit a Haddock that takes whole lines.
-brokenIfDocumented ::
-  (Data a) =>
-  -- | The context.
-  Ctx ->
-  -- | Does the site put its Haddocks under what they document?
-  Choice "under" ->
-  -- | The fragment.
-  a ->
-  -- | Its document.
-  Doc ->
-  Doc
-brokenIfDocumented ctx under x d
-  | printsWholeLineDocs ctx under x = broken d
-  | otherwise = d
 
 -- | Will printing this fragment emit a Haddock that takes whole lines: any
 -- Haddock where the site puts them under what they document, and one

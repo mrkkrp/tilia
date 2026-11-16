@@ -402,12 +402,13 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
 -- | One @deriving@ clause, with the strategy it was written with.
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
 derivingClause ctx HsDerivingClause{..} =
-  brokenIfDocumented ctx (Isn't #under) deriv_clause_tys $
-    txt "deriving" <> space <> strategy
+  brokenForDocs $ txt "deriving" <> space <> strategy
   where
+    brokenForDocs = if documented then broken else id
+    documented = printsWholeLineDocs ctx (Isn't #under) deriv_clause_tys
     what =
       at ctx deriv_clause_tys $ \tys ->
-        brokenIfDocumented ctx (Isn't #under) tys $ case tys of
+        brokenForDocs $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
             parens
