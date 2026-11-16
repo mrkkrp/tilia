@@ -357,8 +357,15 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
         | otherwise =
             conDeclField ctx x
               <> case cdf_doc x of
-                Just d -> space <> haddockInline ctx Caret d
+                Just d
+                  | commented ->
+                      space <> blockHaddock ctx Caret d <> breakOrSpace
+                  | otherwise -> space <> haddockInline ctx Caret d
                 Nothing -> breakOrSpace
+      -- A line comment after the left argument would run into a Haddock
+      -- that is one as well.
+      commented =
+        lineCommentWrittenBetween ctx (spanOf (cdf_type l)) (spanOf con_name)
       rightDoc x = case cdf_doc x of
         Just d -> hardBreak <> haddock ctx Pipe Closed d
         Nothing -> breakOrSpace
