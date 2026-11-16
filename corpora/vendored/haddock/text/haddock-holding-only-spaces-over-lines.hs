@@ -14,3 +14,10 @@ data Load
     -- 
     Bisque
   | Glaze
+
+fire ::
+  -- |
+  -- 
+  Int ->
+  Shelf
+fire = Shelf
