@@ -31,11 +31,11 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.PkgQual (RawPkgQual (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 
-import Tilia.Comments (Comment (..), Pragma (..), commentPragma)
+import Tilia.Comments (Comment (..), commentPragma)
 import Tilia.Doc.Combinators
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (writtenInHeader)
-import Tilia.Pragma (languageNames, lookupEdition, sameInForce)
+import Tilia.Pragma (Pragma (..), languageNames, lookupEdition, sameInForce)
 import Tilia.Render.Context
 import Tilia.Render.Declaration (topLevelDecls)
 import Tilia.Render.Haddock

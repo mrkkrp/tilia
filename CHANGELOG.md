@@ -200,6 +200,11 @@
 * A `DEPRECATED` or `WARNING` pragma on an export item other than the
   first lines up with the items, rather than coming out a step deeper.
   [Issue 415](https://github.com/mrkkrp/tilia/issues/415).
+* The flags of an `OPTIONS_GHC` or `OPTIONS` pragma come out one space
+  apart, as the extensions of a `LANGUAGE` pragma do, rather than with the
+  spaces written between them. Those inside a string literal among them,
+  which GHC reads as part of one flag, are kept.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A named default written over several lines keeps its class on the line
   of `default`, rather than putting it at the start of a line of its own,
   where it does not parse. [PR 428](https://github.com/mrkkrp/tilia/pull/428).

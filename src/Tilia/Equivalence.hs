@@ -57,7 +57,6 @@ import System.IO.Unsafe (unsafePerformIO)
 
 import Tilia.Comments
   ( Comment (..),
-    Pragma (..),
     asOrdinary,
     carriedOnFrom,
     carriesOn,
@@ -67,7 +66,7 @@ import Tilia.Comments
   )
 import Tilia.Imports (normalizeImports, travellingComments)
 import Tilia.Parser (ParsedModule (..), writtenInHeader)
-import Tilia.Pragma (languageNames, pragmaFlags)
+import Tilia.Pragma (Pragma (..), languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
 import Tilia.Span (Span (..), covers)

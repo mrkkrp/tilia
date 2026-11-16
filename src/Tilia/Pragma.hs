@@ -3,7 +3,9 @@
 
 -- | Pragma-related helpers.
 module Tilia.Pragma
-  ( movesPositions,
+  ( Pragma (..),
+    pragmaOf,
+    movesPositions,
     Defaults,
     defaultsOf,
     effectiveExtensions,
@@ -13,7 +15,6 @@ module Tilia.Pragma
     flagSwitches,
     pragmaFlags,
     languageNames,
-    withoutSkippedComments,
     sameInForce,
   )
 where
@@ -35,6 +36,71 @@ import GHC.Types.SrcLoc (mkRealSrcLoc, unLoc)
 
 import Tilia.Utils (opensLineComment, tshow)
 
+-- | A compiler pragma, which is written as a block comment but is not one.
+--
+-- GHC reads pragmas only from the file header, so where a pragma sits
+-- decides whether it does anything at all. That is why recognising one is
+-- not enough on its own: see 'Tilia.Parser.pmHeaderEnd' for the boundary
+-- that says which pragmas are real.
+data Pragma = Pragma
+  { -- | The name, upper-cased as GHC expects it, e.g. @LANGUAGE@.
+    pragmaName :: Text,
+    -- | Everything between the name and the closing @#-}@, on one line
+    -- with one space between its words, as 'spacedOnce' puts it, and
+    -- without the comments GHC skips in a @LANGUAGE@ pragma.
+    pragmaBody :: Text,
+    -- | Whether it holds such a comment.
+    pragmaCommented :: Bool
+  }
+  deriving (Eq, Show)
+
+-- | The pragma written between a @{-#@ and a @#-}@, if it names one.
+pragmaOf ::
+  -- | What is written between them.
+  Text ->
+  Maybe Pragma
+pragmaOf inner
+  | T.null name = Nothing
+  | otherwise =
+      Just
+        Pragma
+          { pragmaName = T.toUpper name,
+            pragmaBody = spacedOnce body,
+            pragmaCommented = uncommented /= inner
+          }
+  where
+    uncommented = withoutSkippedComments inner
+    (name, body) = T.break isSpace (T.stripStart uncommented)
+
+-- | A pragma's body on one line, with one space wherever white space
+-- separates two of its words, but inside a string literal, which GHC reads
+-- as one flag of an options pragma.
+spacedOnce ::
+  -- | The body.
+  Text ->
+  Text
+spacedOnce = T.unwords . wordsOf . T.strip
+  where
+    wordsOf t
+      | T.null t = []
+      | otherwise =
+          let (w, rest) = wordAt t
+           in w : wordsOf (T.stripStart rest)
+    wordAt t = case T.break (\c -> isSpace c || c == '"') t of
+      (plain, rest)
+        | Just ('"', after) <- T.uncons rest ->
+            let (literal, after') = literalAt after
+                (w, rest') = wordAt after'
+             in (plain <> "\"" <> literal <> w, rest')
+        | otherwise -> (plain, rest)
+    literalAt t = case T.break (\c -> c == '"' || c == '\\') t of
+      (plain, rest) -> case T.uncons rest of
+        Just ('\\', escaped) ->
+          let (more, after) = literalAt (T.drop 1 escaped)
+           in (plain <> "\\" <> T.take 1 escaped <> more, after)
+        Just (_, after) -> (plain <> "\"", after)
+        Nothing -> (plain, rest)
+
 -- | Recognize @{-# LINE #-}@ and @{-# COLUMN #-}@ pragmas in a module with
 -- these extensions in force, and the lines GHC's lexer reads past at the
 -- start of a line, but for the @#!@ lines a script begins with.
@@ -43,12 +109,16 @@ import Tilia.Utils (opensLineComment, tshow)
 -- positions as a @LINE@ pragma does, and @#pragma@ and @#!@ lines, which
 -- leave nothing behind for formatting to print. With CPP on, @#line@ and
 -- @#pragma@ lines are directives, which formatting keeps.
-movesPositions :: [Extension] -> Text -> Bool
+movesPositions ::
+  -- | The extensions in force.
+  [Extension] ->
+  -- | The module's source.
+  Text ->
+  Bool
 movesPositions extensions =
   or . scanPragmas positional (pastCode extensions) . T.cons '\n' . script
   where
-    positional body =
-      T.toUpper (T.takeWhile (/= ' ') body) `elem` ["LINE", "COLUMN"]
+    positional p = pragmaName p `elem` ["LINE", "COLUMN"]
     script t
       | "#!" `T.isPrefixOf` t = script (T.drop 1 (T.dropWhile (/= '\n') t))
       | otherwise = t
@@ -84,10 +154,11 @@ effectiveExtensions ::
 effectiveExtensions defaults source =
   foldl' switch inForce (concat switches)
   where
-    (editions, switches) = unzip (fmap ofPragma (headerPragmaBodies source))
-    ofPragma body =
-      let (keyword, rest) = T.break (== ' ') body
-       in editionsAndSwitches (T.toUpper keyword) rest
+    (editions, switches) =
+      unzip
+        [ editionsAndSwitches (pragmaName p) (pragmaBody p)
+        | p <- headerPragmas source
+        ]
     inForce = case concat editions of
       [] -> defaultsInForce defaults
       named ->
@@ -275,11 +346,13 @@ pastCode extensions = past
       c == '{' || c == '-' || c == '"' || c == '\'' || c == '[' || c == '\n'
     inName c = isAlphaNum c || c == '_' || c == '\''
 
--- | What the @{-# … #-}@ of a module's header have between their braces, each
--- on one line: those above the first thing that is neither a comment, a
--- directive nor a pragma, which are all GHC reads.
-headerPragmaBodies :: Text -> [Text]
-headerPragmaBodies = scanPragmas id past
+-- | The pragmas of a module's header: those above the first thing that is
+-- neither a comment, a directive nor a pragma, which are all GHC reads.
+headerPragmas ::
+  -- | The module's source.
+  Text ->
+  [Pragma]
+headerPragmas = scanPragmas id past
   where
     past go t = case T.uncons t of
       Just (c, _)
@@ -287,10 +360,17 @@ headerPragmaBodies = scanPragmas id past
         | c == '#' -> go (T.dropWhile (/= '\n') t)
       _ -> []
 
--- | What the given function makes of the bodies of the pragmas of a module,
--- each on one line, carrying on past what is neither a comment nor a pragma
--- as the other given function does.
-scanPragmas :: (Text -> a) -> ((Text -> [a]) -> Text -> [a]) -> Text -> [a]
+-- | What the given function makes of the pragmas of a module, carrying on
+-- past what is neither a comment nor a pragma as the other given function
+-- does.
+scanPragmas ::
+  -- | What to make of a pragma.
+  (Pragma -> a) ->
+  -- | How to carry on past the rest, given how to carry on from there.
+  ((Text -> [a]) -> Text -> [a]) ->
+  -- | The module's source.
+  Text ->
+  [a]
 scanPragmas pragma past = go
   where
     go t
@@ -298,20 +378,21 @@ scanPragmas pragma past = go
       | Just body <- T.stripPrefix "{-#" t = case T.breakOn "#-}" body of
           (_, after) | T.null after -> []
           (inner, after) ->
-            pragma (T.unwords (T.words (withoutSkippedComments inner)))
-              : go (T.drop 3 after)
+            maybe id ((:) . pragma) (pragmaOf inner) (go (T.drop 3 after))
       | Just after <- T.stripPrefix "{-" t = go (skipBlock (1 :: Int) after)
       | opensLineComment t = go (T.dropWhile (/= '\n') t)
       | otherwise = past go t
 
 -- | What a pragma holds between its @{-#@ and its @#-}@, without the
--- comments GHC skips in it: those of a @LANGUAGE@ pragma, which then comes
--- out on one line.
-withoutSkippedComments :: Text -> Text
+-- comments GHC skips in it: those of a @LANGUAGE@ pragma.
+withoutSkippedComments ::
+  -- | What the pragma holds.
+  Text ->
+  Text
 withoutSkippedComments inner
   | T.any (\c -> c == '-' || c == '{') inner,
     T.toUpper keyword == "LANGUAGE" =
-      T.unwords (T.words (withoutComments inner))
+      withoutComments inner
   | otherwise = inner
   where
     keyword = T.takeWhile (not . isSpace) (T.stripStart inner)
