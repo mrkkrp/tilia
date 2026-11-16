@@ -27,6 +27,7 @@ module Tilia.Doc.Combinators
     broken,
     frangible,
     infrangible,
+    infrangibleMidLine,
     variant,
     located,
     unclaimed,
@@ -177,6 +178,16 @@ infrangible ::
 infrangible = \case
   DGroup Frangible d -> DGroup Flat d
   d -> mapChildren infrangible d
+
+-- | 'infrangible', but only for the groups that follow something on their
+-- line.
+infrangibleMidLine ::
+  -- | The document.
+  Doc ->
+  Doc
+infrangibleMidLine = \case
+  DGroup Frangible d -> DGroup InfrangibleMidLine d
+  d -> mapChildren infrangibleMidLine d
 
 -- | Choose according to the layout the enclosing group settled on.
 --
