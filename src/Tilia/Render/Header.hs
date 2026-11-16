@@ -286,7 +286,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
         <> foldMap spanOf hsmodExports
     headerLayout
       | any (isDocEntry . unLoc) exports = id
-      | maybe True isSingleLine headerSpan = flat
+      | maybe True isSingleLine headerSpan = frangible
       | otherwise = id
     moduleLine = case hsmodName of
       Nothing -> mempty

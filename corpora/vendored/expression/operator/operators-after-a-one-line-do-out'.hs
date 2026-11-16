@@ -1,4 +1,6 @@
-module Parser.Alternatives (notFollowedBy, option, choice, keyword, signed, escape) where
+module Parser.Alternatives
+    (notFollowedBy, option, choice, keyword, signed, escape)
+where
 
 import Control.Applicative ((<|>))
 
