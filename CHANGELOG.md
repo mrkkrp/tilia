@@ -164,6 +164,11 @@
   than its first line being rejected, and one that cannot be read is
   reported naming it once.
   [PR 425](https://github.com/mrkkrp/tilia/pull/425).
+* A data declaration written on one line with a Haddock on a constructor,
+  as `data Clay = {- | Fired at a low heat. -} Earthenware` or `data T = T
+  {- ^ -}`, is broken around the constructor at once, rather than first
+  keeping its `=` on the first line and changing again on a second pass.
+  [PR 424](https://github.com/mrkkrp/tilia/pull/424).
 
 ## Tilia 0.1.4.0
 
