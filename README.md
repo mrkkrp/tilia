@@ -167,7 +167,7 @@ contents of `FILE` (a path): the project, the extensions in force, and the
 dependencies are found by walking upwards from `FILE` rather than from the
 working directory. `FILE` need not exist, but it has to be under the
 `hs-source-dirs` of a component. The formatted module goes to standard
-output. A module that is declined or excluded (see below), is returned
+output. A module that is declined or excluded (see above) is returned
 unchanged, and a failure exits with a non-zero status and prints nothing to
 standard output, so an editor keeps its buffer as it is. The module is
 always formatted as a whole; there is no formatting of a selected range.
