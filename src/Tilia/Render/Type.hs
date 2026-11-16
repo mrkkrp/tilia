@@ -21,6 +21,7 @@ module Tilia.Render.Type
     forallTelescope,
     outerBndrs,
     recordFieldsAt,
+    fieldDoc,
     conDeclField,
     documentedConDeclField,
     strictness,
@@ -641,16 +642,21 @@ recordFields ctx enclosing xs =
           . at_
             ctx
             ( \f ->
-                foldMap (haddockInline ctx Pipe) (documentation f)
+                foldMap (haddockInline ctx Pipe) (fieldDoc f)
                   <> recordField ctx f
             )
       LeadingCommas -> \l ->
         align (at_ ctx (recordField ctx) l)
           <> foldMap
             (\d -> hardBreak <> haddock ctx Caret Open d)
-            (documentation (unLoc l))
-    documentation :: HsConDeclRecField GhcPs -> Maybe (LHsDoc GhcPs)
-    documentation HsConDeclRecField{cdrf_spec} = cdf_doc cdrf_spec
+            (fieldDoc (unLoc l))
+
+-- | The Haddock of a field of a record.
+fieldDoc ::
+  -- | The field.
+  HsConDeclRecField GhcPs ->
+  Maybe (LHsDoc GhcPs)
+fieldDoc HsConDeclRecField{cdrf_spec} = cdf_doc cdrf_spec
 
 -- | One field of a record, multiplicity included, without its
 -- documentation.
