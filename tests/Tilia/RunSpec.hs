@@ -79,6 +79,10 @@ spec = do
         `shouldBe` Just
           (min (formatErrorExitCode unreadable) (formatErrorExitCode unclaimed))
 
+    it "puts a failure of formatting itself before the lower code of another" $
+      exitCodeOf [("A.hs", failure), ("B.hs", Failed (NotEquivalent "B.hs" "x"))]
+        `shouldBe` Just (formatErrorExitCode (NotEquivalent "B.hs" "x"))
+
     it "does not depend on the order the failures came back in" $
       exitCodeOf [("A.hs", failure), ("B.hs", otherFailure)]
         `shouldBe` exitCodeOf [("B.hs", otherFailure), ("A.hs", failure)]

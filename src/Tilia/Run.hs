@@ -39,6 +39,7 @@ import Tilia.Format
     describeFormatError,
     formatErrorExitCode,
     formatSource,
+    formattingFailed,
     refused,
   )
 import Tilia.Newline (NewlineStyle (Lf), getNewlineStyle, setNewlineStyle)
@@ -98,13 +99,19 @@ failIfDeclined = \case
   Declined e -> Failed e
   outcome -> outcome
 
--- | Determine the exit code based on the set of outcomes. 'Nothing' means
+-- | Determine the exit code based on the set of outcomes: the lowest code
+-- among the failures of formatting itself, else among all. 'Nothing' means
 -- success.
 exitCodeOf :: [(FilePath, Outcome)] -> Maybe Int
 exitCodeOf outcomes =
-  case [formatErrorExitCode e | (_, Failed e) <- outcomes] of
+  case ranked of
     [] -> Nothing
-    codes -> Just (minimum codes)
+    _ -> Just (snd (minimum ranked))
+  where
+    ranked =
+      [ (not (formattingFailed e), formatErrorExitCode e)
+      | (_, Failed e) <- outcomes
+      ]
 
 ----------------------------------------------------------------------------
 -- Execution

@@ -9,6 +9,7 @@ module Tilia.Format
     describeFormatError,
     formatErrorExitCode,
     refused,
+    formattingFailed,
     Session (..),
     AstCheck (..),
     PlanSource (..),
@@ -288,6 +289,26 @@ refused = \case
   NotEquivalent{} -> False
   NotIdempotent{} -> False
   Threw{} -> False
+  NoProject{} -> False
+  NoBuildPlan{} -> False
+  NoOwnModules{} -> False
+
+-- | Did formatting itself fail, rather than the file or the project keep
+-- it from starting?
+formattingFailed :: FormatError -> Bool
+formattingFailed = \case
+  NotEquivalent{} -> True
+  NotIdempotent{} -> True
+  Threw{} -> True
+  PositionPragmas{} -> False
+  CppUnsupported{} -> False
+  MisplacedMagicComment{} -> False
+  UnknownFixity{} -> False
+  NotParsed{} -> False
+  NoPackage{} -> False
+  InvalidSettings{} -> False
+  Unreadable{} -> False
+  Unwritable{} -> False
   NoProject{} -> False
   NoBuildPlan{} -> False
   NoOwnModules{} -> False
