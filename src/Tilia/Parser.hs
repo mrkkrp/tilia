@@ -40,7 +40,7 @@ import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 
 import Tilia.Gathered (Gathered (..), gathered)
-import Tilia.Pragma (Defaults, effectiveExtensions)
+import Tilia.Pragma (Defaults, effectiveExtensions, headerPragmas)
 import Tilia.Source
   ( Lines,
     Source,
@@ -75,7 +75,9 @@ data ParsedModule = ParsedModule
     -- line that decides whether a @{-# … #-}@ is a pragma at all. One
     -- written below it has no effect on compilation, and hoisting it to the
     -- top of the module would change its meaning.
-    pmHeaderEnd :: Maybe Span
+    pmHeaderEnd :: Maybe Span,
+    -- | The extensions it was read with.
+    pmExtensions :: [Extension]
   }
 
 -- | Was something that begins here written in the header, before what
@@ -123,10 +125,12 @@ parseConfiguration config path written source =
                 pmGathered = gathered hsModule,
                 pmSourceType = sourceType,
                 pmPrologue = prologueOf (lineTexts written),
-                pmHeaderEnd = headerEndOf hsModule
+                pmHeaderEnd = headerEndOf hsModule,
+                pmExtensions = extensions
               }
   where
-    start = stateFor config path source
+    extensions = effectiveExtensions (pcDefaults config) source
+    start = stateFor extensions path source
 
     sourceType = sourceTypeOf path
 
@@ -168,7 +172,9 @@ importLayout ::
   -- | The import layout.
   Maybe (IntMap Bool)
 importLayout config source =
-  case GHC.unP (lexing Nothing Nothing IntMap.empty) (stateFor config "" source) of
+  case GHC.unP
+    (lexing Nothing Nothing IntMap.empty)
+    (stateFor (effectiveExtensions (pcDefaults config) source) "" source) of
     GHC.POk _ found -> found
     GHC.PFailed _ -> Nothing
   where
@@ -239,16 +245,24 @@ isQuasiQuote = \case
   _ -> False
 
 -- | The state to start reading a module in.
-stateFor :: ParserConfig -> FilePath -> Text -> GHC.PState
-stateFor config path source =
+stateFor ::
+  -- | The extensions to read it with.
+  [Extension] ->
+  -- | Path, reported back in positions.
+  FilePath ->
+  -- | The module.
+  Text ->
+  GHC.PState
+stateFor extensions path source =
   GHC.initParserState
-    (parserOpts (effectiveExtensions (pcDefaults config) source))
+    (parserOpts extensions)
     (GHC.stringBufferFromByteString (T.encodeUtf8 source))
     (GHC.mkRealSrcLoc (mkFastString path) 1 1)
 
 -- | Would the parser read these two texts with the same extensions?
 readAlike :: ParserConfig -> Text -> Text -> Bool
-readAlike config a b = bits a == bits b
+readAlike config a b =
+  headerPragmas a == headerPragmas b || bits a == bits b
   where
     bits =
       GHC.pExtsBitmap . parserOpts . effectiveExtensions (pcDefaults config)

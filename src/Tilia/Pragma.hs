@@ -16,6 +16,7 @@ module Tilia.Pragma
     pragmaFlags,
     languageNames,
     sameInForce,
+    headerPragmas,
   )
 where
 

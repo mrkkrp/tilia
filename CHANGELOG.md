@@ -252,6 +252,11 @@
   one under a record's closing brace before a constructor behind a
   conditional no longer moves on the next pass.
   [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* A conditional that switches an extension, with a `LANGUAGE` pragma or
+  with `OPTIONS_GHC`, no longer changes the program in its other
+  configuration, where `r.field` became `r . field`, `::` became `∷`, or
+  `qualified` moved after the module's name.
+  [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 
