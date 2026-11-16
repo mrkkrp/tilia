@@ -31,6 +31,7 @@ import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import Tilia.Comments
   ( Comment (..),
     afterOpener,
+    asOrdinary,
     bracketed,
     singleLine,
     triggerOn,
@@ -39,7 +40,7 @@ import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
-import Tilia.Source (isDirective)
+import Tilia.Source (isDirective, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -83,18 +84,31 @@ haddockInline ctx style doc =
     (body, isSelfClosing) = docBody ctx style doc
 
 -- | The Haddock itself, and whether the form it took delimits itself.
+--
+-- One written as @--@ lines that say nothing but the spaces their ends
+-- lose is no Haddock to GHC on the next pass, so it comes out as the
+-- comment that pass reads.
 docBody :: Ctx -> DocStyle -> LHsDoc GhcPs -> (Doc, Bool)
-docBody ctx style doc@(L l str) =
-  case reusableText ctx style doc of
-    Just c ->
-      ( maybe id located (spanOfSrcSpan l) (commentText margin c),
-        selfClosing c
+docBody ctx style doc@(L l str)
+  | all isSpace text,
+    any (/= '\n') text,
+    Just c <- writtenHaddock ctx (spanOfSrcSpan l),
+    not (bracketed c || singleLine c) =
+      ( writtenAt . sepBy hardBreak . fmap (commentText margin) $
+          asOrdinary (sourceLines (ctxSource ctx)) c,
+        False
       )
-    Nothing
-      | null written' -> (writtenAt emptyBlock, True)
-      | blockForm -> (writtenAt rebuiltBlock, False)
-      | otherwise -> (writtenAt rebuilt, False)
+  | otherwise = case reusableText ctx style doc of
+      Just c ->
+        ( maybe id located (spanOfSrcSpan l) (commentText margin c),
+          selfClosing c
+        )
+      Nothing
+        | null written' -> (writtenAt emptyBlock, True)
+        | blockForm -> (writtenAt rebuiltBlock, False)
+        | otherwise -> (writtenAt rebuilt, False)
   where
+    text = renderHsDocString (hsDocString str)
     margin = Margin directive (const False)
     directive t = extensionOn ctx Cpp && isDirective t
     writtenAt = fence (spanOfSrcSpan l)
