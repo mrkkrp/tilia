@@ -883,8 +883,8 @@ guessedPackageCacheRoot =
       pure (fromMaybe (NE.head places) (listToMaybe found))
   where
     holdsAnIndex dir =
-      quietly False (doesFileExist (dir </> hackage </> "01-index.tar"))
-    hackage = "hackage.haskell.org"
+      quietly False $
+        doesFileExist (dir </> hackageByDefault </> "01-index.tar")
 
 -- | Every directory @cabal@ could be keeping a package cache in, the
 -- platform's own default first.
