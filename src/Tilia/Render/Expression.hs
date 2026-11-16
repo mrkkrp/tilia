@@ -648,7 +648,7 @@ stmtBody ctx site mkBody = \case
         bs -> localBinds ctx (siteBracing site) bs
   ParStmt{} ->
     error "Tilia: ParStmt should have been unpacked"
-  TransStmt{..} -> case (trS_form, trS_by) of
+  TransStmt{..} -> layoutFrom ctx own $ case (trS_form, trS_by) of
     (ThenForm, Nothing) ->
       txt "then" <> breakOrSpace <> indent (hsExpr ctx trS_using)
     (ThenForm, Just e) ->
@@ -669,6 +669,9 @@ stmtBody ctx site mkBody = \case
         <> txt "using"
         <> breakOrSpace
         <> indent (hsExpr ctx trS_using)
+    where
+      own =
+        spanOf (ats_then trS_ext) <> spanOf trS_using <> foldMap spanOf trS_by
   RecStmt{..} ->
     txt "rec" <> space <> align (stmtBlock ctx site mkBody recS_stmts)
 
