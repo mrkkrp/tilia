@@ -235,6 +235,10 @@
 * A `let` or `rec` written with nothing between its braces keeps them in a
   block laid out over several lines, and in a `let` with an `in`, rather
   than losing them. [Issue 447](https://github.com/mrkkrp/tilia/issues/447).
+* A module with many conditionals in one construct, such as an export list
+  with a name behind each of a few hundred conditionals, is no longer
+  refused as having too many configurations to format.
+  [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 
