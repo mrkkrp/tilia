@@ -203,6 +203,10 @@
 * A named default written over several lines keeps its class on the line
   of `default`, rather than putting it at the start of a line of its own,
   where it does not parse. [PR 428](https://github.com/mrkkrp/tilia/pull/428).
+* A pattern synonym whose head is written over several lines keeps what it
+  stands for beside its `=` or `<-` where it is written there, rather than
+  on a line of its own.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A `then` qualifier of a comprehension written on one line stays on one
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.

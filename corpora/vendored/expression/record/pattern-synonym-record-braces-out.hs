@@ -12,5 +12,4 @@ pattern Named{named} <- (lookupName -> Just named)
 pattern Spanning
   { spanFrom,
     spanTo
-  } =
-  Range spanFrom spanTo
+  } = Range spanFrom spanTo

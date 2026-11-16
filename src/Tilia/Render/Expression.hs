@@ -1292,7 +1292,12 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
     nextLine s = mkSpan (spanEndLine s + 1, 1) (spanEndLine s + 1, 1)
 
 -- | A pattern synonym binding.
-patSynBind :: Ctx -> PatSynBind GhcPs GhcPs -> Doc
+patSynBind ::
+  -- | The context.
+  Ctx ->
+  -- | The binding.
+  PatSynBind GhcPs GhcPs ->
+  Doc
 patSynBind ctx PSB{..} =
   txt "pattern" <> case psb_args of
     PrefixCon args ->
@@ -1355,8 +1360,10 @@ patSynBind ctx PSB{..} =
               (matchGroup ctx NoBrace (ExprBody ctx) (FunctionStyle psb_id) mg)
       where
         rhs arrow =
-          layoutFrom ctx (spanOf psb_id <> spanOf psb_def <> argSpans) $
+          layoutFrom ctx (fmap endOf headSpan <> spanOf psb_def) $
             txt (reserved ctx arrow) <> breakOrSpace <> hsPat ctx psb_def
+        headSpan =
+          spanOf psb_id <> argSpans <> foldMap spanOf (ap_closec psb_ext)
 
 -- | An untyped splice, either @$x@ or a quasi-quotation.
 untypedSplice :: Ctx -> SpliceDecoration -> HsUntypedSplice GhcPs -> Doc
