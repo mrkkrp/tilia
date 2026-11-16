@@ -243,7 +243,7 @@ spec = do
 
   modifyMaxSuccess (const 5000) . describe "against GHC's own flag reader" $ do
     it "leaves on what GHC leaves on" $
-      forAll (listOf1 (pragmaOf headerNames)) $ \pragmas ->
+      forAll (listOf1 (pragmaNaming headerNames)) $ \pragmas ->
         let ours =
               effectiveExtensions
                 (defaultsOf (languageExtensions Nothing) [])
@@ -254,7 +254,7 @@ spec = do
          in counterexample (T.unpack (headerOf pragmas)) $
               Set.fromList ours === Set.fromList theirs
     it "takes two orders to be alike where GHC switches alike" $
-      forAll (listOf1 (pragmaOf extensionNames)) $ \pragmas ->
+      forAll (listOf1 (pragmaNaming extensionNames)) $ \pragmas ->
         forAll (shuffle pragmas) $ \shuffled ->
           counterexample (T.unpack (headerOf pragmas <> headerOf shuffled)) $
             sameInForce (fmap namedBody pragmas) (fmap namedBody shuffled)
@@ -285,8 +285,8 @@ inForceUnder edition = effectiveExtensions (defaultsOf edition [])
 type HeaderPragma = (Text, Text, [Text])
 
 -- | A pragma that names one of these, or spells an extension as an old flag.
-pragmaOf :: [Text] -> Gen HeaderPragma
-pragmaOf names = oneof [language, options]
+pragmaNaming :: [Text] -> Gen HeaderPragma
+pragmaNaming names = oneof [language, options]
   where
     language = do
       name <- elements names

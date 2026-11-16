@@ -14,6 +14,7 @@ import Tilia.Comments.Attach
 import Tilia.Doc
 import Tilia.Doc.Combinators
 import Tilia.Parser
+import Tilia.Pragma (Pragma (..))
 import Tilia.Span
 import Tilia.TestUtils (commentsIn, indentedBy, parsed, withEachSettings)
 
@@ -128,6 +129,12 @@ spec = do
     it "leaves a comment's dashes in an options pragma, which GHC reads" $
       (fmap pragmaBody . commentPragma <$> commentsIn "{-# OPTIONS_GHC -Wall -- no #-}\nmodule M where\n")
         `shouldBe` [Just "-Wall -- no"]
+    it "puts one space between the words of its body" $
+      (fmap pragmaBody . commentPragma <$> commentsIn "{-# OPTIONS_GHC  -Wall   -Wno-orphans\n    -Werror #-}\nmodule M where\n")
+        `shouldBe` [Just "-Wall -Wno-orphans -Werror"]
+    it "keeps the spaces in a string literal among the flags" $
+      (fmap pragmaBody . commentPragma <$> commentsIn "{-# OPTIONS_GHC \"-DX=\\\"a  b\\\"\"  -Wall #-}\nmodule M where\n")
+        `shouldBe` [Just "\"-DX=\\\"a  b\\\"\" -Wall"]
     it "upper-cases the name" $
       (fmap pragmaName . commentPragma <$> commentsIn "{-# language CPP #-}\nmodule M where\nx = 1\n")
         `shouldBe` [Just "LANGUAGE"]

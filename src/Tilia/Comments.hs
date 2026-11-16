@@ -27,7 +27,6 @@ module Tilia.Comments
     triggerOn,
     commentsWithin,
     commentRuns,
-    Pragma (..),
     commentPragma,
   )
 where
@@ -43,7 +42,7 @@ import Data.Text qualified as T
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 
-import Tilia.Pragma (withoutSkippedComments)
+import Tilia.Pragma (Pragma, pragmaOf)
 import Tilia.Source.Lines
   ( Lines,
     blankAt,
@@ -493,38 +492,14 @@ commentRuns cs =
       spanStartLine (commentSpan d) == spanEndLine (commentSpan c) + 1
         && spanStartColumn (commentSpan d) == spanStartColumn (commentSpan c)
 
--- | A compiler pragma, which is written as a block comment but is not one.
---
--- GHC reads pragmas only from the file header, so where a pragma sits
--- decides whether it does anything at all. That is why recognising one is
--- not enough on its own: see 'Tilia.Parser.pmHeaderEnd' for the boundary
--- that says which pragmas are real.
-data Pragma = Pragma
-  { -- | The name, upper-cased as GHC expects it, e.g. @LANGUAGE@.
-    pragmaName :: Text,
-    -- | Everything between the name and the closing @#-}@, with the
-    -- surrounding whitespace removed, on one line, and without the comments
-    -- GHC skips in a @LANGUAGE@ pragma.
-    pragmaBody :: Text,
-    -- | Whether it holds such a comment.
-    pragmaCommented :: Bool
-  }
-  deriving (Eq, Show)
-
--- | Recognise a pragma.
-commentPragma :: Comment -> Maybe Pragma
-commentPragma c = do
-  inner <- T.stripSuffix "#-}" =<< T.stripPrefix "{-#" (T.strip written)
-  let uncommented = withoutSkippedComments inner
-      (name, body) = T.break isSpace (T.stripStart uncommented)
-  if T.null name
-    then Nothing
-    else
-      Just
-        Pragma
-          { pragmaName = T.toUpper name,
-            pragmaBody = T.strip (T.unwords (fmap T.strip (T.lines body))),
-            pragmaCommented = uncommented /= inner
-          }
+-- | The pragma a comment is, if any.
+commentPragma ::
+  -- | The comment.
+  Comment ->
+  Maybe Pragma
+commentPragma c =
+  pragmaOf
+    =<< T.stripSuffix "#-}"
+    =<< T.stripPrefix "{-#" (T.strip written)
   where
     written = T.intercalate "\n" (NE.toList (commentBody c))
