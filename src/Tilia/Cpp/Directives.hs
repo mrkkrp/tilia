@@ -17,6 +17,7 @@ module Tilia.Cpp.Directives
     Guard (..),
     Configurations (..),
     configurationsOn,
+    sameGuard,
     Varied (..),
     untouched,
     branchLeaves,

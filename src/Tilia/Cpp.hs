@@ -78,11 +78,11 @@ import Tilia.Parser
     importLayout,
     parseConfiguration,
     parseModule,
+    pmExtensions,
     pmSource,
     readAlike,
   )
 import Tilia.Render (RenderConfig (..), renderConfiguration)
-import Tilia.Settings (Settings)
 import Tilia.Source
   ( Lines,
     Written (..),
@@ -305,8 +305,10 @@ formatAllConfigs formatter r = do
           least = max 1 (linesHeld (vaBaseline apart))
           affordable =
             linearCost (budget `div` least) forest source * least <= budget
+          linearly =
+            affordable && all (null . drop 1 . (`sameGuard` forest)) pragma
       base <-
-        if isNothing pragma || affordable
+        if isNothing pragma || linearly
           then
             attempt (formatAllConfigs formatter baseline)
           else pure Nothing
@@ -315,7 +317,7 @@ formatAllConfigs formatter r = do
           join <$> attempt (inFragments formatter reached forest source b)
         _ -> pure Nothing
       linear <- case (fragmented, base) of
-        (Nothing, Just b) | affordable -> oneAtATime apart b
+        (Nothing, Just b) | linearly -> oneAtATime apart b
         _ -> pure Nothing
       case fragmented <|> linear of
         Just found -> pure found
@@ -330,11 +332,7 @@ formatAllConfigs formatter r = do
       varied <- attempt (separately formatter reached apart base)
       pure $ do
         (merged, found) <- varied
-        d <-
-          combine
-            Broken
-            (fst base)
-            (zip (fmap cfgWholes (vaGroups apart)) merged)
+        d <- combine Broken (fst base) merged
         pure (d, found)
 
 -- | How many formattings varying a module's conditionals one at a time
@@ -421,20 +419,20 @@ separately ::
   Variation ->
   -- | What the baseline was formatted to.
   (Doc, CommentSummary) ->
-  Spending ([Doc], CommentSummary)
+  Spending ([(Varied, Doc)], CommentSummary)
 separately formatter reached v (baseDoc, baseFound) = do
   groups <-
     aheadOf (catMaybes (concat readings)) . for readings . traverse $
       maybe (pure (baseDoc, mempty)) (formatAllConfigs formatter)
   let merged =
         zipWith
-          ( mergeOf
-              (rcSettings (formatterRender formatter))
-              (reachedLines reached)
-          )
+          (mergeOf formatter (reachedLines reached))
           (vaGroups v)
           (fmap (fmap fst) groups)
-  pure (foldr par merged merged, baseFound <> foldMap (foldMap snd) groups)
+  pure
+    ( foldr (par . snd) merged merged,
+      baseFound <> foldMap (foldMap snd) groups
+    )
   where
     readings =
       [ [ if t == vaBaseline v
@@ -484,8 +482,8 @@ inFragments formatter reached forest source (baseDoc, baseFound) =
           (fragmentsOf body forest)
       pure (body, ps)
 
--- | The outermost conditional around a @LANGUAGE@ pragma that changes how
--- the rest of the module is parsed, if there is one.
+-- | The outermost conditional around a @LANGUAGE@ or options pragma that
+-- changes how the rest of the module is parsed, if there is one.
 --
 -- Formatting a fragment on its own takes the rest of the module to be
 -- parsed alike in every configuration.
@@ -515,7 +513,8 @@ splitOnPragma parser forest source =
        in any pragma (take (to - from + 1) (drop (from - 1) written))
     pragma l =
       let u = T.toUpper l
-       in "{-#" `T.isInfixOf` u && "LANGUAGE" `T.isInfixOf` u
+       in "{-#" `T.isInfixOf` u
+            && ("LANGUAGE" `T.isInfixOf` u || "OPTIONS" `T.isInfixOf` u)
 
 -- | Vary the conditionals together, one group at a time.
 together ::
@@ -527,7 +526,7 @@ together ::
   Configurations ->
   Spending (Doc, CommentSummary)
 together formatter reached c
-  | differentlyRead = settledOr (fst <$> formatted False)
+  | differentlyRead parser c = settledOr (fst <$> formatted False)
   | otherwise =
       (fst <$> formatted False) `catchE` \case
         e@(ConfigurationNotParsed answers _)
@@ -538,8 +537,6 @@ together formatter reached c
       (found, blind) <- formatted True
       if blind then unsettled else pure found
     readingOf = reading formatter
-    differentlyRead =
-      or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
     parser = formatterParser formatter
     texts = cfgTexts c
     formatted settle = do
@@ -560,7 +557,7 @@ together formatter reached c
             | otherwise = foldMap ((settledBy !!) . fst) (listToMaybe found)
           settled = settledAcross (fmap settledIn [0 .. length answers - 1])
           ranges = mapMaybe (conditionalRange . settledConditional) settled
-          varied = Varied (variedLines (cfgWholes c) <> ranges)
+          varied = Varied (variedLines (variedBy parser c) <> ranges)
           merged =
             merge
               (rcSettings (formatterRender formatter))
@@ -636,8 +633,11 @@ formatSingleConfig formatter reached text =
     text of
     Left e -> Left (ConfigurationNotParsed (reachedAnswers reached) e)
     Right parsed ->
-      let (document, loose) =
-            renderConfiguration (formatterRender formatter) parsed
+      let render =
+            (formatterRender formatter)
+              { rcExtensions = Set.fromList (pmExtensions parsed)
+              }
+          (document, loose) = renderConfiguration render parsed
        in Right (document, summarizeComments loose (comments (pmSource parsed)))
 
 -- | How a configuration was reached, and what to call it.
@@ -731,13 +731,52 @@ settledAcross perAnswer =
 configurationBudget :: Int
 configurationBudget = 64
 
--- | Merge the documents one group's configurations printed to.
-mergeOf :: Settings -> Lines -> Configurations -> [Doc] -> Doc
-mergeOf settings written c =
-  merge
-    settings
-    written
-    (cfgConditionals c)
-    (cfgGuards c)
-    (cfgWholes c)
-    []
+-- | Merge the documents one group's configurations printed to, with the
+-- lines its answer can change.
+mergeOf ::
+  -- | What the configurations were parsed and printed with.
+  Formatter ->
+  -- | The module as written.
+  Lines ->
+  -- | The configurations.
+  Configurations ->
+  -- | What each of them printed to.
+  [Doc] ->
+  (Varied, Doc)
+mergeOf formatter written c docs =
+  ( varied,
+    merge
+      (rcSettings (formatterRender formatter))
+      written
+      (cfgConditionals c)
+      (cfgGuards c)
+      varied
+      []
+      docs
+  )
+  where
+    varied = variedBy (formatterParser formatter) c
+
+-- | Are a group's configurations read with different extensions?
+differentlyRead ::
+  -- | What they are parsed with.
+  ParserConfig ->
+  -- | The configurations.
+  Configurations ->
+  Bool
+differentlyRead parser c =
+  or (zipWith (\a b -> not (readAlike parser a b)) texts (drop 1 texts))
+  where
+    texts = cfgTexts c
+
+-- | The lines a group's answer can change: every line where its
+-- configurations are read differently.
+variedBy ::
+  -- | What they are parsed with.
+  ParserConfig ->
+  -- | The configurations.
+  Configurations ->
+  Varied
+variedBy parser c
+  | differentlyRead parser c = Varied [(1, maxBound)]
+  | otherwise = cfgWholes c
