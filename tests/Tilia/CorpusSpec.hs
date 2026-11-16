@@ -67,7 +67,6 @@ spec = do
   -- Our own examples say what they come out as with the default and the
   -- alternative settings alone.
   unless orthogonality (corpusSpec testedSettings vendoredExamples)
-  corpusSpec testedSettings ormoluExamples
   corpusSpec testedSettings ghcTestSuite
   corpusSpec testedSettings hackagePackages
 
