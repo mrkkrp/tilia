@@ -165,28 +165,27 @@ standaloneDerivDecl :: Ctx -> DerivDecl GhcPs -> Doc
 standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
   txt "deriving" <> space <> strategy
   where
-    instanceHead indented =
-      indent $
-        txt "instance"
-          <> foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
-          <> breakOrSpace
-          <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
-          <> nest
-            (if indented then 1 else 0)
-            (hsSigType ctx (hswc_body deriv_type))
+    instanceHead =
+      txt "instance"
+        <> foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
+        <> indent
+          ( breakOrSpace
+              <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
+              <> hsSigType ctx (hswc_body deriv_type)
+          )
 
     strategy = case deriv_strategy of
-      Nothing -> instanceHead False
+      Nothing -> instanceHead
       Just (L _ s) -> case s of
-        StockStrategy _ -> txt "stock " <> instanceHead False
-        AnyclassStrategy _ -> txt "anyclass " <> instanceHead False
-        NewtypeStrategy _ -> txt "newtype " <> instanceHead False
+        StockStrategy _ -> txt "stock " <> instanceHead
+        AnyclassStrategy _ -> txt "anyclass " <> instanceHead
+        NewtypeStrategy _ -> txt "newtype " <> instanceHead
         ViaStrategy (XViaStrategyPs _ sigTy) ->
           txt "via"
             <> breakOrSpace
             <> indent (hsSigType ctx sigTy)
             <> breakOrSpace
-            <> instanceHead True
+            <> indent instanceHead
 
 -- | A type family instance.
 tyFamInstDecl :: Ctx -> FamilyStyle -> TyFamInstDecl GhcPs -> Doc

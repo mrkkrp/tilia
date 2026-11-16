@@ -193,6 +193,10 @@
 * The `|` alternatives of a `MINIMAL` pragma written across lines come out
   one under another, rather than each a step deeper than the one above
   it. [Issue 431](https://github.com/mrkkrp/tilia/issues/431).
+* The `WARNING` of a standalone `deriving` declaration broken across lines
+  lines up with the class after it, as on an instance, rather than coming
+  out two columns deeper. [Issue
+  434](https://github.com/mrkkrp/tilia/issues/434).
 
 ## Tilia 0.1.4.0
 
