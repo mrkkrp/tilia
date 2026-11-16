@@ -38,6 +38,7 @@ where
 
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
@@ -631,11 +632,14 @@ recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
 -- commas, below it.
 recordFields :: Ctx -> Maybe Span -> [LHsConDeclRecField GhcPs] -> Doc
 recordFields ctx enclosing xs =
-  brokenIfDocumented ctx (fieldsUnder ctx) xs
+  brokenForDocs
     . bracketWith Outdented "{" "}"
     . insideBrackets enclosing
     $ commaSep commas (fmap field xs)
   where
+    brokenForDocs = if documented then broken else id
+    documented =
+      printsWholeLineDocs ctx (fieldsUnder ctx) (mapMaybe (fieldDoc . unLoc) xs)
     commas = ctxCommaStyle ctx
     field = case commas of
       TrailingCommas ->
