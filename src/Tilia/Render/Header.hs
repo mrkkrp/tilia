@@ -305,8 +305,6 @@ exportList ctx enclosing xs =
       | any (isDocEntry . unLoc) xs = broken
       | otherwise = layoutFrom ctx enclosing
 
--- | The parentheses around an import or export list, or around the members
--- of one of its items.
 -- | The items of an import or export list, with the documentation among
 -- them lined up with the items rather than with leading commas.
 importExportItems ::
