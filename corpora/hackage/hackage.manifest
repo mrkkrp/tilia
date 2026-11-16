@@ -494,19 +494,19 @@ formatted       fd5f6a30f8df  QuickCheck-2.18.0.0/tests/WithProgress.hs
 formatted       27f3c0ac45ea  ShellCheck-0.11.0/shellcheck.hs
 formatted       aa2eeb1b2b39  ShellCheck-0.11.0/src/ShellCheck/AST.hs
 formatted       e41e09d42c7d  ShellCheck-0.11.0/src/ShellCheck/ASTLib.hs
-formatted       13e921307ad7  ShellCheck-0.11.0/src/ShellCheck/Analytics.hs
+formatted       6c44310e02bf  ShellCheck-0.11.0/src/ShellCheck/Analytics.hs
 formatted       b1aa0d5d99af  ShellCheck-0.11.0/src/ShellCheck/Analyzer.hs
 formatted       9a3d939603a1  ShellCheck-0.11.0/src/ShellCheck/AnalyzerLib.hs
 formatted       dc5278be8903  ShellCheck-0.11.0/src/ShellCheck/CFG.hs
 formatted       38d43bde8ef6  ShellCheck-0.11.0/src/ShellCheck/CFGAnalysis.hs
 formatted       3c16986d0d09  ShellCheck-0.11.0/src/ShellCheck/Checker.hs
-formatted       72757fcd9c56  ShellCheck-0.11.0/src/ShellCheck/Checks/Commands.hs
-formatted       b2d03900a329  ShellCheck-0.11.0/src/ShellCheck/Checks/ControlFlow.hs
+formatted       8af5a4960933  ShellCheck-0.11.0/src/ShellCheck/Checks/Commands.hs
+formatted       4aa273ee0e04  ShellCheck-0.11.0/src/ShellCheck/Checks/ControlFlow.hs
 formatted       9351bb6cb078  ShellCheck-0.11.0/src/ShellCheck/Checks/Custom.hs
-formatted       b0a7084bce4e  ShellCheck-0.11.0/src/ShellCheck/Checks/ShellSupport.hs
+formatted       f55b9788ce6c  ShellCheck-0.11.0/src/ShellCheck/Checks/ShellSupport.hs
 formatted       8199d47a4619  ShellCheck-0.11.0/src/ShellCheck/Data.hs
 formatted       61587ef3128f  ShellCheck-0.11.0/src/ShellCheck/Debug.hs
-formatted       22338f69f06c  ShellCheck-0.11.0/src/ShellCheck/Fixer.hs
+formatted       df7c04156dc1  ShellCheck-0.11.0/src/ShellCheck/Fixer.hs
 formatted       93bcdb6bc766  ShellCheck-0.11.0/src/ShellCheck/Formatter/CheckStyle.hs
 formatted       dea510d11147  ShellCheck-0.11.0/src/ShellCheck/Formatter/Diff.hs
 formatted       3f7881891f6a  ShellCheck-0.11.0/src/ShellCheck/Formatter/Format.hs
@@ -1885,7 +1885,7 @@ formatted       677c7d7a8c5b  esqueleto-3.6.0.3/src/Database/Esqueleto/Experimen
 formatted       6f9319a0a4ec  esqueleto-3.6.0.3/src/Database/Esqueleto/Experimental/ToMaybe.hs
 formatted       a736ace7f7d4  esqueleto-3.6.0.3/src/Database/Esqueleto/Internal/ExprParser.hs
 formatted       fa9d00ac8a1e  esqueleto-3.6.0.3/src/Database/Esqueleto/Internal/Internal.hs
-formatted       8e8a8c378f2b  esqueleto-3.6.0.3/src/Database/Esqueleto/Internal/PersistentImport.hs
+formatted       a86d8be0d385  esqueleto-3.6.0.3/src/Database/Esqueleto/Internal/PersistentImport.hs
 formatted       23c62f207b2d  esqueleto-3.6.0.3/src/Database/Esqueleto/Legacy.hs
 formatted       9cd66d1b3ed2  esqueleto-3.6.0.3/src/Database/Esqueleto/MySQL.hs
 formatted       33964b2ee083  esqueleto-3.6.0.3/src/Database/Esqueleto/PostgreSQL.hs
@@ -2546,7 +2546,7 @@ formatted       fcdf50a5835c  hlint-3.10/src/Parallel.hs
 formatted       651a34dc7ca2  hlint-3.10/src/Refact.hs
 formatted       f6ba1db6c81f  hlint-3.10/src/Report.hs
 formatted       e4ea27b70592  hlint-3.10/src/SARIF.hs
-formatted       abe0ad350cd1  hlint-3.10/src/Summary.hs
+formatted       bb0e3713feb6  hlint-3.10/src/Summary.hs
 formatted       b7fc4aa315c3  hlint-3.10/src/Test/All.hs
 formatted       49d23aa19a1e  hlint-3.10/src/Test/Annotations.hs
 formatted       cbfa766f7762  hlint-3.10/src/Test/InputOutput.hs
@@ -2655,7 +2655,7 @@ formatted       ca6a48d5e983  http-client-0.7.19/Network/HTTP/Client/Util.hs
 formatted       15f087d7dee7  http-client-0.7.19/Network/HTTP/Proxy.hs
 formatted       e865ae48f11b  http-client-0.7.19/Setup.hs
 formatted       7ac2dcbe78dd  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/DataStructure.hs
-formatted       cc38681f49f5  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/Lookup.hs
+formatted       40adbb755f8f  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/Lookup.hs
 formatted       4e4aa8b86705  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/Serialize.hs
 formatted       a7f41d1b5ab1  http-client-0.7.19/publicsuffixlist/Network/PublicSuffixList/Types.hs
 formatted       c581cc92fbff  http-client-0.7.19/test-nonet/Network/HTTP/Client/BodySpec.hs
@@ -2760,7 +2760,7 @@ formatted       826085266586  idris-1.3.4/src/Idris/ErrReverse.hs
 formatted       0a32ebc4d42d  idris-1.3.4/src/Idris/Error.hs
 formatted       21bcb871fca8  idris-1.3.4/src/Idris/Help.hs
 formatted       e196ec00d5e6  idris-1.3.4/src/Idris/IBC.hs
-formatted       1cdac919afdf  idris-1.3.4/src/Idris/IdeMode.hs
+formatted       712b136b827c  idris-1.3.4/src/Idris/IdeMode.hs
 formatted       fb5e9024460b  idris-1.3.4/src/Idris/IdrisDoc.hs
 formatted       64ab527ed6da  idris-1.3.4/src/Idris/Imports.hs
 formatted       20bdae93d5bc  idris-1.3.4/src/Idris/Info.hs
@@ -2804,7 +2804,7 @@ formatted       9df5a10ea1fd  idris-1.3.4/test/TestData.hs
 formatted       fbe0c8367ba2  idris-1.3.4/test/TestRun.hs
 formatted       e865ae48f11b  intero-0.1.40/Setup.hs
 formatted       b0be025859d1  intero-0.1.40/src/Completion.hs
-formatted       1f1430955d0f  intero-0.1.40/src/GhciFind.hs
+formatted       46115918074b  intero-0.1.40/src/GhciFind.hs
 partly-checked  9975bd236887  intero-0.1.40/src/GhciInfo.hs
 formatted       aec2d8377a7e  intero-0.1.40/src/GhciMonad.hs
 formatted       4e51b04458bf  intero-0.1.40/src/GhciTags.hs
@@ -3700,7 +3700,7 @@ formatted       293cd53d2163  purescript-0.15.15/src/Language/PureScript/CoreImp
 formatted       f6714b047252  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/Blocks.hs
 formatted       2357af4f70f3  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/Common.hs
 formatted       b4ae3633724a  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/Inliner.hs
-formatted       275c22c37644  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/MagicDo.hs
+formatted       ccdfc326bfbc  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/MagicDo.hs
 formatted       1b809d01eed3  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/TCO.hs
 formatted       e92b4559ab79  purescript-0.15.15/src/Language/PureScript/CoreImp/Optimizer/Unused.hs
 formatted       dafc7e0d4c24  purescript-0.15.15/src/Language/PureScript/Crash.hs
@@ -3751,7 +3751,7 @@ formatted       19d517c451d6  purescript-0.15.15/src/Language/PureScript/Ide/Uti
 formatted       91156936c11a  purescript-0.15.15/src/Language/PureScript/Interactive.hs
 formatted       d01a40e60d32  purescript-0.15.15/src/Language/PureScript/Interactive/Completion.hs
 formatted       3460c74a085b  purescript-0.15.15/src/Language/PureScript/Interactive/Directive.hs
-formatted       8df7cf97bade  purescript-0.15.15/src/Language/PureScript/Interactive/IO.hs
+formatted       70dca0f550ee  purescript-0.15.15/src/Language/PureScript/Interactive/IO.hs
 formatted       71a877b04bc4  purescript-0.15.15/src/Language/PureScript/Interactive/Message.hs
 formatted       9ac75d918f18  purescript-0.15.15/src/Language/PureScript/Interactive/Module.hs
 formatted       f11eeeb0fa22  purescript-0.15.15/src/Language/PureScript/Interactive/Parser.hs
@@ -4108,7 +4108,7 @@ formatted       f2165cd26775  servant-0.20.3.0/src/Servant/API/Modifiers.hs
 formatted       24d41e75def8  servant-0.20.3.0/src/Servant/API/MultiVerb.hs
 formatted       56acb7471063  servant-0.20.3.0/src/Servant/API/NamedRoutes.hs
 formatted       e095a96b1a24  servant-0.20.3.0/src/Servant/API/QueryParam.hs
-formatted       b54acbb2de0d  servant-0.20.3.0/src/Servant/API/QueryString.hs
+formatted       96b75d1da3f2  servant-0.20.3.0/src/Servant/API/QueryString.hs
 formatted       8fbe3b9f5ad7  servant-0.20.3.0/src/Servant/API/Range.hs
 formatted       b4ca6686cebd  servant-0.20.3.0/src/Servant/API/Raw.hs
 formatted       bf0e0f5c31f1  servant-0.20.3.0/src/Servant/API/RemoteHost.hs
@@ -4663,7 +4663,7 @@ formatted       c4d9bc323555  time-1.16.0.1/lib/Data/Time/Calendar/Julian.hs
 formatted       625e7b428153  time-1.16.0.1/lib/Data/Time/Calendar/JulianYearDay.hs
 formatted       7450952c1396  time-1.16.0.1/lib/Data/Time/Calendar/Month.hs
 formatted       5f4c8f9288d7  time-1.16.0.1/lib/Data/Time/Calendar/MonthDay.hs
-formatted       c60638859651  time-1.16.0.1/lib/Data/Time/Calendar/OrdinalDate.hs
+formatted       b241746df546  time-1.16.0.1/lib/Data/Time/Calendar/OrdinalDate.hs
 formatted       025bb4e6307c  time-1.16.0.1/lib/Data/Time/Calendar/Private.hs
 formatted       576493c582f6  time-1.16.0.1/lib/Data/Time/Calendar/Quarter.hs
 formatted       60d39a26918f  time-1.16.0.1/lib/Data/Time/Calendar/Types.hs
@@ -4969,7 +4969,7 @@ formatted       d28bbfb126d1  uuid-types-1.0.6.1/src/Data/UUID/Types/Internal/Bu
 formatted       edddb48e01f4  uuid-types-1.0.6.1/tests/TestUUID.hs
 formatted       e865ae48f11b  vector-0.13.2.0/Setup.hs
 formatted       968ccc63cf5c  vector-0.13.2.0/benchlib/Bench/Vector/Algo/AwShCC.hs
-formatted       8a7c35b680c0  vector-0.13.2.0/benchlib/Bench/Vector/Algo/FindIndexR.hs
+formatted       aac3838923af  vector-0.13.2.0/benchlib/Bench/Vector/Algo/FindIndexR.hs
 formatted       7536358d3c8c  vector-0.13.2.0/benchlib/Bench/Vector/Algo/HybCC.hs
 formatted       31caf6daa18c  vector-0.13.2.0/benchlib/Bench/Vector/Algo/Leaffix.hs
 formatted       c647f14c61cb  vector-0.13.2.0/benchlib/Bench/Vector/Algo/ListRank.hs
@@ -5147,7 +5147,7 @@ formatted       2834346c2158  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Session
 formatted       516f30b26c69  yesod-core-1.7.0.0/src/Yesod/Core/Internal/TH.hs
 formatted       1ecb030e4d6b  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Util.hs
 formatted       7a8ac41bb599  yesod-core-1.7.0.0/src/Yesod/Core/Json.hs
-formatted       ab7e645c7a6e  yesod-core-1.7.0.0/src/Yesod/Core/TypeCache.hs
+formatted       1bf4621cb6b5  yesod-core-1.7.0.0/src/Yesod/Core/TypeCache.hs
 formatted       e9bbddf9f6bb  yesod-core-1.7.0.0/src/Yesod/Core/Types.hs
 formatted       38102a09e32a  yesod-core-1.7.0.0/src/Yesod/Core/Types/Content.hs
 formatted       49991219fbf5  yesod-core-1.7.0.0/src/Yesod/Core/Types/ErrorResponse.hs
