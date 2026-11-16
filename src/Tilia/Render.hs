@@ -25,7 +25,6 @@ import GHC.Hs
   ( ConDecl (..),
     HsConDeclField (..),
     HsConDeclGADTDetails (..),
-    HsConDeclRecField (..),
     HsModule (..),
     HsSigType (..),
     HsType (..),
@@ -69,7 +68,7 @@ import Tilia.Render.Header
     takeStackHeader,
   )
 import Tilia.Render.Signature (sigDecl)
-import Tilia.Render.Type (documentedParts)
+import Tilia.Render.Type (documentedParts, fieldDoc)
 import Tilia.Settings (Settings (..), defaultSettings)
 import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
@@ -237,8 +236,9 @@ moduleCtx settings parsed held =
 
 -- | Keep a comment from running into a Haddock.
 heldOff ::
-  -- | The last lines of what has its Haddock moved under it.
-  [Int] ->
+  -- | The last line of each part that has its Haddock moved under it,
+  -- with the first line of that Haddock as written.
+  [(Int, Int)] ->
   -- | The Haddocks, as written.
   [Comment] ->
   -- | The comments.
@@ -248,13 +248,15 @@ heldOff movedUnder haddocks = fmap holdOff
   where
     written = filter holdsOff haddocks
     ends =
-      Set.fromList (movedUnder <> fmap (spanEndLine . commentSpan) written)
+      Set.fromList
+        (fmap fst movedUnder <> fmap (spanEndLine . commentSpan) written)
     starts =
       Set.fromList
         [ spanStartLine (commentSpan h)
         | h <- written,
           not (commentTrailing h)
         ]
+        `Set.difference` Set.fromList (fmap snd movedUnder)
     holdOff c
       | bracketed c = c
       | otherwise =
@@ -269,53 +271,60 @@ heldOff movedUnder haddocks = fmap holdOff
       where
         s = commentSpan c
 
--- | The last lines of what has its Haddock put under it: the record fields
--- of leading commas, and the arguments of leading arrows, those of a type
--- synonym among them.
+-- | The last line of what has its Haddock put under it, with the first
+-- line of that Haddock as written: the record fields of leading commas,
+-- and the arguments of leading arrows, those of a type synonym among them.
 documentedBelow ::
   -- | What the project sets.
   Settings ->
   -- | The module.
   HsModule GhcPs ->
-  [Int]
+  [(Int, Int)]
 documentedBelow settings hsMod = fields <> arguments
   where
     fields = case settingsCommaStyle settings of
       TrailingCommas -> []
       LeadingCommas ->
-        [ spanEndLine s
+        [ (spanEndLine s, spanStartLine d)
         | field <- listify documentedField hsMod,
-          Just s <- [spanOf field]
+          Just s <- [spanOf field],
+          Just d <- [spanOf =<< fieldDoc (unLoc field)]
         ]
     arguments = case settingsArrowStyle settings of
       TrailingArrows -> []
       LeadingArrows ->
-        mapMaybe (fmap spanEndLine . spanOf) $
-          foldMap
-            (documentedParts . sig_body . unLoc)
-            (listify (const True :: LHsSigType GhcPs -> Bool) hsMod)
-            <> foldMap
-              gadtParts
-              (listify (const True :: ConDecl GhcPs -> Bool) hsMod)
-            <> foldMap
-              synonymParts
-              (listify (const True :: TyClDecl GhcPs -> Bool) hsMod)
+        [ (spanEndLine s, spanStartLine d)
+        | (part, doc) <- documented,
+          Just s <- [spanOf part],
+          Just d <- [spanOf doc]
+        ]
+    documented =
+      foldMap
+        (foldMap withDoc . documentedParts . sig_body . unLoc)
+        (listify (const True :: LHsSigType GhcPs -> Bool) hsMod)
+        <> foldMap gadtParts (listify (const True :: ConDecl GhcPs -> Bool) hsMod)
+        <> foldMap
+          synonymParts
+          (listify (const True :: TyClDecl GhcPs -> Bool) hsMod)
+    withDoc part = case unLoc part of
+      HsDocTy _ _ doc -> [(part, doc)]
+      _ -> []
     gadtParts con = case con of
       ConDeclGADT{con_g_args, con_res_ty} ->
-        [ cdf_type x
+        [ (cdf_type x, doc)
         | PrefixConGADT _ xs <- [con_g_args],
           x <- xs,
-          isJust (cdf_doc x)
+          Just doc <- [cdf_doc x]
         ]
-          <> documentedParts con_res_ty
+          <> foldMap withDoc (documentedParts con_res_ty)
       _ -> []
     synonymParts decl = case decl of
       SynDecl{tcdRhs} -> case unLoc tcdRhs of
         HsDocTy{} -> []
-        _ -> documentedParts tcdRhs
+        _ -> foldMap withDoc (documentedParts tcdRhs)
       _ -> []
     documentedField :: LHsConDeclRecField GhcPs -> Bool
-    documentedField = isJust . cdf_doc . cdrf_spec . unLoc
+    documentedField = isJust . fieldDoc . unLoc
 
 -- | Hold the comment that comes out right under the module's own Haddock
 -- off it: the first one between the Haddock and the module line with no

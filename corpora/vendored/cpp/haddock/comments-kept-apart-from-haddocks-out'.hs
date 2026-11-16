@@ -10,7 +10,6 @@ dig = pure ()
 
 data Bed = Bed
     { -- the old name was bedWidth
-
       width :: Int
       -- ^ How wide the bed is.
     , depth :: Int
