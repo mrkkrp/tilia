@@ -147,6 +147,23 @@
   than 17, formatting that is not idempotent with 21 rather than 18, an
   exception with 22 rather than 19, and a file that cannot be written back
   with 23 rather than 20.
+* A run with several kinds of failure exits with 20, 21 or 22, for a
+  program that formatting changed, formatting that is not idempotent or an
+  exception, where one of them happened, and with the lowest code of the
+  rest only otherwise, rather than with the lowest code of all.
+  [PR 425](https://github.com/mrkkrp/tilia/pull/425).
+* A `.tiliaignore` that cannot be read counts as absent in `check` and
+  `inplace`, as it already did in `for-editor`, rather than stopping the run
+  with an uncaught exception and exit code 1.
+  [PR 425](https://github.com/mrkkrp/tilia/pull/425).
+* `for-editor` stops with exit code 25 in a project whose `cabal.project`
+  names no packages that exist, for the reason `check` gives, rather than
+  having `cabal` solve the project and exiting with 3.
+  [PR 425](https://github.com/mrkkrp/tilia/pull/425).
+* A `tilia.toml` beginning with a byte order mark is read past it, rather
+  than its first line being rejected, and one that cannot be read is
+  reported naming it once.
+  [PR 425](https://github.com/mrkkrp/tilia/pull/425).
 
 ## Tilia 0.1.4.0
 
