@@ -16,6 +16,7 @@ module Terminal.Colour
     , bright
 #endif
 #endif
+
       -- * Rendering
     , render
     )

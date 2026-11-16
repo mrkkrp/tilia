@@ -762,7 +762,7 @@ commaLed body = if ", " `T.isPrefixOf` body then 2 else 0
 -- | Would an empty line here be the first thing inside a block?
 opensABlock :: Int -> Out -> Bool
 opensABlock indent out = case outLines out of
-  (l : _) -> T.length (lineText l) <= indent
+  (l : _) -> isNothing (lineDirective l) && T.length (lineText l) <= indent
   [] -> False
 
 -- | Finish the current line between two lines of reproduced text.

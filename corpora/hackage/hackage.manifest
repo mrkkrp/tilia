@@ -334,7 +334,7 @@ formatted       57c4fc43d6a3  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record
 formatted       8138ea7ea902  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
 formatted       20b4457a5ad9  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs-boot
 formatted       ef0e5c5ee346  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
-formatted       5798be2eabd5  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
+formatted       239dbd4f46d2  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
 formatted       2b393fc8dbd3  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances.hs
 formatted       cfe8c6f06b11  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Abstract.hs
 formatted       a47e11586ef2  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Common.hs
@@ -2629,7 +2629,7 @@ formatted       df492c3c23cd  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/Eva
 formatted       a8c11009c6e4  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/JobQueueSpec.hs
 formatted       907e7efc2fa7  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/PrintSlowSpecItemsSpec.hs
 formatted       081cd7ff7bb1  hspec-core-2.11.17/test/Test/Hspec/Core/Runner/ResultSpec.hs
-formatted       c4641a398e97  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
+formatted       ee999beeb81c  hspec-core-2.11.17/test/Test/Hspec/Core/RunnerSpec.hs
 formatted       3b2b70c57015  hspec-core-2.11.17/test/Test/Hspec/Core/ShuffleSpec.hs
 formatted       1b60da5ada53  hspec-core-2.11.17/test/Test/Hspec/Core/SpecSpec.hs
 formatted       31510a8f7885  hspec-core-2.11.17/test/Test/Hspec/Core/TimerSpec.hs
@@ -2811,7 +2811,7 @@ formatted       4e51b04458bf  intero-0.1.40/src/GhciTags.hs
 formatted       c6d5e5e5158b  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
 formatted       0af479971c44  intero-0.1.40/src/Intero/Compat.hs
-partly-checked  3df5270b743c  intero-0.1.40/src/Main.hs
+partly-checked  ea796fc4986a  intero-0.1.40/src/Main.hs
 formatted       e2cee739d4c1  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs
@@ -4006,7 +4006,7 @@ formatted       c4657c20e4e6  random-1.3.1/test/Spec/Stateful.hs
 formatted       65fb2feadbc2  recursion-schemes-5.2.3/examples/Expr.hs
 formatted       20a30694ebad  recursion-schemes-5.2.3/src/Data/Functor/Base.hs
 formatted       507e9efa299d  recursion-schemes-5.2.3/src/Data/Functor/Foldable.hs
-formatted       21b79e1b344c  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
+formatted       7e96944d499f  recursion-schemes-5.2.3/src/Data/Functor/Foldable/TH.hs
 formatted       afbad790ed67  resourcet-1.3.0/Control/Monad/Trans/Resource.hs
 formatted       e22b39c5c19a  resourcet-1.3.0/Control/Monad/Trans/Resource/Internal.hs
 formatted       1ba6c04bf925  resourcet-1.3.0/Data/Acquire.hs
@@ -4545,7 +4545,7 @@ formatted       ef0f2d7fc224  text-2.1.4/benchmarks/haskell/Benchmarks/DecodeUtf
 formatted       bd40c14fe661  text-2.1.4/benchmarks/haskell/Benchmarks/EncodeUtf8.hs
 formatted       bd99ab7ca05e  text-2.1.4/benchmarks/haskell/Benchmarks/Equality.hs
 formatted       7fae04caef27  text-2.1.4/benchmarks/haskell/Benchmarks/FileRead.hs
-formatted       85b4f879d8da  text-2.1.4/benchmarks/haskell/Benchmarks/FileWrite.hs
+formatted       053769b344ac  text-2.1.4/benchmarks/haskell/Benchmarks/FileWrite.hs
 formatted       28e4ce593e7d  text-2.1.4/benchmarks/haskell/Benchmarks/FoldLines.hs
 formatted       eb64c0f50c11  text-2.1.4/benchmarks/haskell/Benchmarks/Micro.hs
 formatted       4b52184e5d5e  text-2.1.4/benchmarks/haskell/Benchmarks/Multilang.hs
@@ -4926,7 +4926,7 @@ formatted       9608e31a77ca  unordered-containers-0.2.21/Data/HashMap/Strict.hs
 formatted       83b524ef419b  unordered-containers-0.2.21/Data/HashSet.hs
 formatted       fe4328c98167  unordered-containers-0.2.21/Data/HashSet/Internal.hs
 formatted       e865ae48f11b  unordered-containers-0.2.21/Setup.hs
-formatted       99cfaad67e1c  unordered-containers-0.2.21/benchmarks/Benchmarks.hs
+formatted       e01f63270269  unordered-containers-0.2.21/benchmarks/Benchmarks.hs
 formatted       a6c27c94fae7  unordered-containers-0.2.21/benchmarks/FineGrained.hs
 formatted       b1cc4b50fa0e  unordered-containers-0.2.21/benchmarks/Key/Bytes.hs
 formatted       5eca01a7f605  unordered-containers-0.2.21/benchmarks/Util/ByteString.hs
