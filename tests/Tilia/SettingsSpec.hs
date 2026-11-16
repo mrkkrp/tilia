@@ -4,6 +4,8 @@
 module Tilia.SettingsSpec (spec) where
 
 import Data.Text (Text)
+import System.Directory (emptyPermissions, setPermissions)
+import System.FilePath ((</>))
 import Test.Hspec
 
 import Tilia.Settings
@@ -111,6 +113,17 @@ spec = do
       withFiles [(settingsFile, "column-limit = 100\n")] $ \root ->
         readSettings root
           `shouldReturn` Right defaultSettings{settingsColumnLimit = 100}
+
+    it "reads a settings file past a byte order mark" $
+      withFiles [(settingsFile, "\xFEFF\&column-limit = 100\n")] $ \root ->
+        readSettings root
+          `shouldReturn` Right defaultSettings{settingsColumnLimit = 100}
+
+    it "says why it cannot read a settings file without naming it" $
+      withFiles [(settingsFile, "column-limit = 100\n")] $ \root -> do
+        setPermissions (root </> settingsFile) emptyPermissions
+        readSettings root
+          `shouldReturn` Left (SettingsUnreadable "permission denied")
 
 -- | Check that a settings file sets the column limit.
 limitsAt ::

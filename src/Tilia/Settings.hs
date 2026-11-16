@@ -18,9 +18,7 @@ module Tilia.Settings
   )
 where
 
-import Control.Exception (IOException, try)
 import Control.Monad (foldM)
-import Data.ByteString qualified as BS
 import Data.Char (isAsciiLower, isAsciiUpper, isDigit)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
@@ -31,7 +29,7 @@ import Data.Text.Read qualified as T
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 
-import Tilia.Utils (tshow)
+import Tilia.Utils (byteOrderMark, readBytes, tshow)
 
 -- | What a project can set.
 data Settings = Settings
@@ -134,9 +132,10 @@ readSettings root = do
   if not there
     then pure (Right defaultSettings)
     else
-      try (BS.readFile path) >>= \case
-        Left (e :: IOException) -> pure (Left (SettingsUnreadable (tshow e)))
-        Right bytes -> pure (parseSettings (T.decodeUtf8Lenient bytes))
+      either (Left . SettingsUnreadable) (parseSettings . decoded)
+        <$> readBytes path
+  where
+    decoded = snd . byteOrderMark . T.decodeUtf8Lenient
 
 -- | Read the settings a file holds: TOML, but only lines of @key = value@
 -- where a value is @true@, @false@ or a whole number.
