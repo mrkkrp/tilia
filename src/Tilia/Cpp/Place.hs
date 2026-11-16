@@ -441,8 +441,8 @@ putMacroLine written doc (n, t)
       DLocated (mkSpan (n, 1) (n, 1)) (DCloseLine <> DText t <> DCloseLine)
         <> includeWhen (blankAt (n + 1) written) blankLine
 
--- | Does the code under a line open with a comma, which the printer puts at
--- the end of the item above the line instead?
+-- | Does the code under a line open with a comma, before which the line
+-- cannot be put back?
 commaUnder ::
   -- | The module as written.
   Lines ->

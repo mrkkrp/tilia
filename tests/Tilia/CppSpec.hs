@@ -322,7 +322,7 @@ spec = do
     it "refuses an #include before a leading comma" $
       formatCpp settings includeBeforeLeadingComma
         `shouldBe` Left
-          "#include \"colors.h\" at line 5 comes before a leading comma, which formatting moves above it"
+          "#include \"colors.h\" at line 5 comes before a leading comma, where it cannot be put back"
 
     it "refuses an alternative aborting with #error that it cannot format" $
       formatCpp settings abortingAlternative
