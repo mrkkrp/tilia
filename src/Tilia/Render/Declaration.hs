@@ -464,10 +464,15 @@ instDecl ctx style = \case
   DataFamInstD _ x -> dataFamInstDecl ctx style x
 
 -- | A @default@ declaration.
-defaultDecl :: Ctx -> DefaultDecl GhcPs -> Doc
+defaultDecl ::
+  -- | The context.
+  Ctx ->
+  -- | The declaration.
+  DefaultDecl GhcPs ->
+  Doc
 defaultDecl ctx (DefaultDecl _ className types) =
   txt "default"
-    <> foldMap (\c -> breakOrSpace <> name ctx c) className
+    <> foldMap (\c -> space <> name ctx c) className
     <> breakOrSpace
     <> indent
       ( parens $

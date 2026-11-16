@@ -200,6 +200,9 @@
 * A `DEPRECATED` or `WARNING` pragma on an export item other than the
   first lines up with the items, rather than coming out a step deeper.
   [Issue 415](https://github.com/mrkkrp/tilia/issues/415).
+* A named default written over several lines keeps its class on the line
+  of `default`, rather than putting it at the start of a line of its own,
+  where it does not parse. [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A `then` qualifier of a comprehension written on one line stays on one
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.
