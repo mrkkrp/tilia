@@ -71,7 +71,7 @@ import Tilia.Source
     lineTextsFrom,
     linesOf,
   )
-import Tilia.Span (Span (..), mkSpan, startPoint)
+import Tilia.Span (Span (..), mkSpan)
 
 -- | What the configurations of a module had besides their code.
 data CommentSummary = CommentSummary
@@ -291,7 +291,7 @@ scopeIn conditionals s =
 realized :: Doc -> Doc
 realized = \case
   DCppChoice cs bs e ->
-    let alternatives = unified (fmap realized (fmap snd bs <> [e]))
+    let alternatives = fmap realized (fmap snd bs <> [e])
         bs' =
           [ (g, anchoredIn cs k d)
           | (k, (g, d)) <- zip [0 ..] (zip (fmap fst bs) alternatives)
@@ -333,42 +333,6 @@ spacedApart written = go
           spanEndLine c == spanEndLine s ->
             Just (spanStartLine s, spanEndLine s)
       _ -> Nothing
-
--- | Give the alternatives of a choice one span for every construct that
--- begins at the same place in more than one of them.
---
--- A choice that prints code written outside its conditionals prints it in
--- every alternative, and a construct with a conditional inside it can end
--- in a different place in each. It is one construct all the same, and a
--- comment written against it has to find it in every one of them.
-unified :: [Doc] -> [Doc]
-unified ds = fmap (rewrite Set.empty) ds
-  where
-    hulls =
-      Map.filter
-        ((> 1) . length)
-        ( Map.fromListWith
-            (<>)
-            [(startPoint s, [s]) | d <- ds, s <- outermost d]
-        )
-    rewrite seen = \case
-      DLocated s x
-        | Set.notMember (startPoint s) seen,
-          Just ss <- Map.lookup (startPoint s) hulls ->
-            DLocated
-              (foldr (<>) s ss)
-              (rewrite (Set.insert (startPoint s) seen) x)
-        | otherwise -> DLocated s (rewrite (Set.insert (startPoint s) seen) x)
-      d@DCppChoice{} -> d
-      d -> mapChildren (rewrite seen) d
-    outermost = go Set.empty
-      where
-        go seen = \case
-          DLocated s x
-            | Set.member (startPoint s) seen -> go seen x
-            | otherwise -> s : go (Set.insert (startPoint s) seen) x
-          DCppChoice{} -> []
-          d -> foldChildren (go seen) d
 
 -- | Give one alternative of a choice its anchors.
 anchoredIn ::
