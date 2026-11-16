@@ -99,9 +99,9 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
 
     foreignType = case unLoc <$> dd_cType of
       Nothing -> mempty
-      Just (CType prag header' (type_, _)) ->
+      Just (CType _ header' (type_, _)) ->
         breakOrSpace
-          <> sourceText prag
+          <> txt "{-# CTYPE"
           <> foldMap (\(Header h _) -> space <> sourceText h) header'
           <> space
           <> sourceText type_
