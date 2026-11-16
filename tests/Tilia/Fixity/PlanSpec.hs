@@ -637,6 +637,10 @@ reexports = describe "an operator a module passes on" $ do
     chased "module M (Doc (..)) where\nimport No.Such.Module (T (..))\nimport Text.PrettyPrint (Doc)\n"
       `shouldReturn` Nothing
 
+  it "is still not answered when the import its type comes from hides it" $
+    chased "module M (Doc (..)) where\nimport No.Such.Module (T (..))\nimport Text.PrettyPrint hiding ((<+>))\n"
+      `shouldReturn` Nothing
+
   it "leaves unsettled only what the unread import could have supplied" $ do
     answer <-
       chasedModule
@@ -722,6 +726,16 @@ reexports = describe "an operator a module passes on" $ do
       let orOf m = (Map.lookup (InTerms, OpName "||.") =<<) <$> fixitiesOf rs m
       orOf "Facade" `shouldReturn` Nothing
       orOf "Top" `shouldReturn` Just (Fixity RightAssoc 2)
+
+  it "is settled where it is a type an import list names, handed on whole and then by name"
+    $ withFakeProject
+      [ ("src/List.hs", "{-# LANGUAGE TypeFamilies, TypeOperators #-}\nmodule List (type (.++)) where\ntype family a .++ b\n"),
+        ("src/Context.hs", "{-# LANGUAGE TypeFamilies #-}\nmodule Context (module List) where\nimport List (type (.++))\n"),
+        ("src/Server.hs", "{-# LANGUAGE TypeFamilies #-}\nmodule Server (type (.++)) where\nimport Context\n")
+      ]
+    $ \rs -> do
+      server <- askModule rs Nothing "Server"
+      unsettledThrough server (InTypes, OpName ".++") `shouldBe` []
 
 -- | What a module written for @hsc2hs@ amounts to, by either route to one.
 --

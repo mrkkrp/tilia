@@ -349,13 +349,23 @@ crowded =
             "Data.Map"
             ( Just
                 ( False,
-                  [ ImportedName (OpName "!"),
+                  [ ImportedName InTerms (OpName "!"),
                     ImportedAll (OpName "Map"),
                     ImportedSome (OpName "NonEmpty") [OpName ":|", OpName "toList"]
                   ]
                 )
             ),
-          Import "Data.Set" False "S" (Just (True, [ImportedName (OpName "\\\\")])),
+          Import
+            "Data.Set"
+            False
+            "S"
+            ( Just
+                ( True,
+                  [ ImportedName InTerms (OpName "\\\\"),
+                    ImportedName InTypes (OpName "Set")
+                  ]
+                )
+            ),
           Import "Data.Void" False "Data.Void" (Just (False, []))
         ],
       summaryFixities =

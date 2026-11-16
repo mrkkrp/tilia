@@ -290,7 +290,8 @@ renderSummaries = \case
               : fmap renderItem items
     qualification i = if importQualified i then "qualified" else "open"
     renderItem = \case
-      ImportedName (OpName op) -> ["item", "name", op]
+      ImportedName namespace (OpName op) ->
+        ["item", "name", renderNamespace namespace, op]
       ImportedAll (OpName op) -> ["item", "all", op]
       ImportedSome op kids -> "item" : "some" : [k | OpName k <- op : kids]
 
@@ -392,7 +393,8 @@ parseSummaries = \case
         Just . (,) hiding <$> traverse importItem items
       _ -> Nothing
     importItem = \case
-      ["item", "name", op] -> Just (ImportedName (OpName op))
+      ["item", "name", namespace, op] ->
+        (\n -> ImportedName n (OpName op)) <$> parseNamespace namespace
       ["item", "all", op] -> Just (ImportedAll (OpName op))
       "item" : "some" : op : kids ->
         Just (ImportedSome (OpName op) (fmap OpName kids))
