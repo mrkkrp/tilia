@@ -114,11 +114,6 @@ merge settings written conditionals guards varied settledOthers = go Broken
                   unwrapping layout spans xs $ \parts ->
                     onlyChoice merged || coveredAmong spans parts ->
                   opened
-            (WGroup l, DCppChoice{})
-              | not (all (== l) (layoutsOf wds)),
-                d : rest <- fmap snd wds,
-                not (all (agree varied l d) rest) ->
-                  choice xs
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged) ->
