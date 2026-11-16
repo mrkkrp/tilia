@@ -129,6 +129,20 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #debugFixity)
         `shouldReturn` Just 25
 
+  it "fails before solving where the project names no packages" $
+    withSystemTempDirectory "tilia-editor" $ \dir -> do
+      writeUtf8File (dir </> "cabal.project") "packages: missing\n"
+      either (Just . failure) (const Nothing)
+        <$> editorSession
+          (dir </> "A.hs")
+          Nothing
+          (Don't #useCache)
+          (Don't #download)
+          (Don't #checkAst)
+          (Don't #checkIdempotence)
+          (Don't #debugFixity)
+        `shouldReturn` Just 25
+
   describe "given the project's tilia.toml" $ do
     it "breaks what runs past the column limit it sets" $
       withProjectHolding [("tilia.toml", "column-limit = 20\n")] $ \buffer ->

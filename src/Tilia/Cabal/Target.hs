@@ -188,8 +188,6 @@ componentsOfTarget ::
 componentsOfTarget root target =
   packageFilesOf root >>= \case
     Left problem -> pure (Left problem)
-    Right [] ->
-      pure (Left (NoPackages (prPath root </> markerFile (prMarker root))))
     Right files ->
       traverse componentsInCabalFile files >>= \case
         results
@@ -282,8 +280,8 @@ filesOfComponents root components = do
 asDirectory :: FilePath -> FilePath
 asDirectory = dropTrailingPathSeparator . normalise
 
--- | The @.cabal@ files the project is made of, or which of its
--- configuration files does not parse.
+-- | The @.cabal@ files the project is made of, or why there are none: which
+-- of its configuration files does not parse, or that they name none.
 --
 -- Its configuration files name them, possibly through globs, and where the
 -- walk upwards found a @.cabal@ file rather than a @cabal.project@, that
@@ -301,7 +299,9 @@ packageFilesOf root = do
         traverse
           (packageToCabalFile (prPath root))
           (concatMap packagesInProjectConfig parsed)
-      pure (Right (Set.toList (Set.fromList (marked <> concat found))))
+      pure $ case Set.toList (Set.fromList (marked <> concat found)) of
+        [] -> Left (NoPackages (prPath root </> markerFile (prMarker root)))
+        files -> Right files
   where
     marked = case prMarker root of
       PackageFile named -> [prPath root </> named]
