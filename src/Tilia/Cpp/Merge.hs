@@ -121,7 +121,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged) ->
-                  choice xs
+                  choice (fmap Doc.infrangible xs)
             (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
       DCppChoice ws bs _
