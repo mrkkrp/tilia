@@ -170,15 +170,13 @@ data Knot = Knot
     knotSplice :: Ctx -> SpliceDecoration -> HsUntypedSplice GhcPs -> Doc,
     -- | Signature declarations, needed by @let@ and @where@ bodies.
     knotSig :: Ctx -> Sig GhcPs -> Doc,
-    -- | A run of declarations, needed by Template Haskell brackets.
-    knotDecls :: Ctx -> [LHsDecl GhcPs] -> Doc,
-    -- | A run of declarations that keeps the author's blank lines, needed
-    -- by class and instance bodies.
-    knotDeclsGrouped :: Ctx -> [LHsDecl GhcPs] -> Doc
+    -- | A run of declarations, needed by Template Haskell brackets and by
+    -- class and instance bodies.
+    knotDecls :: Ctx -> FamilyStyle -> [LHsDecl GhcPs] -> Doc
   }
 
--- | Whether a family or data declaration stands on its own or inside a
--- class.
+-- | Whether a declaration stands on its own or inside a class or an
+-- instance.
 data FamilyStyle
   = Associated
   | Free

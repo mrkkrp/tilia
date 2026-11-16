@@ -55,7 +55,7 @@ import Tilia.Imports (travellingComments)
 import Tilia.MagicComments (preservedLines)
 import Tilia.Parser (ParsedModule (..))
 import Tilia.Render.Context
-import Tilia.Render.Declaration (decls, declsKeepingGroups)
+import Tilia.Render.Declaration (decls)
 import Tilia.Render.Expression (hsExpr, untypedSplice)
 import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Render.Header
@@ -415,8 +415,7 @@ knot =
     { knotExpr = hsExpr,
       knotSplice = untypedSplice,
       knotSig = sigDecl,
-      knotDecls = decls,
-      knotDeclsGrouped = declsKeepingGroups
+      knotDecls = decls
     }
 
 -- | Separate the comments the syntax tree also knows about from the rest.

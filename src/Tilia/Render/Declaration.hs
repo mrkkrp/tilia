@@ -8,7 +8,6 @@
 module Tilia.Render.Declaration
   ( decls,
     topLevelDecls,
-    declsKeepingGroups,
   )
 where
 
@@ -44,41 +43,6 @@ import Tilia.Source (SourceType (..), blankAt, lineAt, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
--- | A run of declarations standing on their own, which keeps together the
--- one-line declarations of one kind the author wrote together.
-decls ::
-  -- | The context.
-  Ctx ->
-  -- | The declarations.
-  [LHsDecl GhcPs] ->
-  Doc
-decls ctx = declRun True apart ctx Free
-  where
-    apart previous current =
-      kindOf previous /= kindOf current
-        || any standsApart (withoutDistantHaddock previous)
-        || any standsApart current
-        || directiveBetween
-          ctx
-          (spanOf (fst (NE.last previous)))
-          (spanOf (fst (NE.head current)))
-    standsApart (d, printed) =
-      isDoc (unLoc d)
-        || not (printsOnOneLine Broken printed)
-    withoutDistantHaddock group = case NE.toList group of
-      (doc, _) : rest@((d, _) : _)
-        | DocD _ DocCommentNext{} <- unLoc doc,
-          directiveBetween ctx (spanOf doc) (spanOf d) ->
-            rest
-      ds -> ds
-    kindOf group =
-      listToMaybe
-        [ k
-        | (d, _) <- reverse (NE.toList group),
-          let k = fst (declKind (unLoc d)),
-          k /= PragmaDeclaration
-        ]
-
 -- | The top-level declarations of a module, with the lines a
 -- @{- TILIA_OFF -}@ leaves as written printed as written.
 topLevelDecls ::
@@ -91,7 +55,7 @@ topLevelDecls ::
   [LHsDecl GhcPs] ->
   Doc
 topLevelDecls ctx magicCommentRanges ds = case magicCommentRanges of
-  [] -> decls ctx ds
+  [] -> decls ctx Free ds
   kept -> sepBy hardBreak (zipWith joined (Nothing : fmap Just ps) ps)
     where
       ps = pieces kept ds
@@ -107,7 +71,7 @@ topLevelDecls ctx magicCommentRanges ds = case magicCommentRanges of
       Preserved _ to -> [to + 1]
       Formatted _ -> []
     printed = \case
-      Formatted run -> decls ctx (NE.toList run)
+      Formatted run -> decls ctx Free (NE.toList run)
       Preserved from to ->
         located
           (mkSpan (from, 1) (to, maybe 1 ((+ 1) . T.length) (lineAt to ls)))
@@ -141,49 +105,28 @@ pieces kept ds = case kept of
     run = foldMap (pure . Formatted) . NE.nonEmpty
     startsBefore n d = maybe False ((< n) . spanStartLine) (spanOf d)
 
--- | A run of declarations in a class or an instance, which keeps the
--- author's grouping.
-declsKeepingGroups ::
+-- | A run of declarations, with an empty line wherever the author left one
+-- and between groups kept apart.
+--
+-- Standing on their own, the one-line declarations of one kind the author
+-- wrote together are kept together; in a class or an instance, the groups
+-- the author made are.
+decls ::
   -- | The context.
   Ctx ->
-  -- | The declarations.
-  [LHsDecl GhcPs] ->
-  Doc
-declsKeepingGroups ctx = declRun False apart ctx Associated
-  where
-    apart previous current = any documented previous || any documented current
-    documented (d, _) = case unLoc d of
-      DocD _ (DocCommentNext _) -> True
-      DocD _ (DocCommentPrev _) -> True
-      _ -> False
-
--- | Render a run of declarations, with an empty line wherever the author
--- left one and between groups kept apart.
-declRun ::
-  -- | Should the individual lines of groups of declarations without blank
-  -- lines in between be considered infrangible?
-  Bool ->
-  -- | Do these neighbouring groups, printed like this, get an empty line
-  -- between them even where the author left none?
-  ( NonEmpty (LHsDecl GhcPs, Doc) ->
-    NonEmpty (LHsDecl GhcPs, Doc) ->
-    Bool
-  ) ->
-  -- | The context.
-  Ctx ->
-  -- | How to print the families among the declarations.
+  -- | Whether they stand on their own or in a class or an instance.
   FamilyStyle ->
   -- | The declarations.
   [LHsDecl GhcPs] ->
   Doc
-declRun holds apart ctx style ds =
+decls ctx style ds =
   items
     NoBrace
     [ includeWhen gap breakOrSpace <> (if held then infrangible else id) printed
     | (current, above, below) <-
         zip3 groups (Nothing : fmap Just links) (fmap Just links <> [Nothing]),
       let gaps = any fst above : repeat False
-          held = holds && (any snd above || any snd below),
+          held = style == Free && (any snd above || any snd below),
       (gap, (_, printed)) <- zip gaps (NE.toList current)
     ]
   where
@@ -208,6 +151,37 @@ declRun holds apart ctx style ds =
 
     isHeading = \case
       DocD _ DocGroup{} -> True
+      _ -> False
+
+    apart previous current = case style of
+      Free ->
+        kindOf previous /= kindOf current
+          || any standsApart (withoutDistantHaddock previous)
+          || any standsApart current
+          || directiveBetween
+            ctx
+            (spanOf (fst (NE.last previous)))
+            (spanOf (fst (NE.head current)))
+      Associated -> any documented previous || any documented current
+    standsApart (d, printed) =
+      isDoc (unLoc d)
+        || not (printsOnOneLine Broken printed)
+    withoutDistantHaddock group = case NE.toList group of
+      (doc, _) : rest@((d, _) : _)
+        | DocD _ DocCommentNext{} <- unLoc doc,
+          directiveBetween ctx (spanOf doc) (spanOf d) ->
+            rest
+      xs -> xs
+    kindOf group =
+      listToMaybe
+        [ k
+        | (d, _) <- reverse (NE.toList group),
+          let k = fst (declKind (unLoc d)),
+          k /= PragmaDeclaration
+        ]
+    documented (d, _) = case unLoc d of
+      DocD _ (DocCommentNext _) -> True
+      DocD _ (DocCommentPrev _) -> True
       _ -> False
 
 -- | Gather declarations that belong together.
