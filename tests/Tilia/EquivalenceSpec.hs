@@ -53,6 +53,10 @@ spec = do
       "module M where\n\n-- |\nf :: Int\nf = 1\n"
         `saysTheSameAs` "module M where\n\nf :: Int\nf = 1\n"
 
+    it "sees past an argument's documentation comment that says nothing" $
+      "module M where\n\nf ::\n  -- | \n  Int ->\n  Int\nf = id\n"
+        `saysTheSameAs` "module M where\n\nf ::\n  Int ->\n  Int\nf = id\n"
+
     it "sees past comments, which are not the tree's business" $
       "module M where\n\n-- a remark\nf :: Int\nf = 1\n"
         `saysTheSameAs` "module M where\n\nf :: Int\nf = 1\n"
@@ -89,6 +93,10 @@ spec = do
     it "catches an export list losing an entry" $
       "module M (f, g) where\nf = 1\ng = 2\n"
         `saysSomethingElseThan` "module M (f) where\nf = 1\ng = 2\n"
+
+    it "catches an argument's documentation comment going missing" $
+      "module M where\n\nf ::\n  -- | The input.\n  Int ->\n  Int\nf = id\n"
+        `saysSomethingElseThan` "module M where\n\nf ::\n  Int ->\n  Int\nf = id\n"
 
     it "catches a documentation comment losing a word" $
       "module M where\n\n-- | Says something.\nf :: Int\nf = 1\n"

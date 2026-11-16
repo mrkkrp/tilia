@@ -102,7 +102,11 @@ differ path x y = case classify (typeOf x) of
   where
     structurally = case dataTypeRep (dataTypeOf x) of
       AlgRep _
-        | toConstr x /= toConstr y -> Just disagreement
+        | toConstr x /= toConstr y ->
+            maybe
+              (Just disagreement)
+              (uncurry (differ path))
+              (withoutSilentDocs x y)
         | settledByConstructor (toConstr x) -> Nothing
         | otherwise ->
             firstOf
@@ -228,6 +232,31 @@ asStandaloneDoc path x y = case (cast x, cast y) of
               path
               (named (toConstr before) <> " became " <> named (toConstr after))
           )
+
+-- | Two types without the Haddock that says nothing around either, where
+-- one of them has one.
+--
+-- Asked only where the two differ in their constructors, which is the one
+-- way such a Haddock shows.
+withoutSilentDocs ::
+  (Data a) =>
+  -- | What was written.
+  a ->
+  -- | What was printed.
+  a ->
+  Maybe (HsType GhcPs, HsType GhcPs)
+withoutSilentDocs x y = case (cast x, cast y) of
+  (Just before, Just after)
+    | silent before || silent after -> Just (bare before, bare after)
+  _ -> Nothing
+  where
+    silent :: HsType GhcPs -> Bool
+    silent = \case
+      HsDocTy _ _ doc -> saysNothing (hsDocString (unLoc doc))
+      _ -> False
+    bare t = case t of
+      HsDocTy _ inner _ | silent t -> bare (unLoc inner)
+      _ -> t
 
 -- | An export list, minus the documentation that says nothing.
 asExportItems :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
