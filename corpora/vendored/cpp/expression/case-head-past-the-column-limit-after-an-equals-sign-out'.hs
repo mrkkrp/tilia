@@ -9,13 +9,10 @@ step acc c
     , notTooLarge acc = case multiplyTheAccumulatorByTenSafely
         acc
         (digitValueOf c) of
+        Just next -> next
 #else
     | isDigit c
     , notTooLarge acc = case multiplyByTen acc (digitToInt c) of
-#endif
-#if MIN_VERSION_base(4,16,0)
-        Just next -> next
-#else
         Just next -> next
 #endif
         Nothing -> acc

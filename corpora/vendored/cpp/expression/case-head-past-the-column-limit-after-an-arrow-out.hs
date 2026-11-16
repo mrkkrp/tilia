@@ -12,14 +12,11 @@ decimal acc input = case input of
         notTooLarge acc -> case multiplyTheAccumulatorByTenSafely
           acc
           (digitValueOf c) of
+          Just next -> decimal next rest
 #else
     c
       | isDigit c,
         notTooLarge acc -> case multiplyByTen acc (digitToInt c) of
-#endif
-#if MIN_VERSION_base(4,16,0)
-          Just next -> decimal next rest
-#else
           Just next -> decimal next rest
 #endif
           Nothing -> acc
