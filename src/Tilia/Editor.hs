@@ -75,7 +75,8 @@ editorSession
           debugFixity
 
 -- | Format given text on the assumption it comes from the specified
--- 'FilePath'.
+-- 'FilePath', or leave it 'Unchanged' where the project's @.tiliaignore@
+-- files exclude that file.
 formatBuffer ::
   -- | The session.
   Session ->
