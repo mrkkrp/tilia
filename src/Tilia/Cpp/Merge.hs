@@ -111,7 +111,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
               | spans <- [s | (WLocated s, _) <- wds],
                 Just opened <-
                   unwrapping layout spans xs $ \parts ->
-                    onlyChoice merged || arrowLeadsInto spans parts ->
+                    onlyChoice merged || coveredAmong spans parts ->
                   opened
             (WGroup l, DCppChoice{})
               | not (all (== l) (layoutsOf wds)),
@@ -629,14 +629,17 @@ onlyChoice = \case
   DCppChoice{} -> True
   d -> maybe False (onlyChoice . snd) (unwrap d)
 
--- | Does an arrow leading a line lead into one of these regions among
--- these parts?
-arrowLeadsInto :: [Span] -> [Doc] -> Bool
-arrowLeadsInto spans parts =
-  or
-    [ leadingArrow a && maybe False (`elem` spans) (regionOf x)
-    | (a, x) <- zip parts (drop 1 parts)
-    ]
+-- | Is one of these regions, but the one covering them all, among these
+-- parts?
+coveredAmong ::
+  -- | The regions.
+  [Span] ->
+  -- | The parts.
+  [Doc] ->
+  Bool
+coveredAmong spans = any (maybe False covered . regionOf)
+  where
+    covered s = s `elem` spans && not (all (covers s) spans)
 
 -- | Does this document, laid out flat, print a choice before anything else?
 beginsWithChoice :: Doc -> Bool
