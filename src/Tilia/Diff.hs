@@ -108,7 +108,7 @@ unified palette above (beforeName, afterName) before after =
           Removed -> paint palette Gone . ("-" <>)
           Added -> paint palette New . ("+" <>)
 
-    slice (from, to) = take (to - from + 1) (drop from lines')
+    slice (from, to) = fmap (numbered !) [from .. to]
 
     countingBefore = length . filter (\(Line m _ _ _) -> m /= Added)
     countingAfter = length . filter (\(Line m _ _ _) -> m /= Removed)
@@ -119,6 +119,7 @@ unified palette above (beforeName, afterName) before after =
       merge [(max 0 (i - margin), min (total - 1) (i + margin)) | i <- changed]
     changed = [i | (i, Line m _ _ _) <- zip [0 ..] lines', m /= Context]
     total = length lines'
+    numbered = listArray (0, total - 1) lines' :: Array Int Line
     lines' = tag (split before) (split after)
     split = unfoldr $ \t ->
       if T.null t
