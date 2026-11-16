@@ -176,6 +176,11 @@
   record among other constructors puts each constructor on a line of its
   own at once as well.
   [PR 424](https://github.com/mrkkrp/tilia/pull/424).
+* A Haddock on a field, a constructor or an argument written as `--` lines
+  that hold nothing but spaces comes out as the comment GHC reads it as
+  once those spaces go, `-- \|` and its other lines, rather than first as
+  a Haddock that a second pass turned into that comment.
+  [PR 424](https://github.com/mrkkrp/tilia/pull/424).
 
 ## Tilia 0.1.4.0
 
