@@ -352,11 +352,11 @@ data AstCheck
   deriving (Eq, Show)
 
 -- | The AST check a run makes where it is asked for one.
-sessionProdAstCheck ::
+astCheckFor ::
   -- | Whether to check AST equivalence.
   Choice "checkAst" ->
   AstCheck
-sessionProdAstCheck checkAst =
+astCheckFor checkAst =
   if isTrue checkAst then EachCppBranch else NoAstCheck
 
 -- | Where a session's build plan comes from.
@@ -394,9 +394,7 @@ newSession ::
   IO (Either FormatError Session)
 newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
   let root = prPath project
-  settings <- settingsOf project
-  packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
-  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
+  (settings, packages, ownModules) <- fromProject project
   (plan, routes) <- case planSource of
     PlanFromCabal components -> do
       plan <-
@@ -428,7 +426,7 @@ newSession project planSource caching downloading checkAst checkIdempotence debu
         sessionResolver = resolver,
         sessionMacros = macrosOf plan,
         sessionPackage = packageReader,
-        sessionCheckAst = sessionProdAstCheck checkAst,
+        sessionCheckAst = astCheckFor checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = notes
       }
@@ -465,10 +463,7 @@ compiledSession ::
 compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
   project <-
     maybe (throwE (NoProject file)) pure =<< liftIO (findProjectRoot file)
-  let root = prPath project
-  settings <- settingsOf project
-  packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
-  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
+  (settings, _, ownModules) <- fromProject project
   resolver <- liftIO (newResolverFrom compiledInterface)
   pure
     Session
@@ -482,7 +477,7 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
             (fmap numbers compiledPackages),
         sessionPackage =
           \_ -> pure (Right (defaultsOf [] (On <$> compiledExtensions))),
-        sessionCheckAst = sessionProdAstCheck checkAst,
+        sessionCheckAst = astCheckFor checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = Nothing
       }
@@ -715,14 +710,21 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
       _ -> Nothing
     firstJust = foldr (<|>) Nothing
 
--- | The settings of a project, or why they cannot be used.
-settingsOf ::
+-- | What a session takes from the project itself: its settings, the
+-- @.cabal@ files of its packages and the modules they declare.
+fromProject ::
   -- | The project.
   ProjectRoot ->
-  ExceptT FormatError IO Settings
-settingsOf project =
-  orElse (InvalidSettings (prPath project </> settingsFile))
-    =<< liftIO (readSettings (prPath project))
+  ExceptT FormatError IO (Settings, [FilePath], Map Text (Set Text))
+fromProject project = do
+  settings <-
+    orElse (InvalidSettings (root </> settingsFile))
+      =<< liftIO (readSettings root)
+  packages <- orElse (NoOwnModules root) =<< liftIO (packageFilesOf project)
+  ownModules <- orElse (NoOwnModules root) =<< liftIO (projectModules packages)
+  pure (settings, packages, ownModules)
+  where
+    root = prPath project
 
 -- | Give up with the given error where there is one to give up over.
 orElse :: (e -> FormatError) -> Either e a -> ExceptT FormatError IO a
