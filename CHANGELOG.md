@@ -200,6 +200,10 @@
 * A `DEPRECATED` or `WARNING` pragma on an export item other than the
   first lines up with the items, rather than coming out a step deeper.
   [Issue 415](https://github.com/mrkkrp/tilia/issues/415).
+* A `then` qualifier of a comprehension written on one line stays on one
+  line where it fits, rather than being broken around its `then`, `by` and
+  `using` wherever the comprehension is written over several lines.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 
 ## Tilia 0.1.4.0
 
