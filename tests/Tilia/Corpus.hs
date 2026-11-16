@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- | Corpora of Haskell to run the formatter over.
 module Tilia.Corpus
@@ -13,7 +11,6 @@ module Tilia.Corpus
     Expectations (..),
     Lists (..),
     vendoredExamples,
-    ormoluExamples,
     ghcTestSuite,
     hackagePackages,
 
@@ -30,13 +27,11 @@ import Control.Applicative ((<|>))
 import Control.Exception (try)
 import Control.Monad (forM, guard)
 import Data.ByteString.Lazy qualified as BL
-import Data.Choice (Choice, isTrue, pattern Do, pattern Don't)
-import Data.Foldable (asum)
 import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort, stripPrefix)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -76,10 +71,10 @@ data Reference
     -- checked.
     NoReference
   | -- | It does, in a file whose name is the input's with the given mark
-    -- put before the extension, and, where told to, for
-    -- 'alternativeSettings' as well, in that file unless they give
-    -- something else, which is in a file with a prime after the mark.
-    ReferenceMarked String (Choice "alternatives")
+    -- put before the extension, for 'alternativeSettings' as well, in that
+    -- file unless they give something else, which is in a file with a
+    -- prime after the mark.
+    ReferenceMarked String
   deriving (Eq, Show)
 
 -- | Where the examples of a corpus come from.
@@ -103,8 +98,6 @@ data Expectations
 -- | The exceptions a 'Listed' corpus makes, named in full.
 data Lists = Lists
   { -- | Examples to leave alone, named relative to the root of the corpus.
-    -- A name with no extension stands for a directory and takes everything
-    -- under it.
     expectSkip :: [FilePath],
     -- | Examples GHC's own parser cannot read, run all the same to check
     -- that it still cannot.
@@ -137,7 +130,7 @@ vendoredExamples =
   Corpus
     { corpusName = "tilia",
       corpusSource = Vendored ("corpora" </> "vendored"),
-      corpusReference = ReferenceMarked "-out" (Do #alternatives),
+      corpusReference = ReferenceMarked "-out",
       corpusExpectations =
         Listed
           Lists
@@ -155,31 +148,6 @@ vendoredExamples =
                   "magic-comment" </> "magic-comment-inside-a-declaration.hs",
                   "cpp" </> "directive" </> "directive-left-as-written.hs"
                 ]
-            },
-      corpusInPackages = False
-    }
-
--- | Ormolu's examples.
-ormoluExamples :: Corpus
-ormoluExamples =
-  Corpus
-    { corpusName = "ormolu-0.9.0.0",
-      corpusSource =
-        Fetched
-          ( https "hackage.haskell.org"
-              /: "package"
-              /: "ormolu-0.9.0.0"
-              /: "ormolu-0.9.0.0.tar.gz",
-            mempty
-          )
-          ("data" </> "examples"),
-      corpusReference = ReferenceMarked "-out" (Don't #alternatives),
-      corpusExpectations =
-        Listed
-          Lists
-            { expectSkip = ormoluSkip,
-              expectUnreadable = ormoluUnreadable,
-              expectDeclined = []
             },
       corpusInPackages = False
     }
@@ -340,207 +308,6 @@ hackageReleases =
     "warp-3.4.15",
     "xmonad-0.18.1",
     "yesod-core-1.7.0.0"
-  ]
-
--- | Ormolu examples we do not format the way Ormolu does.
-ormoluSkip :: [FilePath]
-ormoluSkip =
-  [ "other" </> "disabling",
-    "declaration" </> "value" </> "function" </> "required-type-arguments-2.hs",
-    "declaration" </> "data" </> "comment-in-empty-record.hs",
-    "import" </> "comment-inside-empty-import-list.hs",
-    "other" </> "comment-two-blocks.hs",
-    "other" </> "comment-glued-together.hs",
-    "other" </> "multiple-blank-line-comment.hs",
-    "declaration" </> "type" </> "parens-comments.hs",
-    "declaration" </> "value" </> "function" </> "parens-comments.hs",
-    "import" </> "comments-inside-imports.hs",
-    "import" </> "comment-between-merged-imports.hs",
-    "import" </> "comment-before-merged-imports.hs",
-    "import" </> "sorted-package-imports.hs",
-    "import" </> "data.hs",
-    "import" </> "explicit-imports.hs",
-    "import" </> "explicit-level-imports.hs",
-    "import" </> "merging-0.hs",
-    "import" </> "merging-1.hs",
-    "import" </> "merging-2.hs",
-    "import" </> "simple.hs",
-    "declaration" </> "data" </> "with-comment.hs",
-    "declaration" </> "data" </> "record-empty-haddock.hs",
-    "other" </> "empty-haddock.hs",
-    "declaration" </> "value" </> "function" </> "arrow" </> "proc-do-complex.hs",
-    "declaration" </> "value" </> "function" </> "comprehension" </> "transform-multi-line2.hs",
-    "declaration" </> "value" </> "function" </> "if-with-comment-next-to-keyword.hs",
-    "declaration" </> "value" </> "function" </> "operator-comments-2.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-0.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "wildcard-comments-1.hs",
-    "other" </> "pragma-comments-after.hs",
-    "other" </> "pragma.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-0.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "esqueleto-1.hs",
-    "declaration" </> "class" </> "default-signatures.hs",
-    "declaration" </> "class" </> "super-classes.hs",
-    "declaration" </> "type-families" </> "closed-type-family" </> "with-comments.hs",
-    "declaration" </> "deriving" </> "singleline.hs",
-    "declaration" </> "deriving" </> "multiline.hs",
-    "declaration" </> "deriving" </> "overlapping.hs",
-    "declaration" </> "warning" </> "warning-single-line.hs",
-    "declaration" </> "value" </> "function" </> "parallel-comprehensions-complex.hs",
-    "other" </> "comment-opening-a-list.hs",
-    "declaration" </> "class" </> "newlines-between-methods.hs",
-    "declaration" </> "instance" </> "newlines-between-methods.hs",
-    "other" </> "comment-in-empty-list.hs",
-    "declaration" </> "class" </> "associated-type-defaults.hs",
-    "declaration" </> "class" </> "default-implementations-comments.hs",
-    "other" </> "invalid-haddock-1.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "do.hs",
-    "declaration" </> "data" </> "multiline-arg-parens.hs",
-    "module-header" </> "multiline-with-comments.hs",
-    "declaration" </> "value" </> "function" </> "awkward-comment-1.hs",
-    "declaration" </> "signature" </> "pattern" </> "multiline.hs",
-    "declaration" </> "splice" </> "quasiquote.hs",
-    "declaration" </> "value" </> "function" </> "quasi-quotes.hs",
-    "declaration" </> "value" </> "function" </> "operator-comments-0.hs",
-    "declaration" </> "signature" </> "fixity" </> "infix.hs",
-    "declaration" </> "class" </> "associated-data2.hs",
-    "declaration" </> "class" </> "associated-types2.hs",
-    "declaration" </> "class" </> "dependency-super-classes.hs",
-    "declaration" </> "class" </> "functional-dependencies.hs",
-    "declaration" </> "class" </> "multi-parameters2.hs",
-    "declaration" </> "data" </> "gadt" </> "multiline.hs",
-    "declaration" </> "data" </> "gadt" </> "simple.hs",
-    "import" </> "no-implicit-prelude-package.hs",
-    "other" </> "pragma-sorting.hs",
-    "declaration" </> "splice" </> "bracket.hs",
-    "declaration" </> "class" </> "type-operators3.hs",
-    "other" </> "cpp" </> "lonely-hash.hs",
-    "other" </> "cpp" </> "separation-0a.hs",
-    "other" </> "cpp" </> "separation-0b.hs",
-    "other" </> "cpp" </> "separation-1a.hs",
-    "other" </> "cpp" </> "separation-1b.hs",
-    "other" </> "cpp" </> "separation-2a.hs",
-    "other" </> "cpp" </> "separation-2b.hs",
-    "other" </> "cpp" </> "shifted.hs",
-    "other" </> "cpp" </> "simple-import.hs",
-    "declaration" </> "signature" </> "specialize" </> "specialize-2.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "qualified-ops.hs",
-    "declaration" </> "value" </> "function" </> "operators-3.hs",
-    "declaration" </> "value" </> "function" </> "operators-4.hs"
-  ]
-    <> ormoluRecordBraces
-    <> ormoluUnicodeSyntax
-    <> ormoluCommentsUnderTheLastDeclaration
-    <> ormoluOneLineRuns
-    <> ormoluLongLines
-    <> ormoluSignatureNamesApart
-
--- | Ormolu examples with a space between a record and its braces.
-ormoluRecordBraces :: [FilePath]
-ormoluRecordBraces =
-  [ "declaration" </> "data" </> "linear.hs",
-    "declaration" </> "data" </> "record-singleline.hs",
-    "declaration" </> "data" </> "simple-broken.hs",
-    "declaration" </> "data" </> "strictness.hs",
-    "declaration" </> "value" </> "function" </> "lambda-case.hs",
-    "declaration" </> "value" </> "function" </> "operator-comments-3.hs",
-    "declaration" </> "value" </> "function" </> "pattern" </> "record-patterns.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "constructors.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "record-dot.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "updaters.hs",
-    "declaration" </> "value" </> "function" </> "record" </> "wildcards.hs",
-    "declaration" </> "value" </> "pattern-synonyms" </> "bidirectional.hs",
-    "declaration" </> "value" </> "pattern-synonyms" </> "unidirectional.hs",
-    "declaration" </> "value" </> "function" </> "pragmas.hs"
-  ]
-
--- | Ormolu examples under @UnicodeSyntax@, which we print in its forms.
-ormoluUnicodeSyntax :: [FilePath]
-ormoluUnicodeSyntax =
-  [ "declaration" </> "data" </> "existential-unicode.hs",
-    "declaration" </> "data" </> "gadt" </> "unicode.hs",
-    "declaration" </> "signature" </> "type" </> "unicode.hs",
-    "declaration" </> "splice" </> "bracket-unicode.hs",
-    "other" </> "linear-arrows.hs"
-  ]
-
--- | Ormolu examples with a comment written right under the last
--- declaration, which we keep there.
-ormoluCommentsUnderTheLastDeclaration :: [FilePath]
-ormoluCommentsUnderTheLastDeclaration =
-  [ "module-header" </> "stack-header-0.hs",
-    "module-header" </> "stack-header-1.hs"
-  ]
-
--- | Ormolu examples with one-line declarations of one kind written
--- together, which we keep together.
-ormoluOneLineRuns :: [FilePath]
-ormoluOneLineRuns =
-  [ "declaration" </> "data" </> "kind-annotations.hs",
-    "declaration" </> "data" </> "required-type-arguments.hs",
-    "declaration" </> "default" </> "default.hs",
-    "declaration" </> "instance" </> "empty-instance.hs",
-    "declaration" </> "role-annotation" </> "single-line.hs",
-    "declaration" </> "signature" </> "fixity" </> "infixl.hs",
-    "declaration" </> "signature" </> "fixity" </> "infixr.hs",
-    "declaration" </> "signature" </> "specialize" </> "specialize-instance.hs",
-    "declaration" </> "type-families" </> "type-family" </> "injective.hs",
-    "declaration" </> "type-families" </> "type-family" </> "operator.hs",
-    "declaration" </> "type" </> "misc-kind-signatures.hs",
-    "declaration" </> "type" </> "promotion-1.hs",
-    "declaration" </> "value" </> "function" </> "arithmetic-sequences.hs",
-    "declaration" </> "value" </> "function" </> "do" </> "blocks.hs",
-    "declaration" </> "value" </> "function" </> "multiline-strings-0.hs",
-    "declaration" </> "value" </> "function" </> "multiline-strings-3.hs",
-    "declaration" </> "value" </> "function" </> "operator-sections.hs",
-    "declaration" </> "value" </> "function" </> "overloaded-labels.hs",
-    "declaration" </> "value" </> "function" </> "pattern" </> "strictness.hs",
-    "declaration" </> "value" </> "function" </> "required-type-arguments.hs",
-    "declaration" </> "value" </> "function" </> "simple.hs",
-    "declaration" </> "value" </> "function" </> "strings.hs",
-    "declaration" </> "value" </> "function" </> "tuple-sections.hs"
-  ]
-
--- | Ormolu examples with a line past the column limit, which we break.
-ormoluLongLines :: [FilePath]
-ormoluLongLines =
-  [ "declaration" </> "value" </> "function" </> "do-single-line-case-guards.hs",
-    "declaration" </> "value" </> "function" </> "do-single-line-multiple-cases.hs",
-    "declaration" </> "value" </> "function" </> "do-single-line-nested-case.hs",
-    "declaration" </> "value" </> "function" </> "do-single-line-with-case.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "lenses.hs",
-    "declaration" </> "rewrite-rule" </> "prelude4.hs",
-    "declaration" </> "rewrite-rule" </> "type-signature.hs"
-  ]
-
--- | Ormolu examples with a signature whose names are written on lines of
--- their own, the type of which we break only where it does not fit.
-ormoluSignatureNamesApart :: [FilePath]
-ormoluSignatureNamesApart =
-  [ "declaration" </> "signature" </> "type" </> "multi-value.hs"
-  ]
-
--- | Ormolu examples GHC's own parser cannot read.
-ormoluUnreadable :: [FilePath]
-ormoluUnreadable =
-  [ "declaration" </> "data" </> "datatype-contexts.hs",
-    "declaration" </> "foreign" </> "foreign-import-multiline.hs",
-    "declaration" </> "value" </> "function" </> "application-1.hs",
-    "declaration" </> "value" </> "function" </> "application-2.hs",
-    "declaration" </> "value" </> "function" </> "arrow" </> "proc-cases.hs",
-    "declaration" </> "value" </> "function" </> "arrow" </> "proc-do-simple1.hs",
-    "declaration" </> "value" </> "function" </> "block-arguments.hs",
-    "declaration" </> "value" </> "function" </> "case-empty.hs",
-    "declaration" </> "value" </> "function" </> "do-single-line-lambda-case.hs",
-    "declaration" </> "value" </> "function" </> "if-multi-line.hs",
-    "declaration" </> "value" </> "function" </> "infix" </> "hanging.hs",
-    "declaration" </> "value" </> "function" </> "let-multi-line.hs",
-    "declaration" </> "value" </> "function" </> "let-single-line.hs",
-    "declaration" </> "value" </> "function" </> "negation.hs",
-    "declaration" </> "value" </> "function" </> "negative-literals.hs",
-    "declaration" </> "value" </> "function" </> "pattern" </> "or-patterns.hs",
-    "declaration" </> "value" </> "function" </> "type-applications.hs",
-    "other" </> "comment-before-hanging.hs",
-    "other" </> "necessary-brackets.hs"
   ]
 
 -- | GHC test suite files GHC's own parser cannot read.
@@ -1082,18 +849,15 @@ examplesIn corpus root dirs = do
         Example (nameOf f) f reference alternative <$> reader f <*> own f
   case corpusReference corpus of
     NoReference -> traverse (\f -> example f Nothing Nothing) files
-    ReferenceMarked mark alternatives ->
+    ReferenceMarked mark ->
       forM (filter (not . answerTo mark present) files) $ \f -> do
         let marked m = stemOf f <> m <> extensionOf f
-            alternatively primed reference
-              | isTrue alternatives = primed <|> reference
-              | otherwise = Nothing
         if mark `isSuffixOf` stemOf f
-          then example f (Just f) (alternatively Nothing (Just f))
+          then example f (Just f) (Just f)
           else do
             reference <- existing (marked mark)
             primed <- existing (marked (mark <> "'"))
-            example f reference (alternatively primed reference)
+            example f reference (primed <|> reference)
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
     existing f = (\there -> f <$ guard there) <$> doesFileExist f
@@ -1102,19 +866,10 @@ examplesIn corpus root dirs = do
         (\stem -> Set.member (stem <> extensionOf f) present)
         (mapMaybe (`withoutSuffix` stemOf f) (marks mark))
     marks mark = [mark <> "'", mark]
-    skipped f = any listed (nameOf f : maybeToList (inputFor (nameOf f)))
-    listed name = any covers skips
-      where
-        covers entry = entry == name || (entry <> "/") `isPrefixOf` name
+    skipped f = nameOf f `elem` skips
     skips = case corpusExpectations corpus of
       Listed lists -> expectSkip lists
       Recorded _ -> []
-    inputFor name = case corpusReference corpus of
-      ReferenceMarked mark _
-        | Just stem <-
-            asum (fmap (`withoutSuffix` stemOf name) (marks mark)) ->
-            Just (stem <> extensionOf name)
-      _ -> Nothing
     withoutSuffix suffix name
       | suffix `isSuffixOf` name =
           Just (take (length name - length suffix) name)
