@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -15,6 +16,7 @@ module Tilia.Render.Haddock
 where
 
 import Data.Char (isSpace)
+import Data.Choice (Choice, isTrue)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
@@ -184,19 +186,39 @@ selfClosing c = bracketed c && singleLine c
 
 -- | Lay the document out on several lines if printing this fragment will
 -- emit a Haddock that takes whole lines.
-brokenIfDocumented :: (Data a) => Ctx -> a -> Doc -> Doc
-brokenIfDocumented ctx x d
-  | printsWholeLineDocs ctx x = broken d
+brokenIfDocumented ::
+  (Data a) =>
+  -- | The context.
+  Ctx ->
+  -- | Does the site put its Haddocks under what they document?
+  Choice "under" ->
+  -- | The fragment.
+  a ->
+  -- | Its document.
+  Doc ->
+  Doc
+brokenIfDocumented ctx under x d
+  | printsWholeLineDocs ctx under x = broken d
   | otherwise = d
 
--- | Will printing this fragment emit a Haddock as @--@ lines?
+-- | Will printing this fragment emit a Haddock that takes whole lines: any
+-- Haddock where the site puts them under what they document, and one
+-- printed as @--@ lines where it puts them in front?
 --
--- Every site that asks prints in 'Pipe' style, which is what decides
--- whether the author's text can be reused.
-printsWholeLineDocs :: (Data a) => Ctx -> a -> Bool
-printsWholeLineDocs ctx x = case docsIn x of
+-- Every site that puts them in front prints in 'Pipe' style, which is what
+-- decides whether the author's text can be reused.
+printsWholeLineDocs ::
+  (Data a) =>
+  -- | The context.
+  Ctx ->
+  -- | Does the site put its Haddocks under what they document?
+  Choice "under" ->
+  -- | The fragment.
+  a ->
+  Bool
+printsWholeLineDocs ctx under x = case docsIn x of
   [] -> not (null (docStringsIn x))
-  docs -> any takesWholeLines docs
+  docs -> isTrue under || any takesWholeLines docs
   where
     takesWholeLines doc = case reusableText ctx Pipe doc of
       Just c -> not (selfClosing c)
