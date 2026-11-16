@@ -33,7 +33,7 @@ import Control.Concurrent.MVar (modifyMVar, newMVar)
 import Control.Monad ((<=<))
 import Data.ByteString qualified as BS
 import Data.Either (rights)
-import Data.Foldable (toList)
+import Data.Foldable (for_, toList)
 import Data.Generics.Schemes (listify)
 import Data.IORef
 import Data.List (nub, sortOn)
@@ -46,6 +46,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time.Clock (UTCTime)
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.ModuleName qualified as ModuleName
@@ -80,7 +81,11 @@ import Distribution.Version (Version, withinRange)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension)
 import Language.Haskell.Extension qualified as Cabal
-import System.Directory (canonicalizePath, doesDirectoryExist)
+import System.Directory
+  ( canonicalizePath,
+    doesDirectoryExist,
+    getModificationTime,
+  )
 import System.FilePath
   ( dropExtension,
     equalFilePath,
@@ -91,6 +96,7 @@ import System.FilePath
     takeExtension,
     (</>),
   )
+import System.IO.Unsafe (unsafePerformIO)
 
 import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
 import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
@@ -283,13 +289,37 @@ componentBranchesOf compiler flags ref cabalFile = do
               (componentBranch (takeDirectory cabalFile))
               (sectionsInForce valueOf description)
 
--- | Read and parse a @.cabal@ file, or say why it cannot be.
+-- | Read and parse a @.cabal@ file, or say why it cannot be, parsing it
+-- again only once it has been modified, as an editor may start a session
+-- for every request.
 readPackageDescription ::
-  FilePath -> IO (Either PackageProblem GenericPackageDescription)
-readPackageDescription cabalFile =
-  readBytes cabalFile >>= \case
-    Left why -> pure (Left (PackageUnreadable cabalFile why))
-    Right bytes -> pure (parsePackageDescription cabalFile bytes)
+  -- | The @.cabal@ file.
+  FilePath ->
+  IO (Either PackageProblem GenericPackageDescription)
+readPackageDescription cabalFile = do
+  modified <- quietly Nothing (Just <$> getModificationTime path)
+  Map.lookup path <$> readIORef descriptionsRead >>= \case
+    Just (at, found) | Just at == modified -> pure found
+    _ -> do
+      found <-
+        readBytes path >>= \case
+          Left why -> pure (Left (PackageUnreadable path why))
+          Right bytes -> pure (parsePackageDescription path bytes)
+      for_ modified $ \at ->
+        atomicModifyIORef'
+          descriptionsRead
+          ((,()) . Map.insert path (at, found))
+      pure found
+  where
+    path = normalise cabalFile
+
+-- | What 'readPackageDescription' has read, by file, with the time each
+-- file was modified when it was read.
+descriptionsRead ::
+  IORef
+    (Map FilePath (UTCTime, Either PackageProblem GenericPackageDescription))
+descriptionsRead = unsafePerformIO (newIORef Map.empty)
+{-# NOINLINE descriptionsRead #-}
 
 -- | Parse what a @.cabal@ file holds, or say why it cannot be.
 parsePackageDescription ::

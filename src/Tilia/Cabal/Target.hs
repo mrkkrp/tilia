@@ -21,8 +21,6 @@ where
 
 import Control.Monad (filterM)
 import Data.Bifunctor (bimap, first)
-import Data.Foldable (for_)
-import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -31,14 +29,12 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Time.Clock (UTCTime)
 import Distribution.Fields.Field (Field (..), FieldLine (..), Name (..))
 import Distribution.PackageDescription (GenericPackageDescription (..))
 import Distribution.Parsec.Position (Position)
 import System.Directory
   ( canonicalizePath,
     doesFileExist,
-    getModificationTime,
     listDirectory,
   )
 import System.FilePath
@@ -48,7 +44,6 @@ import System.FilePath
     takeDirectory,
     (</>),
   )
-import System.IO.Unsafe (unsafePerformIO)
 
 import Tilia.Cabal.Package
   ( ComponentSection (..),
@@ -322,35 +317,19 @@ projectModules ::
 projectModules files =
   fmap (Map.unionsWith (<>)) . sequence <$> traverse declaredIn files
 
--- | The modules a @.cabal@ file declares, each with the name of its package,
--- parsed again only once the file has been modified, as an editor may
--- start a session for every request.
+-- | The modules a @.cabal@ file declares, each with the name of its package.
 declaredIn ::
   -- | The @.cabal@ file.
   FilePath ->
   IO (Either TargetProblem (Map Text (Set Text)))
-declaredIn file = do
-  modified <- quietly Nothing (Just <$> getModificationTime file)
-  Map.lookup file <$> readIORef declaredSoFar >>= \case
-    Just (at, found) | Just at == modified -> pure found
-    _ -> do
-      found <- bimap UnreadablePackage modulesOf <$> readPackageDescription file
-      for_ modified $ \at ->
-        atomicModifyIORef' declaredSoFar ((,()) . Map.insert file (at, found))
-      pure found
+declaredIn file =
+  bimap UnreadablePackage modulesOf <$> readPackageDescription file
   where
     modulesOf described =
       Map.fromList
         [ (name, Set.singleton (packageOf described))
         | name <- declaredModuleNames described
         ]
-
--- | What 'declaredIn' has read, by file, with the time each file was
--- modified when it was read.
-declaredSoFar ::
-  IORef (Map FilePath (UTCTime, Either TargetProblem (Map Text (Set Text))))
-declaredSoFar = unsafePerformIO (newIORef Map.empty)
-{-# NOINLINE declaredSoFar #-}
 
 -- | The entries of a project configuration file's @packages@ fields.
 packagesInProjectConfig :: [Field Position] -> [Text]
