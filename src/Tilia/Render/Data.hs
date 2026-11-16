@@ -15,7 +15,7 @@ where
 import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust, isNothing, mapMaybe, maybeToList)
+import Data.Maybe (isJust, isNothing, mapMaybe)
 import GHC.Hs
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.ForeignCall (CType (..), Header (..))
@@ -140,8 +140,10 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
 
           equalsSpan = spanOf (andd_equal dd_ext)
 
-          lineHaddocks =
-            any (printsWholeLineDocs ctx . visibleDocs . unLoc) cons
+          lineHaddocks = any (endsALine . unLoc) cons
+          endsALine = \case
+            ConDeclH98{..} -> isJust con_doc || argumentsDocumented ctx con_args
+            ConDeclGADT{} -> False
 
           beforeEquals
             | lineHaddocks = hardBreak
@@ -171,14 +173,16 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
       | length dd_derivs > 1 = hardBreak
       | otherwise = breakOrSpace
 
--- | The documentation a constructor's own layout has to make room for.
-visibleDocs :: ConDecl GhcPs -> [LHsDoc GhcPs]
-visibleDocs = \case
-  ConDeclH98{..} ->
-    maybeToList con_doc <> case con_args of
-      PrefixCon xs -> mapMaybe cdf_doc xs
-      _ -> []
-  ConDeclGADT{} -> []
+-- | Do the Haddocks of a constructor's arguments take whole lines?
+argumentsDocumented ::
+  -- | The context.
+  Ctx ->
+  -- | The arguments.
+  HsConDeclH98Details GhcPs ->
+  Bool
+argumentsDocumented ctx = \case
+  PrefixCon xs -> printsWholeLineDocs ctx (mapMaybe cdf_doc xs)
+  _ -> False
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
@@ -290,7 +294,7 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       <> layoutFrom
         ctx
         declSpan
-        ( brokenIfDocumented ctx xs $
+        ( brokenForDocs $
             name ctx con_name
               <> includeUnless (null xs) breakOrSpace
               <> indent
@@ -343,6 +347,8 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
         Just d -> hardBreak <> haddock ctx Pipe Closed d
         Nothing -> breakOrSpace
   where
+    brokenForDocs = if argumentsDocumented ctx con_args then broken else id
+
     ownDoc = foldMap (haddock ctx Pipe Closed) con_doc
 
     existentials =
