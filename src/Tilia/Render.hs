@@ -28,8 +28,10 @@ import GHC.Hs
     HsConDeclRecField (..),
     HsModule (..),
     HsSigType (..),
+    HsType (..),
     LHsConDeclRecField,
     LHsSigType,
+    TyClDecl (..),
     XModulePs (..),
   )
 import GHC.Hs.Extension (GhcPs)
@@ -268,7 +270,8 @@ heldOff movedUnder haddocks = fmap holdOff
         s = commentSpan c
 
 -- | The last lines of what has its Haddock put under it: the record fields
--- of leading commas, and the arguments of leading arrows.
+-- of leading commas, and the arguments of leading arrows, those of a type
+-- synonym among them.
 documentedBelow ::
   -- | What the project sets.
   Settings ->
@@ -294,6 +297,9 @@ documentedBelow settings hsMod = fields <> arguments
             <> foldMap
               gadtParts
               (listify (const True :: ConDecl GhcPs -> Bool) hsMod)
+            <> foldMap
+              synonymParts
+              (listify (const True :: TyClDecl GhcPs -> Bool) hsMod)
     gadtParts con = case con of
       ConDeclGADT{con_g_args, con_res_ty} ->
         [ cdf_type x
@@ -302,6 +308,11 @@ documentedBelow settings hsMod = fields <> arguments
           isJust (cdf_doc x)
         ]
           <> documentedParts con_res_ty
+      _ -> []
+    synonymParts decl = case decl of
+      SynDecl{tcdRhs} -> case unLoc tcdRhs of
+        HsDocTy{} -> []
+        _ -> documentedParts tcdRhs
       _ -> []
     documentedField :: LHsConDeclRecField GhcPs -> Bool
     documentedField = isJust . cdf_doc . cdrf_spec . unLoc
