@@ -244,7 +244,6 @@ isSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
 -- | The kinds of declaration that grouping distinguishes.
 data Kind
   = TypeSignature
-  | DefaultSignature
   | FunctionBody
   | PatternSignature
   | PatternDefinition
@@ -274,8 +273,7 @@ declKind ::
   (Kind, [RdrName])
 declKind = \case
   SigD _ (TypeSig _ ns _) -> (TypeSignature, fmap unLoc ns)
-  SigD _ (ClassOpSig _ True ns _) -> (DefaultSignature, fmap unLoc ns)
-  SigD _ (ClassOpSig _ False ns _) -> (TypeSignature, fmap unLoc ns)
+  SigD _ (ClassOpSig _ _ ns _) -> (TypeSignature, fmap unLoc ns)
   SigD _ (PatSynSig _ ns _) -> (PatternSignature, fmap unLoc ns)
   SigD _ (InlineSig _ (L _ n) _) -> (PragmaDeclaration, [n])
   SigD _ (SCCFunSig _ (L _ n) _) -> (PragmaDeclaration, [n])
@@ -342,9 +340,7 @@ relatedDecls a b = case (kindA, kindB) of
 relatedKinds :: [(Kind, Kind)]
 relatedKinds =
   [ (TypeSignature, FunctionBody),
-    (TypeSignature, DefaultSignature),
-    (DefaultSignature, TypeSignature),
-    (DefaultSignature, FunctionBody),
+    (TypeSignature, TypeSignature),
     (PatternSignature, PatternDefinition),
     (KindSignature, DataDeclaration),
     (KindSignature, ClassDeclaration),
