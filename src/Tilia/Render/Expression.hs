@@ -67,7 +67,16 @@ hsExprIn :: Ctx -> Site -> LHsExpr GhcPs -> Doc
 hsExprIn ctx site l = at ctx l (exprBody ctx site (spanOf l))
 
 -- | Every shape an expression can take.
-exprBody :: Ctx -> Site -> Maybe Span -> HsExpr GhcPs -> Doc
+exprBody ::
+  -- | The context.
+  Ctx ->
+  -- | Where it stands.
+  Site ->
+  -- | Where it was.
+  Maybe Span ->
+  -- | The expression.
+  HsExpr GhcPs ->
+  Doc
 exprBody ctx site here = \case
   HsVar _ n -> name ctx n
   HsOverLabel src _ -> txt "#" <> sourceText src
@@ -224,7 +233,8 @@ exprBody ctx site here = \case
   HsUntypedSplice _ splice -> untypedSplice ctx DollarSplice splice
   HsProc _ p e ->
     txt "proc"
-      <> layoutFrom ctx (spanOf p) (breakOrSpace <> indent (hsPat ctx p) <> breakOrSpace)
+      <> layoutFrom ctx (spanOf p) (breakOrSpace <> indent (hsPat ctx p))
+      <> space
       <> txt (reserved ctx "->")
       <> attachBody
         (CmdTopBody ctx (withBracing (siteBracing site) plainSite) e)

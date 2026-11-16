@@ -8,8 +8,7 @@ pan =
     proc
         ( level
             , position
-            )
-    ->
+            ) ->
         mix -< (level * position, level * (1 - position))
 
 mute = proc _ -> returnA -< silence
