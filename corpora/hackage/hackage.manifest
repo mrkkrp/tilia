@@ -115,7 +115,7 @@ formatted       06559e110b47  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Attribute
 formatted       2508476c525a  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Definitions.hs
 formatted       005aab882536  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Definitions/Errors.hs
 formatted       d8fe77d09902  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Definitions/Monad.hs
-formatted       c0079a8b5659  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Definitions/Types.hs
+formatted       a6a0872609c5  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Definitions/Types.hs
 formatted       0271886f097d  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Fixity.hs
 formatted       f7a835bd862b  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Generic.hs
 formatted       781460305ee7  Agda-2.8.0/src/full/Agda/Syntax/Concrete/Glyph.hs
@@ -1849,7 +1849,7 @@ formatted       e6ff558c0517  distributed-process-0.7.8/src/Control/Distributed/
 formatted       cd3afabcd890  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/StrictContainerAccessors.hs
 formatted       8a9d9c67b86f  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/StrictList.hs
 formatted       b21182e8f9f2  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/StrictMVar.hs
-formatted       711889f2c55c  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/Types.hs
+formatted       cabd9a2c35aa  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/Types.hs
 formatted       d8a70ea27555  distributed-process-0.7.8/src/Control/Distributed/Process/Internal/WeakTQueue.hs
 formatted       dd68d34b4b66  distributed-process-0.7.8/src/Control/Distributed/Process/Management.hs
 formatted       0e4ae5582817  distributed-process-0.7.8/src/Control/Distributed/Process/Management/Internal/Agent.hs
@@ -2598,7 +2598,7 @@ formatted       50355fef1371  hspec-core-2.11.17/src/Test/Hspec/Core/Shuffle.hs
 formatted       b45ff25ca765  hspec-core-2.11.17/src/Test/Hspec/Core/Spec.hs
 formatted       c26b0574f769  hspec-core-2.11.17/src/Test/Hspec/Core/Spec/Monad.hs
 formatted       c721d474f280  hspec-core-2.11.17/src/Test/Hspec/Core/Timer.hs
-formatted       ab73541bf6fd  hspec-core-2.11.17/src/Test/Hspec/Core/Tree.hs
+formatted       3bb80d88202a  hspec-core-2.11.17/src/Test/Hspec/Core/Tree.hs
 formatted       5ce484dd1f42  hspec-core-2.11.17/src/Test/Hspec/Core/Util.hs
 formatted       986c92fa297a  hspec-core-2.11.17/test/GetOpt/Declarative/EnvironmentSpec.hs
 formatted       25e0128d14de  hspec-core-2.11.17/test/GetOpt/Declarative/UtilSpec.hs
@@ -2650,7 +2650,7 @@ formatted       28c79134fe05  http-client-0.7.19/Network/HTTP/Client/Manager.hs
 formatted       199a60e22d29  http-client-0.7.19/Network/HTTP/Client/MultipartFormData.hs
 formatted       74d0a80ba3d6  http-client-0.7.19/Network/HTTP/Client/Request.hs
 formatted       c74a00816aea  http-client-0.7.19/Network/HTTP/Client/Response.hs
-formatted       45eaf81c294c  http-client-0.7.19/Network/HTTP/Client/Types.hs
+formatted       a7aa9a721b27  http-client-0.7.19/Network/HTTP/Client/Types.hs
 formatted       ca6a48d5e983  http-client-0.7.19/Network/HTTP/Client/Util.hs
 formatted       15f087d7dee7  http-client-0.7.19/Network/HTTP/Proxy.hs
 formatted       e865ae48f11b  http-client-0.7.19/Setup.hs
@@ -2711,7 +2711,7 @@ formatted       2ff1274b36cc  idris-1.3.4/src/IRTS/Simplified.hs
 formatted       15dce8aa119e  idris-1.3.4/src/IRTS/System.hs
 formatted       c8d06fbf13ce  idris-1.3.4/src/Idris/ASTUtils.hs
 formatted       eff538509e2f  idris-1.3.4/src/Idris/AbsSyntax.hs
-formatted       08a64027fda0  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
+formatted       675c15ab457f  idris-1.3.4/src/Idris/AbsSyntaxTree.hs
 formatted       964567e0ef6b  idris-1.3.4/src/Idris/Apropos.hs
 formatted       2d06c142da99  idris-1.3.4/src/Idris/CaseSplit.hs
 formatted       c59ff53ade33  idris-1.3.4/src/Idris/Chaser.hs
@@ -3478,7 +3478,7 @@ formatted       551ec5c3665c  persistent-2.18.1.0/Database/Persist/Sql/Types.hs
 formatted       ca776a440298  persistent-2.18.1.0/Database/Persist/Sql/Types/Internal.hs
 formatted       f54b0ffd3420  persistent-2.18.1.0/Database/Persist/Sql/Util.hs
 formatted       8edc5654d3bf  persistent-2.18.1.0/Database/Persist/SqlBackend.hs
-formatted       a69f8388e237  persistent-2.18.1.0/Database/Persist/SqlBackend/Internal.hs
+formatted       94fee19edf39  persistent-2.18.1.0/Database/Persist/SqlBackend/Internal.hs
 formatted       4169a15662b8  persistent-2.18.1.0/Database/Persist/SqlBackend/Internal/InsertSqlResult.hs
 formatted       4bd5d30fe421  persistent-2.18.1.0/Database/Persist/SqlBackend/Internal/IsolationLevel.hs
 formatted       3bba2903f27f  persistent-2.18.1.0/Database/Persist/SqlBackend/Internal/MkSqlBackend.hs
@@ -3720,7 +3720,7 @@ formatted       5d953ea2b1fe  purescript-0.15.15/src/Language/PureScript/Docs/Re
 formatted       a167fd6ac9ba  purescript-0.15.15/src/Language/PureScript/Docs/Tags.hs
 formatted       3016efb4bfad  purescript-0.15.15/src/Language/PureScript/Docs/Types.hs
 formatted       bc381d509404  purescript-0.15.15/src/Language/PureScript/Docs/Utils/MonoidExtras.hs
-formatted       cb7aed7ebb19  purescript-0.15.15/src/Language/PureScript/Environment.hs
+formatted       71b4685f9a34  purescript-0.15.15/src/Language/PureScript/Environment.hs
 formatted       9887872a7363  purescript-0.15.15/src/Language/PureScript/Errors.hs
 formatted       2e97a0828120  purescript-0.15.15/src/Language/PureScript/Errors/JSON.hs
 formatted       40c5b4ab4606  purescript-0.15.15/src/Language/PureScript/Externs.hs
@@ -3763,7 +3763,7 @@ formatted       7d3f27d89e83  purescript-0.15.15/src/Language/PureScript/Linter/
 formatted       2067fb344d48  purescript-0.15.15/src/Language/PureScript/Linter/Imports.hs
 formatted       a66e07acf77d  purescript-0.15.15/src/Language/PureScript/Linter/Wildcards.hs
 formatted       18987d2354c2  purescript-0.15.15/src/Language/PureScript/Make.hs
-formatted       856882a71531  purescript-0.15.15/src/Language/PureScript/Make/Actions.hs
+formatted       f9c26c4e81f6  purescript-0.15.15/src/Language/PureScript/Make/Actions.hs
 formatted       d7f660387009  purescript-0.15.15/src/Language/PureScript/Make/BuildPlan.hs
 formatted       23e2654c54a8  purescript-0.15.15/src/Language/PureScript/Make/Cache.hs
 formatted       0fecd3849868  purescript-0.15.15/src/Language/PureScript/Make/Monad.hs
@@ -3790,7 +3790,7 @@ formatted       e222158ed66f  purescript-0.15.15/src/Language/PureScript/Sugar/D
 formatted       6dbfacd3f7c9  purescript-0.15.15/src/Language/PureScript/Sugar/LetPattern.hs
 formatted       c23e1d3bfeb1  purescript-0.15.15/src/Language/PureScript/Sugar/Names.hs
 formatted       a4e140d000ba  purescript-0.15.15/src/Language/PureScript/Sugar/Names/Common.hs
-formatted       481bad8537c2  purescript-0.15.15/src/Language/PureScript/Sugar/Names/Env.hs
+formatted       096c4c366dd7  purescript-0.15.15/src/Language/PureScript/Sugar/Names/Env.hs
 formatted       977ebf875756  purescript-0.15.15/src/Language/PureScript/Sugar/Names/Exports.hs
 formatted       998d6e1a0419  purescript-0.15.15/src/Language/PureScript/Sugar/Names/Imports.hs
 formatted       0a27a17113bc  purescript-0.15.15/src/Language/PureScript/Sugar/ObjectWildcards.hs
@@ -3809,13 +3809,13 @@ formatted       d3146cd07c4b  purescript-0.15.15/src/Language/PureScript/TypeChe
 formatted       4ad258145fed  purescript-0.15.15/src/Language/PureScript/TypeChecker/Entailment/Coercible.hs
 formatted       5eff2ef573b7  purescript-0.15.15/src/Language/PureScript/TypeChecker/Entailment/IntCompare.hs
 formatted       08deff595e14  purescript-0.15.15/src/Language/PureScript/TypeChecker/Kinds.hs
-formatted       68ba0b173306  purescript-0.15.15/src/Language/PureScript/TypeChecker/Monad.hs
+formatted       12ea2cfdfebe  purescript-0.15.15/src/Language/PureScript/TypeChecker/Monad.hs
 formatted       a371e86974a0  purescript-0.15.15/src/Language/PureScript/TypeChecker/Roles.hs
 formatted       6a47f4bde20f  purescript-0.15.15/src/Language/PureScript/TypeChecker/Skolems.hs
 formatted       c7a07e020504  purescript-0.15.15/src/Language/PureScript/TypeChecker/Subsumption.hs
 formatted       457a823b413b  purescript-0.15.15/src/Language/PureScript/TypeChecker/Synonyms.hs
 formatted       9da3ae698d18  purescript-0.15.15/src/Language/PureScript/TypeChecker/TypeSearch.hs
-formatted       785b3eff22b6  purescript-0.15.15/src/Language/PureScript/TypeChecker/Types.hs
+formatted       d4e8f29f22de  purescript-0.15.15/src/Language/PureScript/TypeChecker/Types.hs
 formatted       39141ecda8e4  purescript-0.15.15/src/Language/PureScript/TypeChecker/Unify.hs
 formatted       c408bd01dda2  purescript-0.15.15/src/Language/PureScript/TypeClassDictionaries.hs
 formatted       7791ea538e90  purescript-0.15.15/src/Language/PureScript/Types.hs
@@ -4353,7 +4353,7 @@ formatted       f30374149c8c  stack-9.9.9/src/Stack/Setup.hs
 formatted       1866471a85b2  stack-9.9.9/src/Stack/Solver.hs
 formatted       ebbf896669e4  stack-9.9.9/src/Stack/Types.hs
 formatted       2d64936fd50e  stack-9.9.9/src/Stack/Types/BuildPlan.hs
-formatted       04ef3b2edee8  stack-9.9.9/src/Stack/Types/Config.hs
+formatted       05b6307f6d3a  stack-9.9.9/src/Stack/Types/Config.hs
 formatted       5fe8a35cdffd  stack-9.9.9/src/Stack/Types/Docker.hs
 formatted       4ea18083c3c8  stack-9.9.9/src/Stack/Types/FlagName.hs
 formatted       cfd607146e91  stack-9.9.9/src/Stack/Types/GhcPkgId.hs
@@ -5104,7 +5104,7 @@ formatted       c3a0978b358e  xmonad-0.18.1/Main.hs
 formatted       72da0bc3c6e8  xmonad-0.18.1/man/xmonad.hs
 formatted       446b5b2b8fd3  xmonad-0.18.1/src/XMonad.hs
 formatted       b9dcebd4f1c0  xmonad-0.18.1/src/XMonad/Config.hs
-formatted       4c6cfeba90cf  xmonad-0.18.1/src/XMonad/Core.hs
+formatted       475e7e73947c  xmonad-0.18.1/src/XMonad/Core.hs
 formatted       e6fb7899478c  xmonad-0.18.1/src/XMonad/Layout.hs
 formatted       0ffef6e2576b  xmonad-0.18.1/src/XMonad/Main.hs
 formatted       623b9f0a22d4  xmonad-0.18.1/src/XMonad/ManageHook.hs
@@ -5148,7 +5148,7 @@ formatted       516f30b26c69  yesod-core-1.7.0.0/src/Yesod/Core/Internal/TH.hs
 formatted       1ecb030e4d6b  yesod-core-1.7.0.0/src/Yesod/Core/Internal/Util.hs
 formatted       7a8ac41bb599  yesod-core-1.7.0.0/src/Yesod/Core/Json.hs
 formatted       1bf4621cb6b5  yesod-core-1.7.0.0/src/Yesod/Core/TypeCache.hs
-formatted       e9bbddf9f6bb  yesod-core-1.7.0.0/src/Yesod/Core/Types.hs
+formatted       d3ea9cac6865  yesod-core-1.7.0.0/src/Yesod/Core/Types.hs
 formatted       38102a09e32a  yesod-core-1.7.0.0/src/Yesod/Core/Types/Content.hs
 formatted       49991219fbf5  yesod-core-1.7.0.0/src/Yesod/Core/Types/ErrorResponse.hs
 formatted       aeab5e00a6e8  yesod-core-1.7.0.0/src/Yesod/Core/Types/HandlerContents.hs

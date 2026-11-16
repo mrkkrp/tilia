@@ -6,14 +6,12 @@ module Kiln.Batch where
 
 data Batch where
   Batch ::
-    { {- | When it was fired. -}
-      firedOn ::
+    { {- | When it was fired. -} firedOn ::
         Map KilnIdentifier (Either FiringFailure (NonEmpty FiringRecord))
     } ->
     Batch
 
 data Order = Order
-  { {- | When it was fired. -}
-    firedOn ::
+  { {- | When it was fired. -} firedOn ::
       Map KilnIdentifier (Either FiringFailure (NonEmpty FiringRecord))
   }

@@ -630,7 +630,14 @@ recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
 
 -- | The fields of a record, each documented above it or, with leading
 -- commas, below it.
-recordFields :: Ctx -> Maybe Span -> [LHsConDeclRecField GhcPs] -> Doc
+recordFields ::
+  -- | The context.
+  Ctx ->
+  -- | The braces and what they hold.
+  Maybe Span ->
+  -- | The fields.
+  [LHsConDeclRecField GhcPs] ->
+  Doc
 recordFields ctx enclosing xs =
   brokenForDocs
     . bracketWith Outdented "{" "}"
@@ -642,14 +649,10 @@ recordFields ctx enclosing xs =
       printsWholeLineDocs ctx (fieldsUnder ctx) (mapMaybe (fieldDoc . unLoc) xs)
     commas = ctxCommaStyle ctx
     field = case commas of
-      TrailingCommas ->
-        align
-          . at_
-            ctx
-            ( \f ->
-                foldMap (haddockInline ctx Pipe) (fieldDoc f)
-                  <> recordField ctx f
-            )
+      TrailingCommas -> \l ->
+        align . maybe id located (spanOf l) $
+          flat (foldMap (haddockInline ctx Pipe) (fieldDoc (unLoc l)))
+            <> layoutFrom ctx (spanOf l) (recordField ctx (unLoc l))
       LeadingCommas -> \l ->
         align (at_ ctx (recordField ctx) l)
           <> foldMap
