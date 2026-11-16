@@ -1787,7 +1787,7 @@ formatted       c651ad447fd5  cryptonite-0.30/tests/KAT_Curve448.hs
 formatted       8e0eac40b9d6  cryptonite-0.30/tests/KAT_DES.hs
 formatted       d3c4aaf9fb41  cryptonite-0.30/tests/KAT_Ed25519.hs
 formatted       c0344f9c50b4  cryptonite-0.30/tests/KAT_Ed448.hs
-formatted       b59a87e7f1e5  cryptonite-0.30/tests/KAT_EdDSA.hs
+formatted       5d7c57cc8b24  cryptonite-0.30/tests/KAT_EdDSA.hs
 formatted       ae46fa4c856f  cryptonite-0.30/tests/KAT_HKDF.hs
 formatted       9302e3e46775  cryptonite-0.30/tests/KAT_HMAC.hs
 formatted       5c606bc11dd6  cryptonite-0.30/tests/KAT_KMAC.hs
@@ -2247,7 +2247,7 @@ formatted       15e08936bb89  free-5.2/src/Control/Monad/Trans/Free/Church.hs
 formatted       2329d3c7fb72  free-5.2/src/Control/Monad/Trans/Iter.hs
 formatted       56c248be435c  fsnotify-0.4.4.0/Setup.hs
 formatted       62464bf7a481  fsnotify-0.4.4.0/example/Main.hs
-formatted       12b61356c3f3  fsnotify-0.4.4.0/src/System/FSNotify.hs
+formatted       411ba772435f  fsnotify-0.4.4.0/src/System/FSNotify.hs
 formatted       34d9ac507e40  fsnotify-0.4.4.0/src/System/FSNotify/Devel.hs
 formatted       0d0e6f3eaf91  fsnotify-0.4.4.0/src/System/FSNotify/Find.hs
 formatted       6c2c3c64ed11  fsnotify-0.4.4.0/src/System/FSNotify/Linux.hs
