@@ -482,7 +482,7 @@ formatted       63c8df440d4f  QuickCheck-2.18.0.0/tests/CollectDataTypes.hs
 formatted       fab769a440dd  QuickCheck-2.18.0.0/tests/DiscardRatio.hs
 formatted       17182fc81ee7  QuickCheck-2.18.0.0/tests/GCoArbitraryExample.hs
 formatted       8b2f4a357ed6  QuickCheck-2.18.0.0/tests/GShrinkExample.hs
-formatted       993f9fa73124  QuickCheck-2.18.0.0/tests/Generators.hs
+formatted       7e386d4e7402  QuickCheck-2.18.0.0/tests/Generators.hs
 formatted       88f42cca7cda  QuickCheck-2.18.0.0/tests/Misc.hs
 formatted       0c6564c6933c  QuickCheck-2.18.0.0/tests/MonadFix.hs
 formatted       9a389942d0f8  QuickCheck-2.18.0.0/tests/Monoids.hs

@@ -267,8 +267,9 @@ data Env = Env
     -- | Whether what is written now is a note, which goes to the margin
     -- right above a preprocessor directive.
     envNote :: !Bool,
-    -- | Whether a group laid out flat holds what is written now on its
-    -- line, which keeps every 'Frangible' group in it flat.
+    -- | Whether a group laid out flat holds what is written now, with no
+    -- broken group in between, which keeps every 'Frangible' group in it
+    -- flat.
     envHeldFlat :: !Bool,
     -- | What the document is printed with.
     envSettings :: !Settings
@@ -400,7 +401,14 @@ printDoc settings doc = finish (step settings) (go env doc emptyOut)
         }
 
 -- | Walk a document, accumulating output.
-go :: Env -> Doc -> Out -> Out
+go ::
+  -- | What is in force where the document is.
+  Env ->
+  -- | The document.
+  Doc ->
+  -- | The output so far.
+  Out ->
+  Out
 go env = \case
   DEmpty -> id
   DText t
@@ -446,8 +454,7 @@ go env = \case
                 Broken
             | otherwise -> Flat
           _ -> l
-        heldFlat = envHeldFlat env || settled == Flat
-     in go env{envLayout = settled, envHeldFlat = heldFlat} d out
+     in go env{envLayout = settled, envHeldFlat = settled == Flat} d out
   DVariant flatD brokenD -> case envLayout env of
     Broken -> go env brokenD
     _ -> go env flatD
@@ -523,7 +530,7 @@ columnReached ::
   -- | Whether a space asked for first is printed.
   Bool ->
   -- | What is left to lay out, each with the layout in force and whether a
-  -- flat group holds it.
+  -- flat group around it holds it, even past a broken one.
   [(Layout, Bool, Doc)] ->
   (Int, Bool, Bool)
 columnReached limit bound = walk
