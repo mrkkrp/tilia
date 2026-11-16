@@ -56,7 +56,7 @@ decls ctx = declRun True apart ctx Free
   where
     apart previous current =
       kindOf previous /= kindOf current
-        || any standsApart previous
+        || any standsApart (withoutDistantHaddock previous)
         || any standsApart current
         || directiveBetween
           ctx
@@ -65,6 +65,12 @@ decls ctx = declRun True apart ctx Free
     standsApart (d, printed) =
       isDoc (unLoc d)
         || not (printsOnOneLine Broken printed)
+    withoutDistantHaddock group = case NE.toList group of
+      (doc, _) : rest@((d, _) : _)
+        | DocD _ DocCommentNext{} <- unLoc doc,
+          directiveBetween ctx (spanOf doc) (spanOf d) ->
+            rest
+      ds -> ds
     kindOf group =
       listToMaybe
         [ k
