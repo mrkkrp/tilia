@@ -20,9 +20,7 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.List (insert, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict (Map)
 import Data.Maybe (isJust, isNothing)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -200,7 +198,9 @@ namesAnEdition = isJust . lookupEdition
 
 -- | What printing the top level of a module takes beyond 'Ctx'.
 data ModuleCtx = ModuleCtx
-  { -- | The empty line that opens the imports, where the comments written
+  { -- | How the module is rendered.
+    mcRender :: RenderConfig,
+    -- | The empty line that opens the imports, where the comments written
     -- above it stay.
     mcOpening :: Maybe Int,
     -- | The empty lines under the comments that head stretches of the
@@ -213,16 +213,6 @@ data ModuleCtx = ModuleCtx
     -- | The empty line under the comments written right under the last
     -- import of any configuration, which stay at the end of the imports.
     mcBelowImports :: Maybe Int,
-    -- | The lines of every conditional's directives, which the names of an
-    -- import list are not sorted across.
-    mcDirectiveLines :: [Int],
-    -- | The lines of the directives that imports are not sorted across:
-    -- those of every conditional but one that only continues the import
-    -- above it.
-    mcImportBarriers :: [Int],
-    -- | The modules the project's own packages declare, each with the names
-    -- of those that declare it.
-    mcOwnModules :: Map Text (Set Text),
     -- | The first and last line of each stretch a @{- TILIA_OFF -}@ leaves
     -- as written.
     mcMagicCommentRanges :: [(Int, Int)]
@@ -257,9 +247,9 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
     imports =
       normalizeImports
         (fromBool (Set.member ImplicitPrelude (ctxExtensions ctx)))
-        mcOwnModules
-        (foldr insert mcImportBarriers mcHeadings)
-        mcDirectiveLines
+        (rcOwnModules mcRender)
+        (foldr insert (rcImportBarriers mcRender) mcHeadings)
+        (rcDirectiveLines mcRender)
         (Source.comments (ctxSource ctx))
         hsmodImports
     importLines pending later = \case
