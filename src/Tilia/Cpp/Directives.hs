@@ -205,7 +205,7 @@ describeCppError = \case
     t
       <> " at line "
       <> tshow n
-      <> " comes before a leading comma, which formatting moves above it"
+      <> " comes before a leading comma, where it cannot be put back"
   RuledOutBranch n ->
     "the branch at line "
       <> tshow n
