@@ -184,8 +184,12 @@ argumentsDocumented ::
   HsConDeclH98Details GhcPs ->
   Bool
 argumentsDocumented ctx = \case
-  PrefixCon xs -> printsWholeLineDocs ctx (mapMaybe cdf_doc xs)
-  RecCon l -> printsWholeLineDocs ctx (mapMaybe (fieldDoc . unLoc) (unLoc l))
+  PrefixCon xs -> printsWholeLineDocs ctx (Isn't #under) (mapMaybe cdf_doc xs)
+  RecCon l ->
+    printsWholeLineDocs
+      ctx
+      (fieldsUnder ctx)
+      (mapMaybe (fieldDoc . unLoc) (unLoc l))
   InfixCon{} -> False
 
 -- | Is this a GADT constructor?
@@ -198,9 +202,16 @@ isGadtCon = \case
 conDecl :: Ctx -> Choice "singleRecCon" -> ConDecl GhcPs -> Doc
 conDecl ctx _ ConDeclGADT{..} =
   foldMap (haddock ctx Pipe Closed) con_doc
-    <> layoutFrom ctx declSpan (brokenIfDocumented ctx documented body)
+    <> layoutFrom ctx declSpan (brokenForDocs body)
   where
-    documented = (con_g_args, con_res_ty)
+    brokenForDocs = if documented then broken else id
+    documented = case con_g_args of
+      PrefixConGADT _ _ ->
+        printsWholeLineDocs ctx argumentsUnder (con_g_args, con_res_ty)
+      RecConGADT _ x ->
+        argumentsDocumented ctx (RecCon x)
+          || printsWholeLineDocs ctx argumentsUnder con_res_ty
+    argumentsUnder = fromBool (ctxArrowStyle ctx == LeadingArrows)
 
     c :| cs = con_names
     body =
@@ -221,7 +232,7 @@ conDecl ctx _ ConDeclGADT{..} =
               <> layoutFrom
                 ctx
                 sigSpan
-                (brokenIfDocumented ctx documented signature)
+                (brokenForDocs signature)
           )
 
     signature =
@@ -231,7 +242,7 @@ conDecl ctx _ ConDeclGADT{..} =
         <> layoutFrom
           ctx
           argResSpan
-          (brokenIfDocumented ctx documented argsAndResult)
+          (brokenForDocs argsAndResult)
     afterInner = foldMap spanOf con_mb_cxt <> argResSpan
     afterOuter = foldMap telescopeSpan con_inner_bndrs <> afterInner
     telescopeSpan = \case
@@ -384,12 +395,12 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
 -- | One @deriving@ clause, with the strategy it was written with.
 derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
 derivingClause ctx HsDerivingClause{..} =
-  brokenIfDocumented ctx deriv_clause_tys $
+  brokenIfDocumented ctx (Isn't #under) deriv_clause_tys $
     txt "deriving" <> space <> strategy
   where
     what =
       at ctx deriv_clause_tys $ \tys ->
-        brokenIfDocumented ctx tys $ case tys of
+        brokenIfDocumented ctx (Isn't #under) tys $ case tys of
           DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
             parens

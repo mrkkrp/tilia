@@ -21,6 +21,7 @@ module Tilia.Render.Type
     forallTelescope,
     outerBndrs,
     recordFieldsAt,
+    fieldsUnder,
     fieldDoc,
     conDeclField,
     documentedConDeclField,
@@ -630,7 +631,7 @@ recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
 -- commas, below it.
 recordFields :: Ctx -> Maybe Span -> [LHsConDeclRecField GhcPs] -> Doc
 recordFields ctx enclosing xs =
-  brokenIfDocumented ctx xs
+  brokenIfDocumented ctx (fieldsUnder ctx) xs
     . bracketWith Outdented "{" "}"
     . insideBrackets enclosing
     $ commaSep commas (fmap field xs)
@@ -650,6 +651,14 @@ recordFields ctx enclosing xs =
           <> foldMap
             (\d -> hardBreak <> haddock ctx Caret Open d)
             (fieldDoc (unLoc l))
+
+-- | Do the fields of a record have their Haddocks put under them, as with
+-- leading commas?
+fieldsUnder ::
+  -- | The context.
+  Ctx ->
+  Choice "under"
+fieldsUnder ctx = fromBool (ctxCommaStyle ctx == LeadingCommas)
 
 -- | The Haddock of a field of a record.
 fieldDoc ::
