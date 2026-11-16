@@ -129,6 +129,9 @@ spec = do
       it "cost only the declarations each of them reaches" $
         formatCpp settings (apart 400) `shouldSatisfy` isRight
 
+      it "format however many names they add to one export list" $
+        formatCpp settings (exportedOneByOne 200) `shouldSatisfy` isRight
+
       it "are refused once even the sum is more than the budget allows" $
         formatCpp settings (oneDeclaration 100 1000) `shouldSatisfy` isLeft
 
@@ -609,6 +612,18 @@ oneDeclaration n m =
         ]
       <> replicate m "  , 0"
       <> ["  ]"]
+
+-- | A module exporting @n@ names, each behind a conditional of its own
+-- asking the same question.
+exportedOneByOne :: Int -> Text
+exportedOneByOne n =
+  T.unlines $
+    ["module M", "  ( a0"]
+      <> concat
+        [ ["#if A", "  , a" <> T.pack (show i), "#endif"]
+        | i <- [1 .. n]
+        ]
+      <> ["  ) where", "", "a0 = 0"]
 
 -- | A module with @n@ conditionals in a row, all asking the same question.
 --

@@ -302,7 +302,7 @@ formatAllConfigs formatter r = do
     Just (apart, baseline) -> do
       budget <- lift get
       let pragma = readingPragma r
-          least = max 1 (linesHeld (blanking (fmap gsWhole forest) source))
+          least = max 1 (linesHeld (vaBaseline apart))
           affordable =
             linearCost (budget `div` least) forest source * least <= budget
       base <-
