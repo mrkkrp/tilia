@@ -190,9 +190,13 @@ placeComments regions leads fences comments =
 
         continues
           | Just (anchor, remark) <- carriedOn c,
-            carriesOn remark here next =
+            carriesOn remark here (codeFrom <$> next) =
               (,linedUpWith remark) <$> endingOn anchor
           | otherwise = Nothing
+
+        codeFrom r = case commentNextLine c of
+          Just p | fst p > spanStartLine r -> mkSpan p p
+          _ -> r
 
         linedUpWith remark
           | remark <= spanStartColumn here = After SpillUnderPrevious
