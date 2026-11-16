@@ -247,6 +247,11 @@
   goes where the code below it is indented by six columns or more, as in a
   `where` clause of an instance method.
   [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* A comment under a trailing comment, right above a conditional, is
+  placed by the code under the `#if` rather than by the `#if` itself, so
+  one under a record's closing brace before a constructor behind a
+  conditional no longer moves on the next pass.
+  [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 
