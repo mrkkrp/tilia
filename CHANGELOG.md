@@ -181,6 +181,10 @@
   once those spaces go, `-- \|` and its other lines, rather than first as
   a Haddock that a second pass turned into that comment.
   [PR 424](https://github.com/mrkkrp/tilia/pull/424).
+* The Haddock of the left argument of an infix constructor comes out as a
+  block comment, `{- ^ … -}`, where a comment follows the argument on its
+  line, rather than as a `-- ^` line that the comment ran into.
+  [Issue 407](https://github.com/mrkkrp/tilia/issues/407).
 
 ## Tilia 0.1.4.0
 
