@@ -819,7 +819,13 @@ withReexports reach modName summary =
                  decides established (InTypes, parent) i,
                  let certainKids =
                        Set.filter
-                         ((== kid) . snd)
+                         ( \name ->
+                             snd name == kid
+                               && certainlyBrings
+                                 (establishedMembers established)
+                                 name
+                                 i
+                         )
                          ( Map.findWithDefault
                              Set.empty
                              parent

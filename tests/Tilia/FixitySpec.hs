@@ -724,9 +724,37 @@ spec = do
        in unq `shouldBe` [(OpName "!", Fixity RightAssoc 3)]
 
   describe "what an import list certainly brings in" $ do
+    it "is in the namespace the list writes it in" $
+      fmap
+        importNames
+        ( moduleImports
+            (Isn't #implicitPrelude)
+            (pure (pmModule (parsed "{-# LANGUAGE ExplicitNamespaces, PatternSynonyms #-}\nmodule M where\nimport N (f, (<+>), T, (:+:), type (.++), pattern P, data (:|))\n")))
+        )
+        `shouldBe` [ Just
+                       ( False,
+                         [ ImportedName InTerms (OpName "f"),
+                           ImportedName InTerms (OpName "<+>"),
+                           ImportedName InTypes (OpName "T"),
+                           ImportedName InTypes (OpName ":+:"),
+                           ImportedName InTypes (OpName ".++"),
+                           ImportedName InTerms (OpName "P"),
+                           ImportedName InTerms (OpName ":|")
+                         ]
+                       )
+                   ]
+
     it "is a variable written on its own" $
-      certainlyBrings Map.empty (InTerms, OpName "f") (listing [ImportedName (OpName "f")])
+      certainlyBrings Map.empty (InTerms, OpName "f") (listing [ImportedName InTerms (OpName "f")])
         `shouldBe` True
+
+    it "is a type written on its own" $
+      certainlyBrings Map.empty (InTypes, OpName ".++") (listing [ImportedName InTypes (OpName ".++")])
+        `shouldBe` True
+
+    it "is not a type the list writes among terms" $
+      certainlyBrings Map.empty (InTypes, OpName ".++") (listing [ImportedName InTerms (OpName ".++")])
+        `shouldBe` False
 
     it "is a member written out beside its type" $
       certainlyBrings
@@ -744,7 +772,7 @@ spec = do
         `shouldBe` False
 
     it "is not a member of a type written on its own" $
-      certainlyBrings nonEmptyMembers (InTerms, OpName ":|") (listing [ImportedName (OpName "NonEmpty")])
+      certainlyBrings nonEmptyMembers (InTerms, OpName ":|") (listing [ImportedName InTypes (OpName "NonEmpty")])
         `shouldBe` False
 
     it "is not what a T(..) has under it in the type namespace" $

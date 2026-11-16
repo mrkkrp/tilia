@@ -71,7 +71,6 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Bifunctor (first)
-import Data.Char (isUpper)
 import Data.Choice (Choice, isTrue)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
@@ -405,8 +404,8 @@ instance NFData Import
 
 -- | One entry of an import list.
 data ImportItem
-  = -- | A plain name.
-    ImportedName OpName
+  = -- | A plain name, in the namespace the list writes it in.
+    ImportedName Namespace OpName
   | -- | @T(..)@: the name, and every member the module offers with it.
     ImportedAll OpName
   | -- | @T(a, b)@: the name and the members written out beside it.
@@ -458,14 +457,18 @@ moduleImports implicitPrelude configurations = prelude <> written
 -- | One entry of an import list, as written.
 importedItem :: IE GhcPs -> Maybe ImportItem
 importedItem = \case
-  IEVar _ n _ -> Just (ImportedName (nameOf n))
-  IEThingAbs _ n _ -> Just (ImportedName (nameOf n))
+  IEVar _ n _ -> Just (ImportedName InTerms (nameOf n))
+  IEThingAbs _ n _ -> Just (ImportedName (namespaceOf n) (nameOf n))
   IEThingAll _ n _ -> Just (ImportedAll (nameOf n))
   IEThingWith _ n _ ns _ -> Just (ImportedSome (nameOf n) (fmap nameOf ns))
   _ -> Nothing
   where
     nameOf :: LIEWrappedName GhcPs -> OpName
     nameOf = opName . ieWrappedName . unLoc
+    namespaceOf :: LIEWrappedName GhcPs -> Namespace
+    namespaceOf n = case unLoc n of
+      IEData{} -> InTerms
+      _ -> InTypes
 
 -- | Could this import bring the operator in, as far as its list says?
 --
@@ -495,7 +498,7 @@ namedBy ::
   ImportItem ->
   Bool
 namedBy members unknown op = \case
-  ImportedName n -> n == op
+  ImportedName _ n -> n == op
   ImportedSome parent ns -> parent == op || op `elem` ns
   ImportedAll parent ->
     parent == op || maybe unknown (Set.member op) (Map.lookup parent members)
@@ -520,8 +523,8 @@ maySupply members qualifier op i =
 --
 -- Where the list could leave the name out, it is taken to: a @T(..)@ whose
 -- members are not known hides anything, and of what a list shows, only a
--- variable written on its own, a member written under its type, and a member
--- of a @T(..)@ whose members are known count.
+-- name written on its own in its namespace, a member written under its
+-- type, and a member of a @T(..)@ whose members are known count.
 certainlyBrings ::
   -- | The members of each name in the import's list, where they are
   -- known.
@@ -530,19 +533,17 @@ certainlyBrings ::
   (Namespace, OpName) ->
   Import ->
   Bool
-certainlyBrings members (namespace, op) i = case importNames i of
+certainlyBrings members name@(namespace, op) i = case importNames i of
   Nothing -> True
   Just (True, hidden) -> not (any (namedBy members True op) hidden)
-  Just (False, shown) -> namespace == InTerms && any listed shown
+  Just (False, shown) -> any listed shown
   where
     listed = \case
-      ImportedName n -> n == op && isVariable op
-      ImportedSome _ ns -> op `elem` ns
+      ImportedName written n -> (written, n) == name
+      ImportedSome _ ns -> namespace == InTerms && op `elem` ns
       ImportedAll parent ->
-        maybe False (Set.member op) (Map.lookup parent members)
-    isVariable (OpName t) = case T.uncons t of
-      Just (c, _) -> not (isUpper c) && c /= ':'
-      Nothing -> False
+        namespace == InTerms
+          && maybe False (Set.member op) (Map.lookup parent members)
 
 -- | Does this import decide the name's fixity, by certainly bringing it
 -- in from a module that settles it?
