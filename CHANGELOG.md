@@ -239,6 +239,10 @@
   with a name behind each of a few hundred conditionals, is no longer
   refused as having too many configurations to format.
   [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* A comment that opens a branch of a conditional no longer indents the
+  branch a step further than the line above the conditional, which in an
+  import or export list moved back on the next pass.
+  [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 

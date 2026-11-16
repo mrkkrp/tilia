@@ -25,7 +25,7 @@ where
 
 import Data.Char (isSpace)
 import Data.List (unsnoc)
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -856,6 +856,7 @@ continued columns = walk [] 0 False
       (before, _) : rest
         | lineContinues l,
           not (linePinned l),
+          isNothing (commentOpening (lineBody l)),
           at <= before ->
             (before, before - at + columns) : rest
         where
