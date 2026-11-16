@@ -84,17 +84,19 @@ overlapMode ctx mode = do
       _ -> Nothing
 
 -- | A @WARNING@ or @DEPRECATED@ declaration.
-warnDecls :: Ctx -> WarnDecls GhcPs -> Doc
+warnDecls ::
+  -- | The context.
+  Ctx ->
+  -- | The declaration.
+  WarnDecls GhcPs ->
+  Doc
 warnDecls ctx (Warnings (_, opening) warnings) =
   layoutAcross ctx warnings
     . pragma keyword
     . indent
     $ sepBy (txt ";" <> breakOrSpace) (fmap (at_ ctx (warned ctx)) warnings)
   where
-    keyword = case opening of
-      SourceText s
-        | "DEPRECATED" `isInfixOf` fmap toUpper (unpackFS s) -> "DEPRECATED"
-      _ -> "WARNING"
+    keyword = spelledAsWritten "WARNING" "DEPRECATED" opening
 
 -- | One of the things a warning declaration names.
 warned :: Ctx -> WarnDecl GhcPs -> Doc
