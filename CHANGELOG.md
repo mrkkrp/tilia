@@ -23,8 +23,10 @@
   different kinds, a declaration over several lines or with a Haddock, and
   two declarations with a preprocessor directive between them still get an
   empty line between them, and an empty line the author left stays. A
-  binding no longer joins a signature further up across an empty line the
-  author left above it, so under a run of signatures that empty line stays.
+  Haddock that a directive separates from its declaration does not keep
+  the run below that declaration apart. A binding no longer joins a
+  signature further up across an empty line the author left above it, so
+  under a run of signatures that empty line stays.
   [Issue 347](https://github.com/mrkkrp/tilia/issues/347).
 * Pragmas written one after another stay together where they name different
   things, `INLINE`, `RULES`, `DEPRECATED` and the other pragmas alike, as

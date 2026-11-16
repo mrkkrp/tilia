@@ -7,7 +7,6 @@ module Codec.Frames where
 #endif
 #if defined(FRAMES)
 header = 1
-
 trailer = 2
 #endif
 #if defined(FRAMES)
