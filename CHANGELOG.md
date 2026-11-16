@@ -243,6 +243,10 @@
   branch a step further than the line above the conditional, which in an
   import or export list moved back on the next pass.
   [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* An empty line written under an `#endif` or another directive no longer
+  goes where the code below it is indented by six columns or more, as in a
+  `where` clause of an instance method.
+  [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 
