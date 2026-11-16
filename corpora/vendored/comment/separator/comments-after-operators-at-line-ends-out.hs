@@ -21,8 +21,7 @@ headOf
 
 -- The same, for a pattern synonym.
 pattern x -- the head
-  :< xs =
-  (x, xs)
+  :< xs = (x, xs)
 
 -- A comment written on a line of its own between such an operator and its
 -- operand comes before the operator.
