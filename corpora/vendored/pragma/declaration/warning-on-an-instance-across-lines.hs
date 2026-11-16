@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingVia #-}
+
 module Vault.Token where
 
 newtype Token = Token String
@@ -16,3 +18,11 @@ instance {-# WARNING "Comparing tokens takes time." #-}
   Token a == Token b = a == b
 
 deriving instance {-# WARNING "The order says nothing." #-} Ord Token
+
+newtype Stamp = Stamp Int
+
+deriving instance
+  {-# WARNING "Stamps from two vaults do not compare." #-} Eq Stamp
+
+deriving via Int instance
+  {-# WARNING "Stamps from two vaults do not order." #-} Ord Stamp
