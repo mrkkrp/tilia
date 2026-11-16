@@ -19,7 +19,6 @@ module Tilia.Cabal.Package
     Kind (..),
     packageOf,
     packageComponents,
-    packageBranches,
     addedSources,
     sourceExtensions,
     isDeclaredModule,
