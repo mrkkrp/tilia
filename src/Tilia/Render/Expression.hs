@@ -821,10 +821,9 @@ ifThenElse ::
   LocatedA body ->
   LocatedA body ->
   Doc
-ifThenElse ctx bodyOf AnnsIf{aiThen, aiElse} condition thenBody elseBody =
+ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
   txt "if"
-    <> space
-    <> hsExpr ctx condition
+    <> underComment (space <> hsExpr ctx condition)
     <> breakOrSpace
     <> indent
       ( branch (locA aiThen) "then" thenBody
@@ -832,6 +831,9 @@ ifThenElse ctx bodyOf AnnsIf{aiThen, aiElse} condition thenBody elseBody =
           <> branch (locA aiElse) "else" elseBody
       )
   where
+    underComment
+      | lineCommentWrittenBetween ctx (spanOf aiIf) (spanOf condition) = indent
+      | otherwise = id
     branch written word body =
       keywordAt ctx keywordSpan word
         <> space

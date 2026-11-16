@@ -221,6 +221,10 @@
   the constructor on a line of their own wherever the constructor's name
   comes on a later line than the `forall`.
   [PR 428](https://github.com/mrkkrp/tilia/pull/428).
+* The condition of an `if` whose line a comment ends goes on the next line
+  a step in, rather than at the column of the `if`, where in a `do` block
+  a condition in parentheses broken over several lines did not parse.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A `then` qualifier of a comprehension written on one line stays on one
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.

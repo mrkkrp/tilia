@@ -2782,7 +2782,7 @@ formatted       8cc96c281ed7  idris-1.3.4/src/Idris/Parser/Ops.hs
 formatted       fdb8c26e5e91  idris-1.3.4/src/Idris/Parser/Stack.hs
 formatted       567bc8db08f5  idris-1.3.4/src/Idris/PartialEval.hs
 formatted       f116f4d5447b  idris-1.3.4/src/Idris/Primitives.hs
-formatted       3aefb6f94657  idris-1.3.4/src/Idris/ProofSearch.hs
+formatted       0914faa5bc45  idris-1.3.4/src/Idris/ProofSearch.hs
 formatted       cae09c6b724c  idris-1.3.4/src/Idris/Prover.hs
 formatted       4bef8a3dda3c  idris-1.3.4/src/Idris/Providers.hs
 formatted       bac5d946a526  idris-1.3.4/src/Idris/REPL.hs
