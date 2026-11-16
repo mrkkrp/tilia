@@ -37,13 +37,7 @@ import System.Directory
     doesFileExist,
     listDirectory,
   )
-import System.FilePath
-  ( dropTrailingPathSeparator,
-    normalise,
-    splitDirectories,
-    takeDirectory,
-    (</>),
-  )
+import System.FilePath (splitDirectories, takeDirectory, (</>))
 
 import Tilia.Cabal.Package
   ( ComponentSection (..),
@@ -275,11 +269,6 @@ filesOfComponents root components = do
         (quietly False . doesFileExist)
         [joined directory entry | entry <- entries, admits wanted entry]
 
--- | A directory spelled so that a path can be appended to it without
--- further normalisation.
-asDirectory :: FilePath -> FilePath
-asDirectory = dropTrailingPathSeparator . normalise
-
 -- | The @.cabal@ files the project is made of, or why there are none: which
 -- of its configuration files does not parse, or that they name none.
 --
@@ -436,7 +425,7 @@ declaredComponents root described =
           componentSources =
             Map.unionsWith
               (<>)
-              [ sourcesIn (asDirectory d) declared
+              [ sourcesIn d declared
               | branch <- branches,
                 (d, declared) <- addedSources branch
               ]
