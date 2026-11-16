@@ -12,7 +12,7 @@ module Tilia.Render.Data
   )
 where
 
-import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
+import Data.Choice (Choice, fromBool, isTrue, pattern Isn't)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing, mapMaybe)
@@ -81,15 +81,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
           <> breakOrSpace
           <> outerBinders
           <> foldMap (leftContext ctx headSpan) dd_ctxt
-          <> layoutFrom
-            ctx
-            headSpan
-            ( defHead
-                (fromBool (fixity == Infix))
-                (Do #indentArgs)
-                (name ctx tyCon)
-                (fmap renderTyVar tyVars)
-            )
+          <> typeHead ctx fixity tyCon tyVarSpan renderTyVar tyVars
           <> foldMap kindSignature dd_kindSig
           <> includeWhen
             (isGadt && not (null cons))
@@ -437,24 +429,21 @@ derivingClause ctx HsDerivingClause{..} =
 
 -- | @type T a = …@.
 synDecl ::
+  -- | The context.
   Ctx ->
+  -- | The synonym's name.
   LocatedN RdrName ->
+  -- | Was its head written infix?
   LexicalFixity ->
+  -- | Its type variables.
   LHsQTyVars GhcPs ->
+  -- | What it stands for.
   LHsType GhcPs ->
   Doc
 synDecl ctx tyCon fixity HsQTvs{..} rhs =
   txt "type"
     <> space
-    <> layoutFrom
-      ctx
-      (spanOf tyCon <> spansOf hsq_explicit)
-      ( defHead
-          (fromBool (fixity == Infix))
-          (Do #indentArgs)
-          (name ctx tyCon)
-          (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
-      )
+    <> typeHead ctx fixity tyCon spanOf (at_ ctx (tyVarBndr ctx)) hsq_explicit
     <> indent (space <> txt "=" <> separator <> hsType ctx rhs)
   where
     separator = typeBreak (typeIsDocumented (unLoc rhs))
