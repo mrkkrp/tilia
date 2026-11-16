@@ -2206,7 +2206,7 @@ formatted       7f3540c78598  flatparse-0.5.6.1/src/FlatParse/Basic/Switch.hs
 formatted       680db7c01904  flatparse-0.5.6.1/src/FlatParse/Basic/Text.hs
 formatted       cd7f21f63212  flatparse-0.5.6.1/src/FlatParse/Common/Assorted.hs
 formatted       b987d6722b87  flatparse-0.5.6.1/src/FlatParse/Common/GHCExts.hs
-formatted       23b4b8e04523  flatparse-0.5.6.1/src/FlatParse/Common/Numbers.hs
+formatted       f0f34134506a  flatparse-0.5.6.1/src/FlatParse/Common/Numbers.hs
 formatted       426bbf57b3df  flatparse-0.5.6.1/src/FlatParse/Common/Parser.hs
 formatted       f066c2e877b3  flatparse-0.5.6.1/src/FlatParse/Common/Position.hs
 formatted       414dcdd960b5  flatparse-0.5.6.1/src/FlatParse/Common/Switch.hs
