@@ -11,7 +11,6 @@ module Tilia.Ignore
   )
 where
 
-import Data.ByteString qualified as BS
 import Data.Char
   ( isAlpha,
     isAlphaNum,
@@ -32,11 +31,10 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
-import System.Directory (canonicalizePath, doesFileExist)
+import System.Directory (canonicalizePath)
 import System.FilePath (joinPath, (</>))
 
-import Tilia.Utils (byteOrderMark, pathUnder, quietly)
+import Tilia.Utils (byteOrderMark, pathUnder, quietly, readUtf8File)
 
 -- | The patterns of one ignore file, in the order they are written.
 newtype IgnoreFile = IgnoreFile [Pattern]
@@ -291,11 +289,6 @@ ignoreFilesAbove root paths =
   where
     directories =
       Set.fromList [take n path | path <- paths, n <- [0 .. length path - 1]]
-    read' directory = do
-      let file = joinPath (root : directory) </> ".tiliaignore"
-      exists <- doesFileExist file
-      if exists
-        then do
-          bytes <- BS.readFile file
-          pure [(directory, parseIgnoreFile (T.decodeUtf8Lenient bytes))]
-        else pure []
+    read' directory =
+      maybe [] (\text -> [(directory, parseIgnoreFile text)])
+        <$> readUtf8File (joinPath (root : directory) </> ".tiliaignore")

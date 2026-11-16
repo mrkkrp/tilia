@@ -5,6 +5,7 @@ module Tilia.IgnoreSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import System.Directory (canonicalizePath, emptyPermissions, setPermissions)
 import System.FilePath (splitDirectories, takeDirectory, (</>))
 import Test.Hspec
 
@@ -113,6 +114,13 @@ spec = do
         let generated = root </> "src" </> "Generated.hs"
         underAsciiLocale (isIgnoredInProject root generated)
           `shouldReturn` True
+
+    it "is not ignored by a .tiliaignore that cannot be read" $
+      withProject $ \given -> do
+        root <- canonicalizePath given
+        setPermissions (root </> ".tiliaignore") emptyPermissions
+        let generated = root </> "src" </> "Generated.hs"
+        withoutIgnored root [generated] `shouldReturn` [generated]
 
     it "is not ignored when it is outside of the project" $
       withProject $ \root ->
