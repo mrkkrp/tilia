@@ -31,8 +31,8 @@
   declarations of one kind do, and still get an empty line above them under
   a declaration they do not name.
   [Issue 284](https://github.com/mrkkrp/tilia/issues/284).
-* Local modules of a project and modules of its dependencies are formatted
-  in two separate sorted groups. [Issue
+* Imports of a project's own modules and imports of its dependencies'
+  modules are formatted in two separate sorted groups. [Issue
   349](https://github.com/mrkkrp/tilia/issues/349).
 * A construct written on one line that runs past column 80 is broken over
   several lines where possible. [Issue
@@ -141,6 +141,12 @@
   compiler, rather than once for each build plan, so a new plan no longer
   runs `ghc-pkg` again or adds another copy of the answer to the cache.
   [PR 423](https://github.com/mrkkrp/tilia/pull/423).
+* Each kind of failure exits with a code of its own, the codes running from
+  2 upwards with no gaps, so every code above 6 stands for another failure
+  than in 0.1.4.0. A program that formatting changed exits with 20 rather
+  than 17, formatting that is not idempotent with 21 rather than 18, an
+  exception with 22 rather than 19, and a file that cannot be written back
+  with 23 rather than 20.
 
 ## Tilia 0.1.4.0
 
