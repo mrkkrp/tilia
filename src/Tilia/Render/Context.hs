@@ -3,6 +3,8 @@
 -- | What the syntax walk needs to know that the syntax tree does not say.
 module Tilia.Render.Context
   ( -- * The context
+    RenderConfig (..),
+    defaultRenderConfig,
     Ctx (..),
     Knot (..),
     FamilyStyle (..),
@@ -77,7 +79,7 @@ import Tilia.Fixity
     qualifierOf,
   )
 import Tilia.Render.Layout (Bracing (..))
-import Tilia.Settings (ArrowStyle (..), Indentation)
+import Tilia.Settings (ArrowStyle (..), Indentation, Settings, defaultSettings)
 import Tilia.Source
   ( Source,
     SourceType,
@@ -91,6 +93,44 @@ import Tilia.Span.Ghc
 
 ----------------------------------------------------------------------------
 -- The context
+
+-- | What the printer needs to know about the module beyond its text.
+data RenderConfig = RenderConfig
+  { -- | Extensions in force, from the module's own pragmas and from the
+    -- package it belongs to.
+    rcExtensions :: Set Extension,
+    -- | What the module can see, if it could be worked out.
+    rcScope :: Maybe Scope,
+    -- | The lines of every conditional's directives, which the names of an
+    -- import list are not sorted across.
+    rcDirectiveLines :: [Int],
+    -- | The lines of the directives that imports are not sorted across:
+    -- those of every conditional but one that only continues the import
+    -- above it, such as a @hiding@ clause written behind a condition.
+    rcImportBarriers :: [Int],
+    -- | The lines the first and the last import of any configuration begin
+    -- on, where the module has conditionals, so that every configuration
+    -- agrees on which comments are among the imports.
+    rcImportBounds :: Maybe (Int, Int),
+    -- | The modules the project's own packages declare, each with the names
+    -- of those that declare it.
+    rcOwnModules :: Map Text (Set Text),
+    -- | What the project sets.
+    rcSettings :: Settings
+  }
+
+-- | A configuration that asserts nothing.
+defaultRenderConfig :: RenderConfig
+defaultRenderConfig =
+  RenderConfig
+    { rcExtensions = Set.empty,
+      rcScope = Nothing,
+      rcDirectiveLines = [],
+      rcImportBarriers = [],
+      rcImportBounds = Nothing,
+      rcOwnModules = Map.empty,
+      rcSettings = defaultSettings
+    }
 
 -- | Everything a printer may need beyond the node it is given.
 data Ctx = Ctx

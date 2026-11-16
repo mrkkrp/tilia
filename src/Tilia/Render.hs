@@ -17,7 +17,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -34,7 +33,6 @@ import GHC.Hs
     XModulePs (..),
   )
 import GHC.Hs.Extension (GhcPs)
-import GHC.LanguageExtensions.Type (Extension (..))
 import GHC.Types.SrcLoc (getLoc, unLoc)
 
 import Tilia.Comments
@@ -51,7 +49,7 @@ import Tilia.Comments
   )
 import Tilia.Comments.Attach (attachComments)
 import Tilia.Doc.Combinators
-import Tilia.Fixity (Scope, capturedUses)
+import Tilia.Fixity (capturedUses)
 import Tilia.Gathered (Gathered)
 import Tilia.Imports (travellingComments)
 import Tilia.MagicComments (preservedLines)
@@ -69,54 +67,21 @@ import Tilia.Render.Header
   )
 import Tilia.Render.Signature (sigDecl)
 import Tilia.Render.Type (documentedParts, fieldDoc)
-import Tilia.Settings (Settings (..), defaultSettings)
+import Tilia.Settings (Settings (..))
 import Tilia.Source (Lines, blankAt, comments, lineAt, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc (spanOf, spanOfSrcSpan)
 
--- | What the printer needs to know about the module beyond its text.
-data RenderConfig = RenderConfig
-  { -- | Extensions in force, from the module's own pragmas and from the
-    -- package it belongs to.
-    rcExtensions :: Set Extension,
-    -- | What the module can see, if it could be worked out.
-    rcScope :: Maybe Scope,
-    -- | The lines of every conditional's directives, which the names of an
-    -- import list are not sorted across.
-    rcDirectiveLines :: [Int],
-    -- | The lines of the directives that imports are not sorted across:
-    -- those of every conditional but one that only continues the import
-    -- above it, such as a @hiding@ clause written behind a condition.
-    rcImportBarriers :: [Int],
-    -- | The lines the first and the last import of any configuration begin
-    -- on, where the module has conditionals, so that every configuration
-    -- agrees on which comments are among the imports.
-    rcImportBounds :: Maybe (Int, Int),
-    -- | The modules the project's own packages declare, each with the names
-    -- of those that declare it.
-    rcOwnModules :: Map Text (Set Text),
-    -- | What the project sets.
-    rcSettings :: Settings
-  }
-
--- | A configuration that asserts nothing.
-defaultRenderConfig :: RenderConfig
-defaultRenderConfig =
-  RenderConfig
-    { rcExtensions = Set.empty,
-      rcScope = Nothing,
-      rcDirectiveLines = [],
-      rcImportBarriers = [],
-      rcImportBounds = Nothing,
-      rcOwnModules = Map.empty,
-      rcSettings = defaultSettings
-    }
-
 -- | Render a parsed module, comments and all.
-renderModule :: RenderConfig -> ParsedModule -> Doc
-renderModule settings parsed = attachComments loose doc
+renderModule ::
+  -- | How to render it.
+  RenderConfig ->
+  -- | The module, parsed.
+  ParsedModule ->
+  Doc
+renderModule render parsed = attachComments loose doc
   where
-    (doc, loose) = renderConfiguration settings parsed
+    (doc, loose) = renderConfiguration render parsed
 
 -- | Render one configuration of a module, and return the comments the
 -- syntax tree does not carry rather than attach them.
@@ -126,7 +91,7 @@ renderConfiguration ::
   -- | The configuration, parsed.
   ParsedModule ->
   (Doc, [Comment])
-renderConfiguration settings parsed =
+renderConfiguration render parsed =
   ( prologue (pmPrologue parsed)
       <> stackHeader
       <> hsModule ctx mctx pragmas hsMod,
@@ -140,18 +105,18 @@ renderConfiguration settings parsed =
         (pmGathered parsed)
         (comments (pmSource parsed))
     plain =
-      heldOff (documentedBelow (rcSettings settings) hsMod) haddocks loose'
+      heldOff (documentedBelow (rcSettings render) hsMod) haddocks loose'
     (stackHeader, rest) = takeStackHeader (pmPrologue parsed) plain
     (pragmas, uncovered) =
       takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
-    (mctx, loose) = moduleCtx settings parsed held
+    (mctx, loose) = moduleCtx render parsed held
     carryingOn = carriedOnFrom loose
     ctx =
       Ctx
-        { ctxExtensions = rcExtensions settings,
+        { ctxExtensions = rcExtensions render,
           ctxSourceType = pmSourceType parsed,
-          ctxScope = rcScope settings,
+          ctxScope = rcScope render,
           ctxCaptured = capturedUses (pmGathered parsed),
           ctxSource = pmSource parsed,
           ctxLineComments = indexOn (filter (not . sharesItsLine) loose),
@@ -163,9 +128,9 @@ renderConfiguration settings parsed =
               ],
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot,
-          ctxIndentation = settingsIndentation (rcSettings settings),
-          ctxCommaStyle = settingsCommaStyle (rcSettings settings),
-          ctxArrowStyle = settingsArrowStyle (rcSettings settings)
+          ctxIndentation = settingsIndentation (rcSettings render),
+          ctxCommaStyle = settingsCommaStyle (rcSettings render),
+          ctxArrowStyle = settingsArrowStyle (rcSettings render)
         }
 
 -- | What printing the top level of one configuration takes, and the
@@ -178,15 +143,13 @@ moduleCtx ::
   -- | The comments neither its syntax tree nor its header carries.
   [Comment] ->
   (ModuleCtx, [Comment])
-moduleCtx settings parsed held =
+moduleCtx render parsed held =
   ( ModuleCtx
-      { mcOpening = opening,
+      { mcRender = render,
+        mcOpening = opening,
         mcHeadings = Set.toList (Set.fromList (mapMaybe heading held)),
         mcUnderImports = maybe id (IntMap.delete . snd) bounds underImports,
         mcBelowImports = (`IntMap.lookup` underImports) . snd =<< bounds,
-        mcDirectiveLines = rcDirectiveLines settings,
-        mcImportBarriers = rcImportBarriers settings,
-        mcOwnModules = rcOwnModules settings,
         mcMagicCommentRanges = magicCommentRanges
       },
     [ if among c && isNothing (heading c) || IntSet.member (line c) travellers
@@ -204,7 +167,7 @@ moduleCtx settings parsed held =
     imports = mapMaybe spanOf (hsmodImports hsMod)
     among = amongImports bounds imports
     bounds =
-      rcImportBounds settings
+      rcImportBounds render
         <|> fmap
           (\starts -> (NE.head starts, NE.last starts))
           (NE.nonEmpty (fmap spanStartLine imports))
@@ -219,7 +182,7 @@ moduleCtx settings parsed held =
             )
       guard $
         headsImports
-          (rcImportBarriers settings)
+          (rcImportBarriers render)
           ls
           imports
           (spanStartColumn (commentSpan c))
