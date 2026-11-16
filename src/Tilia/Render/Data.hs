@@ -142,7 +142,9 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
 
           lineHaddocks = any (endsALine . unLoc) cons
           endsALine = \case
-            ConDeclH98{..} -> isJust con_doc || argumentsDocumented ctx con_args
+            ConDeclH98{..} ->
+              isJust con_doc
+                || not singleRecCon && argumentsDocumented ctx con_args
             ConDeclGADT{} -> False
 
           beforeEquals
@@ -173,16 +175,18 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
       | length dd_derivs > 1 = hardBreak
       | otherwise = breakOrSpace
 
--- | Do the Haddocks of a constructor's arguments take whole lines?
+-- | Do the Haddocks of a constructor's arguments or fields take whole
+-- lines?
 argumentsDocumented ::
   -- | The context.
   Ctx ->
-  -- | The arguments.
+  -- | The arguments or the fields.
   HsConDeclH98Details GhcPs ->
   Bool
 argumentsDocumented ctx = \case
   PrefixCon xs -> printsWholeLineDocs ctx (mapMaybe cdf_doc xs)
-  _ -> False
+  RecCon l -> printsWholeLineDocs ctx (mapMaybe (fieldDoc . unLoc) (unLoc l))
+  InfixCon{} -> False
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
@@ -311,11 +315,12 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       <> layoutFrom
         ctx
         declSpan
-        ( name ctx con_name
-            <> breakOrNothing
-            <> nest
-              (if isTrue singleRecCon then 0 else 1)
-              (recordFieldsAt ctx l)
+        ( brokenForDocs $
+            name ctx con_name
+              <> breakOrNothing
+              <> nest
+                (if isTrue singleRecCon then 0 else 1)
+                (recordFieldsAt ctx l)
         )
   InfixCon l r ->
     includeWhen docOnTop ownDoc

@@ -169,6 +169,13 @@
   {- ^ -}`, is broken around the constructor at once, rather than first
   keeping its `=` on the first line and changing again on a second pass.
   [PR 424](https://github.com/mrkkrp/tilia/pull/424).
+* A record written on one line with a Haddock on a field, as `data Kiln =
+  Kiln {temperature :: Int {- ^ In degrees. -}}`, opens its braces on a
+  line of their own at once, rather than first on the constructor's line
+  and only on a second pass under it. A data declaration with such a
+  record among other constructors puts each constructor on a line of its
+  own at once as well.
+  [PR 424](https://github.com/mrkkrp/tilia/pull/424).
 
 ## Tilia 0.1.4.0
 
