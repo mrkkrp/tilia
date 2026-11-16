@@ -207,6 +207,10 @@
   stands for beside its `=` or `<-` where it is written there, rather than
   on a line of its own.
   [PR 428](https://github.com/mrkkrp/tilia/pull/428).
+* The `->` of a `proc` whose pattern is broken over several lines ends the
+  pattern's last line, as it does after the patterns of a lambda, rather
+  than taking a line of its own.
+  [PR 428](https://github.com/mrkkrp/tilia/pull/428).
 * A `then` qualifier of a comprehension written on one line stays on one
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.
