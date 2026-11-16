@@ -14,8 +14,9 @@ module Tilia.Cpp.Fragment
 where
 
 import Control.Monad (guard)
-import Data.List (sortOn)
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Char (isSpace)
+import Data.List (sort, sortOn)
+import Data.Maybe (isJust, listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -31,10 +32,14 @@ import Tilia.Doc
   ( Doc (..),
     Layout (..),
     foldChildren,
+    foldRegions,
     printedFrom,
+    regionOf,
     spineAt,
   )
 import Tilia.Doc.Combinators (declarationsStart)
+import Tilia.Source (isDirective, offsetOf)
+import Tilia.Span (Span (..), endPoint, mkSpan, startPoint)
 
 -- | A module's document, taken apart where its declarations begin.
 data Body = Body
@@ -42,6 +47,10 @@ data Body = Body
     bodyHeadEnd :: !Int,
     -- | Whether anything above the declarations is a choice.
     bodyHeadVaries :: !Bool,
+    -- | The stretch from the first region above the declarations that holds
+    -- others, the export list or an import, to the declarations, less the
+    -- regions that hold none, such as the @where@.
+    bodySpare :: [Span],
     -- | The declarations and the breaks between them.
     bodyItems :: [Doc],
     -- | The runs of declarations the printer keeps together, in order.
@@ -70,12 +79,23 @@ bodyOf doc = do
   guard (case items of [DGroup Flat _] -> False; _ -> True)
   let with = (mconcat (head' <> [declarationsStart]) <>)
   runs <- runsOf items
+  let headEnd = case runs of
+        r : _ -> runFrom r - 1
+        [] -> maximum (0 : fmap snd (printedFrom doc))
+      regions =
+        foldRegions (\s d _ -> [(s, isJust (regionOf d))]) (mconcat head')
   pure
     Body
-      { bodyHeadEnd = case runs of
-          r : _ -> runFrom r - 1
-          [] -> maximum (0 : fmap snd (printedFrom doc)),
+      { bodyHeadEnd = headEnd,
         bodyHeadVaries = choosing (with mempty),
+        bodySpare = case sort [s | (s, True) <- regions] of
+          [] -> []
+          s : _ ->
+            let kept = sort [t | (t, False) <- regions, s < t]
+             in zipWith
+                  mkSpan
+                  (startPoint s : fmap endPoint kept)
+                  (fmap startPoint kept <> [(headEnd + 1, 1)]),
         bodyItems = items,
         bodyRuns = runs,
         bodyWith = with
@@ -155,7 +175,9 @@ clustered = \case
 -- It keeps what is above the declarations, the fragment, and a run either
 -- side of it, and takes the first branch of every other conditional. What
 -- it leaves out above the fragment is blanked, so that every line stays
--- where it was written, and what it leaves out below is cut off. The text
+-- where it was written, and what it leaves out below is cut off. Unless it
+-- takes in what is above the declarations, it blanks the 'bodySpare' too,
+-- but for the directives, whose macros the declarations may use. The text
 -- is 'Nothing' where that leaves out nothing.
 fragmentText ::
   Body ->
@@ -171,8 +193,11 @@ fragmentText body forest source f
   | otherwise = Nothing
   where
     text =
-      T.unlines . take to . T.lines $
+      T.unlines . take to . zipWith spared [1 ..] . T.lines $
         blanking (outside <> concatMap (`blankingFor` 0) others) source
+    spared n l
+      | fragmentAbove f || isDirective l = l
+      | otherwise = foldr (blankOut n) l (bodySpare body)
     lineCount = length (T.lines source)
     headEnd = bodyHeadEnd body
     from = maybe (headEnd + 1) runFrom (fragmentBefore f)
@@ -244,6 +269,29 @@ reassembled body formatted = do
             new
           )
         )
+
+-- | Blank what a line holds of a span, keeping the columns of the rest.
+blankOut ::
+  -- | The line's number.
+  Int ->
+  -- | The span.
+  Span ->
+  -- | The line.
+  Text ->
+  Text
+blankOut n s l
+  | spanStartLine s <= n && n <= spanEndLine s =
+      before <> T.map (\c -> if isSpace c then c else ' ') within <> after
+  | otherwise = l
+  where
+    (before, rest) = T.splitAt from l
+    (within, after) = T.splitAt (to - from) rest
+    from
+      | n == spanStartLine s = offsetOf l (spanStartColumn s)
+      | otherwise = 0
+    to
+      | n == spanEndLine s = offsetOf l (spanEndColumn s)
+      | otherwise = T.length l
 
 -- | How many lines of a text hold anything, which is what formatting it
 -- costs.

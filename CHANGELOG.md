@@ -257,6 +257,9 @@
   configuration, where `r.field` became `r . field`, `::` became `∷`, or
   `qualified` moved after the module's name.
   [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* A module with conditionals among its declarations formats faster: the
+  parts of it formatted on their own no longer each format its export list
+  and imports too. [PR 436](https://github.com/mrkkrp/tilia/pull/436).
 
 ## Tilia 0.1.4.0
 
