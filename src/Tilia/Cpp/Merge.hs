@@ -16,6 +16,7 @@ import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
   ( groupBy,
+    isPrefixOf,
     maximumBy,
     minimumBy,
     sortOn,
@@ -122,6 +123,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
               | l /= Broken,
                 not (beginsWithChoice merged) ->
                   choice (fmap Doc.infrangible xs)
+            (WGroup _, merged)
+              | ls@(l : more) <- [l | (WGroup l, _) <- wds],
+                any (/= l) more ->
+                  wrap w (laidOutAsTheirs ls merged)
             (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
       DCppChoice ws bs _
@@ -142,6 +147,18 @@ merge settings written conditionals guards varied settledOthers = go Broken
         | otherwise -> choice xs
       where
         every f = traverse f xs
+
+    -- A choice among the configurations whose groups these layouts are,
+    -- each alternative laid out as its configuration lays the group out.
+    laidOutAsTheirs ls = \case
+      DCppChoice cs bs e
+        | fmap fst bs `isPrefixOf` fmap guardText guards,
+          Just (front, l) <- unsnoc ls,
+          length front == length bs ->
+            DCppChoice cs (zipWith (fmap . DGroup) front bs) (DGroup l e)
+      d@DCppChoice{} -> d
+      d@DGroup{} -> d
+      d -> mapChildren (laidOutAsTheirs ls) d
 
     unwrapping layout spans xs accepted = do
       inside <-

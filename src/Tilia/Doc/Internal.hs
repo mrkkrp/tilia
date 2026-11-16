@@ -265,7 +265,8 @@ nestedBy columns nesting indent = case nesting of
 data Env = Env
   { -- | The column a new line starts at.
     envIndent :: !Int,
-    -- | The layout of the innermost group.
+    -- | The layout of the innermost group as it settled, 'Frangible' where
+    -- a frangible group settled flat.
     envLayout :: !Layout,
     -- | Whether what is written now is a note, which goes to the margin
     -- right above a preprocessor directive.
@@ -457,9 +458,8 @@ go env = \case
                 (envIndent env)
                 d ->
                 Broken
-            | otherwise -> Flat
           _ -> l
-     in go env{envLayout = settled, envHeldFlat = settled == Flat} d out
+     in go env{envLayout = settled, envHeldFlat = settled /= Broken} d out
   DVariant flatD brokenD -> case envLayout env of
     Broken -> go env brokenD
     _ -> go env flatD
@@ -469,11 +469,14 @@ go env = \case
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
         unheld = env{envHeldFlat = False}
+        alternative
+          | envLayout env == Frangible = DGroup Frangible
+          | otherwise = id
      in foldr (flip (.)) id . concat $
-          [ [directive type' ("#" <> guard'), go unheld taken]
+          [ [directive type' ("#" <> guard'), go unheld (alternative taken)]
           | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
           ]
-            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go unheld fallback]
+            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go unheld (alternative fallback)]
                | not (printsNothing fallback && T.null afterElse)
                ]
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]

@@ -1,11 +1,17 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeAbstractions #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 -- Conditionals each of whose branches writes a head that breaks at lower
 -- limits, and a conditional context in front of a type that breaks.
-module Loom.Conditionals (decimal, step, anyDigit, report, runFrame) where
+module Loom.Conditionals
+  (decimal, step, anyDigit, report, runFrame, MonadTrans, ApplyTyCon)
+where
 
 import Control.Monad.ST (ST, runST)
 import Terminal.Buffer (Buffer, freeze, shrink)
@@ -80,3 +86,17 @@ runFrame ::
 #endif
   (forall s. (Buffer s -> Int -> ST s Buffer) -> ST s Buffer) -> Buffer
 runFrame act  =  runST (act (\buffer used -> shrink buffer used >> freeze buffer))
+
+#if __GLASGOW_HASKELL__ >= 806
+class (forall m. Monad m => Monad (t m)) => MonadTrans t where
+#else
+class MonadTrans t where
+#endif
+  lift :: (Monad m) => m a -> t m a
+
+#if __GLASGOW_HASKELL__ >= 910
+type family ApplyTyCon @k1 @k2 @unmatchable_fun :: (k1 -> k2) -> (k1 ~> unmatchable_fun) where
+#else
+type family ApplyTyCon :: (k1 -> k2) -> (k1 ~> unmatchable_fun) where
+#endif
+  ApplyTyCon = ApplyTyConAux1
