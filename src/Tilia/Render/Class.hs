@@ -16,7 +16,7 @@ module Tilia.Render.Class
   )
 where
 
-import Data.Choice (fromBool, pattern Do)
+import Data.Choice (fromBool)
 import Data.Foldable (fold)
 import Data.Maybe (isNothing)
 import GHC.Builtin.Types (cTupleTyConName, isCTupleTyConName)
@@ -37,17 +37,29 @@ import Tilia.Span.Ghc
 
 -- | A type class declaration.
 classDecl ::
+  -- | The context.
   Ctx ->
+  -- | Where its keywords were.
   AnnClassDecl ->
+  -- | Its superclasses.
   Maybe (LHsContext GhcPs) ->
+  -- | Its name.
   LocatedN RdrName ->
+  -- | Its type variables.
   LHsQTyVars GhcPs ->
+  -- | Was its head written infix?
   LexicalFixity ->
+  -- | Its functional dependencies.
   [LHsFunDep GhcPs] ->
+  -- | The signatures and pragmas in its body.
   [LSig GhcPs] ->
+  -- | The default definitions of its methods.
   LHsBinds GhcPs ->
+  -- | Its associated families.
   [LFamilyDecl GhcPs] ->
+  -- | The defaults of those families.
   [LTyFamDefltDecl GhcPs] ->
+  -- | The Haddocks among its members.
   [LDocDecl GhcPs] ->
   Doc
 classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaults docs =
@@ -61,7 +73,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
       breakOrSpace
         <> indent
           ( foldMap (leftContext ctx headSpan) ctxt
-              <> layoutFrom ctx headSpan classHead
+              <> classHead
               <> indent (funDeps ctx fdeps)
               <> includeUnless
                 (null members)
@@ -70,8 +82,9 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
 
     classHead
       | isCTuple (unLoc tyCon) (length hsq_explicit) =
-          layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit) $
-            parens
+          layoutFrom ctx headSpan
+            . layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit)
+            $ parens
               ( insideBrackets
                   (spanOf tyCon)
                   ( commaSep
@@ -80,11 +93,13 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
                   )
               )
       | otherwise =
-          defHead
-            (fromBool (fixity == Infix))
-            (Do #indentArgs)
-            (name ctx tyCon)
-            (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
+          typeHead
+            ctx
+            fixity
+            tyCon
+            spanOf
+            (at_ ctx (tyVarBndr ctx))
+            hsq_explicit
 
     body =
       includeUnless
@@ -230,7 +245,14 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
         feqn_bndrs
 
 -- | A @data family@ or @type family@ declaration.
-famDecl :: Ctx -> FamilyStyle -> FamilyDecl GhcPs -> Doc
+famDecl ::
+  -- | The context.
+  Ctx ->
+  -- | Does it stand on its own or in a class?
+  FamilyStyle ->
+  -- | The declaration.
+  FamilyDecl GhcPs ->
+  Doc
 famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
   txt keyword <> txt familyWord <> head' <> equations
   where
@@ -248,15 +270,13 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
     head' =
       indent . layoutFrom ctx headAndSigSpan $
         breakOrSpace
-          <> layoutFrom
+          <> typeHead
             ctx
-            headSpan
-            ( defHead
-                (fromBool (fdFixity == Infix))
-                (Do #indentArgs)
-                (name ctx fdLName)
-                (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
-            )
+            fdFixity
+            fdLName
+            spanOf
+            (at_ ctx (tyVarBndr ctx))
+            hsq_explicit
           <> includeUnless
             (isNothing resultSig && isNothing fdInjectivityAnn)
             space
@@ -313,7 +333,12 @@ injectivityAnn ctx (InjectivityAnn _ from to) =
     <> sepBy space (fmap (name ctx) to)
 
 -- | One equation of a type family.
-tyFamInstEqn :: Ctx -> TyFamInstEqn GhcPs -> Doc
+tyFamInstEqn ::
+  -- | The context.
+  Ctx ->
+  -- | The equation.
+  TyFamInstEqn GhcPs ->
+  Doc
 tyFamInstEqn ctx FamEqn{..} =
   binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
   where
@@ -328,12 +353,13 @@ tyFamInstEqn ctx FamEqn{..} =
       _ -> False
 
     lhs =
-      layoutFrom ctx (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats) $
-        defHead
-          (fromBool (feqn_fixity == Infix))
-          (Do #indentArgs)
-          (name ctx feqn_tycon)
-          (fmap (typeArgument ctx) feqn_pats)
+      typeHead
+        ctx
+        feqn_fixity
+        feqn_tycon
+        typeArgSpan
+        (typeArgument ctx)
+        feqn_pats
 
     rhs =
       indent (joinedBy "=" <> hsType ctx feqn_rhs)

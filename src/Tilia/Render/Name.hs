@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Names, and the decorations the author put around them.
@@ -15,14 +17,16 @@ module Tilia.Render.Name
     joinedByFunctionArrow,
     multiplicity,
     defHead,
+    typeHead,
   )
 where
 
-import Data.Choice (Choice, isTrue)
+import Data.Choice (Choice, fromBool, isTrue, pattern Do)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (..))
+import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.Name.Occurrence (OccName, occNameString)
 import GHC.Types.Name.Reader
 import GHC.Types.SourceText
@@ -189,6 +193,30 @@ defHead _ indentArgs nameDoc args =
     <> includeUnless
       (null args)
       (nest (steps indentArgs) (breakOrSpace <> spread args))
+
+-- | The head of a type-level declaration: a type constructor and what it is
+-- applied to, laid out from where they were written.
+typeHead ::
+  -- | The context.
+  Ctx ->
+  -- | Was it written infix?
+  LexicalFixity ->
+  -- | The type constructor.
+  LocatedN RdrName ->
+  -- | Where each argument was.
+  (arg -> Maybe Span) ->
+  -- | How to print one.
+  (arg -> Doc) ->
+  -- | The arguments.
+  [arg] ->
+  Doc
+typeHead ctx fixity tyCon argSpan arg args =
+  layoutFrom ctx (spanOf tyCon <> foldMap argSpan args) $
+    defHead
+      (fromBool (fixity == Infix))
+      (Do #indentArgs)
+      (name ctx tyCon)
+      (fmap arg args)
 
 -- | Arguments, each aligned under itself, one per line when broken.
 spread :: [Doc] -> Doc
