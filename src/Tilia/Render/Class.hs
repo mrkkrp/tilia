@@ -32,7 +32,7 @@ import Tilia.Render.Data (dataDecl)
 import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
-import Tilia.Span (Span)
+import Tilia.Span (Span, endOf)
 import Tilia.Span.Ghc
 
 -- | A type class declaration.
@@ -346,12 +346,8 @@ tyFamInstEqn ::
 tyFamInstEqn ctx FamEqn{..} =
   binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
   where
-    binders =
-      outerBndrs
-        ctx
-        breakOrSpace
-        (spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats)
-        feqn_bndrs
+    binders = outerBndrs ctx breakOrSpace headSpan feqn_bndrs
+    headSpan = spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats
     hasBinders = case feqn_bndrs of
       HsOuterExplicit _ (_ : _) -> True
       _ -> False
@@ -367,7 +363,13 @@ tyFamInstEqn ctx FamEqn{..} =
         feqn_pats
 
     rhs =
-      indent (joinedBy "=" <> hsType ctx feqn_rhs)
+      indent $
+        space
+          <> txt "="
+          <> layoutFrom
+            ctx
+            (fmap endOf headSpan <> spanOf feqn_rhs)
+            (breakOrSpace <> hsType ctx feqn_rhs)
 
 -- | A @type role@ declaration.
 roleAnnot :: Ctx -> RoleAnnotDecl GhcPs -> Doc

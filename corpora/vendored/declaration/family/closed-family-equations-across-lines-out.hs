@@ -13,5 +13,4 @@ type family Soil bed season where
   Soil Raised Spring = Loam
   Soil
     bed
-    season =
-    Clay
+    season = Clay

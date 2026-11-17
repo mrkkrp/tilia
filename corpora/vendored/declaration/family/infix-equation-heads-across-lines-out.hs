@@ -7,5 +7,4 @@ type family ((a :: Count) `Within` (b :: Count)) (c :: Count) :: Bool where
   ( a
       `Within` b
     )
-    c =
-    a `AtMost` c
+    c = a `AtMost` c
