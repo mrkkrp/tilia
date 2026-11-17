@@ -371,6 +371,11 @@
   above the right-hand side, and a block comment written before the `=`
   stays there.
   [PR 499](https://github.com/mrkkrp/tilia/pull/499).
+* A pragma such as `INLINE` under a type signature no longer keeps it
+  apart from the binding under them where a directive stands between, so
+  a signature and its equation whose names conditionals asking one
+  question write get no empty line between them with the pragma either.
+  [PR 501](https://github.com/mrkkrp/tilia/pull/501).
 
 ## Tilia 0.1.4.0
 
