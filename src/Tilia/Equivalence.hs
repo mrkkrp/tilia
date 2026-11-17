@@ -535,7 +535,7 @@ commentDifference parsedBefore parsedAfter
           <> " documentation comments became "
           <> tshow docsAfter
   | otherwise =
-      diverge (belowHeader parsedBefore before) (belowHeader parsedAfter after)
+      diverge belowHeaderBefore belowHeaderAfter
         <|> diverge (settled headerCommentsBefore) (settled headerCommentsAfter)
         <|> diverge
           (exported moduleBefore headerCommentsBefore)
@@ -545,15 +545,19 @@ commentDifference parsedBefore parsedAfter
     moduleAfter = pmModule parsedAfter
     before = asRead parsedBefore
     after = asRead parsedAfter
-    headerCommentsBefore = withinHeader parsedBefore before
-    headerCommentsAfter = withinHeader parsedAfter after
+    (headerCommentsBefore, belowHeaderBefore) = byHeader parsedBefore before
+    (headerCommentsAfter, belowHeaderAfter) = byHeader parsedAfter after
     asRead m =
       concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
-    belowHeader m cs = filter (not . inHeader m cs) (ordinary cs)
-    withinHeader m cs =
-      filter (inHeader m cs) (ordinary cs)
-        <> filter commented (takeWhile (pragmaWritten m . commentSpan) cs)
+    byHeader m cs =
+      ( filter inside common
+          <> filter commented (takeWhile (pragmaWritten m . commentSpan) cs),
+        filter (not . inside) common
+      )
+      where
+        common = ordinary cs
+        inside = inHeader m cs
     pragmaWritten = writtenInHeader . pmHeaderEnd
     exported m =
       filter (\c -> any (`covers` commentSpan c) (spanOf =<< hsmodExports m))
