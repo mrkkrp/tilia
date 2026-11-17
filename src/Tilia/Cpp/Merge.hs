@@ -688,8 +688,14 @@ spanWithHaddock s d = maybe s (<> s) (firstMarked d)
 data Space = Space !Int !Bool
   deriving (Eq, Ord)
 
--- | Read a run of space, the way 'Tilia.Doc.Internal.breakLine' does.
-spaceOf :: Layout -> [Doc] -> Space
+-- | Read a run of space, in the wrappers it is printed in, the way
+-- 'Tilia.Doc.Internal.breakLine' does.
+spaceOf ::
+  -- | The layout of the group it is printed in.
+  Layout ->
+  -- | The run.
+  [Doc] ->
+  Space
 spaceOf layout = go 0 False False
   where
     go ended closed apart = \case
@@ -709,11 +715,21 @@ spaceOf layout = go 0 False False
         DSoftBreak
           | layout == Broken -> broke ds
           | otherwise -> go ended closed apart ds
-        _ -> go ended closed apart ds
+        _
+          | Just wrapped <- unwrap d ->
+              go ended closed apart (resolved layout wrapped <> ds)
+          | otherwise -> go ended closed apart ds
         where
           broke rest
             | closed = go ended False apart rest
             | otherwise = go (ended + 1) False apart rest
+    resolved l (w, x) = concatMap printed (spineAt inside x)
+      where
+        inside = layoutInside l w
+        printed = \case
+          DBreak -> [if inside == Broken then DHardBreak else DSpace]
+          DSoftBreak -> [DHardBreak | inside == Broken]
+          d -> maybe [d] (resolved inside) (unwrap d)
 
 -- | Put several documents' differences from a baseline into one document.
 --

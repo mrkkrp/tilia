@@ -327,6 +327,10 @@
   after the `=` as other constructors do, rather than coming out under the
   `=` wherever its `forall` or context is broken from it.
   [PR 474](https://github.com/mrkkrp/tilia/pull/474).
+* An empty line written under an `#endif` stays where the code after it
+  goes on with a class whose head each branch writes, with a member of its
+  own under it in only some of them.
+  [PR 475](https://github.com/mrkkrp/tilia/pull/475).
 
 ## Tilia 0.1.4.0
 
