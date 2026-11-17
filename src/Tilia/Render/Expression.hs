@@ -925,7 +925,7 @@ localBinds ctx bracing = \case
       at ctx n outputable
         <> space
         <> txt "="
-        <> attach placement (hsExprIn ctx (withBracing MayBrace plainSite) e)
+        <> attach placement (hsExpr ctx e)
       where
         placement
           | sameLine (spanOf n) (spanOf e) = exprHangs ctx (unLoc e)

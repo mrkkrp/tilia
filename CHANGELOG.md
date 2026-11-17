@@ -376,6 +376,10 @@
   a signature and its equation whose names conditionals asking one
   question write get no empty line between them with the pragma either.
   [PR 501](https://github.com/mrkkrp/tilia/pull/501).
+* A block written on one line and bound to an implicit parameter, such as
+  `?cleanup = do hFlush stdout`, comes out as written, as it does bound to
+  a name, rather than between braces nobody wrote.
+  [PR 502](https://github.com/mrkkrp/tilia/pull/502).
 
 ## Tilia 0.1.4.0
 
