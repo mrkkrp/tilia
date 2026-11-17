@@ -309,8 +309,14 @@ pastTheEnd :: Span -> Span
 pastTheEnd s = s{spanEndColumn = farRight}
 
 -- | Space two conditionals that come one right after the other as the
--- author spaced them.
-spacedApart :: Lines -> Doc -> Doc
+-- author spaced them, where a hard break rather than a group's break keeps
+-- them apart.
+spacedApart ::
+  -- | The module as written.
+  Lines ->
+  -- | The document.
+  Doc ->
+  Doc
 spacedApart written = go
   where
     go = \case
@@ -319,10 +325,13 @@ spacedApart written = go
     apart = \case
       x : rest
         | Just (_, to) <- ownLines x,
-          (_ : _, y : rest') <- span onlySpacing rest,
+          (spacing@(_ : _), y : rest') <- span onlySpacing rest,
           Just _ <- ownLines y ->
             x
-              : (if blankAt (to + 1) written then blankLine else hardBreak)
+              : ( if blankAt (to + 1) written && DHardBreak `elem` spacing
+                    then blankLine
+                    else hardBreak
+                )
               : apart (y : rest')
       x : rest -> x : apart rest
       [] -> []
