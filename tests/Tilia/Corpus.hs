@@ -97,9 +97,7 @@ data Expectations
 
 -- | The exceptions a 'Listed' corpus makes, named in full.
 data Lists = Lists
-  { -- | Examples to leave alone, named relative to the root of the corpus.
-    expectSkip :: [FilePath],
-    -- | Examples GHC's own parser cannot read, run all the same to check
+  { -- | Examples GHC's own parser cannot read, run all the same to check
     -- that it still cannot.
     expectUnreadable :: [FilePath],
     -- | Examples the formatter is supposed to refuse.
@@ -134,8 +132,7 @@ vendoredExamples =
       corpusExpectations =
         Listed
           Lists
-            { expectSkip = [],
-              expectUnreadable = [],
+            { expectUnreadable = [],
               expectDeclined =
                 [ "pragma" </> "position" </> "position-pragmas.hs",
                   "pragma" </> "position" </> "line-markers.hs",
@@ -173,8 +170,7 @@ ghcTestSuite =
       corpusExpectations =
         Listed
           Lists
-            { expectSkip = [],
-              expectUnreadable = ghcUnreadable,
+            { expectUnreadable = ghcUnreadable,
               expectDeclined = ghcDeclined
             },
       corpusInPackages = False
@@ -841,20 +837,16 @@ examplesIn corpus root dirs = do
   reader <- packageReaderFor corpus
   own <- ownModulesReaderFor corpus
   let present = Set.fromList found
-      files = filter (not . skipped) found
       example f reference alternative =
         Example (nameOf f) f reference alternative <$> reader f <*> own f
   case corpusReference corpus of
-    NoReference -> traverse (\f -> example f Nothing Nothing) files
+    NoReference -> traverse (\f -> example f Nothing Nothing) found
     ReferenceMarked mark ->
-      forM (filter (not . answerTo mark present) files) $ \f -> do
+      forM (filter (not . answerTo mark present) found) $ \f -> do
         let marked m = stemOf f <> m <> extensionOf f
-        if mark `isSuffixOf` stemOf f
-          then example f (Just f) (Just f)
-          else do
-            reference <- existing (marked mark)
-            primed <- existing (marked (mark <> "'"))
-            example f reference (primed <|> reference)
+        reference <- existing (marked mark)
+        primed <- existing (marked (mark <> "'"))
+        example f reference (primed <|> reference)
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
     existing f = (\there -> f <$ guard there) <$> doesFileExist f
@@ -863,10 +855,6 @@ examplesIn corpus root dirs = do
         (\stem -> Set.member (stem <> extensionOf f) present)
         (mapMaybe (`withoutSuffix` stemOf f) (marks mark))
     marks mark = [mark <> "'", mark]
-    skipped f = nameOf f `elem` skips
-    skips = case corpusExpectations corpus of
-      Listed lists -> expectSkip lists
-      Recorded _ -> []
     withoutSuffix suffix name
       | suffix `isSuffixOf` name =
           Just (take (length name - length suffix) name)
