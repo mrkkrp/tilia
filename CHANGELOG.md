@@ -283,6 +283,10 @@
   line comment does, rather than coming out ahead of it on its line, where
   one over several lines took the trailing comment into its first line and
   changed the program. [PR 462](https://github.com/mrkkrp/tilia/pull/462).
+* A constructor behind a conditional, between other constructors or in
+  each branch, keeps the bar before it in the branch, rather than leaving
+  that bar on a line of its own above the conditional.
+  [PR 463](https://github.com/mrkkrp/tilia/pull/463).
 
 ## Tilia 0.1.4.0
 
