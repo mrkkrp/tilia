@@ -1160,7 +1160,8 @@ opensWithSpace layout d = case spineAt layout d of
 
 -- | What a document puts on the line it continues, and the rest of it, cut
 -- through the nests around it before the first break, a frangible group
--- that opens with one laid out broken.
+-- that opens with one laid out broken, and a group that hangs a body after
+-- a space broken and indented before it.
 lineOf ::
   -- | The layout of the group the document is printed in.
   Layout ->
@@ -1174,6 +1175,7 @@ lineOf layout d = case spineAt layout d of
     (line, []) -> (mconcat line, mempty)
   where
     broken = \case
+      DGroup _ (DCat DSpace x) -> DGroup Broken (Doc.attach Doc.Normal x)
       DGroup Frangible x -> DGroup Broken x
       x -> x
 
