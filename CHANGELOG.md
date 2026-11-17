@@ -198,8 +198,11 @@
   out two columns deeper. [Issue
   434](https://github.com/mrkkrp/tilia/issues/434).
 * A `DEPRECATED` or `WARNING` pragma on an export item other than the
-  first lines up with the items, rather than coming out a step deeper.
-  [Issue 415](https://github.com/mrkkrp/tilia/issues/415).
+  first lines up with the items, rather than coming out a step deeper, and
+  the messages of one on the first item broken across lines go a step past
+  its `{-#`, as on a module, rather than two.
+  [Issue 415](https://github.com/mrkkrp/tilia/issues/415), [issue
+  453](https://github.com/mrkkrp/tilia/issues/453).
 * The flags of an `OPTIONS_GHC` or `OPTIONS` pragma come out one space
   apart, as the extensions of a `LANGUAGE` pragma do, rather than with the
   spaces written between them. Those inside a string literal among them,
