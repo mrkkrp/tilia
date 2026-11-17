@@ -321,6 +321,9 @@ data Spill
     SpillAtIndentation
   | -- | On a line of its own, lined up with what was held back before it.
     SpillUnderPrevious
+  | -- | On a line of its own at the margin, leaving what is held back after
+    -- it to line up as if it were not there.
+    SpillAtMargin
   deriving (Eq, Show)
 
 -- | A line, and what the engine knew about it as it wrote it.
@@ -776,14 +779,15 @@ completing trailing out =
     spilledLines = zipWith below columns spilled
     columns =
       drop 1 (scanl columnFor (lineIndent finished + heldAt) (fmap fst spilled))
-    below column (_, t) =
+    below column (spill, t) =
       newLine
-        { lineIndent = column,
+        { lineIndent = if spill == SpillAtMargin then 0 else column,
           lineBody = adjustTrailingWhitespace trailing t
         }
     columnFor previous = \case
       SpillAtIndentation -> lineIndent finished + commaLed body
       SpillUnderPrevious -> previous
+      SpillAtMargin -> previous
 
 -- | The width of the leading comma a line begins with, if it begins with
 -- one, which what lines up with the line lines up past.
