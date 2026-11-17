@@ -24,7 +24,7 @@ QuickCheck-2.18.0.0/src/Test/QuickCheck/Arbitrary.hs
     55296 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck/Exception.hs
-    192 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
+    96 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 QuickCheck-2.18.0.0/src/Test/QuickCheck/Function.hs
     4096 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared

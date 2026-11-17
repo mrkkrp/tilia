@@ -14,7 +14,7 @@ import Data.Text qualified as T
 import Test.Hspec
 
 import Tilia.Cpp
-import Tilia.Cpp.Directives (configurations, coveringLeaves, implied)
+import Tilia.Cpp.Directives (configurations, coveringLeaves, guardOf, implied)
 import Tilia.Doc (Doc, regionsIn)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
@@ -59,8 +59,8 @@ spec = do
         `shouldSatisfy` isLeft
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
-      cfgGuards <$> configurations atDeclarations
-        `shouldBe` Just (fmap Guard ["ifdef FOO"])
+      fmap guardText . cfgGuards <$> configurations atDeclarations
+        `shouldBe` Just ["ifdef FOO"]
 
     it "keeps every line where it was" $
       let sameLength c =
@@ -75,16 +75,16 @@ spec = do
             `shouldBe` [Just True, Just True, Just True]
 
     it "finds every directive of an #elif chain, in order" $
-      cfgGuards <$> configurations withElif
-        `shouldBe` Just (fmap Guard ["if A", "elif B"])
+      fmap guardText . cfgGuards <$> configurations withElif
+        `shouldBe` Just ["if A", "elif B"]
 
     it "takes only the outermost conditional, leaving the nested one alone" $
-      cfgGuards <$> configurations nested
-        `shouldBe` Just (fmap Guard ["if OUTER"])
+      fmap guardText . cfgGuards <$> configurations nested
+        `shouldBe` Just ["if OUTER"]
 
     it "takes only the first of two conditionals side by side" $
-      cfgGuards <$> configurations twoConditionals
-        `shouldBe` Just (fmap Guard ["if FIRST"])
+      fmap guardText . cfgGuards <$> configurations twoConditionals
+        `shouldBe` Just ["if FIRST"]
 
     it "declines a module with no conditional at all" $
       configurations "module M where\nf = 1\n" `shouldBe` Nothing
@@ -173,51 +173,52 @@ spec = do
 
   describe "what answers imply about the macros" $ do
     it "rules out an #if X holding where #ifdef X fails" $
-      implied [([Guard "ifdef X"], 1), ([Guard "if X"], 0)] `shouldBe` Nothing
+      implied [([guardOf "ifdef X"], 1), ([guardOf "if X"], 0)]
+        `shouldBe` Nothing
 
     it "allows an #if X failing where #ifdef X holds, as X defined as 0" $
-      implied [([Guard "ifdef X"], 0), ([Guard "if X"], 1)]
+      implied [([guardOf "ifdef X"], 0), ([guardOf "if X"], 1)]
         `shouldSatisfy` isJust
 
     it "rules out #ifdef X and #ifndef X both holding" $
-      implied [([Guard "ifdef X"], 0), ([Guard "ifndef X"], 0)]
+      implied [([guardOf "ifdef X"], 0), ([guardOf "ifndef X"], 0)]
         `shouldBe` Nothing
 
     it "takes an #if 0 to ask something, as code is put aside with it" $
-      implied [([Guard "if 0"], 0)] `shouldSatisfy` isJust
+      implied [([guardOf "if 0"], 0)] `shouldSatisfy` isJust
 
     it "rules out a version below one and at least a later one" $
       implied
-        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 1),
-          ([Guard "if MIN_VERSION_base(4,11,0)"], 0)
+        [ ([guardOf "if MIN_VERSION_base(4,10,0)"], 1),
+          ([guardOf "if MIN_VERSION_base(4,11,0)"], 0)
         ]
         `shouldBe` Nothing
 
     it "allows a version at least one and below a later one" $
       implied
-        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 0),
-          ([Guard "if MIN_VERSION_base(4,11,0)"], 1)
+        [ ([guardOf "if MIN_VERSION_base(4,10,0)"], 0),
+          ([guardOf "if MIN_VERSION_base(4,11,0)"], 1)
         ]
         `shouldSatisfy` isJust
 
     it "takes a version with zeros at its end for the same version" $
       implied
-        [ ([Guard "if MIN_VERSION_base(4,10)"], 0),
-          ([Guard "if MIN_VERSION_base(4,10,0)"], 1)
+        [ ([guardOf "if MIN_VERSION_base(4,10)"], 0),
+          ([guardOf "if MIN_VERSION_base(4,10,0)"], 1)
         ]
         `shouldBe` Nothing
 
     it "rules out a range whose bound another answer contradicts" $
       implied
-        [ ([Guard "if MIN_VERSION_base(4,10,0)"], 1),
-          ([Guard "if MIN_VERSION_base(4,10,0) && !(MIN_VERSION_base(4,12,0))"], 0)
+        [ ([guardOf "if MIN_VERSION_base(4,10,0)"], 1),
+          ([guardOf "if MIN_VERSION_base(4,10,0) && !(MIN_VERSION_base(4,12,0))"], 0)
         ]
         `shouldBe` Nothing
 
     it "rules out a compiler below one version and at least a later one" $
       implied
-        [ ([Guard "if __GLASGOW_HASKELL__ >= 908", Guard "elif __GLASGOW_HASKELL__ >= 906"], 2),
-          ([Guard "if __GLASGOW_HASKELL__ > 906"], 0)
+        [ ([guardOf "if __GLASGOW_HASKELL__ >= 908", guardOf "elif __GLASGOW_HASKELL__ >= 906"], 2),
+          ([guardOf "if __GLASGOW_HASKELL__ > 906"], 0)
         ]
         `shouldBe` Nothing
 

@@ -14,7 +14,9 @@ module Tilia.Cpp.Directives
     describeCppError,
 
     -- * Splitting
-    Guard (..),
+    Guard,
+    guardText,
+    guardOf,
     Configurations (..),
     configurationsOn,
     sameGuard,
@@ -61,7 +63,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 
-import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar)
+import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar, questionOf)
 import Tilia.Doc (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
@@ -231,9 +233,26 @@ inConfiguration answers =
 ----------------------------------------------------------------------------
 -- Splitting
 
--- | One conditional directive, as written after its hash.
-newtype Guard = Guard{guardText :: Text}
-  deriving (Eq, Ord, Show)
+-- | One conditional directive, as written after its hash, equal to another
+-- that asks the same question.
+data Guard = Guard
+  { guardText :: Text,
+    guardQuestion :: Either Text Text
+  }
+  deriving (Show)
+
+instance Eq Guard where
+  a == b = guardQuestion a == guardQuestion b
+
+instance Ord Guard where
+  compare a b = compare (guardQuestion a) (guardQuestion b)
+
+-- | The guard a conditional directive is written with.
+guardOf ::
+  -- | The directive, as written after its hash.
+  Text ->
+  Guard
+guardOf written = Guard written (questionOf written)
 
 -- | What one conditional splits a module into.
 data Configurations = Configurations
@@ -417,8 +436,13 @@ settledBranch known = branchFor (settledGuard known)
 
 -- | Does a guard hold, where what is known settles it and the guard does
 -- not settle itself?
-settledGuard :: Macros -> Guard -> Maybe Bool
-settledGuard known (Guard written) = case guardHolds mempty written of
+settledGuard ::
+  -- | What is known about the macros.
+  Macros ->
+  -- | The guard.
+  Guard ->
+  Maybe Bool
+settledGuard known (Guard written _) = case guardHolds mempty written of
   Just _ -> Nothing
   Nothing -> guardHolds known written
 
@@ -742,11 +766,12 @@ groupSpec ::
   GroupSpec
 groupSpec opener later end nested =
   GroupSpec
-    { gsGuards = [Guard (dText d) | d <- opener : later, dKeyword d /= "else"],
+    { gsGuards = guards,
       gsHasElse = any ((== "else") . dKeyword) later,
       gsConditional =
         Conditional
           { conditionalLines = fmap dLine group,
+            conditionalGuards = fmap guardText guards,
             conditionalElse =
               foldMap afterKeyword (filter ((== "else") . dKeyword) later),
             conditionalEndif = afterKeyword end
@@ -759,6 +784,7 @@ groupSpec opener later end nested =
     }
   where
     group = opener : later <> [end]
+    guards = [guardOf (dText d) | d <- opener : later, dKeyword d /= "else"]
     afterKeyword d = T.drop (T.length (dKeyword d)) (dText d)
 
 -- | The lines of a group's directives, the @#if@ first and the @#endif@ last.

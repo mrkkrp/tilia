@@ -190,6 +190,8 @@ instance Monoid Doc where
 data Conditional = Conditional
   { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
     conditionalLines :: [Int],
+    -- | What follows the hash of its @#if@ and of each @#elif@.
+    conditionalGuards :: [Text],
     -- | What follows the keyword of its @#else@.
     conditionalElse :: Text,
     -- | What follows the keyword of its @#endif@.
@@ -463,6 +465,7 @@ go env = \case
   DCppChoice cs branches fallback -> \out ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
+        guards = maybe (fmap fst branches) conditionalGuards (listToMaybe cs)
         before = maybe 0 lineIndent (listToMaybe (outLines (closeLine 0 out)))
         alternative =
           carryingOn before env{envHeldFlat = False} . case envLayout env of
@@ -470,7 +473,7 @@ go env = \case
             _ -> id
         steps =
           [ [directive type' ("#" <> guard'), alternative taken]
-          | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
+          | (type', guard', (_, taken)) <- zip3 (CppDirectiveOpens : repeat CppDirectiveContinues) guards branches
           ]
             <> [ [directive CppDirectiveContinues ("#else" <> afterElse), alternative fallback]
                | not (printsNothing fallback && T.null afterElse)

@@ -176,6 +176,17 @@ spec = do
     it "says nothing about the value of one that is defined" $
       knownAnswer "if ON" `shouldBe` Nothing
 
+  describe "the question a guard asks" $ do
+    it "is one however a test of whether a macro is defined is spelled" $
+      fmap questionOf ["ifdef X", "if defined(X)", "if  defined ( X )"]
+        `shouldBe` replicate 3 (questionOf "if defined X")
+
+    it "is one for an #ifndef and a negated defined" $
+      questionOf "ifndef X" `shouldBe` questionOf "if !defined(X)"
+
+    it "tells a test of a macro's value from one of whether it is defined" $
+      questionOf "if X" `shouldNotBe` questionOf "ifdef X"
+
   describe "what a guard implies about which macros are defined" $ do
     let defined n = mempty{macroDefined = Set.singleton n}
         notDefined n = mempty{macroUndefined = Set.singleton n}

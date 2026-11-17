@@ -7,6 +7,7 @@ module Tilia.Cpp.Macros
   ( Macros (..),
     guardHolds,
     impliedBy,
+    questionOf,
     isNameChar,
   )
 where
@@ -155,6 +156,32 @@ expressionOf written = case T.span isNameChar (T.stripStart written) of
     nameOf rest = case tokensOf rest of
       Just [Name n] -> Just n
       _ -> Nothing
+
+-- | What a guard asks: its tokens apart by single spaces, with every test
+-- of whether a macro is defined spelled alike, or else what is written.
+questionOf ::
+  -- | The guard, as written after its hash.
+  Text ->
+  Either Text Text
+questionOf written =
+  maybe (Left written) (Right . T.unwords . fmap spelled) $
+    case T.span isNameChar (T.stripStart written) of
+      (keyword, rest)
+        | keyword `elem` ["ifdef", "elifdef"] ->
+            (Name "defined" :) <$> tokensOf rest
+        | keyword `elem` ["ifndef", "elifndef"] ->
+            ([Punct "!", Name "defined"] <>) <$> tokensOf rest
+        | otherwise -> alike <$> tokensOf rest
+  where
+    alike = \case
+      Name "defined" : Punct "(" : Name n : Punct ")" : ts ->
+        Name "defined" : Name n : alike ts
+      t : ts -> t : alike ts
+      [] -> []
+    spelled = \case
+      Name n -> n
+      Number n -> T.pack (show n)
+      Punct p -> p
 
 -- | The expression of a guard.
 data Expr
