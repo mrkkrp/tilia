@@ -317,7 +317,12 @@ declKind = \case
   TyClD _ (FamDecl _ (FamilyDecl _ _ _ (L _ n) _ _ _ _)) ->
     (FamilyDeclaration, [n])
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
-  InstD _ ClsInstD{} -> (InstanceDeclaration, [])
+  InstD _ (ClsInstD _ d) ->
+    ( InstanceDeclaration,
+      foldMap
+        (constructorNames . hsDataFamInstBinders . unLoc)
+        (cid_datafam_insts d)
+    )
   InstD _ TyFamInstD{} -> (TypeInstance, [])
   InstD _ (DataFamInstD _ d) ->
     (DataInstance, constructorNames (hsDataFamInstBinders d))
