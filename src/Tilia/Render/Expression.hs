@@ -710,20 +710,22 @@ stmtBlock ::
     Anno (Stmt GhcPs (XRec GhcPs body)) ~ SrcSpanAnnA,
     Anno body ~ SrcSpanAnnA
   ) =>
+  -- | The context.
   Ctx ->
+  -- | Where the block stands.
   Site ->
+  -- | Each body, as the block hands it on.
   BodyOf body b ->
+  -- | The statements.
   XRec GhcPs [LStmt GhcPs (XRec GhcPs body)] ->
   Doc
 stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
   where
     block xs =
-      itemsOrBraces (getLoc es) (siteBracing site) $
-        keepBlanks
-          (separatedByBlank ctx)
-          [ (spanOf stmt, item position stmt)
-          | (position, stmt) <- positioned xs
-          ]
+      itemsOrBraces (getLoc es) (siteBracing site) (separatedByBlank ctx) $
+        [ (spanOf stmt, item position stmt)
+        | (position, stmt) <- positioned xs
+        ]
     item position stmt =
       blockItem position (siteBracing site) $ \bracing ->
         at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
@@ -772,13 +774,20 @@ comprehensionSections = fmap unnest . branches
 caseOf ::
   ( Body b,
     Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO,
+    Anno [LMatch GhcPs (LocatedA body)] ~ SrcSpanAnnLW,
     Anno (Match GhcPs (LocatedA body)) ~ SrcSpanAnnA
   ) =>
+  -- | The context.
   Ctx ->
+  -- | Where it stands.
   Site ->
+  -- | Each body, as the alternatives hand it on.
   BodyOf body b ->
+  -- | Where its keywords were.
   EpAnnHsCase ->
+  -- | The scrutinee.
   LHsExpr GhcPs ->
+  -- | The alternatives.
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
@@ -796,12 +805,18 @@ caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
 lambda ::
   ( Body b,
     Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO,
+    Anno [LMatch GhcPs (LocatedA body)] ~ SrcSpanAnnLW,
     Anno (Match GhcPs (LocatedA body)) ~ SrcSpanAnnA
   ) =>
+  -- | The context.
   Ctx ->
+  -- | Where it stands.
   Site ->
+  -- | Which of the three spellings.
   HsLamVariant ->
+  -- | Each body, as the alternatives hand it on.
   BodyOf body b ->
+  -- | The alternatives.
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 lambda ctx site variant' mkBody mg = case keyword of
@@ -889,23 +904,22 @@ localBinds ::
   Doc
 localBinds ctx bracing = \case
   HsValBinds ann (ValBinds _ binds sigs) ->
-    anchored ann . align . itemsOrBraces ann bracing $
-      keepBlanks
-        (separatedByBlank ctx)
-        [ (spanOf item, rendered position item)
-        | (position, item) <- positioned sorted
-        ]
+    anchored ann . align . itemsOrBraces ann bracing (separatedByBlank ctx) $
+      [ (spanOf item, rendered position item)
+      | (position, item) <- positioned sorted
+      ]
     where
-      sorted = inSourceOrder [fmap (fmap Left) binds, fmap (fmap Right) sigs]
+      sorted = inSourceOrder [fmap (fmap Left) bound, fmap (fmap Right) sigs]
+      bound = case al_brackets (anns ann) of
+        ListBraces{} -> concatMap equations binds
+        _ -> binds
       rendered position item =
         blockItem position NoBrace $ \b ->
           at ctx item (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx))
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
-    anchored ann . items bracing $
-      keepBlanks
-        (separatedByBlank ctx)
-        [(spanOf x, at ctx x implicitBind) | x <- xs]
+    anchored ann . itemsOrBraces ann bracing (separatedByBlank ctx) $
+      [(spanOf x, at ctx x implicitBind) | x <- xs]
   EmptyLocalBinds _ -> mempty
   where
     implicitBind (IPBind _ n e) =
@@ -922,6 +936,16 @@ localBinds ctx bracing = \case
         | not (isZeroWidthSpan (locA al_anchor)) ->
             atSpan ctx (spanOfSrcSpan (locA al_anchor)) d
       _ -> d
+
+-- | The equations of a binding, each a binding of its own.
+equations ::
+  -- | The binding.
+  LHsBind GhcPs ->
+  [LHsBind GhcPs]
+equations = \case
+  L _ (FunBind x f (MG o (L l ms))) ->
+    [L lm (FunBind x f (MG o (L l [m]))) | m@(L lm _) <- ms]
+  b -> [b]
 
 -- | Where a @do@ or @mdo@ was written.
 doKeywordSpan :: AnnList EpaLocation -> Maybe Span
@@ -1072,17 +1096,25 @@ data GuardStyle
 matchGroup ::
   ( Body b,
     Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO,
+    Anno [LMatch GhcPs (LocatedA body)] ~ SrcSpanAnnLW,
     Anno (Match GhcPs (LocatedA body)) ~ SrcSpanAnnA
   ) =>
+  -- | The context.
   Ctx ->
+  -- | Whether the block may brace itself when flat.
   Bracing ->
+  -- | Each body, as the equations hand it on.
   BodyOf body b ->
+  -- | Which shape the equations take.
   MatchStyle ->
+  -- | The equations.
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 matchGroup ctx bracing mkBody style MG{..}
   | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
-  | otherwise = items blockBracing (fmap rendered (positioned (unLoc mg_alts)))
+  | otherwise =
+      itemsOrBraces (getLoc mg_alts) blockBracing (\_ _ -> False) $
+        [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
   where
     blockBracing = if isCaseStyle style then bracing else NoBrace
     rendered (position, m) =
@@ -1487,18 +1519,21 @@ quoted here opener closer x body =
       ClosedTypeFamily Nothing -> True
       _ -> False
 
--- | 'items', or @{}@ for a block written empty between braces.
+-- | A block 'braced' where it was written between braces, and 'items'
+-- otherwise.
 itemsOrBraces ::
   -- | The block's annotation, which holds its braces.
   EpAnn (AnnList a) ->
   -- | Whether the block may brace itself when flat.
   Bracing ->
-  -- | The items.
-  [Doc] ->
+  -- | Was there an empty line between two items?
+  (Maybe Span -> Maybe Span -> Bool) ->
+  -- | Where each item was, and what it prints as.
+  [(Maybe Span, Doc)] ->
   Doc
-itemsOrBraces ann bracing = \case
-  [] | ListBraces{} <- al_brackets (anns ann) -> txt "{}"
-  xs -> items bracing xs
+itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
+  ListBraces{} -> braced blank
+  _ -> items bracing . keepBlanks blank
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.

@@ -13,6 +13,7 @@ module Tilia.Doc
     Layout (..),
     printDoc,
     leadingComma,
+    leadingSemicolon,
     printsNothing,
     printsOnOneLine,
     foldChildren,
@@ -55,6 +56,11 @@ import Tilia.Span (Span, spanEndLine, spanStartLine)
 -- | A comma leading the item after it, hung two columns left of the item.
 leadingComma :: Doc
 leadingComma = DNest (Columns (-2)) (DText ", ")
+
+-- | A semicolon leading the item after it, hung two columns left of the
+-- item.
+leadingSemicolon :: Doc
+leadingSemicolon = DNest (Columns (-2)) (DText "; ")
 
 -- | Does this document print on one line, holding neither a line break nor
 -- a choice?

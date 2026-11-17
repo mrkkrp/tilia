@@ -11,7 +11,7 @@ post entry = J.do
     J.append account entry
 
 postBoth :: Entry -> Entry -> J.Journal ()
-postBoth a b = J.do post a; post b
+postBoth a b = J.do { post a; post b }
 
 settle :: Entry -> J.Journal ()
 settle entry = J.mdo

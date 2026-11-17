@@ -28,6 +28,7 @@ import Tilia.Doc
     foldChildren,
     layoutInside,
     leadingComma,
+    leadingSemicolon,
     printsNothing,
     unwrap,
     wrap,
@@ -154,7 +155,7 @@ walk margin = go
       | otherwise = step p d
     step p = \case
       DCat a b
-        | a == leadingComma || a == breakOrNothing <> leadingComma,
+        | leadsAnItem a,
           Just s <- openingRegion b,
           (lifted@(_ : _), p0) <- claimOwnLines s p ->
             let (a', p') = go p0 a
@@ -195,6 +196,18 @@ walk margin = go
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
+
+-- | Is this a separator hung left of the item it leads, alone or after the
+-- place the line may break before it?
+leadsAnItem ::
+  -- | The document.
+  Doc ->
+  Bool
+leadsAnItem = \case
+  DCat DSoftBreak d -> hung d
+  d -> hung d
+  where
+    hung d = d == leadingComma || d == leadingSemicolon
 
 -- | The outermost region a document prints first.
 openingRegion ::
