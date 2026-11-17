@@ -11,7 +11,7 @@ instance
 #if __GLASGOW_HASKELL__ >= 710
   {-# OVERLAPPABLE #-}
 #endif
-  (Show a) => Describe [a] where
+  Show a => Describe [a] where
   describe = unwords . map show
 
 newtype Stop = Stop Int

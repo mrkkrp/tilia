@@ -78,18 +78,18 @@ report h status
 
 runFrame ::
 #if defined(ASSERTS)
-  (HasCallStack) =>
+  HasCallStack =>
 #endif
   (forall s. (Buffer s -> Int -> ST s Buffer) -> ST s Buffer) -> Buffer
 runFrame act = runST (act (\buffer used -> shrink buffer used >> freeze buffer))
 
 class
 #if __GLASGOW_HASKELL__ >= 806
-  (forall m. (Monad m) => Monad (t m)) => MonadTrans t where
+  (forall m. Monad m => Monad (t m)) => MonadTrans t where
 #else
   MonadTrans t where
 #endif
-  lift :: (Monad m) => m a -> t m a
+  lift :: Monad m => m a -> t m a
 
 type family
 #if __GLASGOW_HASKELL__ >= 910

@@ -13,7 +13,7 @@ close _ =
     ( -- not yet
     )
 
-purge :: (Monad m) => ({- done -})
+purge :: Monad m => ({- done -})
 purge = undefined
 
 vent :: ({- no pressure -}) -> Valve -> ()

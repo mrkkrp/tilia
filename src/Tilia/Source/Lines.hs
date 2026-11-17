@@ -19,7 +19,6 @@ module Tilia.Source.Lines
     directivePresentOnLine,
     directiveOnLine,
     isDirective,
-    definedMacros,
     conditionalKeywords,
     opensGroup,
     continuesGroup,
@@ -33,12 +32,8 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Maybe (isJust)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-
-import Tilia.Cpp.Macros (isNameChar)
 
 -- | The text of a module as its author wrote it.
 --
@@ -53,10 +48,7 @@ data Lines = Lines
   { -- | Every line of the module as written.
     lnWritten :: !(IntMap Text),
     -- | The ones this configuration does not contain.
-    lnDropped :: !IntSet,
-    -- | The names the module defines with @#define@, in whichever
-    -- configuration.
-    lnMacros :: Set Text
+    lnDropped :: !IntSet
   }
 
 -- | Read the lines of a module, every one of which it has.
@@ -64,13 +56,7 @@ linesOf :: Written -> Lines
 linesOf (Written text) =
   Lines
     { lnWritten = IntMap.fromList (zip [1 ..] (T.lines text)),
-      lnDropped = IntSet.empty,
-      lnMacros =
-        Set.fromList
-          [ T.takeWhile isNameChar (T.stripStart rest)
-          | Just ("define", body) <- fmap directiveOnLine (T.lines text),
-            Just rest <- [T.stripPrefix "define" body]
-          ]
+      lnDropped = IntSet.empty
     }
 
 -- | Drop the given ranges from the 'Lines'.
@@ -147,10 +133,6 @@ directivePresentOnLine ::
   Lines ->
   Bool
 directivePresentOnLine n ls = any isDirective (lineAt n ls)
-
--- | The names the module defines with @#define@, in whichever configuration.
-definedMacros :: Lines -> Set Text
-definedMacros = lnMacros
 
 -- | The keyword a directive line opens with, and everything after its @#@.
 --

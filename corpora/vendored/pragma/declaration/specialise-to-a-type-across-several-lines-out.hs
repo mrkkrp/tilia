@@ -1,6 +1,6 @@
 module Matrix.Scale where
 
-scaleBy :: (Num a) => a -> [a] -> [a]
+scaleBy :: Num a => a -> [a] -> [a]
 scaleBy k = map (* k)
 {-# SPECIALISE scaleBy ::
   Int ->

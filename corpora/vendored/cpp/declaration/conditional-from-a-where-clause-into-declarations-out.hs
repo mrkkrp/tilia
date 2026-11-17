@@ -4,10 +4,10 @@
 -- declarations after it stays one conditional.
 module Data.Witness where
 
-withWitness :: Witness a -> ((Known a) => r) -> r
+withWitness :: Witness a -> (Known a => r) -> r
 withWitness w k = go k
   where
-    go :: ((Known a) => r) -> r
+    go :: (Known a => r) -> r
 #if MIN_VERSION_base(4,17,0)
     go = withDict @(Known a) w
 #else
@@ -17,7 +17,7 @@ withWitness w k = go k
 #if __GLASGOW_HASKELL__ >= 810
 type Wrap :: Type -> Type -> Type
 #endif
-newtype Wrap a r = Wrap ((Known a) => r)
+newtype Wrap a r = Wrap (Known a => r)
 #endif
 
 -- Without an #else.

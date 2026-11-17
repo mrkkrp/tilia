@@ -36,7 +36,7 @@ store
     :: (Show k, Ord k)
 #else
 store
-    :: (Show k)
+    :: Show k
 #endif
     => k -> String
 store = show

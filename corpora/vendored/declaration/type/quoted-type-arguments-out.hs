@@ -8,7 +8,7 @@ arrow = describe (Char → Bool)
 
 quantified = describe (∀ k. Holder k)
 
-constrained = describe ((Readable r) ⇒ r)
+constrained = describe (Readable r ⇒ r)
 
 constrainedTwice = describe ((Readable r, Countable r) ⇒ r)
 

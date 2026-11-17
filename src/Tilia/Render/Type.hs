@@ -39,12 +39,11 @@ where
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (mapMaybe)
-import Data.Set qualified as Set
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
-import GHC.LanguageExtensions.Type (Extension (Cpp, UnicodeSyntax))
-import GHC.Types.Name.Occurrence (isTvOcc, occNameString)
-import GHC.Types.Name.Reader (RdrName, isUnqual, rdrNameOcc)
+import GHC.LanguageExtensions.Type (Extension (UnicodeSyntax))
+import GHC.Types.Basic (funPrec)
+import GHC.Types.Name.Reader (RdrName)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import GHC.Types.Var (Specificity (..))
@@ -56,7 +55,6 @@ import Tilia.Render.Haddock
 import Tilia.Render.Literal (stringLiteral)
 import Tilia.Render.Name
 import Tilia.Render.Operator
-import Tilia.Source (definedMacros, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -347,22 +345,13 @@ spine t =
 context :: Ctx -> LHsContext GhcPs -> Doc
 context ctx l =
   at ctx l $
-    contextOf (ctxCommaStyle ctx) (spanOf l) bare (hsType ctx)
+    contextOf ctx (spanOf l) bare (hsType ctx)
       . fmap unbracket
   where
+    -- funPrec is opPrec, yet a context may be an operator application.
     bare t = case unLoc t of
-      HsTyVar _ _ (L _ n) | isTvOcc (rdrNameOcc n) -> True
-      _ -> headedByMacro t
-    headedByMacro t = case unLoc t of
-      HsTyVar _ _ (L _ n) -> macro n
-      HsAppTy _ f _ -> headedByMacro f
-      _ -> False
-    macro n =
-      extensionOn ctx Cpp
-        && isUnqual n
-        && Set.member
-          (T.pack (occNameString (rdrNameOcc n)))
-          (definedMacros (sourceLines (ctxSource ctx)))
+      HsOpTy{} -> True
+      other -> not (hsTypeNeedsParens funPrec other)
     unbracket t = case unLoc t of
       HsParTy _ inner -> unbracket inner
       _ -> t
@@ -382,9 +371,13 @@ leftContext ctx after ctxt =
     <> joinedByArrow ctx breakOrSpace (spanOf ctxt) after (reserved ctx "=>")
 
 -- | A context over anything that can stand as a constraint.
+--
+-- A lone constraint keeps the parentheses written around it where the
+-- context was written over several lines.
 contextOf ::
-  -- | Where the commas go.
-  CommaStyle ->
+  (HasLoc a) =>
+  -- | The context.
+  Ctx ->
   -- | Where the context was written.
   Maybe Span ->
   -- | Can this constraint, when it is the only one, go without parentheses?
@@ -394,12 +387,15 @@ contextOf ::
   -- | The constraints.
   [a] ->
   Doc
-contextOf commas here bare render = \case
+contextOf ctx here bare render = \case
   [] -> txt "()"
-  [x] | bare x -> render x
+  [x]
+    | bare x,
+      here == spanOf x || maybe True (writtenOnOneLine ctx) here ->
+        render x
   xs ->
     parens . insideBrackets here $
-      commaSep commas (fmap (align . render) xs)
+      commaSep (ctxCommaStyle ctx) (fmap (align . render) xs)
 
 -- | The flags a type variable binder may carry.
 --

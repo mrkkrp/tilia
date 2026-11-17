@@ -13,5 +13,5 @@ compose = id
 {-# INLINE [2] compose #-}
 
 {-# SPECIALISE [1] scale :: Int -> Int #-}
-scale :: (Num a) => a -> a
+scale :: Num a => a -> a
 scale = (* 2)

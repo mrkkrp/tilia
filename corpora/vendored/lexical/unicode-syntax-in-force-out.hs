@@ -12,7 +12,7 @@
 -- comes out in it, whichever form it was written in.
 module Garden.Beds where
 
-apply ∷ ∀ a b. (Show a) ⇒ (a → b) → a → IO b
+apply ∷ ∀ a b. Show a ⇒ (a → b) → a → IO b
 apply f x = do
   y ← pure (f x)
   print x

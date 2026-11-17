@@ -3,7 +3,7 @@ module Pretty.Instances where
 class Pretty a where
     pretty :: a -> String
 
-instance {-# OVERLAPPABLE #-} (Show a) => Pretty a where
+instance {-# OVERLAPPABLE #-} Show a => Pretty a where
     pretty = show
 
 instance {-# OVERLAPPING #-} Pretty String where

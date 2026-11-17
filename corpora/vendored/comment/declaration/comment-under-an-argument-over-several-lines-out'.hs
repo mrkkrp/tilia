@@ -1,7 +1,7 @@
 module Pipe.Catch where
 
 catchWith
-    :: (Monad m)
+    :: Monad m
     => ( m (Proxy a b m r)
          -> (e -> m (Proxy a b m r))
          -> m (Proxy a b m r)

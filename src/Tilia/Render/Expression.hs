@@ -29,9 +29,9 @@ import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
 import GHC.Hs hiding (Fixity, UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (..))
-import GHC.Types.Basic (Boxity (..))
+import GHC.Types.Basic (Boxity (..), funPrec)
 import GHC.Types.Fixity (LexicalFixity (..))
-import GHC.Types.Name.Occurrence (isVarOcc, occNameString)
+import GHC.Types.Name.Occurrence (occNameString)
 import GHC.Types.Name.Reader (RdrName (..), mkVarUnqual, rdrNameOcc)
 import GHC.Types.SrcLoc
   ( GenLocated (..),
@@ -264,9 +264,9 @@ exprBody ctx site here = \case
       ctx
       qs
       ( contextOf
-          (ctxCommaStyle ctx)
+          ctx
           (spanOf qs)
-          loneVariableExpr
+          bare
           (hsExpr ctx)
           . fmap unbracketed
       )
@@ -277,6 +277,11 @@ exprBody ctx site here = \case
         (spanOf e)
         (reserved ctx "=>")
       <> hsExpr ctx e
+    where
+      -- funPrec is opPrec, yet a context may be an operator application.
+      bare c = case unLoc c of
+        OpApp{} -> True
+        other -> not (hsExprNeedsParens funPrec other)
   HsFunArr _ multAnn x y ->
     hsExpr ctx x
       <> joinedByFunctionArrow
@@ -613,12 +618,6 @@ chainPlacement placer leader operand = case operand of
       case (leader, chainSpan spanOf operand) of
         (Just a, Just b) -> spanStartLine a == spanStartLine b
         _ -> False
-
--- | Is this quoted constraint nothing but a variable?
-loneVariableExpr :: LHsExpr GhcPs -> Bool
-loneVariableExpr e = case unLoc e of
-  HsVar _ (L _ n) -> isVarOcc (rdrNameOcc n)
-  _ -> False
 
 -- | What is inside, however many brackets were written around it.
 unbracketed :: LHsExpr GhcPs -> LHsExpr GhcPs

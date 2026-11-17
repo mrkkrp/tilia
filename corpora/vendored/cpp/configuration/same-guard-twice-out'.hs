@@ -11,7 +11,7 @@ import GHC.Stack (HasCallStack)
 
 runFrame ::
 #if defined(ASSERTS)
-    (HasCallStack) =>
+    HasCallStack =>
 #endif
     (forall s. (Buffer s -> Int -> ST s Buffer) -> ST s Buffer) -> Buffer
 runFrame act = runST (act (\buffer used -> shrink buffer used >> freeze buffer))

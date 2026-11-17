@@ -13,7 +13,7 @@ draw _ _ _ = pure ()
 
 fill
     :: forall m
-     . (MonadIO m)
+     . MonadIO m
     -- Only the outline is filled.
     => Shape
     -- ^ What to fill.

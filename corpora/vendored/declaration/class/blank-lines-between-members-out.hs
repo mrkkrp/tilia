@@ -4,7 +4,7 @@ class Storable a where
   put :: a -> Bytes
 
   -- for when there is no hand-written instance
-  default put :: (Generic a) => a -> Bytes
+  default put :: Generic a => a -> Bytes
 
   -- which is what this then uses
   put = genericPut

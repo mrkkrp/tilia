@@ -30,7 +30,7 @@ outline = undefined
 -- lines and before one on a line of its own.
 trace ::
 #if defined(WITH_CALLSTACK)
-  (HasCallStack) =>
+  HasCallStack =>
 #endif
   String ->
   [(String, Int)] ->
@@ -39,7 +39,7 @@ trace = undefined
 
 traceShape ::
 #if defined(WITH_CALLSTACK)
-  (HasCallStack) =>
+  HasCallStack =>
 #endif
   Shape -> IO ()
 traceShape = undefined

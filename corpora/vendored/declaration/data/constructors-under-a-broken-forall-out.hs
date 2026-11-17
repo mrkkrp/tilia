@@ -7,7 +7,7 @@ data Handler
       a
 
 data Hook a
-  = (Show a) =>
+  = Show a =>
     Hook
     { hookRun :: a -> IO ()
     }

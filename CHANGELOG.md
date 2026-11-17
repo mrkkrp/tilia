@@ -348,6 +348,13 @@
   line, leaving its items separated by bare semicolons. Across lines, each
   item after the first is led by a semicolon under the opening brace.
   [PR 494](https://github.com/mrkkrp/tilia/pull/494).
+* A context of one constraint comes out without parentheses, as in `Eq a
+  => a`, and parentheses written around it are dropped where the context
+  is written on one line. They stay where the context is written over
+  several lines, and where the constraint cannot do without them, around
+  a `forall`, a `=>`, an implicit parameter or a kind signature, and so do
+  the ones of `()` and of a tuple of constraints.
+  [PR 493](https://github.com/mrkkrp/tilia/pull/493).
 
 ## Tilia 0.1.4.0
 
