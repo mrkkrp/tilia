@@ -93,7 +93,7 @@ packageRoot = fmap getFilePathNT . parsedField "pkgroot"
 
 -- | A record's field, read as Cabal-syntax reads it, which is how
 -- @ghc-pkg@ writes it.
-parsedField :: (Parsec a) => Text -> Map.Map Text Text -> Maybe a
+parsedField :: Parsec a => Text -> Map.Map Text Text -> Maybe a
 parsedField key fields =
   simpleParsec . T.unpack . T.strip =<< Map.lookup key fields
 

@@ -498,12 +498,12 @@ summarize measured baseline =
         zip (fmap fst both) [change' old new | (old, new) <- retired]
       Nothing ->
         [(k, change' old new) | (k, ((old, _), (new, _))) <- both]
-    change' :: (Integral a) => a -> a -> Double
+    change' :: Integral a => a -> a -> Double
     change' old new = change (fromIntegral old) (fromIntegral new)
 
 -- | How much a quantity moved from the first value to the second, as the
 -- report writes it.
-against :: (Integral a) => a -> a -> String
+against :: Integral a => a -> a -> String
 against old new =
   printf "(%+.2f%%)" (change (fromIntegral old) (fromIntegral new))
 

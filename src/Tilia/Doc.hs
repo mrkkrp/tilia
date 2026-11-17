@@ -85,7 +85,7 @@ printsOnOneLine layout = all single . spineAt layout
 -- | Combine what a function makes of each document directly inside this
 -- one, a variant's broken layout standing for the variant.
 foldChildren ::
-  (Monoid m) =>
+  Monoid m =>
   -- | What to make of each document inside.
   (Doc -> m) ->
   -- | The document.
@@ -121,7 +121,7 @@ regionsIn = foldRegions (\s d inside -> (s, d) : inside)
 -- | Fold the regions a document records, giving each its span, what it
 -- holds, and what the fold made of the regions inside it.
 foldRegions ::
-  (Monoid m) =>
+  Monoid m =>
   -- | What to make of a region, given what was made of those inside it.
   (Span -> Doc -> m -> m) ->
   -- | The document.

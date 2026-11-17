@@ -113,7 +113,7 @@ format source = case result of
 -- cannot expand, a module with more configurations than its budget—and says
 -- nothing about the properties below, so those runs are thrown away rather
 -- than counted as passes.
-formatted :: (Testable p) => CppModule -> (Text -> p) -> Property
+formatted :: Testable p => CppModule -> (Text -> p) -> Property
 formatted m k = case format (sourceOf m) of
   Left _ -> property Discard
   Right out -> property (k out)

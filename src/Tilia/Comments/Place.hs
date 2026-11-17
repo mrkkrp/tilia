@@ -276,7 +276,7 @@ placeComments regions leads fences comments =
     enclosingRegions = enclosures regions (fmap commentSpan comments)
     enclosingFences = enclosures fences (fmap commentSpan comments)
 
-    nearest :: (Ord k) => (Span -> k) -> [Span] -> Maybe Span
+    nearest :: Ord k => (Span -> k) -> [Span] -> Maybe Span
     nearest key = fmap (minimumBy (comparing key)) . NE.nonEmpty
 
 -- | For each inner span that outer spans enclose, the latest start and the

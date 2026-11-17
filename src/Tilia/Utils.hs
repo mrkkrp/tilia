@@ -64,7 +64,7 @@ import System.FilePath (equalFilePath, normalise, splitDirectories)
 import System.IO.Error (ioeGetErrorString)
 
 -- | 'show' a value and take the result as 'Text'.
-tshow :: (Show a) => a -> Text
+tshow :: Show a => a -> Text
 tshow = T.pack . show
 
 -- | Run an action, falling back on the given value if it throws, but for
@@ -220,7 +220,7 @@ spellList items = case reverse items of
 
 -- | Collect the values filed under equal keys, keys in the order they first
 -- appear.
-collected :: (Eq k) => [(k, v)] -> [(k, [v])]
+collected :: Eq k => [(k, v)] -> [(k, [v])]
 collected = foldl put []
   where
     put seen (k, v) = case break ((== k) . fst) seen of

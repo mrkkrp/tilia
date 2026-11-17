@@ -44,11 +44,11 @@ import Tilia.Span.Ghc
 -- For the leaves that have no structure worth walking—numeric literals,
 -- occurrence names, calling conventions. Never for anything that might need
 -- a line break inside it, since the result is emitted as one fragment.
-outputable :: (Outputable a) => a -> Doc
+outputable :: Outputable a => a -> Doc
 outputable = txt . showGhc
 
 -- | The text GHC would show for something.
-showGhc :: (Outputable a) => a -> Text
+showGhc :: Outputable a => a -> Text
 showGhc = T.pack . showSDocUnsafe . ppr
 
 -- | The text the author wrote, when GHC kept it.

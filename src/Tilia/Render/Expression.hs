@@ -404,7 +404,7 @@ arithSeq ctx here closing = \case
 
 -- | One field of a record construction or update.
 fieldBind ::
-  (HasLoc l) =>
+  HasLoc l =>
   Ctx ->
   (GenLocated l a -> Doc) ->
   HsFieldBind (GenLocated l a) (LHsExpr GhcPs) ->
@@ -581,7 +581,7 @@ operatorChain ctx outerSite mkBody isDo =
 -- | Is this a @do@ or @mdo@ block written on one line, with its statements
 -- nearer to where it begins than a step?
 doWithinAStep ::
-  (HasLoc a) =>
+  HasLoc a =>
   -- | The context.
   Ctx ->
   -- | Is this a @do@ block?
@@ -604,7 +604,7 @@ isDoBlock e = case unLoc e of
 -- | Whether an operand hangs, which it can only where it starts on the line
 -- the given span starts on.
 chainPlacement ::
-  (HasLoc a) =>
+  HasLoc a =>
   (a -> Placement) ->
   Maybe Span ->
   OpChain a op ->
@@ -830,7 +830,7 @@ lambda ctx site variant' mkBody mg = case keyword of
 
 -- | An @if@ expression or command.
 ifThenElse ::
-  (Body b) =>
+  Body b =>
   Ctx ->
   (LocatedA body -> b) ->
   AnnsIf ->
@@ -867,7 +867,7 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
 -- | A @let@ expression or command, with @in@ ending its line where it is
 -- one of a chain written that way, and the next on the line under it.
 letIn ::
-  (Body b) =>
+  Body b =>
   Ctx ->
   (LocatedA body -> b) ->
   -- | Whether the body is another @let@.
@@ -1306,7 +1306,7 @@ guardsOf (GRHS _ guards _) = guards
 
 -- | The placement of a body that is the whole of an equation.
 blockPlacement ::
-  (Body b) =>
+  Body b =>
   (LocatedA body -> b) ->
   NonEmpty (LGRHS GhcPs (LocatedA body)) ->
   Placement
@@ -1483,13 +1483,13 @@ quotation ctx here = \case
   TypBr _ ty -> quotedAs "t" ty (hsType ctx ty)
   VarBr _ isSingle n -> txt (if isSingle then "'" else "''") <> name ctx n
   where
-    quotedAs :: (Data a) => Text -> a -> Doc -> Doc
+    quotedAs :: Data a => Text -> a -> Doc -> Doc
     quotedAs flavour = quoted here ("[" <> flavour <> "|") "|]"
 
 -- | The body of a quotation between its brackets, indented where it breaks,
 -- and spaced from them where it may end with a symbol character.
 quoted ::
-  (Data a) =>
+  Data a =>
   -- | Where the quotation is written.
   Maybe Span ->
   -- | The opening bracket.
@@ -1569,7 +1569,7 @@ class Body a where
 
 -- | Print a body and join it to whatever precedes it.
 attachBody ::
-  (Body a) =>
+  Body a =>
   -- | The body.
   a ->
   Doc
