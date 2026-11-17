@@ -31,7 +31,7 @@ alternative ones. Next to it, `hackage.report` explains the failing cases.
 The manifest and the report can be updated like this:
 
 ```console
-$ TILIA_CORPUS_ACCEPT=1 cabal test
+$ TILIA_HACKAGE_ACCEPT=1 cabal test
 ```
 
 Each example of our own in `corpora/vendored` comes with what it formats to,
@@ -203,7 +203,7 @@ To switch to another version of `ghc-lib-parser`:
    $ ./generate-boot-fixities.py --ghc /path/to/ghc-9.16.1/bin/ghc
    ```
 
-5. Record the Hackage corpus again with `TILIA_CORPUS_ACCEPT=1 cabal test`
+5. Record the Hackage corpus again with `TILIA_HACKAGE_ACCEPT=1 cabal test`
    and review every change to `hackage.manifest` and `hackage.report`: a
    module that changes its outcome or its digest is now parsed differently.
 6. The cache keeps summaries of local modules by the version of
