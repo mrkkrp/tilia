@@ -380,6 +380,12 @@
   `?cleanup = do hFlush stdout`, comes out as written, as it does bound to
   a name, rather than between braces nobody wrote.
   [PR 502](https://github.com/mrkkrp/tilia/pull/502).
+* Where a conditional chooses the operator of an equation's or a case
+  alternative's head written infix and the body hangs after the `=` or
+  the `->`, as a `do` block does, the separator ends each branch, with
+  the body after the `#endif` on a line of its own, rather than coming
+  out after the `#endif` with the `do` and moving on the next pass.
+  [PR 505](https://github.com/mrkkrp/tilia/pull/505).
 
 ## Tilia 0.1.4.0
 
