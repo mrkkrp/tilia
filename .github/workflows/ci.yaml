@@ -7,9 +7,12 @@ on:
     types:
       - opened
       - synchronize
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -76,6 +79,8 @@ jobs:
         run: |
           nix build -L --keep-going .#${{ matrix.ghc }}.ci
       - name: Test
+        env:
+          TILIA_ORTHOGONALITY: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |
           tests="$(nix build --no-link --print-out-paths .#${{ matrix.ghc }}.tests-exe)"
           nix develop -L .#${{ matrix.ghc }} -c bash -c "cabal update && TILIA_SHARD=${{ matrix.shard }} $tests/bin/tests"
