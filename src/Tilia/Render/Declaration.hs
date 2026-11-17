@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -301,7 +302,8 @@ declKind = \case
   KindSigD _ (StandaloneKindSig _ (L _ n) _) -> (KindSignature, [n])
   InstD _ ClsInstD{} -> (InstanceDeclaration, [])
   InstD _ TyFamInstD{} -> (TypeInstance, [])
-  InstD _ DataFamInstD{} -> (DataInstance, [])
+  InstD _ (DataFamInstD _ d) ->
+    (DataInstance, constructorNames (hsDataFamInstBinders d))
   DerivD{} -> (DerivingDeclaration, [])
   SpliceD{} -> (SpliceDeclaration, [])
   ForD _ d -> (ForeignDeclaration, unLoc <$> hsForeignDeclsBinders [noLocA d])
@@ -350,15 +352,25 @@ relatedKinds =
 
 -- | The names a type declaration gives its constructors, fields, methods and
 -- associated types.
-memberNames :: TyClDecl GhcPs -> [RdrName]
+memberNames ::
+  -- | The type declaration.
+  TyClDecl GhcPs ->
+  [RdrName]
 memberNames d =
   fmap (unLoc . fst) tyDeclATs
     <> fmap unLoc tyDeclOpSigs
-    <> fmap (unLoc . fst) consWithFieldIndices
-    <> fmap (unLoc . foLabel . unLoc) (toList consFields)
+    <> constructorNames tyDeclConsWithFields
   where
     TyDeclBinders{..} = hsLTyClDeclBinders (noLocA d)
-    LConsWithFields{..} = tyDeclConsWithFields
+
+-- | The names of constructors and their fields.
+constructorNames ::
+  -- | The constructors with their fields.
+  LConsWithFields 'Parsed ->
+  [RdrName]
+constructorNames LConsWithFields{..} =
+  fmap (unLoc . fst) consWithFieldIndices
+    <> fmap (unLoc . foLabel . unLoc) (toList consFields)
 
 -- | Do the two declarations name anything in common?
 shareAName :: [RdrName] -> [RdrName] -> Bool
