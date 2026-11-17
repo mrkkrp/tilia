@@ -132,6 +132,9 @@ spec = do
       it "format however many names they add to one export list" $
         formatCpp settings (exportedOneByOne 200) `shouldSatisfy` isRight
 
+      it "format a list they end, though its commas make them multiply" $
+        formatCpp settings (oneDeclaration 7 0) `shouldSatisfy` isRight
+
       it "are refused once even the sum is more than the budget allows" $
         formatCpp settings (oneDeclaration 100 1000) `shouldSatisfy` isLeft
 
