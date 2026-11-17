@@ -12,8 +12,7 @@ module Tilia.Render.Data
   )
 where
 
-import Data.Choice (Choice, fromBool, isTrue, pattern Isn't)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing, mapMaybe)
 import GHC.Hs
@@ -214,17 +213,9 @@ conDecl ctx _ ConDeclGADT{..} =
           || printsWholeLineDocs ctx argumentsUnder con_res_ty
     argumentsUnder = fromBool (ctxArrowStyle ctx == LeadingArrows)
 
-    c :| cs = con_names
     body =
-      name ctx c
-        <> includeUnless
-          (null cs)
-          ( indent . hangingCommas (ctxCommaStyle ctx) $
-              separatingComma (ctxCommaStyle ctx)
-                <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) cs)
-          )
-        <> nest
-          (if null cs then 1 else 2)
+      ascribedNames ctx (Do #indentTail) con_names sigSpan . brokenForDocs $
+        indent
           ( joinedByArrow
               ctx
               breakOrSpace
