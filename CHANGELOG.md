@@ -336,6 +336,12 @@
   whose names conditionals asking one question write no longer get an empty
   line between them that no configuration has.
   [PR 476](https://github.com/mrkkrp/tilia/pull/476).
+* A list that ends with several items behind conditionals of their own,
+  as many as seven, is no longer refused as having too many
+  configurations to format, and each configuration of a module is
+  formatted once however many ways lead to it, which takes formatting
+  QuickCheck's `Test/QuickCheck/Arbitrary.hs` 17% fewer instructions.
+  [PR 477](https://github.com/mrkkrp/tilia/pull/477).
 
 ## Tilia 0.1.4.0
 

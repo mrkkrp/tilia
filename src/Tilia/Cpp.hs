@@ -31,13 +31,14 @@ import Control.Applicative ((<|>))
 import Control.Monad (join, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
-import Control.Monad.Trans.State.Strict (State, evalState, get, put)
+import Control.Monad.Trans.State.Strict (State, evalState, gets, modify')
 import Data.Foldable (traverse_)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe
   ( catMaybes,
@@ -123,7 +124,7 @@ formatWithCpp parser render path source = do
               (reading formatter (noAnswers source) source)
           )
       )
-      (configurationBudget * linesHeld source)
+      (configurationBudget * linesHeld source, Map.empty)
   formatted <-
     printDoc (rcSettings render) <$> restoreUnprinted source found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
@@ -192,19 +193,24 @@ importBarriers layout groups =
        in not (null held) && not (or held)
 
 -- | Formatting that spends the lines it formats out of the budget left, or
--- fails with a 'CppError'.
-type Spending = ExceptT CppError (State Int)
+-- fails with a 'CppError', and files what each configuration came to under
+-- its text.
+type Spending =
+  ExceptT CppError (State (Int, Map Text (Doc, CommentSummary)))
 
 -- | Give up on formatting the module.
 refuse :: CppError -> Spending a
 refuse = throwE
 
 -- | Take lines out of the budget, or give up where fewer are left.
-spend :: Int -> Spending ()
+spend ::
+  -- | How many lines.
+  Int ->
+  Spending ()
 spend n = do
-  budget <- lift get
+  budget <- lift (gets fst)
   when (budget < n) (refuse TooManyConfigurations)
-  lift (put (budget - n))
+  lift (modify' (\(left, filed) -> (left - n, filed)))
 
 -- | What formatting comes to, or 'Nothing' where it fails for a reason
 -- other than the budget running out. What it spent stays spent.
@@ -298,10 +304,16 @@ formatAllConfigs formatter r = do
   forest <- except (readingForest r)
   case readingApart r of
     Nothing -> do
-      spend (linesHeld source)
-      except (readingFormatted r)
+      done <- lift (gets (Map.lookup source . snd))
+      case done of
+        Just found -> pure found
+        Nothing -> do
+          spend (linesHeld source)
+          found <- except (readingFormatted r)
+          lift (modify' (fmap (Map.insert source found)))
+          pure found
     Just (apart, baseline) -> do
-      budget <- lift get
+      budget <- lift (gets fst)
       let pragma = readingPragma r
           least = max 1 (linesHeld (vaBaseline apart))
           affordable =
