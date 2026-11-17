@@ -874,7 +874,14 @@ letIn ctx bodyOf nested (letToken, inToken) binds body =
     written s d = if chained then fence s d else d
 
 -- | The bindings of a @let@ or a @where@.
-localBinds :: Ctx -> Bracing -> HsLocalBinds GhcPs -> Doc
+localBinds ::
+  -- | The context.
+  Ctx ->
+  -- | Whether the block may brace itself when flat.
+  Bracing ->
+  -- | The bindings.
+  HsLocalBinds GhcPs ->
+  Doc
 localBinds ctx bracing = \case
   HsValBinds ann (ValBinds _ binds sigs) ->
     anchored ann . align . itemsOrBraces ann bracing $
@@ -896,10 +903,15 @@ localBinds ctx bracing = \case
         [(spanOf x, at ctx x implicitBind) | x <- xs]
   EmptyLocalBinds _ -> mempty
   where
-    implicitBind (IPBind _ (L _ n) e) =
-      outputable n
-        <> joinedBy "="
-        <> indent (hsExprIn ctx (withBracing MayBrace plainSite) e)
+    implicitBind (IPBind _ n e) =
+      outputable (unLoc n)
+        <> space
+        <> txt "="
+        <> attach placement (hsExprIn ctx (withBracing MayBrace plainSite) e)
+      where
+        placement
+          | sameLine (spanOf n) (spanOf e) = exprHangs ctx (unLoc e)
+          | otherwise = Normal
     anchored ann d = case ann of
       EpAnn{anns = AnnList{al_anchor}}
         | not (isZeroWidthSpan (locA al_anchor)) ->
