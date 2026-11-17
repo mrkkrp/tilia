@@ -460,6 +460,13 @@ synDecl ctx tyCon fixity HsQTvs{..} rhs =
       spanOf
       (at_ ctx (tyVarBndr ctx))
       hsq_explicit
-    <> indent (space <> txt "=" <> separator <> hsType ctx rhs)
+    <> indent
+      ( space
+          <> txt "="
+          <> layoutFrom
+            ctx
+            (fmap endOf (spanOf tyCon <> spansOf hsq_explicit) <> spanOf rhs)
+            (separator <> hsType ctx rhs)
+      )
   where
     separator = typeBreak (typeIsDocumented (unLoc rhs))

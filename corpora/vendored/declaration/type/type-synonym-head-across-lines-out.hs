@@ -2,8 +2,7 @@ module Http.Route where
 
 type Handler
   request
-  response =
-  request -> IO response
+  response = request -> IO response
 
 type Middleware
   request
@@ -13,5 +12,4 @@ type Middleware
 type ( failure
          `Or` success
      )
-  context =
-  Either (failure, context) (success, context)
+  context = Either (failure, context) (success, context)

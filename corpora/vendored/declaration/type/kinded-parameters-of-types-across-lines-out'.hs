@@ -7,8 +7,7 @@ import Data.Kind (Type)
 type Cell
     ( a
         :: Type
-    ) =
-    Maybe a
+    ) = Maybe a
 
 data
     Column
