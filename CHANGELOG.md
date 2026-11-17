@@ -197,6 +197,9 @@
   lines up with the class after it, as on an instance, rather than coming
   out two columns deeper. [Issue
   434](https://github.com/mrkkrp/tilia/issues/434).
+* A `DEPRECATED` or `WARNING` pragma on an export item other than the
+  first lines up with the items, rather than coming out a step deeper.
+  [Issue 415](https://github.com/mrkkrp/tilia/issues/415).
 
 ## Tilia 0.1.4.0
 

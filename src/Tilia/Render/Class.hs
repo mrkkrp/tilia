@@ -125,7 +125,12 @@ funDep ctx (FunDep _ before after) =
     <> sepBy space (fmap (name ctx) after)
 
 -- | A class instance.
-clsInstDecl :: Ctx -> ClsInstDecl GhcPs -> Doc
+clsInstDecl ::
+  -- | The context.
+  Ctx ->
+  -- | The instance.
+  ClsInstDecl GhcPs ->
+  Doc
 clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
   txt "instance" <> layoutFrom ctx headSpan head' <> body
   where
@@ -133,10 +138,10 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     whereSpan = spanOf (acid_where anns)
 
     head' =
-      foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
-        <> breakOrSpace
+      breakOrSpace
         <> indent
-          ( foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
+          ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
+              <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
               <> at
                 ctx
                 cid_poly_ty
@@ -161,15 +166,20 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
         ]
 
 -- | A standalone @deriving@ declaration.
-standaloneDerivDecl :: Ctx -> DerivDecl GhcPs -> Doc
+standaloneDerivDecl ::
+  -- | The context.
+  Ctx ->
+  -- | The declaration.
+  DerivDecl GhcPs ->
+  Doc
 standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
   txt "deriving" <> space <> strategy
   where
     instanceHead =
       txt "instance"
-        <> foldMap (\w -> breakOrSpace <> at ctx w (warningTxt ctx)) warning
+        <> breakOrSpace
         <> indent
-          ( breakOrSpace
+          ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
               <> hsSigType ctx (hswc_body deriv_type)
           )
