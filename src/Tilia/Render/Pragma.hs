@@ -108,13 +108,14 @@ warned ctx (Warning (namespace, _) names wtxt) =
     (_, category, literals) = warningParts wtxt
 
 -- | A warning attached to a name in an export list or to an instance.
-warningTxt :: Ctx -> WarningTxt GhcPs -> Doc
+warningTxt ::
+  -- | The context.
+  Ctx ->
+  -- | The warning.
+  WarningTxt GhcPs ->
+  Doc
 warningTxt ctx wtxt =
-  indent
-    ( pragma
-        keyword
-        (indent (category <> literalList (ctxCommaStyle ctx) literals))
-    )
+  pragma keyword (indent (category <> literalList (ctxCommaStyle ctx) literals))
   where
     (keyword, category, literals) = warningParts wtxt
 
