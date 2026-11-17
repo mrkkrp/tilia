@@ -401,6 +401,10 @@
   first branch keeps its `where`, rather than losing it, which left the
   configurations taking another branch unable to parse.
   [PR 506](https://github.com/mrkkrp/tilia/pull/506).
+* A class whose members are all behind a conditional keeps its head, with
+  its `where`, before the conditional, rather than in each branch under
+  an `#else` added where none was written.
+  [PR 508](https://github.com/mrkkrp/tilia/pull/508).
 
 ## Tilia 0.1.4.0
 
