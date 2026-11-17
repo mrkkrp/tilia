@@ -355,6 +355,11 @@
   a `forall`, a `=>`, an implicit parameter or a kind signature, and so do
   the ones of `()` and of a tuple of constraints.
   [PR 493](https://github.com/mrkkrp/tilia/pull/493).
+* The right-hand side of a type synonym stays beside its `=` where it is
+  written there, rather than going on a line of its own wherever a
+  parameter on a line of its own or a head over several lines comes
+  before it.
+  [PR 495](https://github.com/mrkkrp/tilia/pull/495).
 
 ## Tilia 0.1.4.0
 
