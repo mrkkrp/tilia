@@ -2564,7 +2564,7 @@ formatted       daebbe191e9f  hspec-core-2.11.17/src/Test/Hspec/Core/Compat.hs
 formatted       d359ec274ec1  hspec-core-2.11.17/src/Test/Hspec/Core/Config.hs
 formatted       fa388ca584df  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Definition.hs
 formatted       4e6730c39263  hspec-core-2.11.17/src/Test/Hspec/Core/Config/Options.hs
-formatted       ae7dce1a5bd5  hspec-core-2.11.17/src/Test/Hspec/Core/Example.hs
+formatted       05e2022e72fc  hspec-core-2.11.17/src/Test/Hspec/Core/Example.hs
 formatted       2d04dcd7f598  hspec-core-2.11.17/src/Test/Hspec/Core/Example/Location.hs
 formatted       97a93954cde5  hspec-core-2.11.17/src/Test/Hspec/Core/Extension.hs
 formatted       6bbc5cc14550  hspec-core-2.11.17/src/Test/Hspec/Core/Extension/Config.hs
