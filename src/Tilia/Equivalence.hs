@@ -53,7 +53,7 @@ import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Types (Unit)
 import Language.Haskell.Syntax.Extension (XRec)
 import Language.Haskell.Syntax.Module.Name (ModuleName)
-import System.IO.Unsafe (unsafePerformIO)
+import System.IO.Unsafe (unsafeDupablePerformIO, unsafePerformIO)
 
 import Tilia.Comments
   ( Comment (..),
@@ -135,7 +135,7 @@ data Verdict
 
 -- | Which of the three a type is, worked out once.
 classify :: TypeRep -> Verdict
-classify rep = unsafePerformIO $ do
+classify rep = unsafeDupablePerformIO $ do
   known <- readIORef classified
   case Map.lookup rep known of
     Just verdict -> pure verdict
