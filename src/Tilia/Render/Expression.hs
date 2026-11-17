@@ -35,6 +35,7 @@ import GHC.Types.Name.Occurrence (isVarOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName (..), mkVarUnqual, rdrNameOcc)
 import GHC.Types.SrcLoc
   ( GenLocated (..),
+    getLoc,
     isZeroWidthSpan,
     noSrcSpan,
     unLoc,
@@ -651,11 +652,8 @@ stmtBody ctx site mkBody = \case
       placement
         | sameLine (spanOf p) (spanOf f) = bodyPlacement bound
         | otherwise = Normal
-  LetStmt _ binds -> txt "let" <> space <> align (bound binds)
-    where
-      bound = \case
-        EmptyLocalBinds _ -> txt "{}"
-        bs -> localBinds ctx (siteBracing site) bs
+  LetStmt _ binds ->
+    txt "let" <> space <> align (localBinds ctx (siteBracing site) binds)
   ParStmt{} ->
     error "Tilia: ParStmt should have been unpacked"
   TransStmt{..} -> layoutFrom ctx own $ case (trS_form, trS_by) of
@@ -715,7 +713,7 @@ stmtBlock ::
 stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
   where
     block xs =
-      items (siteBracing site) $
+      itemsOrBraces (getLoc es) (siteBracing site) $
         keepBlanks
           (separatedByBlank ctx)
           [ (spanOf stmt, item position stmt)
@@ -879,7 +877,7 @@ letIn ctx bodyOf nested (letToken, inToken) binds body =
 localBinds :: Ctx -> Bracing -> HsLocalBinds GhcPs -> Doc
 localBinds ctx bracing = \case
   HsValBinds ann (ValBinds _ binds sigs) ->
-    anchored ann . align . items bracing $
+    anchored ann . align . itemsOrBraces ann bracing $
       keepBlanks
         (separatedByBlank ctx)
         [ (spanOf item, rendered position item)
@@ -1456,6 +1454,19 @@ quoted here opener closer x body =
     isAbstract = \case
       ClosedTypeFamily Nothing -> True
       _ -> False
+
+-- | 'items', or @{}@ for a block written empty between braces.
+itemsOrBraces ::
+  -- | The block's annotation, which holds its braces.
+  EpAnn (AnnList a) ->
+  -- | Whether the block may brace itself when flat.
+  Bracing ->
+  -- | The items.
+  [Doc] ->
+  Doc
+itemsOrBraces ann bracing = \case
+  [] | ListBraces{} <- al_brackets (anns ann) -> txt "{}"
+  xs -> items bracing xs
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.
