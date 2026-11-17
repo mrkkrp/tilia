@@ -95,7 +95,7 @@ typeBody ctx documented here = \case
       <> case unLoc t of
         HsQualTy{} -> recur (unLoc t)
         HsFunTy{} -> hsType ctx t
-        _ -> signaturePart ctx (at_ ctx recur) t
+        _ -> signaturePart ctx recurAt t
   HsTyVar _ promoted n -> promotion promoted n <> name ctx n
   HsAppTy _ f x ->
     let (func, args) = gatherAppArgs f [x]
@@ -109,7 +109,7 @@ typeBody ctx documented here = \case
     signaturePart ctx (hsType ctx) x
       <> joinedByFunctionArrow
         ctx
-        (at_ ctx recur)
+        recurAt
         betweenArgs
         (spanOf x)
         (spanOf y)
@@ -118,7 +118,7 @@ typeBody ctx documented here = \case
     where
       result = case unLoc y of
         HsFunTy{} -> recur (unLoc y)
-        _ -> signaturePart ctx (at_ ctx recur) y
+        _ -> signaturePart ctx recurAt y
       fenced = case ctxArrowStyle ctx of
         TrailingArrows -> fence (fmap endOf (arrowSpan multAnn) <> spanOf y)
         LeadingArrows -> id
@@ -186,6 +186,7 @@ typeBody ctx documented here = \case
     HsRecTy _ fields -> recordFields ctx Nothing fields
   where
     recur = typeBody ctx documented Nothing
+    recurAt l = at ctx l (typeBody ctx documented (spanOf l))
     betweenArgs = typeBreak (isTrue documented)
 
 -- | A part of a signature's type that goes on a line of its own, with its
