@@ -386,6 +386,13 @@
   the body after the `#endif` on a line of its own, rather than coming
   out after the `#endif` with the `do` and moving on the next pass.
   [PR 505](https://github.com/mrkkrp/tilia/pull/505).
+* Code under a conditional that the answers to one around a `LANGUAGE`
+  pragma settle, each of its branches by one of them, as
+  `#ifdef PLAIN_RECORDS` around `{-# LANGUAGE NoOverloadedRecordDot #-}`
+  settles a later `#ifndef PLAIN_RECORDS`, is no longer copied into a
+  branch inside it that the conditional around it rules out, read there
+  with the extensions of an answer that does not take it.
+  [PR 498](https://github.com/mrkkrp/tilia/pull/498).
 
 ## Tilia 0.1.4.0
 
