@@ -331,6 +331,11 @@
   goes on with a class whose head each branch writes, with a member of its
   own under it in only some of them.
   [PR 475](https://github.com/mrkkrp/tilia/pull/475).
+* A type signature and the binding right under it with a directive between
+  them stay together whatever each names, so a signature and its equation
+  whose names conditionals asking one question write no longer get an empty
+  line between them that no configuration has.
+  [PR 476](https://github.com/mrkkrp/tilia/pull/476).
 
 ## Tilia 0.1.4.0
 
