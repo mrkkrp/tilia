@@ -136,6 +136,7 @@ vendoredExamples =
               expectDeclined =
                 [ "pragma" </> "position" </> "position-pragmas.hs",
                   "pragma" </> "position" </> "line-markers.hs",
+                  "pragma" </> "position" </> "position-pragma-after-a-string-gap.hs",
                   "cpp" </> "directive" </> "unbalanced.hs",
                   "cpp" </> "directive" </> "include-in-a-quasi-quotation.hs",
                   "cpp" </> "macro" </> "macro-standing-for-a-bracket.hs",
