@@ -293,7 +293,14 @@ byFlagName flags =
 -- | Carry on past the code of a module with these extensions in force, over
 -- its strings, characters and quasi-quotations, up to a line that GHC's
 -- lexer reads past and formatting would lose.
-pastCode :: [Extension] -> (Text -> [Bool]) -> Text -> [Bool]
+pastCode ::
+  -- | The extensions in force.
+  [Extension] ->
+  -- | How to carry on from where a piece of code ends.
+  (Text -> [Bool]) ->
+  -- | What is left of the module.
+  Text ->
+  [Bool]
 pastCode extensions = past
   where
     past go t = case T.uncons t of
@@ -328,7 +335,8 @@ pastCode extensions = past
 
     inString t
       | T.null t = t
-      | Just after <- T.stripPrefix "\\" t = skipString (T.drop 1 after)
+      | Just after <- T.stripPrefix "\\" t =
+          skipString (T.drop 1 (T.dropWhile isSpace after))
       | Just after <- T.stripPrefix "\"" t = after
       | otherwise = skipString (T.drop 1 t)
 
