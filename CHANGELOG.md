@@ -365,6 +365,12 @@
   than breaking them over several wherever the type goes on a line of its
   own, and a type written beside the last of names written across lines
   stays beside it. [PR 497](https://github.com/mrkkrp/tilia/pull/497).
+* A line comment written on the line of an implicit parameter's binding,
+  after its `=` or before it, ends that line after the `=`, as on the
+  line of an ordinary binding, rather than going on a line of its own
+  above the right-hand side, and a block comment written before the `=`
+  stays there.
+  [PR 499](https://github.com/mrkkrp/tilia/pull/499).
 
 ## Tilia 0.1.4.0
 

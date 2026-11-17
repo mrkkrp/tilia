@@ -922,7 +922,7 @@ localBinds ctx bracing = \case
   EmptyLocalBinds _ -> mempty
   where
     implicitBind (IPBind _ n e) =
-      outputable (unLoc n)
+      at ctx n outputable
         <> space
         <> txt "="
         <> attach placement (hsExprIn ctx (withBracing MayBrace plainSite) e)
