@@ -471,10 +471,10 @@ operatorChain ::
   (NonEmpty a, [LHsExpr GhcPs]) ->
   Doc
 operatorChain ctx outerSite mkBody isDo =
-  render outerSite . uncurry (associate (fixityOf ctx))
+  render False outerSite . uncurry (associate (fixityOf ctx))
   where
     hangs = bodyPlacement . mkBody plainSite
-    render site = \case
+    render afterOperator site = \case
       Operand e -> printBody (mkBody site e)
       chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
@@ -498,14 +498,19 @@ operatorChain ctx outerSite mkBody isDo =
             Operand _ -> False
           laidOut bracing =
             infrangible
-              (render (withBracing (firstBracing bracing) site) firstOne)
+              ( render
+                  afterOperator
+                  (withBracing (firstBracing bracing) site)
+                  firstOne
+              )
               <> foldr (piece bracing) mempty (links operands operators)
           -- A step would carry the operators on the last statement of a do
-          -- block written on one line before them. They stay at the chain's
-          -- indentation instead, as Fourmolu has them, but in a block, where
-          -- that would begin a statement, the do block is braced.
+          -- block written on one line before them, unless an operator puts
+          -- the block further right. They stay at the chain's indentation
+          -- instead, as Fourmolu has them, but in a block, where that would
+          -- begin a statement, the do block is braced.
           leadingDo = case firstOne of
-            Operand e -> doWithinAStep ctx isDo e
+            Operand e -> not afterOperator && doWithinAStep ctx isDo e
             Chain{} -> False
           firstBracing bracing
             | leadingDo && siteInBlock site = MayBrace
@@ -522,7 +527,7 @@ operatorChain ctx outerSite mkBody isDo =
                 kept
                   | isLast = id
                   | otherwise = infrangible
-                rendered = kept (render operandSite operand)
+                rendered = kept (render (not trailing) operandSite operand)
              in if trailing
                   then
                     space
