@@ -217,6 +217,7 @@ groupDecls ctx isSignatureFile (d : ds)
     belongs gathered current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
         || isSeries ctx previous current
+        || signsAcrossDirective ctx previous current
         || ( any (`relatedDecls` current) gathered
                && not (separatedByBlank ctx (spanOf previous) (spanOf current))
            )
@@ -241,6 +242,22 @@ isSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
   _ -> False
   where
     ranTogether = not (separatedByBlank ctx (spanOf x) (spanOf y))
+
+-- | A type signature and the binding under it that a directive separates
+-- with no empty line between, whatever each names.
+signsAcrossDirective ::
+  -- | The context.
+  Ctx ->
+  -- | The signature.
+  LHsDecl GhcPs ->
+  -- | The binding under it.
+  LHsDecl GhcPs ->
+  Bool
+signsAcrossDirective ctx x@(L _ a) y@(L _ b) = case (a, b) of
+  (SigD _ TypeSig{}, ValD _ FunBind{}) ->
+    directiveBetween ctx (spanOf x) (spanOf y)
+      && not (separatedByBlank ctx (spanOf x) (spanOf y))
+  _ -> False
 
 -- | The kinds of declaration that grouping distinguishes.
 data Kind
