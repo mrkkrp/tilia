@@ -10,12 +10,14 @@ expire = id
 
 instance
   {-# WARNING "Showing a token prints it." #-}
-  Show Token where
+  Show Token
+  where
   show (Token t) = t
 
 instance
   {-# WARNING "Comparing tokens takes time." #-}
-  Eq Token where
+  Eq Token
+  where
   Token a == Token b = a == b
 
 deriving instance {-# WARNING "The order says nothing." #-} Ord Token

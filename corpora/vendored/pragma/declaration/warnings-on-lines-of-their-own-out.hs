@@ -13,7 +13,8 @@ newtype Secret = Secret String
 
 instance
   {-# WARNING "Showing a secret prints it, so it is best left to tests." #-}
-  Show Secret where
+  Show Secret
+  where
   show (Secret s) = s
 
 deriving instance

@@ -152,7 +152,8 @@ clsInstDecl ::
 clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
   txt "instance" <> layoutFrom ctx headSpan head' <> body
   where
-    headSpan = foldMap spanOf warning <> spanOf cid_poly_ty
+    headSpan = foldMap spanOf warning <> typeSpan
+    typeSpan = spanOf cid_poly_ty
     whereSpan = spanOf (acid_where anns)
 
     head' =
@@ -160,15 +161,12 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
         <> indent
           ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
-              <> at
-                ctx
-                cid_poly_ty
-                ( \sigTy ->
-                    hsSigTypeBody ctx sigTy
-                      <> includeUnless
-                        (null members)
-                        (breakOrSpace <> keywordAt ctx whereSpan "where")
-                )
+              <> ( maybe id located typeSpan $
+                     layoutFrom ctx typeSpan (hsSigTypeBody ctx (unLoc cid_poly_ty))
+                       <> includeUnless
+                         (null members)
+                         (breakOrSpace <> keywordAt ctx whereSpan "where")
+                 )
           )
 
     body =

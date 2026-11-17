@@ -7,3 +7,6 @@ class (Ord thread, Show thread, Hashable thread, Monoid (Spool thread)) => Threa
 
 instance (Ord thread, Show thread, Hashable thread) => Threadable (Warp thread Cotton) where
   spin = spinWarp
+
+instance (Ord thread, Show thread, Hashable thread) => Threadable (Weft thread) where
+  spin = spinWeft
