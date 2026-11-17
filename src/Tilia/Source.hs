@@ -20,7 +20,6 @@ module Tilia.Source
     directivePresentOnLine,
     directiveOnLine,
     isDirective,
-    definedMacros,
 
     -- * Its comments
     comments,

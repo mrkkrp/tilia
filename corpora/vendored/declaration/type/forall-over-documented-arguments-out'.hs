@@ -2,7 +2,7 @@ module Cache.Evict where
 
 evict
     :: forall k
-     . (Ord k)
+     . Ord k
     => forall v
      . Int
     -- ^ How many entries to keep.
@@ -14,7 +14,7 @@ evict = undefined
 
 refresh
     :: forall k
-     . (Ord k)
+     . Ord k
     => forall v
      . k
     -- ^ The key to refresh.

@@ -6,6 +6,6 @@ import Control.Exception
 #ifdef X
     hiding (throw)
 
-throw :: (Exception e) => e -> a
+throw :: Exception e => e -> a
 throw = undefined
 #endif

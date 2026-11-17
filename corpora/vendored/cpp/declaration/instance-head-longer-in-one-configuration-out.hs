@@ -10,13 +10,13 @@ instance
   Show (Entry account currency amount)
   where
 #else
-  (Show account) => Show (Entry account currency amount) where
+  Show account => Show (Entry account currency amount) where
 #endif
   show _ = "entry"
 
 instance
 #if defined(LENIENT)
-  (Eq account) => Eq (Entry account currency amount) where
+  Eq account => Eq (Entry account currency amount) where
 #else
   (Eq account, Eq currency, Eq amount) => Eq (Entry account currency amount)
   where

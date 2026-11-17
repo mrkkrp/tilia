@@ -3,7 +3,7 @@
 module Laws.Mod (laws) where
 
 #ifdef MIN_VERSION_semirings
-laws :: (Ring a) => Proxy a -> [Laws]
+laws :: Ring a => Proxy a -> [Laws]
 #else
 laws :: Proxy a -> [Laws]
 #endif

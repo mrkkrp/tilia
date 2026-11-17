@@ -15,5 +15,5 @@ class Shuttle shuttle where
 selvedge loom = edgeThreads loom
   where
     edgeThreads ::
-      (Ord thread) => Loom thread -> Map thread Colour -> [(thread, Colour)]
+      Ord thread => Loom thread -> Map thread Colour -> [(thread, Colour)]
     edgeThreads = undefined

@@ -7,6 +7,6 @@ module Query.Shape where
 
 data Query a where
   Fetch :: (forall b. Query b)
-  Guarded :: ((Show a) => Query a)
+  Guarded :: (Show a => Query a)
   Late :: Int -> forall b. b -> Query b
-  Checked :: Int -> (Show a) => Query a
+  Checked :: Int -> Show a => Query a

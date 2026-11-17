@@ -6,7 +6,7 @@ module Pantry.Shelf (Shelved (..)) where
 
 #ifdef WITH_ORDER
 -- | Things that go on a shelf in order.
-class (Ord e) => Shelved e where
+class Ord e => Shelved e where
 #else
 -- | Things that go on a shelf.
 class Shelved e where

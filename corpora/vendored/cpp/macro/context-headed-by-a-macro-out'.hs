@@ -19,7 +19,7 @@ firstOf
     => t a -> a
 firstOf = foldr const (error "empty")
 
-same :: (Eq a) => a -> a -> Bool
+same :: Eq a => a -> a -> Bool
 same = (==)
 
 class Pretty a where

@@ -7,7 +7,7 @@ import Data.Char (toLower)
 #if MIN_VERSION_base(4,8,0)
 import Data.List (sortOn)
 #else
-sortOn :: (Ord b) => (a -> b) -> [a] -> [a]
+sortOn :: Ord b => (a -> b) -> [a] -> [a]
 sortOn _ = id
 #endif
 

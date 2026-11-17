@@ -18,12 +18,12 @@ import Language.Haskell.TH.Syntax (Lift (..))
 data SCC v = AcyclicSCC v
 
 #ifdef __GLASGOW_HASKELL__
-deriving instance (Show v) => Show (SCC v)
+deriving instance Show v => Show (SCC v)
 
 #if MIN_VERSION_template_haskell(2,15,0)
-deriving instance (Lift v) => Lift (SCC v)
+deriving instance Lift v => Lift (SCC v)
 #else
-instance (Lift v) => Lift (SCC v) where
+instance Lift v => Lift (SCC v) where
   lift (AcyclicSCC v) = [|AcyclicSCC v|]
 #endif
 #endif
