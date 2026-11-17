@@ -317,6 +317,11 @@
   after the `=` where it was written there, as one bound to an ordinary
   name does, rather than going on a line of its own under the `=`.
   [PR 470](https://github.com/mrkkrp/tilia/pull/470).
+* Where a conditional chooses the operator of an equation's or a case
+  alternative's head written infix, the `=` or the `->` after the head
+  ends each branch, with the body after the `#endif`, rather than coming
+  out after the `#endif` with the body and moving on the next pass.
+  [PR 472](https://github.com/mrkkrp/tilia/pull/472).
 
 ## Tilia 0.1.4.0
 

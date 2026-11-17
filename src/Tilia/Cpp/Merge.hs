@@ -1113,11 +1113,23 @@ opensWithSpace layout d = case spineAt layout d of
   [] -> False
 
 -- | What a document puts on the line it continues, and the rest of it, cut
--- through the nests around it.
-lineOf :: Layout -> Doc -> (Doc, Doc)
+-- through the nests around it before the first break, a frangible group
+-- that opens with one laid out broken.
+lineOf ::
+  -- | The layout of the group the document is printed in.
+  Layout ->
+  -- | The document.
+  Doc ->
+  (Doc, Doc)
 lineOf layout d = case spineAt layout d of
   [DNest n x] -> bimap (DNest n) (DNest n) (lineOf layout x)
-  xs -> bimap mconcat mconcat (break (opensWithBreak layout) xs)
+  xs -> case break (opensWithBreak layout . broken) xs of
+    (line, x : rest) -> (mconcat line, mconcat (broken x : rest))
+    (line, []) -> (mconcat line, mempty)
+  where
+    broken = \case
+      DGroup Frangible x -> DGroup Broken x
+      x -> x
 
 -- | Does this document print one token, spaces aside?
 printsOneToken :: Layout -> Doc -> Bool
