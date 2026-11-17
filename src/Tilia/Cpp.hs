@@ -553,19 +553,20 @@ together formatter reached c
     parser = formatterParser formatter
     texts = cfgTexts c
     formatted settle = do
-      let tries =
-            (if settle then settling else fmap (pure . (,) [])) $
+      let (settledBy, tries) =
+            unzip . (if settle then settling else fmap ((,) [] . pure)) $
               [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
-          answers = fmap (snd . NE.head) tries
+          answers = fmap NE.head tries
       found <- fmap catMaybes . for (zip [0 ..] tries) $ \(i, ts) ->
-        if null (unconditionalErrors (snd (snd (NE.head ts))))
+        if null (unconditionalErrors (snd (NE.head ts)))
           then Just . (,) i <$> firstParsed ts
           else pure Nothing
       docs <-
-        except . traverse (complete [(i, d) | (i, (_, (d, _))) <- found]) $
+        except . traverse (complete (fmap (fmap fst) found)) $
           zip [0 ..] (fmap snd answers)
-      let settledIn i =
-            maybe (foldMap (fst . snd) (listToMaybe found)) fst (lookup i found)
+      let settledIn i
+            | Just _ <- lookup i found = settledBy !! i
+            | otherwise = foldMap ((settledBy !!) . fst) (listToMaybe found)
           settled = settledAcross (fmap settledIn [0 .. length answers - 1])
           ranges = mapMaybe (conditionalRange . settledConditional) settled
           varied = Varied (variedLines (variedBy parser c) <> ranges)
@@ -578,15 +579,14 @@ together formatter reached c
               varied
               settled
               docs
-      pure ((merged, foldMap (snd . snd . snd) found), blindOver ranges merged)
-    firstParsed ((settledBy, (r, t)) :| rest) =
-      ((,) settledBy <$> formatAllConfigs formatter (readingOf r t))
-        `catchE` \case
-          ConfigurationNotParsed answers _
-            | isNothing (implied answers),
-              next : more <- rest ->
-                firstParsed (next :| more)
-          e -> refuse e
+      pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
+    firstParsed ((r, t) :| rest) =
+      formatAllConfigs formatter (readingOf r t) `catchE` \case
+        ConfigurationNotParsed answers _
+          | isNothing (implied answers),
+            next : more <- rest ->
+              firstParsed (next :| more)
+        e -> refuse e
     blindOver ranges d = case d of
       DCppChoice [] bs _
         | fmap fst bs == fmap guardText (cfgGuards c),
@@ -701,28 +701,26 @@ without gone reached =
 settling ::
   -- | Each answer, and the configuration it gives.
   [(Reached, Text)] ->
-  -- | Each answer's settled conditionals and its configuration with them
-  -- taken, in the order to try them.
-  [NonEmpty ([(GroupSpec, Int)], (Reached, Text))]
+  -- | Each answer's settled conditionals, and its configurations with
+  -- them taken, first only those another answer leaves open.
+  [([(GroupSpec, Int)], NonEmpty (Reached, Text))]
 settling given =
-  [ fmap taking (settled :| [more | length more > length settled])
+  [ (more, fmap taking (settled :| [more | length more > length settled]))
   | ((reached, t), (candidates, _)) <- zip given found,
     let among ws = [s | s@(gs, _) <- candidates, Set.member (gsWhole gs) ws]
         settled = among open
         more = among (open <> covered)
         taking ss =
-          ( ss,
-            ( reached
-                { reachedAnswers =
-                    reachedAnswers reached
-                      <> [(gsGuards gs, k) | (gs, k) <- ss],
-                  reachedLines =
-                    dropping
-                      (concatMap (uncurry droppedFor) ss)
-                      (reachedLines reached)
-                },
-              blanking (concatMap (uncurry blankingFor) ss) t
-            )
+          ( reached
+              { reachedAnswers =
+                  reachedAnswers reached
+                    <> [(gsGuards gs, k) | (gs, k) <- ss],
+                reachedLines =
+                  dropping
+                    (concatMap (uncurry droppedFor) ss)
+                    (reachedLines reached)
+              },
+            blanking (concatMap (uncurry blankingFor) ss) t
           )
   ]
   where

@@ -15,7 +15,8 @@ import Data.Bifunctor (bimap)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
-  ( groupBy,
+  ( find,
+    groupBy,
     isPrefixOf,
     maximumBy,
     minimumBy,
@@ -67,8 +68,8 @@ import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
 data Settled = Settled
   { -- | The conditional, as written.
     settledConditional :: Conditional,
-    -- | The branch each answer settles it on, or 'Nothing' where it is
-    -- left open.
+    -- | The branch each answer settles it on, though it may print the
+    -- conditional whole, or 'Nothing' where it leaves it open.
     settledBranches :: [Maybe Int]
   }
 
@@ -136,7 +137,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
                     Just (fmap snd cs <> [e])
               _ -> Nothing,
           Just (merged, fallback) <-
-            unsnoc (fmap (go layout) (transpose alternatives)) ->
+            unsnoc . fmap (go layout) $
+              zipWith (asTaken ws) [0 ..] (transpose alternatives) ->
             Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
       _
         | Just spans <- traverse regionOf xs,
@@ -576,16 +578,27 @@ merge settings written conditionals guards varied settledOthers = go Broken
       Nothing -> mempty
 
     settledChoice ds s = do
-      open' <- listToMaybe [d | (d, Nothing) <- zip ds (settledBranches s)]
-      (bs, e) <- case filter (not . onlySpacing) (spine open') of
-        [DCppChoice cs bs e] | settledConditional s `elem` cs -> Just (bs, e)
-        _ -> Nothing
-      let printed = maybe open' (\k -> maybe e snd (listToMaybe (drop k bs)))
+      (open', bs, e) <-
+        listToMaybe
+          [ (d, bs, e)
+          | d <- ds,
+            [DCppChoice cs bs e] <- [filter (not . onlySpacing) (spine d)],
+            settledConditional s `elem` cs
+          ]
+      let taken k = maybe e snd (listToMaybe (drop k bs))
           printsAlike a b =
             agree varied Broken a b || (printsNothing a && printsNothing b)
-      if and (zipWith (printsAlike . printed) (settledBranches s) ds)
+          fits k d =
+            any (\j -> printsAlike (taken j) d) k || printsAlike open' d
+      if and (zipWith fits (settledBranches s) ds)
         then Just open'
         else Nothing
+
+    asTaken ws k alternatives = fromMaybe alternatives $ do
+      s <- find ((`elem` ws) . settledConditional) settledOthers
+      let taking = fmap (all (== k)) (settledBranches s)
+      taken <- listToMaybe [a | (a, True) <- zip alternatives taking]
+      Just [if t then a else taken | (a, t) <- zip alternatives taking]
 
     evidenced ds c = case conditionalRange c of
       Just (from, to) ->
