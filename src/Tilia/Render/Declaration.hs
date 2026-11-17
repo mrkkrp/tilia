@@ -217,7 +217,7 @@ groupDecls ctx isSignatureFile (d : ds)
     belongs gathered current =
       (not isSignatureFile && isSignatureSeries ctx previous current)
         || isSeries ctx previous current
-        || signsAcrossDirective ctx previous current
+        || signsAcrossDirective ctx gathered current
         || ( any (`relatedDecls` current) gathered
                && not (separatedByBlank ctx (spanOf previous) (spanOf current))
            )
@@ -243,21 +243,24 @@ isSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
   where
     ranTogether = not (separatedByBlank ctx (spanOf x) (spanOf y))
 
--- | A type signature and the binding under it that a directive separates
--- with no empty line between, whatever each names.
+-- | A type signature and the binding under it, past any pragmas, that a
+-- directive separates with no empty line between, whatever each names.
 signsAcrossDirective ::
   -- | The context.
   Ctx ->
-  -- | The signature.
-  LHsDecl GhcPs ->
-  -- | The binding under it.
+  -- | The declarations gathered above the binding, the nearest first.
+  NonEmpty (LHsDecl GhcPs) ->
+  -- | The binding.
   LHsDecl GhcPs ->
   Bool
-signsAcrossDirective ctx x@(L _ a) y@(L _ b) = case (a, b) of
-  (SigD _ TypeSig{}, ValD _ FunBind{}) ->
-    directiveBetween ctx (spanOf x) (spanOf y)
-      && not (separatedByBlank ctx (spanOf x) (spanOf y))
-  _ -> False
+signsAcrossDirective ctx above y =
+  case (unLoc y, NE.dropWhile isPragma above) of
+    (ValD _ FunBind{}, x@(L _ (SigD _ TypeSig{})) : _) ->
+      directiveBetween ctx (spanOf x) (spanOf y)
+        && not (separatedByBlank ctx (spanOf x) (spanOf y))
+    _ -> False
+  where
+    isPragma = (== PragmaDeclaration) . fst . declKind . unLoc
 
 -- | The kinds of declaration that grouping distinguishes.
 data Kind
