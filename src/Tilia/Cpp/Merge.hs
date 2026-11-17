@@ -117,7 +117,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged) ->
-                  choice (fmap Doc.infrangible xs)
+                  choice $ case fmap regionOf xs of
+                    r : rs | all (== r) rs -> xs
+                    _ -> fmap Doc.infrangible xs
             (WGroup _, merged)
               | ls@(l : more) <- [l | (WGroup l, _) <- wds],
                 any (/= l) more ->
