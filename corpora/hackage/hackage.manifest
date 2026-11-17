@@ -2774,9 +2774,9 @@ formatted       fe236160e38c  idris-1.3.4/src/Idris/Output.hs
 formatted       afc6fccadf6a  idris-1.3.4/src/Idris/Package.hs
 formatted       2a5fae85b8c9  idris-1.3.4/src/Idris/Package/Common.hs
 formatted       81b4b5e88a98  idris-1.3.4/src/Idris/Package/Parser.hs
-formatted       10553d0328a2  idris-1.3.4/src/Idris/Parser.hs
+formatted       1c1cb3de3948  idris-1.3.4/src/Idris/Parser.hs
 formatted       a4063dca113d  idris-1.3.4/src/Idris/Parser/Data.hs
-formatted       0c9b27dd5bf1  idris-1.3.4/src/Idris/Parser/Expr.hs
+formatted       71537e92455b  idris-1.3.4/src/Idris/Parser/Expr.hs
 formatted       0325561bd71f  idris-1.3.4/src/Idris/Parser/Helpers.hs
 formatted       8cc96c281ed7  idris-1.3.4/src/Idris/Parser/Ops.hs
 formatted       fdb8c26e5e91  idris-1.3.4/src/Idris/Parser/Stack.hs

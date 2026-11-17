@@ -370,12 +370,8 @@ widenTrigger c
     Just (upToTrigger, body) <- splitTrigger headLine,
     not (T.null body),
     not (" " `T.isPrefixOf` body) =
-      c{commentBody = (upToTrigger <> " " <> body) :| fmap shiftOne rest}
+      c{commentBody = (upToTrigger <> " " <> body) :| rest}
   | otherwise = c
-  where
-    shiftOne l = case openerWidth l of
-      Just _ -> l
-      Nothing -> " " <> l
 
 -- | Put a backslash in front of a doc comment's trigger.
 --
