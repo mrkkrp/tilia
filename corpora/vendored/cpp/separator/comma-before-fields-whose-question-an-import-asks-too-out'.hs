@@ -15,7 +15,6 @@ data Recipe = Recipe
     , salt :: !Int
     , sugar :: !Int
 #endif
-
 #if MIN_VERSION_bakery(2,3,0) && !GLUTEN_FREE
     , yeast :: !(Maybe Yeast)
     , rising :: !Bool

@@ -2993,7 +2993,7 @@ formatted       5c275ed352be  lifted-base-0.2.3.12/Control/Concurrent/MVar/Lifte
 formatted       b4e44ea8454d  lifted-base-0.2.3.12/Control/Concurrent/QSem/Lifted.hs
 formatted       6f6da5b391ba  lifted-base-0.2.3.12/Control/Concurrent/QSemN/Lifted.hs
 formatted       ecad44f39702  lifted-base-0.2.3.12/Control/Concurrent/SampleVar/Lifted.hs
-formatted       5c5213e893fa  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
+formatted       af721342a385  lifted-base-0.2.3.12/Control/Exception/Lifted.hs
 formatted       cbd2c041506d  lifted-base-0.2.3.12/Data/IORef/Lifted.hs
 formatted       0232c1b3e9de  lifted-base-0.2.3.12/Foreign/Marshal/Utils/Lifted.hs
 formatted       e865ae48f11b  lifted-base-0.2.3.12/Setup.hs
@@ -4902,7 +4902,7 @@ formatted       a772e4fa9302  unliftio-0.2.25.1/src/UnliftIO/IORef.hs
 formatted       6112de0cf7c1  unliftio-0.2.25.1/src/UnliftIO/Internals/Async.hs
 formatted       fba9b81b2a00  unliftio-0.2.25.1/src/UnliftIO/MVar.hs
 formatted       596804b2abe4  unliftio-0.2.25.1/src/UnliftIO/Memoize.hs
-formatted       f4896c1500bb  unliftio-0.2.25.1/src/UnliftIO/Process.hs
+formatted       f536f5c9e5da  unliftio-0.2.25.1/src/UnliftIO/Process.hs
 formatted       ed1ceb45bfa3  unliftio-0.2.25.1/src/UnliftIO/QSem.hs
 formatted       798fe10d4842  unliftio-0.2.25.1/src/UnliftIO/QSemN.hs
 formatted       c52224c9e4ef  unliftio-0.2.25.1/src/UnliftIO/STM.hs
@@ -4926,7 +4926,7 @@ formatted       9608e31a77ca  unordered-containers-0.2.21/Data/HashMap/Strict.hs
 formatted       83b524ef419b  unordered-containers-0.2.21/Data/HashSet.hs
 formatted       0cbcbe57aa90  unordered-containers-0.2.21/Data/HashSet/Internal.hs
 formatted       e865ae48f11b  unordered-containers-0.2.21/Setup.hs
-formatted       7701eeb114ee  unordered-containers-0.2.21/benchmarks/Benchmarks.hs
+formatted       e4de642806b4  unordered-containers-0.2.21/benchmarks/Benchmarks.hs
 formatted       092be9c1fc12  unordered-containers-0.2.21/benchmarks/FineGrained.hs
 formatted       13fa03731c8c  unordered-containers-0.2.21/benchmarks/Key/Bytes.hs
 formatted       5eca01a7f605  unordered-containers-0.2.21/benchmarks/Util/ByteString.hs

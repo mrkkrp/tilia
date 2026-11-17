@@ -393,6 +393,10 @@
   branch inside it that the conditional around it rules out, read there
   with the extensions of an answer that does not take it.
   [PR 498](https://github.com/mrkkrp/tilia/pull/498).
+* An empty line written between two conditionals among a record's fields,
+  the items of a list or an export list, constructors or guards no longer
+  stays, as none does between two of them written without a conditional.
+  [PR 507](https://github.com/mrkkrp/tilia/pull/507).
 
 ## Tilia 0.1.4.0
 
