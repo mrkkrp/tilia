@@ -60,9 +60,9 @@ well.
 
 A nightly job checks that this holds. Since master passes the whole suite
 with `defaultSettings` and `alternativeSettings`, the job runs it with every
-combination of settings in their place and fails where any of them fails. It
-leaves out our own examples, whose expected outputs are for those two alone.
-To run it yourself:
+combination of settings in their place and fails where any of them fails.
+Our own examples hold expected outputs for those two alone, so with the
+rest they get only the AST and idempotence checks. To run it yourself:
 
 ```console
 $ TILIA_ORTHOGONALITY=1 cabal test
