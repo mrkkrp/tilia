@@ -399,13 +399,12 @@ merge settings written conditionals guards varied settledOthers = go Broken
 
     ledBy layout = \case
       c@DCppChoice{} : r
-        | everyAlternative layout (\xs -> take 1 xs == [Doc.comma]) c ->
+        | everyAlternative (\xs -> take 1 xs == [Doc.comma]) c ->
             Just (c, r, False)
       x : DBreak : DCppChoice ws bs e : r
         | x == Doc.comma,
           following@(_ : _) <- dropWhile onlySpacing r,
           everyAlternative
-            layout
             (\xs -> fmap snd (unsnoc xs) == Just Doc.comma)
             (DCppChoice ws bs e) ->
             Just
@@ -415,6 +414,12 @@ merge settings written conditionals guards varied settledOthers = go Broken
               )
       _ -> Nothing
       where
+        everyAlternative p = \case
+          DCppChoice _ bs e ->
+            all
+              (\a -> printsNothing a || p (spineAt layout a))
+              (e : fmap snd bs)
+          _ -> False
         led a
           | printsNothing a = a
           | otherwise =
@@ -432,30 +437,30 @@ merge settings written conditionals guards varied settledOthers = go Broken
       Just ([f | (_, f, _) <- views], c)
 
     trailedBy layout s = case reverse s of
-      c@DCppChoice{} : r -> Just (c, reverse r, False)
-      x : DSoftBreak : r | x == leadingComma -> movedIn r
-      x : r | x == Doc.comma -> movedIn r
+      x : DSoftBreak : r | x == leadingComma -> movedIn [Doc.comma] r
+      x : r | x == Doc.comma -> movedIn [Doc.comma] r
+      c : r -> movedIn [] (c : r) <|> Just (c, reverse r, False)
       _ -> Nothing
       where
-        movedIn = \case
-          c@(DCppChoice ws bs e) : DSoftBreak : r
-            | everyAlternative layout (\xs -> take 1 xs == [leadingComma]) c ->
-                Just
-                  ( Doc.cppChoice ws (fmap (fmap trailed) bs) (trailed e),
-                    commaAfter r,
-                    True
-                  )
+        movedIn after = \case
+          c : DSoftBreak : r ->
+            (\c' -> (c', commaAfter r, True))
+              <$> trailedIn after layout c
           _ -> Nothing
-        trailed a
-          | printsNothing a = a
+        trailedIn after l = \case
+          DCppChoice ws bs e ->
+            Doc.cppChoice ws
+              <$> traverse (traverse (trailed after l)) bs
+              <*> trailed after l e
+          d -> do
+            (w, x) <- unwrap d
+            wrap w <$> trailedIn after (layoutInside l w) x
+        trailed after l a
+          | printsNothing a = Just a
           | otherwise =
-              mconcat (commaAfter (reverse (drop 1 (spineAt layout a))))
+              mconcat . reverse . gluedTo after . reverse
+                <$> stripPrefix [leadingComma] (spineAt l a)
         commaAfter = reverse . gluedTo [Doc.comma]
-
-    everyAlternative layout p = \case
-      DCppChoice _ bs e ->
-        all (\a -> printsNothing a || p (spineAt layout a)) (e : fmap snd bs)
-      _ -> False
 
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss
