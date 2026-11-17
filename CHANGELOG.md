@@ -292,6 +292,10 @@
   wherever a `forall` on a line of its own, a rule's name above it, or a
   left-hand side over several lines comes before it.
   [PR 464](https://github.com/mrkkrp/tilia/pull/464).
+* A `COMPLETE` pragma whose names are written over several lines keeps its
+  type beside the last name where it is written there, as a signature
+  does, rather than putting it on a line of its own.
+  [PR 465](https://github.com/mrkkrp/tilia/pull/465).
 
 ## Tilia 0.1.4.0
 

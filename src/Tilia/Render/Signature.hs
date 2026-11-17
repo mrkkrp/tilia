@@ -244,23 +244,35 @@ booleanFormula ctx = \case
       x -> [x]
 
 -- | A @COMPLETE@ pragma.
-completeSig :: Ctx -> [LIdP GhcPs] -> Maybe (LocatedN RdrName) -> Doc
+completeSig ::
+  -- | The context.
+  Ctx ->
+  -- | The constructors and pattern synonyms it lists.
+  [LIdP GhcPs] ->
+  -- | The type constructor after its @::@, if written.
+  Maybe (LocatedN RdrName) ->
+  Doc
 completeSig ctx names ty =
   layoutAcross ctx names . pragma "COMPLETE" . indent $
     commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
       <> foldMap
         ( \t ->
-            indent
-              ( joinedByArrow
-                  ctx
-                  breakOrSpace
-                  (spansOf names)
-                  (spanOf t)
-                  (reserved ctx "::")
-                  <> name ctx t
-              )
+            variant
+              (ascription t)
+              (layoutFrom ctx (spanOf (last names) <> spanOf t) (ascription t))
         )
         ty
+  where
+    ascription t =
+      indent
+        ( joinedByArrow
+            ctx
+            breakOrSpace
+            (spansOf names)
+            (spanOf t)
+            (reserved ctx "::")
+            <> name ctx t
+        )
 
 -- | An @SCC@ pragma.
 sccSig :: Ctx -> LocatedN RdrName -> Maybe (XRec GhcPs StringLiteral) -> Doc
