@@ -263,7 +263,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
         ascending os = and (zipWith (<=) os (drop 1 os))
 
     varying within layout ss =
-      let (opening, ss1) = leadingCommaIn (sharedStart layout ss)
+      let (opening, ss1) = leadingSeparatorIn (sharedStart layout ss)
        in fromMaybe
             (mconcat opening <> disagreement ss1)
             (arrowAhead opening ss1)
@@ -299,10 +299,12 @@ merge settings written conditionals guards varied settledOthers = go Broken
           let (c, ss') = sharedStart layout (fmap (drop 1) ss) in (h : c, ss')
       | otherwise = ([], ss)
 
-    leadingCommaIn (opening, ss) = case reverse opening of
+    leadingSeparatorIn (opening, ss) = case reverse opening of
       x : DSoftBreak : rest
         | x == leadingComma ->
             (reverse rest, fmap ([DSoftBreak, x] <>) ss)
+      DSpace : DText "|" : rest ->
+        (reverse rest, fmap ([DText "|", DSpace] <>) ss)
       _ -> (opening, ss)
 
     sharedEnd layout ss =
@@ -323,6 +325,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
       | Just tails <- traverse (stripPrefix [leadingComma]) ss,
         not (any (all onlySpacing) tails) =
           onEdge First leadingComma (middle layout tails)
+      | Just tails <- traverse (stripPrefix [DText "|", DSpace]) ss,
+        let merged = middle layout tails,
+        not (onlyChoice merged) =
+          DText "|" <> DSpace <> merged
       | otherwise =
           minimumBy
             (comparing (weigh layout))
@@ -1176,10 +1182,14 @@ lcs holds same xs ys =
                   | otherwise -> cells an as' more
 
 -- | Could this element hold two spines together, if it turned up in both?
-anchoring :: Doc -> Bool
+anchoring ::
+  -- | The element.
+  Doc ->
+  Bool
 anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
+  DText "|" -> False
   d | d == leadingComma -> False
   d | leadingArrow d -> False
   DDeclarationsStart -> False
