@@ -54,15 +54,15 @@ A is orthogonal to a setting B if enabling them together introduces no new
 bugs and makes no bugs disappear in comparison to A and B being in force
 separately. This is what lets the tests cover the settings without a
 combinatorial explosion: the corpora are formatted with `defaultSettings`
-and with `alternativeSettings`, which change every setting at once, and a
-bug of any combination of settings is then a bug of `alternativeSettings` as
-well.
+and with `alternativeSettings`, which change every setting but the column
+limit at once, and a bug of any combination of those settings is then a bug
+of `alternativeSettings` as well.
 
 A nightly job checks that this holds. Since master passes the whole suite
 with `defaultSettings` and `alternativeSettings`, the job runs it with every
-combination of settings in their place and fails where any of them fails.
-Our own examples hold expected outputs for those two alone, so with the
-rest they get only the AST and idempotence checks. To run it yourself:
+combination of those settings in their place and fails where any of them
+fails. Our own examples hold expected outputs for those two alone, so with
+the rest they get only the AST and idempotence checks. To run it yourself:
 
 ```console
 $ TILIA_ORTHOGONALITY=1 cabal test
