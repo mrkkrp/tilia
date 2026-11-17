@@ -302,6 +302,12 @@
   different questions, which declined a module where code behind one of
   them needed an extension that a pragma behind another turns on.
   [PR 467](https://github.com/mrkkrp/tilia/pull/467).
+* A conditional that the answer to one around a `LANGUAGE` pragma settles
+  either way, as `#if API_LEVEL >= 3` around `{-# LANGUAGE MagicHash #-}`
+  settles `#if API_LEVEL < 3`, no longer has the module declined for a
+  configuration no run of cpp produces, which took the branch written for
+  the extension without it.
+  [PR 468](https://github.com/mrkkrp/tilia/pull/468).
 
 ## Tilia 0.1.4.0
 
