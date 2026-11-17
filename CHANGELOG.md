@@ -279,6 +279,10 @@
   keeps the lines after its first, the closing `-}` among them, where they
   were written, rather than moving them one column right.
   [PR 461](https://github.com/mrkkrp/tilia/pull/461).
+* A block comment lined up under a trailing comment stays under it, as a
+  line comment does, rather than coming out ahead of it on its line, where
+  one over several lines took the trailing comment into its first line and
+  changed the program. [PR 462](https://github.com/mrkkrp/tilia/pull/462).
 
 ## Tilia 0.1.4.0
 

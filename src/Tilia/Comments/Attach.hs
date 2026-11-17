@@ -257,7 +257,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill -> DHoldBack spill (renderComment c)
+  HeldBack spill -> foldMap (DHoldBack spill) (commentBody c)
   OnItsOwnLines -> ownLines margin atTheEnd c
   where
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)

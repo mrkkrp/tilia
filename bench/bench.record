@@ -86,7 +86,7 @@ format       171382864     320647314  swagger2-2.9.1/src/Data/Swagger/Internal.h
 format       672489000    1249596393  synthetic/comments
 format       107010536     229908502  synthetic/conditionals
 format        99753344     201446811  synthetic/imports
-format        21397968      52624664  synthetic/long-line
+format        21422712      52921681  synthetic/long-line
 format       105309576     226525619  synthetic/nesting
 format       824892920    1566421524  text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs
 format       200123736     407972282  text-2.1.4/tests/Tests/Properties/Folds.hs

@@ -70,13 +70,19 @@ data Shape
   deriving (Eq, Show)
 
 -- | What a comment given to a region at this position will look like.
-shapeOf :: Position -> Comment -> Shape
+shapeOf ::
+  -- | Where the comment is given to the region.
+  Position ->
+  -- | The comment.
+  Comment ->
+  Shape
 shapeOf position c = case position of
   Before
     | closesItself c && commentFollowed c -> InPlace
     | commentTrailing c -> EndsTheLine
     | otherwise -> OnItsOwnLines
   After spill
+    | not (commentTrailing c) -> HeldBack spill
     | closesItself c -> InPlace
     | singleLine c -> HeldBack spill
     | otherwise -> EndsTheLine
