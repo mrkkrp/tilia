@@ -11,6 +11,7 @@ module Tilia.Render.Type
     hsSigType,
     hsSigTypeBody,
     typeAscription,
+    ascribedNames,
     context,
     leftContext,
     contextOf,
@@ -38,6 +39,7 @@ where
 
 import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
@@ -616,6 +618,42 @@ typeAscription ctx before sigType =
     )
   where
     separator = typeBreak (typeIsDocumented (unLoc (sig_body (unLoc sigType))))
+
+-- | Names sharing an ascription, which where there are several is laid out
+-- apart from them and goes in with the names after the first where those
+-- are broken.
+ascribedNames ::
+  -- | The context.
+  Ctx ->
+  -- | Indent the names after the first?
+  Choice "indentTail" ->
+  -- | The names.
+  NonEmpty (LocatedN RdrName) ->
+  -- | Where the type was written.
+  Maybe Span ->
+  -- | The ascription.
+  Doc ->
+  Doc
+ascribedNames ctx indentTail names@(n :| ns) typeSpan ascription
+  | null ns = name ctx n <> ascription
+  | otherwise =
+      layoutAcross ctx (n : ns) $
+        variant
+          (commaSep commas (fmap (name ctx) (n : ns)) <> laidOut)
+          ( name ctx n
+              <> nest
+                (if isTrue indentTail then 1 else 0)
+                ( hangingCommas
+                    commas
+                    ( separatingComma commas
+                        <> commaSep commas (fmap (name ctx) ns)
+                    )
+                    <> laidOut
+                )
+          )
+  where
+    commas = ctxCommaStyle ctx
+    laidOut = layoutFrom ctx (spanOf (NE.last names) <> typeSpan) ascription
 
 -- | Give a plain type the shape of a signature type.
 asSigType :: LHsType GhcPs -> LHsSigType GhcPs

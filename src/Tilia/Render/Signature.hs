@@ -14,7 +14,7 @@ module Tilia.Render.Signature
   )
 where
 
-import Data.Choice (Choice, isTrue, pattern Do, pattern Don't)
+import Data.Choice (Choice, pattern Do, pattern Don't)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
@@ -75,32 +75,11 @@ typeSig ::
   LHsSigType GhcPs ->
   Doc
 typeSig _ _ [] _ = error "Tilia: a signature names something"
-typeSig ctx indentTail (n : ns) sigType
-  | null ns = name ctx n <> typeAscription ctx (spanOf n) sigType
-  | otherwise =
-      layoutAcross ctx (n : ns) $
-        variant
-          ( commaSep (ctxCommaStyle ctx) (fmap (name ctx) (n : ns))
-              <> ascription
-          )
-          ( name ctx n
-              <> nest
-                (if isTrue indentTail then 1 else 0)
-                ( hangingCommas
-                    (ctxCommaStyle ctx)
-                    ( separatingComma (ctxCommaStyle ctx)
-                        <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) ns)
-                    )
-                    <> ascription
-                )
-          )
+typeSig ctx indentTail (n : ns) sigType =
+  ascribedNames ctx indentTail names (spanOf sigType) $
+    typeAscription ctx (spanOf (NE.last names)) sigType
   where
-    ascription =
-      layoutFrom
-        ctx
-        (spanOf lastName <> spanOf sigType)
-        (typeAscription ctx (spanOf lastName) sigType)
-    lastName = NE.last (n :| ns)
+    names = n :| ns
 
 -- | @pattern P :: t@.
 patSynSig :: Ctx -> [LocatedN RdrName] -> LHsSigType GhcPs -> Doc

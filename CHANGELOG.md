@@ -360,6 +360,11 @@
   parameter on a line of its own or a head over several lines comes
   before it.
   [PR 495](https://github.com/mrkkrp/tilia/pull/495).
+* GADT constructors sharing a signature keep their names on one line where
+  they are written there, as a signature for several names does, rather
+  than breaking them over several wherever the type goes on a line of its
+  own, and a type written beside the last of names written across lines
+  stays beside it. [PR 497](https://github.com/mrkkrp/tilia/pull/497).
 
 ## Tilia 0.1.4.0
 
