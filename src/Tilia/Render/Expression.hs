@@ -1119,7 +1119,19 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
   where
     bodyNest = if indentBody then 1 else 0
     rightHandSide =
-      separator <> layoutFrom ctx bodySpan (attach placement body)
+      separator
+        <> layoutFrom
+          ctx
+          bodySpan
+          (guarded (fmap alternative (NE.toList grhssGRHSs)))
+
+    -- The first guard of an alternative of \cases with no patterns begins
+    -- the alternative, so the rest go further in than it.
+    guarded = \case
+      a : as
+        | null pats && isCaseStyle style ->
+            a <> indent (foldMap (breakOrSpace <>) as)
+      as -> attach placement (sepBy breakOrSpace as)
 
     multAnnGap = case multAnn of
       HsUnannotated{} -> mempty
@@ -1197,8 +1209,6 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
           FunctionStyle _ -> space <> indent (txt "=")
           PatternBindStyle -> space <> indent (txt "=")
           _ -> space <> txt (reserved ctx "->")
-
-    body = sepBy breakOrSpace (fmap alternative (NE.toList grhssGRHSs))
 
     alternative g =
       fence (spanOf g) $
