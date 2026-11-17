@@ -779,7 +779,7 @@ download (url, query) dest =
       VanillaHttpException (HTTP.HttpExceptionRequest _ reason) ->
         flatten reason
       other -> flatten other
-    flatten :: (Show a) => a -> Text
+    flatten :: Show a => a -> Text
     flatten = T.take 200 . T.unwords . T.words . T.pack . show
 
 -- | Unpack the Haskell files of an archive, dropping its top-level

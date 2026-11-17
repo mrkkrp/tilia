@@ -64,7 +64,7 @@ noMargin = Margin (const False) (const False)
 -- goes is decided among the regions it could be printed next to in every
 -- configuration it is in.
 attachScopedComments ::
-  (Ord k) =>
+  Ord k =>
   -- | What goes at the margin.
   Margin ->
   -- | The scope of what was written at a span.

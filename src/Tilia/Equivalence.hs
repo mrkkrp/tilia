@@ -77,14 +77,14 @@ import Tilia.Utils (tshow)
 -- Syntax
 
 -- | Where two ASTs start to differ.
-syntaxDifference :: (Data a) => a -> a -> Maybe Text
+syntaxDifference :: Data a => a -> a -> Maybe Text
 syntaxDifference = differ []
 
 -- | The constructors on the way down to where the walk has got to,
 -- innermost first.
 type Path = [Constr]
 
-differ :: forall a. (Data a) => Path -> a -> a -> Maybe Text
+differ :: forall a. Data a => Path -> a -> a -> Maybe Text
 differ path x y = case classify (typeOf x) of
   Incidental -> Nothing
   Special
@@ -189,7 +189,7 @@ firstOf :: [Maybe a] -> Maybe a
 firstOf = listToMaybe . catMaybes
 
 -- | One field of a value, with its type hidden.
-data Cell = forall d. (Data d) => Cell d
+data Cell = forall d. Data d => Cell d
 
 cellDiffer :: Path -> Cell -> Cell -> Maybe Text
 cellDiffer path (Cell a) (Cell b) = case cast b of
@@ -201,7 +201,7 @@ cellDiffer path (Cell a) (Cell b) = case cast b of
 -- Handed back to 'differ' whole they would arrive at the same @as…@ function
 -- again and never stop, which is why the lengths are settled here and only
 -- the elements go back round.
-elementwise :: (Data b) => Path -> Text -> [b] -> [b] -> Maybe Text
+elementwise :: Data b => Path -> Text -> [b] -> [b] -> Maybe Text
 elementwise path what before after
   | length before /= length after = Just (describe path what)
   | otherwise = firstOf (zipWith (differ path) before after)
@@ -215,7 +215,7 @@ saysNothing = null . docWords
 -- 'Nothing' where the two are not a @Maybe (LHsDoc GhcPs)@, which sends
 -- 'differ' on to the next @as…@ function. Otherwise the answer, itself
 -- 'Nothing' where the two say the same thing.
-asStandaloneDoc :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asStandaloneDoc :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asStandaloneDoc path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (compared (kept before) (kept after))
   _ -> Nothing
@@ -238,7 +238,7 @@ asStandaloneDoc path x y = case (cast x, cast y) of
 -- Asked only where the two differ in their constructors, which is the one
 -- way such a Haddock shows.
 withoutSilentDocs ::
-  (Data a) =>
+  Data a =>
   -- | What was written.
   a ->
   -- | What was printed.
@@ -258,7 +258,7 @@ withoutSilentDocs x y = case (cast x, cast y) of
       _ -> t
 
 -- | An export list, minus the documentation that says nothing.
-asExportItems :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asExportItems :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asExportItems path x y = case (cast x, cast y) of
   (Just before, Just after) ->
     Just
@@ -277,7 +277,7 @@ asExportItems path x y = case (cast x, cast y) of
       _ -> False
 
 -- | A block of declarations, minus the documentation that says nothing.
-asDeclarations :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asDeclarations :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asDeclarations path x y = case (cast x, cast y) of
   (Just before, Just after) ->
     Just
@@ -345,7 +345,7 @@ structural con =
     `elem` ["Maybe", "List", "NonEmpty", "Tuple2", "Tuple3", "Tuple4", "Tuple5"]
 
 -- | Which side of the module name @qualified@ was written on.
-asQualifiedStyle :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asQualifiedStyle :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asQualifiedStyle path x y = case (cast x, cast y) of
   (Just before, Just after) -> Just (compared before after)
   _ -> Nothing
@@ -357,7 +357,7 @@ asQualifiedStyle path x y = case (cast x, cast y) of
       | otherwise = Just (describe path "the import stopped being qualified")
 
 -- | A @deriving@ clause, however it was punctuated.
-asDerivingClause :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asDerivingClause :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asDerivingClause path x y = case (cast x, cast y) of
   (Just before, Just after) ->
     Just (differ path (derived before) (derived after))
@@ -371,7 +371,7 @@ asDerivingClause path x y = case (cast x, cast y) of
 -- | A module's imports, compared as the set they are, or 'Nothing' where
 -- the two are not imports.
 asImports ::
-  (Data a) =>
+  Data a =>
   -- | The constructors above the two, which a difference is described by.
   Path ->
   -- | One of them.
@@ -393,7 +393,7 @@ asImports path x y = case (cast x, cast y) of
       | otherwise = firstOf (zipWith (differ path) before after)
 
 -- | A context, compared for the constraints it holds.
-asContext :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asContext :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asContext path x y = compared optional <|> compared written <|> compared quoted
   where
     compared ::
@@ -416,7 +416,7 @@ asContext path x y = compared optional <|> compared written <|> compared quoted
       e -> e
 
 -- | A Haddock, compared for what it documents.
-asDocString :: (Data a) => Path -> a -> a -> Maybe (Maybe Text)
+asDocString :: Data a => Path -> a -> a -> Maybe (Maybe Text)
 asDocString path x y = case (cast x, cast y) of
   (Just before, Just after)
     | summarised before == summarised after -> Just Nothing
@@ -471,7 +471,7 @@ opaque x y = case dataTypeName (dataTypeOf x) of
       (Just p, Just q) -> p == (q :: t)
       _ -> False
 
-typeNameOf :: (Data a) => a -> String
+typeNameOf :: Data a => a -> String
 typeNameOf = dataTypeName . dataTypeOf
 
 ----------------------------------------------------------------------------

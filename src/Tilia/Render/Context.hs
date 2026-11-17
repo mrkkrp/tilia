@@ -375,11 +375,11 @@ writtenBlank ctx n = blankAt n (sourceLines (ctxSource ctx))
 -- This is the counterpart of every @L@ in the syntax tree: it records where
 -- the output came from, so that comments can be attached to it later, and
 -- it settles the node's layout from the region it occupied.
-at :: (HasLoc l) => Ctx -> GenLocated l a -> (a -> Doc) -> Doc
+at :: HasLoc l => Ctx -> GenLocated l a -> (a -> Doc) -> Doc
 at ctx l f = atSpan ctx (spanOf l) (f (GHC.unLoc l))
 
 -- | 'at' with the arguments the other way round, for use in sections.
-at_ :: (HasLoc l) => Ctx -> (a -> Doc) -> GenLocated l a -> Doc
+at_ :: HasLoc l => Ctx -> (a -> Doc) -> GenLocated l a -> Doc
 at_ ctx f l = at ctx l f
 
 -- | Lay a region out as 'layoutFrom' does, and claim it.
@@ -424,7 +424,7 @@ layoutWithin ctx whole contents d
   | otherwise = layoutFrom ctx contents d
 
 -- | 'layoutFrom' over the region several located things cover.
-layoutAcross :: (HasLoc l) => Ctx -> [GenLocated l a] -> Doc -> Doc
+layoutAcross :: HasLoc l => Ctx -> [GenLocated l a] -> Doc -> Doc
 layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
 -- | 'attach' an operator and its operand, leaving the operator's region at

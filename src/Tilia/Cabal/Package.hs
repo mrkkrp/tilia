@@ -567,7 +567,7 @@ benchmarkBranches = branchesOf $ \b ->
 
 -- | Every branch of a component.
 branchesOf ::
-  (Semigroup a) =>
+  Semigroup a =>
   (a -> ComponentSection) ->
   CondTree ConfVar a ->
   [BranchSections]

@@ -231,7 +231,7 @@ selfClosing c = bracketed c && singleLine c
 -- Every site that puts them in front prints in 'Pipe' style, which is what
 -- decides whether the author's text can be reused.
 printsWholeLineDocs ::
-  (Data a) =>
+  Data a =>
   -- | The context.
   Ctx ->
   -- | Does the site put its Haddocks under what they document?
@@ -254,7 +254,7 @@ haddockSpans found =
     <> namedSections (gatheredEntries found)
 
 -- | Every Haddock in a fragment.
-docsIn :: (Data a) => a -> [LHsDoc GhcPs]
+docsIn :: Data a => a -> [LHsDoc GhcPs]
 docsIn = listify (const True :: LHsDoc GhcPs -> Bool)
 
 -- | The spans of the @-- $name@ anchors among the entries of an export
@@ -267,7 +267,7 @@ namedSections = mapMaybe anchorSpan
       _ -> Nothing
 
 -- | Every doc string in a fragment, even one no 'LHsDoc' holds.
-docStringsIn :: (Data a) => a -> [HsDocString]
+docStringsIn :: Data a => a -> [HsDocString]
 docStringsIn = listify (const True :: HsDocString -> Bool)
 
 -- | The lines of a doc string, normalised the way Haddock reads them.

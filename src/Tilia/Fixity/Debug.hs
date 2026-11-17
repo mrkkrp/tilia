@@ -173,7 +173,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
       )
 
 -- | Join adjacent entries that differ only in their namespaces.
-joined :: (Eq a) => [(Namespaces, a)] -> [(Namespaces, a)]
+joined :: Eq a => [(Namespaces, a)] -> [(Namespaces, a)]
 joined = \case
   (_, a) : (_, b) : rest | a == b -> (Both, a) : joined rest
   entry : rest -> entry : joined rest

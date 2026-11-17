@@ -33,7 +33,7 @@ spanOfSrcSpan = fmap spanOfReal . GHC.srcSpanToRealSrcSpan
 
 -- | Where something the compiler located was written: a node, a token or
 -- an annotation.
-spanOf :: (HasLoc l) => l -> Maybe Span
+spanOf :: HasLoc l => l -> Maybe Span
 spanOf = spanOfSrcSpan . getHasLoc
 
 -- | Where a list's brackets were written, from the opening one to the
@@ -47,11 +47,11 @@ bracketsSpan = \case
 
 -- | Merge several lists of located things back into the order they were
 -- written in.
-inSourceOrder :: (HasLoc l) => [[GenLocated l a]] -> [GenLocated l a]
+inSourceOrder :: HasLoc l => [[GenLocated l a]] -> [GenLocated l a]
 inSourceOrder = sortBy (leftmost_smallest `on` (getHasLoc . getLoc)) . concat
 
 -- | The span covering every located thing in the list.
-spansOf :: (HasLoc l) => [GenLocated l a] -> Maybe Span
+spansOf :: HasLoc l => [GenLocated l a] -> Maybe Span
 spansOf xs = case mapMaybe spanOf xs of
   [] -> Nothing
   (s : ss) -> Just (foldr (<>) s ss)

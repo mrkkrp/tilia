@@ -185,7 +185,7 @@ lineOf = maybe 0 spanStartLine . spanOf
 -- | Sort by the keys, then replace each run of equal keys by one value
 -- folded out of it.
 foldRuns ::
-  (Ord k) =>
+  Ord k =>
   -- | How to fold two values that share a key.
   (a -> a -> a) ->
   -- | The values, each under the key it sorts and folds by.

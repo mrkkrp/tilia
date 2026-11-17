@@ -375,7 +375,7 @@ leftContext ctx after ctxt =
 -- A lone constraint keeps the parentheses written around it where the
 -- context was written over several lines.
 contextOf ::
-  (HasLoc a) =>
+  HasLoc a =>
   -- | The context.
   Ctx ->
   -- | Where the context was written.
@@ -422,7 +422,7 @@ instance TyVarBndrFlag (HsBndrVis GhcPs) where
     HsBndrInvisible _ -> txt "@"
 
 -- | One type variable binder.
-tyVarBndr :: (TyVarBndrFlag flag) => Ctx -> HsTyVarBndr flag GhcPs -> Doc
+tyVarBndr :: TyVarBndrFlag flag => Ctx -> HsTyVarBndr flag GhcPs -> Doc
 tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
   where
     (binder, binderSpan) = case tvb_var of
@@ -446,7 +446,7 @@ data Visibility
 
 -- | The variables of a @forall@, with the punctuation that closes it.
 forallBndrs ::
-  (HasLoc l) =>
+  HasLoc l =>
   -- | The context.
   Ctx ->
   -- | Does it bind visibly?
@@ -461,7 +461,7 @@ forallBndrs ctx visibility render bndrs =
 
 -- | @forall@ and its variables, with what follows the last of them.
 forallOver ::
-  (HasLoc l) =>
+  HasLoc l =>
   -- | The context.
   Ctx ->
   -- | How to print one.
@@ -499,7 +499,7 @@ forallClose ctx visibility bndrs = case visibility of
 -- | A @forall@ in a type, with the break between it and what it
 -- quantifies.
 quantifier ::
-  (TyVarBndrFlag flag) =>
+  TyVarBndrFlag flag =>
   -- | The context.
   Ctx ->
   -- | Where the line may break.
@@ -562,7 +562,7 @@ forallTelescope ctx separator after = \case
 -- | The binders a signature or an equation quantifies over, where it names
 -- them, with the break between them and what they scope over.
 outerBndrs ::
-  (TyVarBndrFlag flag) =>
+  TyVarBndrFlag flag =>
   -- | The context.
   Ctx ->
   -- | Where the line may break.
