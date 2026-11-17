@@ -1,0 +1,23 @@
+{-# LANGUAGE CPP #-}
+
+module Audio.Mix where
+
+-- An equation and a case alternative whose head is written infix, with
+-- the operator in each branch and what follows it written once.
+x
+#if MIN_VERSION_base(4,18,0)
+  <-> y =
+#else
+  `fade` y =
+#endif
+    unmix x y
+
+loudness :: Tracks -> Int
+loudness tracks = case tracks of
+  left
+#if MIN_VERSION_base(4,18,0)
+    :| right ->
+#else
+    :< right ->
+#endif
+      peak left right
