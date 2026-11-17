@@ -9,8 +9,8 @@ $ cabal test
 ```
 
 All tests are in one test suite and there are a fair number of them. On my
-machine the full test suite passes in 140 seconds, but it may be different
-for you, so isolating a subset of the test suite may be helpful:
+machine the full test suite passes in about 200 seconds, but it may be
+different for you, so isolating a subset of the test suite may be helpful:
 
 ```console
 $ cabal test --test-options='--match "Tilia.Fixity"'
