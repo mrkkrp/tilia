@@ -365,6 +365,12 @@
   than breaking them over several wherever the type goes on a line of its
   own, and a type written beside the last of names written across lines
   stays beside it. [PR 497](https://github.com/mrkkrp/tilia/pull/497).
+* A kind signature alone in its branch and the type declaration right
+  under it with a directive between them stay together whatever each
+  names, so a kind signature and its declaration whose names conditionals
+  asking one question write no longer get an empty line between them that
+  no configuration has.
+  [PR 504](https://github.com/mrkkrp/tilia/pull/504).
 
 ## Tilia 0.1.4.0
 

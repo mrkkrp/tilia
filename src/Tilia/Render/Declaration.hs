@@ -40,7 +40,13 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Signature
 import Tilia.Render.Type
-import Tilia.Source (SourceType (..), blankAt, lineAt, sourceLines)
+import Tilia.Source
+  ( SourceType (..),
+    blankAt,
+    directivePresentOnLine,
+    lineAt,
+    sourceLines,
+  )
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -243,21 +249,27 @@ isSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
   where
     ranTogether = not (separatedByBlank ctx (spanOf x) (spanOf y))
 
--- | A type signature and the binding under it that a directive separates
+-- | A type signature and the binding under it, or a kind signature alone in
+-- its branch and the type declaration under it, that a directive separates
 -- with no empty line between, whatever each names.
 signsAcrossDirective ::
   -- | The context.
   Ctx ->
   -- | The signature.
   LHsDecl GhcPs ->
-  -- | The binding under it.
+  -- | The declaration under it.
   LHsDecl GhcPs ->
   Bool
 signsAcrossDirective ctx x@(L _ a) y@(L _ b) = case (a, b) of
-  (SigD _ TypeSig{}, ValD _ FunBind{}) ->
-    directiveBetween ctx (spanOf x) (spanOf y)
-      && not (separatedByBlank ctx (spanOf x) (spanOf y))
+  (SigD _ TypeSig{}, ValD _ FunBind{}) -> across
+  (KindSigD{}, TyClD{}) -> across && any directiveAbove (spanOf x)
   _ -> False
+  where
+    across =
+      directiveBetween ctx (spanOf x) (spanOf y)
+        && not (separatedByBlank ctx (spanOf x) (spanOf y))
+    directiveAbove s =
+      directivePresentOnLine (spanStartLine s - 1) (sourceLines (ctxSource ctx))
 
 -- | The kinds of declaration that grouping distinguishes.
 data Kind
