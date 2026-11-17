@@ -178,7 +178,7 @@ walk margin = go
             under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
             withUnder
               | null under' = id
-              | otherwise = \x -> DAlign (infrangibleMidLine x <> write under')
+              | otherwise = \x -> DAlign (x <> write under')
          in ( write before' <> withUnder (DLocated s d' <> write after'),
               p''
             )

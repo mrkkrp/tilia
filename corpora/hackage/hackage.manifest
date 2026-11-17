@@ -175,7 +175,7 @@ formatted       fa73cde59f4a  Agda-2.8.0/src/full/Agda/Termination/Order.hs
 formatted       ab1fbb0f37cf  Agda-2.8.0/src/full/Agda/Termination/RecCheck.hs
 formatted       5d2396bcde51  Agda-2.8.0/src/full/Agda/Termination/Semiring.hs
 formatted       9891643aeff5  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.hs
-formatted       33128e6d997e  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
+formatted       375c8d3660ce  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
 formatted       29fcc3f9ef83  Agda-2.8.0/src/full/Agda/Termination/Termination.hs
 formatted       9ce4d907acfa  Agda-2.8.0/src/full/Agda/TheTypeChecker.hs
 formatted       09dfa577f02f  Agda-2.8.0/src/full/Agda/TypeChecking/Abstract.hs
@@ -205,7 +205,7 @@ formatted       11a043acdbdf  Agda-2.8.0/src/full/Agda/TypeChecking/DisplayForm.
 formatted       e2dea679b80a  Agda-2.8.0/src/full/Agda/TypeChecking/DropArgs.hs
 formatted       eac8b8c51de9  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs
 formatted       546e2690c8bd  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs-boot
-formatted       9378a688fd9c  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
+formatted       af0f36d4d103  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
 formatted       c45b8fecd420  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs-boot
 formatted       5264a31ef276  Agda-2.8.0/src/full/Agda/TypeChecking/Errors/Names.hs
 formatted       1f70629e70ad  Agda-2.8.0/src/full/Agda/TypeChecking/EtaContract.hs
@@ -288,7 +288,7 @@ formatted       bf4e737ce041  Agda-2.8.0/src/full/Agda/TypeChecking/Pretty/Warni
 formatted       3229d1fefa40  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs
 formatted       8bfea5adf228  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive.hs-boot
 formatted       809e68e84393  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Base.hs
-formatted       6a7ce77453b8  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical.hs
+formatted       d2e7334613a3  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical.hs
 formatted       ce7b5643ce87  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs
 formatted       34da472277ef  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Base.hs-boot
 formatted       b85c77f9258c  Agda-2.8.0/src/full/Agda/TypeChecking/Primitive/Cubical/Glue.hs
@@ -2449,7 +2449,7 @@ formatted       0939a8681c27  hledger-1.52.1/Hledger/Cli/CliOptions.hs
 formatted       6b90cb5fb8ee  hledger-1.52.1/Hledger/Cli/Commands.hs
 formatted       1f1b2ec7d7a7  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       4ab3f5ebc9f8  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
-formatted       1c22c8e6cd93  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
+formatted       a825b6aead06  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
 formatted       da8074fa2782  hledger-1.52.1/Hledger/Cli/Commands/Aregister.hs
 formatted       a1a12c42ad5b  hledger-1.52.1/Hledger/Cli/Commands/Balance.hs
 formatted       858605dd57a7  hledger-1.52.1/Hledger/Cli/Commands/Balancesheet.hs
@@ -3424,7 +3424,7 @@ formatted       59da9b573680  parsec3-1.0.1.8/Text/Parsec/ByteString/Lazy.hs
 formatted       1790126b70fc  parsec3-1.0.1.8/Text/Parsec/Char.hs
 formatted       d42107c5e3c3  parsec3-1.0.1.8/Text/Parsec/Combinator.hs
 formatted       3cbd3ea173d1  parsec3-1.0.1.8/Text/Parsec/Error.hs
-formatted       7791b03e9f31  parsec3-1.0.1.8/Text/Parsec/Expr.hs
+formatted       5f25db5c6548  parsec3-1.0.1.8/Text/Parsec/Expr.hs
 formatted       156014d6ed26  parsec3-1.0.1.8/Text/Parsec/Language.hs
 formatted       6edbf31ef723  parsec3-1.0.1.8/Text/Parsec/Perm.hs
 formatted       157053ef7f04  parsec3-1.0.1.8/Text/Parsec/Pos.hs

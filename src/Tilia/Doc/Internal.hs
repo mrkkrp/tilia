@@ -213,9 +213,6 @@ data Layout
   | -- | Flat where it fits within the column limit, broken where it does
     -- not.
     Frangible
-  | -- | Flat where it follows something on its line, and 'Frangible'
-    -- where it begins one.
-    InfrangibleMidLine
   deriving (Eq, Show)
 
 -- | Where the line after a 'DVerbatimBreak' begins.
@@ -446,8 +443,6 @@ go env = \case
      in go env{envIndent = column} d out
   DCppMarginNote d -> \out ->
     go env{envNote = not (hasContent out)} d out
-  DGroup InfrangibleMidLine d -> \out ->
-    go env (DGroup (if started out then Flat else Frangible) d) out
   DGroup l d -> \out ->
     let settled = case l of
           Frangible
