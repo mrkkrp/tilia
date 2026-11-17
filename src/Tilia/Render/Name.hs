@@ -75,9 +75,12 @@ adorn ctx here x = go
   where
     go EpAnn{anns} = case anns of
       NameAnnQuote{nann_quoted} -> (txt "'" <>) . go nann_quoted
-      NameAnnOnly{nann_adornment = NameParensHash{}} -> const (txt "(# #)")
-      NameAnnOnly{nann_adornment = NameSquare{}} ->
-        const (txt "[" <> insideBrackets here mempty <> txt "]")
+      NameAnnOnly{nann_adornment = NameParensHash o c} ->
+        const (txt "(#" <> space <> inside o c <> space <> txt "#)")
+      NameAnnOnly{nann_adornment = NameParens o c} ->
+        const (inParens (inside o c))
+      NameAnnOnly{nann_adornment = NameSquare o c} ->
+        const (txt "[" <> inside o c <> txt "]")
       NameAnnRArrow{nann_mopen = Just _} -> inParens
       NameAnn{nann_adornment, nann_name} -> case nann_adornment of
         NameParens{} -> inParens . spaceOutHash . itsOwn nann_name
@@ -85,6 +88,9 @@ adorn ctx here x = go
         _ -> itsOwn nann_name
       _ -> id
     itsOwn = atSpan ctx . spanOf
+    inside o c
+      | fmap endPoint (spanOf o) == fmap startPoint (spanOf c) = mempty
+      | otherwise = insideBrackets here mempty
     inParens d = txt "(" <> d <> txt ")"
     spaceOutHash d
       | extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums,

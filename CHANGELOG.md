@@ -263,6 +263,10 @@
 * `--check-ast` is faster on a machine with several cores: both checks of a
   module of 8,000 lines take 30% less time.
   [PR 457](https://github.com/mrkkrp/tilia/pull/457).
+* A comment written inside `()` or `(# #)` stays there, rather than coming
+  out after it, where a line comment ended up above the next declaration,
+  and one inside a `()` ending the type of a signature could change the
+  program. [Issue 443](https://github.com/mrkkrp/tilia/issues/443).
 
 ## Tilia 0.1.4.0
 
