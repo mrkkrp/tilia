@@ -127,7 +127,7 @@ writeManifest path manifest = do
   where
     header =
       [ "# What each example of this corpus does today, one line each.",
-        "# Generated: run the test suite with TILIA_CORPUS_ACCEPT=1.",
+        "# Generated: run the test suite with TILIA_HACKAGE_ACCEPT=1.",
         "# See Tilia.Corpus.Manifest for what the outcomes mean, and the",
         "# matching .report for why each example that is not `formatted` is",
         "# not.",

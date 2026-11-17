@@ -109,7 +109,7 @@ againstLists listed run examples =
 -- | A corpus checked against a generated record of what it does.
 againstRecord :: FilePath -> (Example -> IO Result) -> [Example] -> Spec
 againstRecord path run examples = do
-  accept <- runIO (switchedOn "TILIA_CORPUS_ACCEPT")
+  accept <- runIO (switchedOn "TILIA_HACKAGE_ACCEPT")
   if accept then accepted else checked
   where
     reportPath = replaceExtension path ".report"
@@ -240,7 +240,7 @@ againstRecord path run examples = do
 
     regenerate =
       "\n\nIf that is the intended change, regenerate the record:"
-        <> "\n    TILIA_CORPUS_ACCEPT=1 cabal test"
+        <> "\n    TILIA_HACKAGE_ACCEPT=1 cabal test"
 
 -- | How much of an example's reason a record keeps.
 reasonLength :: Int
