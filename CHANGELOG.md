@@ -232,6 +232,9 @@
   line where it fits, rather than being broken around its `then`, `by` and
   `using` wherever the comprehension is written over several lines.
   [PR 428](https://github.com/mrkkrp/tilia/pull/428).
+* A `let` or `rec` written with nothing between its braces keeps them in a
+  block laid out over several lines, and in a `let` with an `in`, rather
+  than losing them. [Issue 447](https://github.com/mrkkrp/tilia/issues/447).
 
 ## Tilia 0.1.4.0
 
