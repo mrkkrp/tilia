@@ -393,7 +393,7 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc settings doc = finish (step settings) (go env doc emptyOut)
+printDoc settings doc = finish (go env doc emptyOut)
   where
     env =
       Env
@@ -465,23 +465,59 @@ go env = \case
     _ -> go env flatD
   DLocated _ d -> go env d
   DFence _ d -> go env d
-  DCppChoice cs branches fallback ->
+  DCppChoice cs branches fallback -> \out ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
-        unheld = env{envHeldFlat = False}
-        alternative
-          | envLayout env == Frangible = DGroup Frangible
-          | otherwise = id
-     in foldr (flip (.)) id . concat $
-          [ [directive type' ("#" <> guard'), go unheld (alternative taken)]
+        before = maybe 0 lineIndent (listToMaybe (outLines (closeLine 0 out)))
+        alternative =
+          carryingOn before env{envHeldFlat = False} . case envLayout env of
+            Frangible -> DGroup Frangible
+            _ -> id
+        steps =
+          [ [directive type' ("#" <> guard'), alternative taken]
           | (type', (guard', taken)) <- zip (CppDirectiveOpens : repeat CppDirectiveContinues) branches
           ]
-            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), go unheld (alternative fallback)]
+            <> [ [directive CppDirectiveContinues ("#else" <> afterElse), alternative fallback]
                | not (printsNothing fallback && T.null afterElse)
                ]
             <> [[directive CppDirectiveCloses ("#endif" <> afterEndif)]]
+     in foldr (flip (.)) id (concat steps) out
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
+
+-- | Walk an alternative of a conditional, a step right of the line before
+-- the conditional where its first line carries that line on and would not
+-- begin right of it otherwise.
+carryingOn ::
+  -- | The indentation of the line before the conditional.
+  Int ->
+  -- | What is in force where the alternative is.
+  Env ->
+  -- | The alternative.
+  Doc ->
+  -- | The output so far, its last line the directive above the
+  -- alternative.
+  Out ->
+  Out
+carryingOn before env d out = case firstLine walked of
+  (l, body)
+    | lineContinues l,
+      not (linePinned l),
+      isNothing (commentOpening body),
+      lineIndent l <= before ->
+        attached $
+          go
+            env
+            (DNest (Columns (before - lineIndent l + step (envSettings env))) d)
+            seeded
+  _ -> attached walked
+  where
+    seeded = out{outLines = take 1 (outLines out)}
+    walked = go env d seeded
+    firstLine o = case unsnoc (init (outLines o)) of
+      Just (_, l) -> (l, lineBody l)
+      Nothing -> (outLine o, T.concat (reverse (outCurrent o)))
+    attached o = o{outLines = init (outLines o) <> outLines out}
 
 -- | Does a frangible document break where it is about to be printed?
 fracturesFrom ::
@@ -816,55 +852,15 @@ adjustTrailingWhitespace = \case
 -- | Assemble the final text: one trailing newline, no blank lines at the
 -- end, and trailing whitespace only where a verbatim line keeps it.
 finish ::
-  -- | Columns per indentation step.
-  Int ->
   -- | What the walk wrote.
   Out ->
   Text
-finish columns out =
+finish out =
   case dropWhile (T.null . lineBody) (outLines (breakLine 0 out)) of
     [] -> ""
     ls ->
       T.unlines . fmap lineText $
-        remarksCarriedOn (notesToMargin (continued columns (reverse ls)))
-
--- | Indent each alternative of a conditional that continues the line before
--- the conditional further than that line.
-continued ::
-  -- | Columns per indentation step.
-  Int ->
-  -- | The lines.
-  [Line] ->
-  [Line]
-continued columns = walk [] 0 False
-  where
-    walk frames previous pending = \case
-      [] -> []
-      l : ls -> case lineDirective l of
-        Just CppDirectiveOpens -> l : walk ((previous, 0) : frames) 0 True ls
-        Just CppDirectiveContinues -> l : walk (restarted frames) 0 True ls
-        Just CppDirectiveCloses -> l : walk (drop 1 frames) 0 False ls
-        Just CppDirectiveOpaque -> l : walk frames 0 False ls
-        Nothing ->
-          let frames' = if pending then settled frames l else frames
-              l' = moved (sum (fmap snd frames')) l
-           in l' : walk frames' (lineIndent l') False ls
-    restarted = \case
-      (before, _) : rest -> (before, 0) : rest
-      [] -> []
-    settled frames l = case frames of
-      (before, _) : rest
-        | lineContinues l,
-          not (linePinned l),
-          isNothing (commentOpening (lineBody l)),
-          at <= before ->
-            (before, before - at + columns) : rest
-        where
-          at = lineIndent l + sum (fmap snd rest)
-      _ -> frames
-    moved n l
-      | n == 0 || linePinned l || T.null (lineBody l) = l
-      | otherwise = l{lineIndent = lineIndent l + n}
+        remarksCarriedOn (notesToMargin (reverse ls))
 
 -- | Put the comments right under a line that ends with a remark at the
 -- remark's column where they would begin right of it, which is where a
