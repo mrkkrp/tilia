@@ -16,6 +16,7 @@ module Tilia.Doc
     leadingSemicolon,
     printsNothing,
     printsOnOneLine,
+    choosing,
     foldChildren,
     mapChildren,
     regionsIn,
@@ -34,6 +35,7 @@ module Tilia.Doc
 where
 
 import Data.Maybe (mapMaybe)
+import Data.Monoid (Any (..))
 
 import Tilia.Doc.Internal
   ( Conditional (..),
@@ -81,6 +83,17 @@ printsOnOneLine layout = all single . spineAt layout
         DVerbatimBreak{} -> False
         DCppChoice{} -> False
         _ -> True
+
+-- | Is there a choice anywhere in this document?
+choosing ::
+  -- | The document.
+  Doc ->
+  Bool
+choosing = getAny . go
+  where
+    go = \case
+      DCppChoice{} -> Any True
+      d -> foldChildren go d
 
 -- | Combine what a function makes of each document directly inside this
 -- one, a variant's broken layout standing for the variant.

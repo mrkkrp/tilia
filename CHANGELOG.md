@@ -397,6 +397,10 @@
   the items of a list or an export list, constructors or guards no longer
   stays, as none does between two of them written without a conditional.
   [PR 507](https://github.com/mrkkrp/tilia/pull/507).
+* An instance whose members are all behind a conditional with an empty
+  first branch keeps its `where`, rather than losing it, which left the
+  configurations taking another branch unable to parse.
+  [PR 506](https://github.com/mrkkrp/tilia/pull/506).
 
 ## Tilia 0.1.4.0
 
