@@ -36,7 +36,8 @@ import Data.Foldable (traverse_)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
-import Data.List.NonEmpty (NonEmpty, nonEmpty)
+import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Maybe
   ( catMaybes,
@@ -540,21 +541,19 @@ together formatter reached c
     parser = formatterParser formatter
     texts = cfgTexts c
     formatted settle = do
-      let (settledBy, answers) =
-            unzip . (if settle then settling else fmap ((,) [])) $
+      let tries =
+            (if settle then settling else fmap (pure . (,) [])) $
               [(answering c i reached, t) | (i, t) <- zip [0 ..] texts]
-      found <- fmap catMaybes . for (zip [0 ..] answers) $ \(i, (r, t)) ->
-        if null (unconditionalErrors t)
-          then
-            Just . (,) i
-              <$> formatAllConfigs formatter (readingOf r t)
+          answers = fmap (snd . NE.head) tries
+      found <- fmap catMaybes . for (zip [0 ..] tries) $ \(i, ts) ->
+        if null (unconditionalErrors (snd (snd (NE.head ts))))
+          then Just . (,) i <$> firstParsed ts
           else pure Nothing
       docs <-
-        except . traverse (complete (fmap (fmap fst) found)) $
+        except . traverse (complete [(i, d) | (i, (_, (d, _))) <- found]) $
           zip [0 ..] (fmap snd answers)
-      let settledIn i
-            | Just _ <- lookup i found = settledBy !! i
-            | otherwise = foldMap ((settledBy !!) . fst) (listToMaybe found)
+      let settledIn i =
+            maybe (foldMap (fst . snd) (listToMaybe found)) fst (lookup i found)
           settled = settledAcross (fmap settledIn [0 .. length answers - 1])
           ranges = mapMaybe (conditionalRange . settledConditional) settled
           varied = Varied (variedLines (variedBy parser c) <> ranges)
@@ -567,7 +566,15 @@ together formatter reached c
               varied
               settled
               docs
-      pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
+      pure ((merged, foldMap (snd . snd . snd) found), blindOver ranges merged)
+    firstParsed ((settledBy, (r, t)) :| rest) =
+      ((,) settledBy <$> formatAllConfigs formatter (readingOf r t))
+        `catchE` \case
+          ConfigurationNotParsed answers _
+            | isNothing (implied answers),
+              next : more <- rest ->
+                firstParsed (next :| more)
+          e -> refuse e
     blindOver ranges d = case d of
       DCppChoice [] bs _
         | fmap fst bs == fmap guardText (cfgGuards c),
@@ -677,27 +684,34 @@ without gone reached =
 
 -- | Take, in every conditional the answers to one question settle, the
 -- branch they settle it on, as the preprocessor would, where an answer
--- leaving it open prints its other branches.
+-- leaving it open prints its other branches, and next also where the
+-- answers between them take each of its branches.
 settling ::
   -- | Each answer, and the configuration it gives.
   [(Reached, Text)] ->
   -- | Each answer's settled conditionals and its configuration with them
-  -- taken.
-  [([(GroupSpec, Int)], (Reached, Text))]
+  -- taken, in the order to try them.
+  [NonEmpty ([(GroupSpec, Int)], (Reached, Text))]
 settling given =
-  [ (settled, (reached', blanking (concatMap (uncurry blankingFor) settled) t))
+  [ fmap taking (settled :| [more | length more > length settled])
   | ((reached, t), (candidates, _)) <- zip given found,
-    let settled = [s | s@(gs, _) <- candidates, Set.member (gsWhole gs) open],
-    let reached' =
-          reached
-            { reachedAnswers =
-                reachedAnswers reached
-                  <> [(gsGuards gs, k) | (gs, k) <- settled],
-              reachedLines =
-                dropping
-                  (concatMap (uncurry droppedFor) settled)
-                  (reachedLines reached)
-            }
+    let among ws = [s | s@(gs, _) <- candidates, Set.member (gsWhole gs) ws]
+        settled = among open
+        more = among (open <> covered)
+        taking ss =
+          ( ss,
+            ( reached
+                { reachedAnswers =
+                    reachedAnswers reached
+                      <> [(gsGuards gs, k) | (gs, k) <- ss],
+                  reachedLines =
+                    dropping
+                      (concatMap (uncurry droppedFor) ss)
+                      (reachedLines reached)
+                },
+              blanking (concatMap (uncurry blankingFor) ss) t
+            )
+          )
   ]
   where
     found =
@@ -707,6 +721,13 @@ settling given =
       | (r, t) <- given
       ]
     open = Set.fromList (concatMap snd found)
+    covered =
+      Set.fromList
+        [ gsWhole gs
+        | (gs, _) <- concatMap fst found,
+          all (\k -> Set.member (gsWhole gs, k) taken) [0 .. gsCount gs - 1]
+        ]
+    taken = Set.fromList [(gsWhole gs, k) | (gs, k) <- concatMap fst found]
     walk (Just known) (Just forest) = foldMap (visit known) forest
     walk _ _ = ([], [])
     visit known gs = case settledBranch known gs of
