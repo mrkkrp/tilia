@@ -7,7 +7,7 @@
 module Tilia.CorpusSpec (spec) where
 
 import Control.Exception (SomeException, evaluate, try)
-import Control.Monad (foldM, join, unless)
+import Control.Monad (foldM, join, unless, (<=<))
 import Data.ByteString qualified as BS
 import Data.Choice (isTrue, pattern Do, pattern Don't)
 import Data.Foldable (for_)
@@ -18,7 +18,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, removePathForcibly)
 import System.FilePath (replaceExtension, (</>))
 import System.IO (stdout)
 import System.IO.Temp (withSystemTempDirectory)
@@ -45,6 +45,7 @@ import Tilia.TestUtils
     switchedOn,
     withEnvironment,
   )
+import Tilia.Utils (writeUtf8File)
 
 spec :: Spec
 spec = do
@@ -83,9 +84,16 @@ corpusSpec testedSettings corpus =
             <> T.unpack problem
       Right examples -> do
         palette <- runIO (paletteFor stdout)
+        accepting <- runIO (switchedOn "TILIA_VENDORED_ACCEPT")
+        let answered = case corpusReference corpus of
+              ReferenceMarked mark | accepting -> answersWritten mark
+              _ -> pure
         case corpusExpectations corpus of
           Listed lists ->
-            againstLists lists (check palette testedSettings) examples
+            againstLists
+              lists
+              (check palette testedSettings <=< answered)
+              examples
           -- Plain, so that what a record says does not depend on whether the
           -- run that wrote it printed to a terminal.
           Recorded path ->
@@ -371,6 +379,45 @@ check palette testedSettings example = do
         alternatively
         (checkPure palette package text (join expected) checked passes)
         testedSettings
+
+-- | Write what an example comes out as with the default and the
+-- alternative settings where the corpus keeps its answers, where it comes
+-- out with both and passes every check, and point it at them.
+answersWritten ::
+  -- | What the corpus marks its answers with.
+  String ->
+  -- | The example.
+  Example ->
+  IO Example
+answersWritten mark example =
+  readUtf8 (exampleInput example) >>= \case
+    Nothing -> pure example
+    Just source -> do
+      let format settings =
+            formatExample
+              (Do #check)
+              settings
+              (exampleExtensions example)
+              (exampleOwnModules example)
+              (exampleName example)
+              source
+      outputs <- (,) <$> format defaultSettings <*> format alternativeSettings
+      case outputs of
+        (Right formatted, Right alternatively) -> do
+          writeUtf8File plain formatted
+          primed' <-
+            if alternatively == formatted
+              then plain <$ removePathForcibly primed
+              else primed <$ writeUtf8File primed alternatively
+          pure
+            example
+              { exampleReference = Just plain,
+                exampleAlternativeReference = Just primed'
+              }
+        _ -> pure example
+  where
+    plain = answerFile mark (exampleInput example)
+    primed = answerFile (mark <> "'") (exampleInput example)
 
 -- | Read a file that is supposed to be a Haskell module.
 readUtf8 :: FilePath -> IO (Maybe Text)
