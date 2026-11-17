@@ -271,6 +271,10 @@
   ends the string, so a `{-# LINE #-}` written after it has the module
   declined rather than being dropped.
   [PR 459](https://github.com/mrkkrp/tilia/pull/459).
+* The type of GADT constructors sharing a signature goes two steps in
+  where their names are broken over several lines, as in a signature for
+  several names, rather than one, under the last name.
+  [PR 460](https://github.com/mrkkrp/tilia/pull/460).
 
 ## Tilia 0.1.4.0
 

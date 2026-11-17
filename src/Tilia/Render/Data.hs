@@ -188,7 +188,14 @@ isGadtCon = \case
   ConDeclH98{} -> False
 
 -- | One constructor.
-conDecl :: Ctx -> Choice "singleRecCon" -> ConDecl GhcPs -> Doc
+conDecl ::
+  -- | The context.
+  Ctx ->
+  -- | Is it the declaration's only constructor, and a record?
+  Choice "singleRecCon" ->
+  -- | The constructor.
+  ConDecl GhcPs ->
+  Doc
 conDecl ctx _ ConDeclGADT{..} =
   foldMap (haddock ctx Pipe Closed) con_doc
     <> layoutFrom ctx declSpan (brokenForDocs body)
@@ -211,7 +218,8 @@ conDecl ctx _ ConDeclGADT{..} =
               separatingComma (ctxCommaStyle ctx)
                 <> commaSep (ctxCommaStyle ctx) (fmap (name ctx) cs)
           )
-        <> indent
+        <> nest
+          (if null cs then 1 else 2)
           ( joinedByArrow
               ctx
               breakOrSpace
