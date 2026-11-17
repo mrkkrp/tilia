@@ -32,7 +32,7 @@ import Tilia.Format (FormatError (..), describeFormatError, refused)
 import Tilia.Palette (Color (Meta), Palette (Plain), paint, paletteFor)
 import Tilia.Parser (ParseError (..))
 import Tilia.Pragma (Defaults)
-import Tilia.Settings (Settings, defaultSettings)
+import Tilia.Settings (Settings, alternativeSettings, defaultSettings)
 import Tilia.Span (spanStartColumn, spanStartLine)
 import Tilia.Span.Ghc (spanOfSrcSpan)
 import Tilia.TestConfig
@@ -41,15 +41,13 @@ import Tilia.TestConfig
     formatExample,
   )
 import Tilia.TestUtils
-  ( orthogonalityMode,
-    settingsToTest,
+  ( settingsToTest,
     switchedOn,
     withEnvironment,
   )
 
 spec :: Spec
 spec = do
-  orthogonality <- runIO orthogonalityMode
   testedSettings <-
     runIO (filter ((/= defaultSettings) . snd) <$> settingsToTest)
   describe "obtaining Hackage releases" $
@@ -64,9 +62,7 @@ spec = do
           withEnvironment [("TILIA_CORPUS_DIR", cache)] . obtain $
             hackagePackages{corpusSource = HackageReleases ["listed-1.0"]}
         fmap (fmap exampleName) obtained `shouldBe` Right ["listed-1.0/M.hs"]
-  -- Our own examples say what they come out as with the default and the
-  -- alternative settings alone.
-  unless orthogonality (corpusSpec testedSettings vendoredExamples)
+  corpusSpec testedSettings vendoredExamples
   corpusSpec testedSettings ghcTestSuite
   corpusSpec testedSettings hackagePackages
 
@@ -346,7 +342,8 @@ check palette testedSettings example = do
             | resultOutcome result `elem` [Formatted, PartlyChecked] =
                 format (Do #check) settings text <&> \case
                   Right formatted
-                    | Just reference <- expectedAlternatively,
+                    | settings == alternativeSettings,
+                      Just reference <- expectedAlternatively,
                       reference /= formatted ->
                         broken
                           ( "does not match the corpus's expected output\n"
