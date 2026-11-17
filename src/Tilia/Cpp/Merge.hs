@@ -168,6 +168,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
       openedAgainst inside layout =<< listToMaybe (drop inside xs)
       where
         openedAgainst inside l d = case unwrap d of
+          Just (WNest _, _) -> Nothing
           Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
           Nothing -> case spineAt l d of
             parts@(_ : _ : _)

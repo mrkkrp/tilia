@@ -103,11 +103,8 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
             hsq_explicit
 
     body =
-      includeUnless
-        (null members)
-        ( breakOrSpace
-            <> indent (knotDecls (ctxKnot ctx) ctx Associated members)
-        )
+      includeUnless (null members) . indent $
+        breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
     members =
       inSourceOrder
