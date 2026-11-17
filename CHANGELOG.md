@@ -260,6 +260,9 @@
 * A module with conditionals among its declarations formats faster: the
   parts of it formatted on their own no longer each format its export list
   and imports too. [PR 436](https://github.com/mrkkrp/tilia/pull/436).
+* `--check-ast` is faster on a machine with several cores: both checks of a
+  module of 8,000 lines take 30% less time.
+  [PR 457](https://github.com/mrkkrp/tilia/pull/457).
 
 ## Tilia 0.1.4.0
 
