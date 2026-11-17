@@ -308,6 +308,11 @@
   configuration no run of cpp produces, which took the branch written for
   the extension without it.
   [PR 468](https://github.com/mrkkrp/tilia/pull/468).
+* An instance head broken after `instance`, as under a `WARNING` pragma
+  written on a line of its own, puts its `where` on a line of its own, as
+  a class head does, rather than at the end of the head, where the head
+  and the first method began at the same column.
+  [PR 469](https://github.com/mrkkrp/tilia/pull/469).
 
 ## Tilia 0.1.4.0
 
