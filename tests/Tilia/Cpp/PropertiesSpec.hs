@@ -18,24 +18,23 @@ import Tilia.Cpp.Directives (answeredLeaves)
 import Tilia.Cpp.Macros (Macros (..))
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Parser (parseModule, pmModule)
-import Tilia.Render (RenderConfig (..), defaultRenderConfig)
-import Tilia.Settings (Settings)
-import Tilia.TestUtils (defaultParserConfig, parses, withEachSettings)
+import Tilia.Render (defaultRenderConfig)
+import Tilia.TestUtils (defaultParserConfig, parses)
 import Tilia.Utils (tshow)
 
 spec :: Spec
-spec = modifyMaxSuccess (const 5000) . withEachSettings $ \settings ->
+spec = modifyMaxSuccess (const 5000) . parallel $
   describe "a module the preprocessor runs over" $ do
     it "reaches its answer in one pass" $
-      property $ \m -> formatted settings m $ \out ->
-        case format settings out of
+      property $ \m -> formatted m $ \out ->
+        case format out of
           Left why ->
             counterexample (T.unpack ("re-formatting refused: " <> why)) False
           Right settled ->
             counterexample (T.unpack (diffed out settled)) (settled == out)
 
     it "comes out parseable in every configuration" $
-      property $ \m -> formatted settings m $ \out ->
+      property $ \m -> formatted m $ \out ->
         case answeredLeaves out of
           Left _ -> property Discard
           Right configurations ->
@@ -47,7 +46,7 @@ spec = modifyMaxSuccess (const 5000) . withEachSettings $ \settings ->
               ]
 
     it "keeps what its directives say after their keyword" $
-      property $ \m -> formatted settings m $ \out ->
+      property $ \m -> formatted m $ \out ->
         let remarked = Set.fromList . filter ("/*" `T.isInfixOf`) . T.lines
             lost = Set.difference (remarked (sourceOf m)) (remarked out)
          in counterexample
@@ -78,7 +77,7 @@ spec = modifyMaxSuccess (const 5000) . withEachSettings $ \settings ->
               _ -> property Discard
 
     it "is the same program in every configuration it went in as" $
-      property $ \m -> formatted settings m $ \out ->
+      property $ \m -> formatted m $ \out ->
         case (answeredLeaves (sourceOf m), answeredLeaves out) of
           (Right went, Right came) ->
             conjoin
@@ -101,17 +100,12 @@ macros :: Macros
 macros =
   mempty{macroExactVersions = Map.fromList [("MIN_VERSION_thing", [1, 2, 3])]}
 
-format :: Settings -> Text -> Either Text Text
-format settings source = case result of
+format :: Text -> Either Text Text
+format source = case result of
   Left _ -> Left "declined"
   Right out -> Right out
   where
-    result =
-      formatWithCpp
-        defaultParserConfig
-        defaultRenderConfig{rcSettings = settings}
-        "M.hs"
-        source
+    result = formatWithCpp defaultParserConfig defaultRenderConfig "M.hs" source
 
 -- | Whatever holds of a module the formatter did not decline.
 --
@@ -119,8 +113,8 @@ format settings source = case result of
 -- cannot expand, a module with more configurations than its budget—and says
 -- nothing about the properties below, so those runs are thrown away rather
 -- than counted as passes.
-formatted :: (Testable p) => Settings -> CppModule -> (Text -> p) -> Property
-formatted settings m k = case format settings (sourceOf m) of
+formatted :: (Testable p) => CppModule -> (Text -> p) -> Property
+formatted m k = case format (sourceOf m) of
   Left _ -> property Discard
   Right out -> property (k out)
 
