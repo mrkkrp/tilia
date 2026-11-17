@@ -313,6 +313,10 @@
   a class head does, rather than at the end of the head, where the head
   and the first method began at the same column.
   [PR 469](https://github.com/mrkkrp/tilia/pull/469).
+* A `do` block, a `case` or a lambda bound to an implicit parameter stays
+  after the `=` where it was written there, as one bound to an ordinary
+  name does, rather than going on a line of its own under the `=`.
+  [PR 470](https://github.com/mrkkrp/tilia/pull/470).
 
 ## Tilia 0.1.4.0
 
