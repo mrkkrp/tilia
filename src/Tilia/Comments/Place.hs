@@ -228,7 +228,7 @@ placeComments regions leads fences comments =
                 && not (fencedOff r)
             startsUnderIt r =
               spanStartColumn r == spanStartColumn here
-                && (spanStartLine r == line || startsItsLine r)
+                && (startsItsLine r || staysRightOfIt r)
             holdsTheLine r =
               commentAbove top == ContentAt (spanStartColumn here)
                 && startPoint r <= (line, spanStartColumn here)
@@ -238,6 +238,12 @@ placeComments regions leads fences comments =
             startsItsLine r =
               maybe True ((< spanStartLine r) . fst . fst) $
                 Map.lookupLT (startPoint r) regionsByStartPoint
+            staysRightOfIt r =
+              all ((> spanStartColumn here) . snd)
+                . Map.keys
+                . Map.takeWhileAntitone ((<= line) . fst)
+                . Map.dropWhileAntitone ((<= spanStartLine r) . fst)
+                $ regionsByStartPoint
             larger r o = startPoint o < startPoint r && endPoint o == lineEnd
 
     commentsByEndPoint =
