@@ -36,19 +36,17 @@ $ TILIA_HACKAGE_ACCEPT=1 cabal test
 
 Each example of our own in `corpora/vendored` comes with what it formats to,
 `name-out.hs`, and, where the alternative settings give something else,
-`name-out'.hs` with what they give. These can be written again, and written
-for a new example, like this:
+`name-out'.hs` with what they give. Each module in `corpora/column-limit`
+comes with what it formats to at each column limit `N` that the collection
+has outputs for, `name-out-N.hs`. These can be written again, and written
+for a new example or module, like this:
 
 ```console
 $ TILIA_VENDORED_ACCEPT=1 cabal test
 ```
 
-Only an example that formats with both settings and passes every check gets
-them written, and a `name-out'.hs` that would say what `name-out.hs` says
-goes. Review the change to them like any other.
-
-Each module in `corpora/column-limit` comes with what it formats to at a
-column limit `N` other than the default one, `name-out-N.hs`.
+Only examples that format and pass every check will write output files. A
+`name-out'.hs` that happens to be the same as `name-out.hs` is not written.
 
 Finally, Tilia formats itself, so make sure to run this command before you
 open a PR:

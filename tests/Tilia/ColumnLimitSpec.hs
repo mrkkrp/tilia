@@ -6,12 +6,13 @@
 -- | Formatting at column limits other than the default one.
 module Tilia.ColumnLimitSpec (spec) where
 
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Data.Choice (pattern Do)
 import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.FilePath (dropExtension, takeFileName, (</>))
@@ -20,40 +21,44 @@ import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
 import Text.Read (readMaybe)
 
-import Tilia.Corpus (Example (..), obtain, vendoredExamples)
+import Tilia.Corpus (Example (..), answerFile, obtain, vendoredExamples)
 import Tilia.Format (describeFormatError, formattingFailed)
 import Tilia.Palette (Palette (Plain))
 import Tilia.Settings (Settings (..), defaultSettings)
 import Tilia.TestConfig (formatExample)
-import Tilia.TestUtils (haskellFilesIn, withEachSettings)
-import Tilia.Utils (readUtf8File)
+import Tilia.TestUtils (haskellFilesIn, switchedOn, withEachSettings)
+import Tilia.Utils (readUtf8File, writeUtf8File)
 
 spec :: Spec
 spec = do
   files <- runIO (haskellFilesIn ("corpora" </> "column-limit"))
+  accepting <- runIO (switchedOn "TILIA_VENDORED_ACCEPT")
+  let limits = Set.toList (Set.fromList (mapMaybe limitOf files))
   describe "a module formatted at a column limit" $
     for_ [f | f <- files, Nothing <- [limitOf f]] $ \input ->
-      for_
-        [ (limit, f)
-        | f <- files,
-          Just limit <- [limitOf f],
-          f == dropExtension input <> "-out-" <> show limit <> ".hs"
-        ]
-        $ \(limit, reference) ->
-          it (takeFileName input <> " at " <> show limit) $ do
-            Just source <- readUtf8File input
-            Just expected <- readUtf8File reference
-            formatExample
-              (Do #check)
-              defaultSettings{settingsColumnLimit = limit}
-              Nothing
-              Map.empty
-              (takeFileName input)
-              source
-              >>= \case
-                Left e ->
-                  expectationFailure (T.unpack (describeFormatError Plain e))
-                Right formatted -> formatted `shouldBe` expected
+      for_ limits $ \limit ->
+        it (takeFileName input <> " at " <> show limit) $ do
+          let reference = answerFile ("-out-" <> show limit) input
+          Just source <- readUtf8File input
+          formatExample
+            (Do #check)
+            defaultSettings{settingsColumnLimit = limit}
+            Nothing
+            Map.empty
+            (takeFileName input)
+            source
+            >>= \case
+              Left e ->
+                expectationFailure (T.unpack (describeFormatError Plain e))
+              Right formatted -> do
+                when accepting (writeUtf8File reference formatted)
+                readUtf8File reference >>= \case
+                  Nothing ->
+                    expectationFailure $
+                      reference
+                        <> " is missing; TILIA_VENDORED_ACCEPT=1 cabal test"
+                        <> " writes it"
+                  Just expected -> formatted `shouldBe` expected
   vendored <- runIO (either (fail . T.unpack) pure =<< obtain vendoredExamples)
   modules <-
     runIO $
