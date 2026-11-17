@@ -9,7 +9,8 @@ data Buffer = forall editor content
 
 data Cont u w a
     = Cont (GenHaxl u w a)
-    | forall b. Cont u w b
-        :>>=
-        (b -> GenHaxl u w a -> Either SomeException (Result u w b))
+    | forall b
+       . Cont u w b
+            :>>=
+            (b -> GenHaxl u w a -> Either SomeException (Result u w b))
     | Return (IVar u w a)

@@ -322,6 +322,11 @@
   ends each branch, with the body after the `#endif`, rather than coming
   out after the `#endif` with the body and moving on the next pass.
   [PR 472](https://github.com/mrkkrp/tilia/pull/472).
+* The only constructor of a data declaration, where it is a record with a
+  `forall` or a context of its own and its `=` begins a line, lines up
+  after the `=` as other constructors do, rather than coming out under the
+  `=` wherever its `forall` or context is broken from it.
+  [PR 474](https://github.com/mrkkrp/tilia/pull/474).
 
 ## Tilia 0.1.4.0
 
