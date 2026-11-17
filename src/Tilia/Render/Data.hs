@@ -81,7 +81,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
           <> breakOrSpace
           <> outerBinders
           <> foldMap (leftContext ctx headSpan) dd_ctxt
-          <> typeHead ctx fixity tyCon tyVarSpan renderTyVar tyVars
+          <> typeHead ctx Outdented fixity tyCon tyVarSpan renderTyVar tyVars
           <> foldMap kindSignature dd_kindSig
           <> includeWhen
             (isGadt && not (null cons))
@@ -443,7 +443,14 @@ synDecl ::
 synDecl ctx tyCon fixity HsQTvs{..} rhs =
   txt "type"
     <> space
-    <> typeHead ctx fixity tyCon spanOf (at_ ctx (tyVarBndr ctx)) hsq_explicit
+    <> typeHead
+      ctx
+      Outdented
+      fixity
+      tyCon
+      spanOf
+      (at_ ctx (tyVarBndr ctx))
+      hsq_explicit
     <> indent (space <> txt "=" <> separator <> hsType ctx rhs)
   where
     separator = typeBreak (typeIsDocumented (unLoc rhs))

@@ -95,6 +95,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
       | otherwise =
           typeHead
             ctx
+            Outdented
             fixity
             tyCon
             spanOf
@@ -274,6 +275,7 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
         breakOrSpace
           <> typeHead
             ctx
+            Outdented
             fdFixity
             fdLName
             spanOf
@@ -357,6 +359,7 @@ tyFamInstEqn ctx FamEqn{..} =
     lhs =
       typeHead
         ctx
+        Indented
         feqn_fixity
         feqn_tycon
         typeArgSpan
