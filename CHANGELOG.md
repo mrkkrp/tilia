@@ -296,6 +296,12 @@
   type beside the last name where it is written there, as a signature
   does, rather than putting it on a line of its own.
   [PR 465](https://github.com/mrkkrp/tilia/pull/465).
+* Conditionals that ask one question in different spellings, as `#ifdef X`,
+  `#if defined X` and `#if defined(X)` do, are formatted as conditionals
+  asking it in one spelling are, each keeping its own, rather than as
+  different questions, which declined a module where code behind one of
+  them needed an extension that a pragma behind another turns on.
+  [PR 467](https://github.com/mrkkrp/tilia/pull/467).
 
 ## Tilia 0.1.4.0
 
