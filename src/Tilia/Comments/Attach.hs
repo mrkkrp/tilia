@@ -25,6 +25,7 @@ import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc
   ( Doc (..),
+    Spill (..),
     foldChildren,
     layoutInside,
     leadingComma,
@@ -270,9 +271,12 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill -> foldMap (DHoldBack spill) (commentBody c)
+  HeldBack spill -> foldMap (heldBack spill) (commentBody c)
   OnItsOwnLines -> ownLines margin atTheEnd c
   where
+    heldBack spill x
+      | marginLine margin x = DHoldBack SpillAtMargin x
+      | otherwise = DHoldBack spill x
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
