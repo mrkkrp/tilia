@@ -1485,7 +1485,7 @@ formatted       ab9901d26834  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       960dc4ebff7b  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/ParseModule.hs
 formatted       79e767ee3e91  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Prelude.hs
 formatted       1a8db66fd521  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/PreludeUtils.hs
-formatted       e9711416b458  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
+formatted       2c2a743ccb1c  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Alt.hs
 formatted       533774d6a2e6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Columns.hs
 formatted       c61b5e2d6a72  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Floating.hs
 formatted       02dca655c839  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Indent.hs
@@ -2442,7 +2442,7 @@ formatted       44a4676351bb  hedgehog-1.7/test/Test/Hedgehog/Skip.hs
 formatted       f290d63c01bf  hedgehog-1.7/test/Test/Hedgehog/Text.hs
 formatted       0ff5f0902e5d  hedgehog-1.7/test/Test/Hedgehog/Zip.hs
 formatted       df799f9ffb57  hedgehog-1.7/test/test.hs
-formatted       7898f7ab2dc0  hledger-1.52.1/Hledger/Cli.hs
+formatted       f678abf8d575  hledger-1.52.1/Hledger/Cli.hs
 formatted       367c43f7a331  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       f1687165b7a8  hledger-1.52.1/Hledger/Cli/Anon.hs
 formatted       0939a8681c27  hledger-1.52.1/Hledger/Cli/CliOptions.hs
@@ -3534,7 +3534,7 @@ formatted       7aed9e26a317  pipes-4.3.16/benchmarks/PreludeBench.hs
 formatted       d088866b9a46  pipes-4.3.16/src/Pipes.hs
 formatted       6f37c9453254  pipes-4.3.16/src/Pipes/Core.hs
 formatted       8fd3934110b7  pipes-4.3.16/src/Pipes/Internal.hs
-formatted       00e7316d48d0  pipes-4.3.16/src/Pipes/Lift.hs
+formatted       8c2e58420d19  pipes-4.3.16/src/Pipes/Lift.hs
 formatted       a7479e8f87ba  pipes-4.3.16/src/Pipes/Prelude.hs
 formatted       28db3a9d032f  pipes-4.3.16/src/Pipes/Tutorial.hs
 formatted       b8dce8e37b04  pipes-4.3.16/tests/Main.hs
