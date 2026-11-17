@@ -38,7 +38,7 @@ import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
-import Tilia.Span (startOf)
+import Tilia.Span (endOf, startOf)
 import Tilia.Span.Ghc (spanOf, spansOf)
 
 -- | A signature declaration.
@@ -289,7 +289,12 @@ ruleDecls ctx (HsRules ((_, close), _) rules) =
       <> foldMap (emptyAnchor . startOf) (spanOf close)
 
 -- | One rule of a @RULES@ block.
-ruleDecl :: Ctx -> RuleDecl GhcPs -> Doc
+ruleDecl ::
+  -- | The context.
+  Ctx ->
+  -- | The rule.
+  RuleDecl GhcPs ->
+  Doc
 ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
   at ctx ruleName (\n -> writtenString (StringLiteral written n Nothing))
     <> space
@@ -301,7 +306,10 @@ ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
       ( hsExpr ctx lhs
           <> space
           <> txt "="
-          <> indent (breakOrSpace <> hsExpr ctx rhs)
+          <> layoutFrom
+            ctx
+            (fmap endOf (spanOf lhs) <> spanOf rhs)
+            (indent (breakOrSpace <> hsExpr ctx rhs))
       )
 
 -- | The @forall@s a rule or a @SPECIALIZE@ pragma binds.

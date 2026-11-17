@@ -287,6 +287,11 @@
   each branch, keeps the bar before it in the branch, rather than leaving
   that bar on a line of its own above the conditional.
   [PR 463](https://github.com/mrkkrp/tilia/pull/463).
+* The right-hand side of a rule or of a type family equation stays beside
+  its `=` where it is written there, rather than going on a line of its own
+  wherever a `forall` on a line of its own, a rule's name above it, or a
+  left-hand side over several lines comes before it.
+  [PR 464](https://github.com/mrkkrp/tilia/pull/464).
 
 ## Tilia 0.1.4.0
 
