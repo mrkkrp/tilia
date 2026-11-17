@@ -173,10 +173,7 @@ ghcTestSuite =
       corpusExpectations =
         Listed
           Lists
-            { expectSkip =
-                [ "numeric" </> "should_run" </> "quotRem2Large.hs",
-                  "perf" </> "compiler" </> "parsing001.hs"
-                ],
+            { expectSkip = [],
               expectUnreadable = ghcUnreadable,
               expectDeclined = ghcDeclined
             },
