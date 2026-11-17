@@ -55,6 +55,7 @@ dataDecl ::
   -- | The @forall@ a family instance may bind its variables with, which an
   -- ordinary declaration does not have and passes as 'mempty'.
   Doc ->
+  -- | The rest of the declaration.
   HsDataDefn GhcPs ->
   Doc
 dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
@@ -147,7 +148,11 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
 
           keepTogether
             | lineHaddocks || not singleRecCon = align
+            | existential && not compactAroundEquals = align
             | otherwise = id
+          existential = case unLoc firstCon of
+            ConDeclH98{..} -> con_forall || isJust con_mb_cxt
+            ConDeclGADT{} -> False
 
           alternatives =
             sepBy
@@ -303,9 +308,6 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
   PrefixCon xs ->
     ownDoc
       <> existentials
-      <> layoutFrom
-        ctx
-        declSpan
         ( brokenForDocs $
             name ctx con_name
               <> includeUnless (null xs) breakOrSpace
@@ -320,9 +322,6 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
   RecCon l ->
     ownDoc
       <> existentials
-      <> layoutFrom
-        ctx
-        declSpan
         ( brokenForDocs $
             name ctx con_name
               <> breakOrNothing
@@ -333,9 +332,6 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
   InfixCon l r ->
     includeWhen docOnTop ownDoc
       <> existentials
-      <> layoutFrom
-        ctx
-        declSpan
         ( leftArgument l
             <> indent
               ( includeUnless docOnTop ownDoc
@@ -371,18 +367,23 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
 
     ownDoc = foldMap (haddock ctx Pipe Closed) con_doc
 
-    existentials =
-      layoutFrom ctx contextSpan $
-        includeWhen
-          con_forall
-          ( quantifier
-              ctx
-              breakOrSpace
-              Invisible
-              (maybe (spanOf con_name) spanOf con_mb_cxt)
-              con_ex_tvs
-          )
-          <> foldMap (leftContext ctx (spanOf con_name)) con_mb_cxt
+    existentials body
+      | con_forall || isJust con_mb_cxt =
+          layoutFrom ctx contextSpan $
+            includeWhen
+              con_forall
+              ( quantifier
+                  ctx
+                  breakOrSpace
+                  Invisible
+                  (maybe (spanOf con_name) spanOf con_mb_cxt)
+                  con_ex_tvs
+              )
+              <> foldMap (leftContext ctx (spanOf con_name)) con_mb_cxt
+              <> variant laidOut (align laidOut)
+      | otherwise = laidOut
+      where
+        laidOut = layoutFrom ctx declSpan body
 
     contextSpan =
       spanOfSrcSpan (getHasLoc (acdh_forall con_ext))
