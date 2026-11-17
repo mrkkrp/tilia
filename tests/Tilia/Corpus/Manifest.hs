@@ -45,7 +45,7 @@ data Outcome
     Formatted
   | -- | Nothing was found wrong with it, and one of the things worth asking
     -- went unasked because it could not be afforded. See
-    -- 'Tilia.CorpusSpec.checkCpp'.
+    -- 'Tilia.TestConfig.configurationsToCheck'.
     PartlyChecked
   | -- | The input is Haskell, and the formatter refuses to rewrite it.
     Declined
