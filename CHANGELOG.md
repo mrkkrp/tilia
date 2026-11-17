@@ -275,6 +275,10 @@
   where their names are broken over several lines, as in a signature for
   several names, rather than one, under the last name.
   [PR 460](https://github.com/mrkkrp/tilia/pull/460).
+* A block Haddock written with no space after its trigger, as `{-|Text`,
+  keeps the lines after its first, the closing `-}` among them, where they
+  were written, rather than moving them one column right.
+  [PR 461](https://github.com/mrkkrp/tilia/pull/461).
 
 ## Tilia 0.1.4.0
 

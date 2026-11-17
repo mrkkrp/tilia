@@ -113,9 +113,9 @@ spec = do
         `shouldBe` [["-- $section"]]
     it "leaves a trigger with nothing after it alone" $
       widened "module M where\n-- |\nx = 1\n" `shouldBe` [["-- |"]]
-    it "shifts continuation lines to match" $
+    it "leaves continuation lines alone" $
       widened "module M where\n{-|Foo\n  bar\n-}\nx = 1\n"
-        `shouldBe` [["{-| Foo", "   bar", " -}"]]
+        `shouldBe` [["{-| Foo", "  bar", "-}"]]
     it "does not widen an ordinary line comment" $
       widened "module M where\n-- x|y\nz = 1\n" `shouldBe` [["-- x|y"]]
 
