@@ -1154,7 +1154,12 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
         _ -> mempty
       (headPat : tailPats) -> infrangible . layoutFrom ctx headSpan $ case style of
         FunctionStyle n ->
-          defHead (fromBool isInfix) (fromBool indentBody) (name ctx n) rendered
+          defHead
+            Indented
+            (fromBool isInfix)
+            (fromBool indentBody)
+            (name ctx n)
+            rendered
         PatternBindStyle -> sepBy breakOrSpace rendered
         CaseStyle -> sepBy breakOrSpace rendered
         LambdaStyle ->

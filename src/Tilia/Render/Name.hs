@@ -171,6 +171,8 @@ multiplicity render = \case
 -- follow. The indentation flag is for the callers whose body is going to be
 -- indented anyway, so that the arguments do not end up two steps in.
 defHead ::
+  -- | Where the closing parenthesis goes, where there is one.
+  ClosingIndent ->
   -- | Written infix?
   Choice "writtenInfix" ->
   -- | Indent the arguments?
@@ -180,15 +182,15 @@ defHead ::
   -- | The arguments.
   [Doc] ->
   Doc
-defHead writtenInfix indentArgs nameDoc (a0 : a1 : rest)
+defHead closing writtenInfix indentArgs nameDoc (a0 : a1 : rest)
   | isTrue writtenInfix =
       wrap (a0 <> breakOrSpace <> indent (align (nameDoc <> space <> a1)))
         <> includeUnless
           (null rest)
           (nest (steps indentArgs) (breakOrSpace <> spread rest))
   where
-    wrap = if null rest then id else parens
-defHead _ indentArgs nameDoc args =
+    wrap = if null rest then id else bracketWith closing "(" ")"
+defHead _ _ indentArgs nameDoc args =
   nameDoc
     <> includeUnless
       (null args)
@@ -199,6 +201,8 @@ defHead _ indentArgs nameDoc args =
 typeHead ::
   -- | The context.
   Ctx ->
+  -- | Where the closing parenthesis goes, where there is one.
+  ClosingIndent ->
   -- | Was it written infix?
   LexicalFixity ->
   -- | The type constructor.
@@ -210,9 +214,10 @@ typeHead ::
   -- | The arguments.
   [arg] ->
   Doc
-typeHead ctx fixity tyCon argSpan arg args =
+typeHead ctx closing fixity tyCon argSpan arg args =
   layoutFrom ctx (spanOf tyCon <> foldMap argSpan args) $
     defHead
+      closing
       (fromBool (fixity == Infix))
       (Do #indentArgs)
       (name ctx tyCon)
