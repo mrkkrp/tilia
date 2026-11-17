@@ -16,6 +16,7 @@ module Tilia.Corpus
 
     -- * Obtaining one
     Example (..),
+    answerFile,
     obtain,
     corpusCache,
   )
@@ -844,9 +845,8 @@ examplesIn corpus root dirs = do
     NoReference -> traverse (\f -> example f Nothing Nothing) found
     ReferenceMarked mark ->
       forM (filter (not . answerTo mark present) found) $ \f -> do
-        let marked m = stemOf f <> m <> extensionOf f
-        reference <- existing (marked mark)
-        primed <- existing (marked (mark <> "'"))
+        reference <- existing (answerFile mark f)
+        primed <- existing (answerFile (mark <> "'") f)
         example f reference (primed <|> reference)
   where
     nameOf f = fromMaybe f (stripPrefix (root <> "/") f)
@@ -856,14 +856,37 @@ examplesIn corpus root dirs = do
         (\stem -> Set.member (stem <> extensionOf f) present)
         (mapMaybe (`withoutSuffix` stemOf f) (marks mark))
     marks mark = [mark <> "'", mark]
-    withoutSuffix suffix name
-      | suffix `isSuffixOf` name =
-          Just (take (length name - length suffix) name)
-      | otherwise = Nothing
-    stemOf f =
-      fromMaybe f (listToMaybe (mapMaybe (`withoutSuffix` f) sourceExtensions))
-    extensionOf f =
-      fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
+
+-- | Where a corpus with answers keeps one for an example: the example's
+-- file with the mark put before its extension, as in @name-out.hs@.
+answerFile ::
+  -- | The mark.
+  String ->
+  -- | The example's file.
+  FilePath ->
+  FilePath
+answerFile mark f = stemOf f <> mark <> extensionOf f
+
+-- | A file's name less the extension of a Haskell source file it has.
+stemOf :: FilePath -> FilePath
+stemOf f =
+  fromMaybe f (listToMaybe (mapMaybe (`withoutSuffix` f) sourceExtensions))
+
+-- | The extension of a Haskell source file a file has, if any.
+extensionOf :: FilePath -> String
+extensionOf f =
+  fromMaybe "" (listToMaybe (filter (`isSuffixOf` f) sourceExtensions))
+
+-- | A name less a suffix, if it ends with that suffix.
+withoutSuffix ::
+  -- | The suffix.
+  String ->
+  -- | The name.
+  String ->
+  Maybe String
+withoutSuffix suffix name
+  | suffix `isSuffixOf` name = Just (take (length name - length suffix) name)
+  | otherwise = Nothing
 
 -- | The modules the project around each of a corpus's examples declares,
 -- read once for every project.
