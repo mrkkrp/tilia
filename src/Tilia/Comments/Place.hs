@@ -25,8 +25,7 @@ import Data.Ord (Down (..), comparing)
 import Data.Set qualified as Set
 
 import Tilia.Comments
-  ( Above (..),
-    Comment (..),
+  ( Comment (..),
     carriedOnFrom,
     carriesOn,
     closesItself,
@@ -229,9 +228,10 @@ placeComments regions leads fences comments =
             startsUnderIt r =
               spanStartColumn r == spanStartColumn here
                 && (startsItsLine r || staysRightOfIt r)
-            holdsTheLine r =
-              commentAbove top == ContentAt (spanStartColumn here)
-                && startPoint r <= (line, spanStartColumn here)
+            holdsTheLine r = case commentBackTo top of
+              Just at@(_, column) ->
+                column == spanStartColumn here && startPoint r <= at
+              Nothing -> False
             alignedBy r
               | startsUnderIt r = ByTheRegion
               | otherwise = ByTheIndentation

@@ -55,6 +55,7 @@ import Tilia.Source.Lines
   )
 import Tilia.Span (Span (..), covers)
 import Tilia.Span.Ghc (spanOfReal)
+import Tilia.Utils (opensLineComment)
 
 -- | One comment.
 data Comment = Comment
@@ -67,6 +68,9 @@ data Comment = Comment
     commentStyle :: CommentStyle,
     -- | What was on the line above it.
     commentAbove :: Above,
+    -- | Where the nearest line above it that begins at or left of it
+    -- begins, with no empty line in between, if there is one.
+    commentBackTo :: Maybe (Int, Int),
     -- | Where the code before it on its opening line stops: the column one
     -- past the last character of that code, or 'Nothing' when the comment
     -- had the line to itself.
@@ -138,6 +142,7 @@ commentAt ls spn style raw =
       commentBody = normalizeBody (spanStartColumn spn) style raw,
       commentStyle = style,
       commentAbove = above,
+      commentBackTo = backTo,
       commentCodeBeforeStopsAt = codeBeforeStopsAt,
       commentFirstInBrackets = any ((`T.elem` "([{") . snd) (T.unsnoc before'),
       commentFollowed = followed,
@@ -156,6 +161,22 @@ commentAt ls spn style raw =
       Just l
         | T.all isSpace l -> BlankLine
         | otherwise -> ContentAt (contentColumn l)
+    backTo =
+      listToMaybe
+        [ (n, column)
+        | (n, l) <-
+            takeWhile
+              (written . snd)
+              [ (n, l)
+              | n <- [spanStartLine spn - 1, spanStartLine spn - 2 .. 1],
+                Just l <- [lineAt n ls]
+              ],
+          let column = contentColumn l,
+          column <= spanStartColumn spn
+        ]
+    written l =
+      let t = T.stripStart l
+       in not (T.null t || opensLineComment t || "{-" `T.isPrefixOf` t)
     before' = maybe T.empty (T.stripEnd . T.take startColumn) openingLine
     codeBeforeStopsAt = do
       l <- openingLine
