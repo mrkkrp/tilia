@@ -43,6 +43,7 @@ import Tilia.Doc
     foldRegions,
     layoutInside,
     leadingComma,
+    leadingSemicolon,
     mapChildren,
     onlyBreaks,
     onlySpacing,
@@ -301,7 +302,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
 
     leadingSeparatorIn (opening, ss) = case reverse opening of
       x : DSoftBreak : rest
-        | x == leadingComma ->
+        | x `elem` [leadingComma, leadingSemicolon] ->
             (reverse rest, fmap ([DSoftBreak, x] <>) ss)
       DSpace : DText "|" : rest ->
         (reverse rest, fmap ([DText "|", DSpace] <>) ss)
@@ -1247,7 +1248,7 @@ anchoring = \case
   DVerbatimBreak _ _ -> False
   DText "," -> False
   DText "|" -> False
-  d | d == leadingComma -> False
+  d | d `elem` [leadingComma, leadingSemicolon] -> False
   d | leadingArrow d -> False
   DDeclarationsStart -> False
   DNest _ d -> located d || not (blank d)

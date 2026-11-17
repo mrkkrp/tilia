@@ -342,6 +342,12 @@
   formatted once however many ways lead to it, which takes formatting
   QuickCheck's `Test/QuickCheck/Arbitrary.hs` 17% fewer instructions.
   [PR 477](https://github.com/mrkkrp/tilia/pull/477).
+* A block written between braces, such as the alternatives of a `case`,
+  the statements of a `do` or the bindings of a `let` or a `where`, keeps
+  them, on one line or across lines, rather than losing them and, on one
+  line, leaving its items separated by bare semicolons. Across lines, each
+  item after the first is led by a semicolon under the opening brace.
+  [PR 494](https://github.com/mrkkrp/tilia/pull/494).
 
 ## Tilia 0.1.4.0
 

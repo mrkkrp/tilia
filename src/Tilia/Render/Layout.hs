@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -7,6 +8,7 @@
 module Tilia.Render.Layout
   ( Bracing (..),
     items,
+    braced,
     itemsSepBy,
     keepBlanks,
     Position (..),
@@ -16,6 +18,7 @@ where
 
 import Data.Choice (Choice, isTrue, pattern Without)
 
+import Tilia.Doc (leadingSemicolon)
 import Tilia.Doc.Combinators
 import Tilia.Span
 
@@ -49,6 +52,26 @@ itemsSepBy semisWhenBroken bracing xs = case (bracing, xs) of
     joined = sepBy (txt ";" <> space) xs
     brokenForm =
       sepBy (includeWhen (isTrue semisWhenBroken) (txt ";") <> hardBreak) xs
+
+-- | A block written between braces, which keeps them: its items separated
+-- by semicolons on one line, and across lines each after the first led by
+-- one under the opening brace.
+braced ::
+  -- | Was there an empty line between two items?
+  (Maybe Span -> Maybe Span -> Bool) ->
+  -- | Where each item was, and what it prints as.
+  [(Maybe Span, Doc)] ->
+  Doc
+braced blank = \case
+  [] -> txt "{}"
+  x : xs ->
+    txt "{"
+      <> space
+      <> align (mconcat (keepBlanks blank (x : fmap (fmap led) xs)))
+      <> breakOrSpace
+      <> txt "}"
+  where
+    led = ((breakOrNothing <> leadingSemicolon) <>)
 
 -- | Put back the empty lines the author left between items.
 keepBlanks ::

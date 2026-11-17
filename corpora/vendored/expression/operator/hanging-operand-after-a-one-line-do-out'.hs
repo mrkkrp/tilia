@@ -1,7 +1,7 @@
 module Parser.Sequence where
 
 lexeme =
-    do skipSpace
+    do { skipSpace }
     >>= \_ -> do
         token <- word
         pure token
