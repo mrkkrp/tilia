@@ -39,6 +39,7 @@ import Tilia.Doc
     Doc (..),
     Layout (..),
     Wrapper (..),
+    choosing,
     conditionalRange,
     foldChildren,
     foldRegions,
@@ -118,7 +119,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
                   opened
             (WGroup l, merged)
               | l /= Broken,
-                not (beginsWithChoice merged) ->
+                not (beginsWithChoice merged),
+                choosing merged ->
                   choice $ case fmap regionOf xs of
                     r : rs | all (== r) rs -> xs
                     _ -> fmap Doc.infrangible xs
@@ -275,9 +277,16 @@ merge settings written conditionals guards varied settledOthers = go Broken
           let (ss2, closing) = sharedEnd layout ss1
               (lead, ss3, trail) = hoisted layout ss2
            in mconcat lead
-                <> within layout ss3
+                <> fromMaybe (within layout ss3) (leftAlone ss3)
                 <> mconcat trail
                 <> mconcat closing
+
+        leftAlone ss3 = case filter (not . all printsNothing) ss3 of
+          s : rest
+            | all (untouchedRegion varied) s,
+              all (alike layout s) rest ->
+                Just (mconcat s)
+          _ -> Nothing
 
         -- The arrow every configuration leads what they disagree over with,
         -- after the break they share, at the end of the line before them
@@ -640,15 +649,20 @@ agreeAll varied layout xs ys =
     (space', rest') = span onlySpacing ys
 
 -- | Would these two elements of spines print the same, laid out like this?
-agreeOn :: Varied -> Layout -> Doc -> Doc -> Bool
+agreeOn ::
+  -- | The lines the answer can change.
+  Varied ->
+  -- | The layout of the group they are printed in.
+  Layout ->
+  -- | The first.
+  Doc ->
+  -- | The second.
+  Doc ->
+  Bool
 agreeOn varied layout x y = case (x, y) of
   (DLocated s x', DLocated t y') ->
     s == t
-      && ( untouched varied (spanWithHaddock s x')
-             && untouched varied (spanWithHaddock t y')
-             && not (zeroWidth s)
-             || inside x' y'
-         )
+      && (untouchedRegion varied x && untouchedRegion varied y || inside x' y')
   (DCppChoice ws bs x', DCppChoice ws' cs y') ->
     ws == ws'
       && length bs == length cs
@@ -660,6 +674,18 @@ agreeOn varied layout x y = case (x, y) of
     _ -> x == y
   where
     inside = agree varied layout
+
+-- | Is this a region of some width printed from lines the conditional left
+-- alone?
+untouchedRegion ::
+  -- | The lines the answer can change.
+  Varied ->
+  -- | The document.
+  Doc ->
+  Bool
+untouchedRegion varied = \case
+  DLocated s x -> untouched varied (spanWithHaddock s x) && not (zeroWidth s)
+  _ -> False
 
 -- | Are these two choices, in the same wrappers, between alternatives of the
 -- same conditionals that print alike but for the space in them?

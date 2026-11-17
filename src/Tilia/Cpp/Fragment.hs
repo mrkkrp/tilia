@@ -17,7 +17,6 @@ import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.List (sort, sortOn)
 import Data.Maybe (isJust, listToMaybe, mapMaybe)
-import Data.Monoid (Any (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -31,7 +30,7 @@ import Tilia.Cpp.Directives
 import Tilia.Doc
   ( Doc (..),
     Layout (..),
-    foldChildren,
+    choosing,
     foldRegions,
     printedFrom,
     regionOf,
@@ -303,11 +302,3 @@ extent :: Doc -> Maybe (Int, Int)
 extent d = case printedFrom d of
   [] -> Nothing
   ls -> Just (minimum (fmap fst ls), maximum (fmap snd ls))
-
--- | Is there a choice anywhere in this document?
-choosing :: Doc -> Bool
-choosing = getAny . go
-  where
-    go = \case
-      DCppChoice{} -> Any True
-      d -> foldChildren go d

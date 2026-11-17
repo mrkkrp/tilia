@@ -155,13 +155,16 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     headSpan = foldMap spanOf warning <> typeSpan
     typeSpan = spanOf cid_poly_ty
     whereSpan = spanOf (acid_where anns)
+    typeRegion
+      | null members = typeSpan <> whereSpan
+      | otherwise = typeSpan
 
     head' =
       breakOrSpace
         <> indent
           ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
-              <> ( maybe id located typeSpan $
+              <> ( maybe id located typeRegion $
                      layoutFrom ctx typeSpan (hsSigTypeBody ctx (unLoc cid_poly_ty))
                        <> includeUnless
                          (null members)
