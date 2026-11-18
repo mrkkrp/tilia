@@ -221,10 +221,17 @@ merge settings written conditionals guards varied settledOthers = go Broken
               [(g, b <> gap <> line) | (g, b) <- bs]
               (e <> gap <> line)
             <> rest
-            : woven within layout ss cs
+            : woven within layout ss (afterChoice rest ss cs)
       | otherwise = stretch : c : woven within layout ss cs
       where
         stretch = foldMap (varying within layout) (cutAtConditionals s)
+        afterChoice before (t : _) (d : ds)
+          | printsNothing before,
+            all null t,
+            (line, rest) <- lineOf layout d,
+            printsNothing line =
+              rest : ds
+        afterChoice _ _ ds = ds
     woven within layout ss [] =
       fmap (foldMap (varying within layout) . cutAtConditionals) ss
     woven _ _ [] _ = []

@@ -421,6 +421,11 @@
   does, comes out a step in, as that of a `data` declaration does, rather
   than at the margin, where it did not parse.
   [PR 522](https://github.com/mrkkrp/tilia/pull/522).
+* Where a conditional chooses the operator of a bind's pattern written
+  infix and the body hangs after the `<-`, as a `do` block does, the body
+  comes out after the `#endif` one step in from the statement, rather
+  than at the column of the statement, where it did not parse.
+  [PR 523](https://github.com/mrkkrp/tilia/pull/523).
 
 ## Tilia 0.1.4.0
 
