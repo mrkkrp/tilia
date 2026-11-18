@@ -143,12 +143,17 @@ merge settings written conditionals guards varied settledOthers = go Broken
               zipWith (asTaken ws) [0 ..] (transpose alternatives) ->
             Doc.cppChoice ws (zip (fmap fst bs) merged) fallback
       _
+        | any (isJust . ungrouped) xs ->
+            go layout [fromMaybe d (ungrouped d) | d <- xs]
         | Just spans <- traverse regionOf xs,
           Just opened <- unwrapping layout spans xs (const True) ->
             opened
         | otherwise -> choice xs
       where
         every f = traverse f xs
+        ungrouped = \case
+          DGroup Broken d | layout == Broken -> Just d
+          _ -> Nothing
 
     -- A choice among the configurations whose groups these layouts are,
     -- each alternative laid out as its configuration lays the group out.
