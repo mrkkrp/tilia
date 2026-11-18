@@ -541,14 +541,14 @@ merge settings written conditionals guards varied settledOthers = go Broken
       case (choiceAt written Last before, choiceAt written First after) of
         (Just (opening, ws, bs, e, gap), Just (gap', ws', cs, e', closing))
           | fmap fst bs == fmap fst cs,
-            ws == ws' || null ws || null ws',
+            ws == ws',
             (g, x) : rest <- bs,
             (_, y) : rest' <- cs,
             (lead, first') <- span breaking (spine (x <> between <> y)) ->
               opening
                 <> mconcat lead
                 <> Doc.cppChoice
-                  (if null ws then ws' else ws)
+                  ws
                   ( (g, mconcat first')
                       : [ (h, z <> between <> z')
                         | ((h, z), (_, z')) <- zip rest rest'
