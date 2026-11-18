@@ -405,6 +405,12 @@
   its `where`, before the conditional, rather than in each branch under
   an `#else` added where none was written.
   [PR 508](https://github.com/mrkkrp/tilia/pull/508).
+* A block written on one line at the end of a block written between
+  braces, such as the `do` in `case mode of { Plain -> do hFlush stdout }`,
+  comes out as written, rather than between braces nobody wrote where the
+  `case` is a statement of a `do` block or is bound in a binding followed
+  by another on its line.
+  [PR 520](https://github.com/mrkkrp/tilia/pull/520).
 
 ## Tilia 0.1.4.0
 

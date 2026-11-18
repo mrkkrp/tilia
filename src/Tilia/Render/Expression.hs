@@ -726,8 +726,8 @@ stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
         | (position, stmt) <- positioned xs
         ]
     item position stmt =
-      blockItem position (siteBracing site) $ \bracing ->
-        at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
+      blockItem position (bracingWithin (getLoc es) (siteBracing site)) $
+        \bracing -> at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
@@ -1117,7 +1117,10 @@ matchGroup ctx bracing mkBody style MG{..}
   where
     blockBracing = if isCaseStyle style then bracing else NoBrace
     rendered (position, m) =
-      blockItem position bracing (\b -> at ctx m (renderMatch b))
+      blockItem
+        position
+        (bracingWithin (getLoc mg_alts) bracing)
+        (\b -> at ctx m (renderMatch b))
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1533,6 +1536,18 @@ itemsOrBraces ::
 itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
   ListBraces{} -> braced blank
   _ -> items bracing . keepBlanks blank
+
+-- | The bracing a block hands on to its items: none where it was written
+-- between braces, whose closing one delimits the last of them.
+bracingWithin ::
+  -- | The block's annotation, which holds its braces.
+  EpAnn (AnnList a) ->
+  -- | Whether the block may brace itself when flat.
+  Bracing ->
+  Bracing
+bracingWithin ann bracing = case al_brackets (anns ann) of
+  ListBraces{} -> NoBrace
+  _ -> bracing
 
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.
