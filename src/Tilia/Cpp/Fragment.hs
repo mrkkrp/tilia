@@ -30,7 +30,6 @@ import Tilia.Cpp.Directives
 import Tilia.Doc
   ( Doc (..),
     Layout (..),
-    choosing,
     foldRegions,
     printedFrom,
     regionOf,
@@ -44,8 +43,6 @@ import Tilia.Span (Span (..), endPoint, mkSpan, startPoint)
 data Body = Body
   { -- | The last line before the first run of declarations.
     bodyHeadEnd :: !Int,
-    -- | Whether anything above the declarations is a choice.
-    bodyHeadVaries :: !Bool,
     -- | The stretch from the first region above the declarations that holds
     -- others, the export list or an import, to the declarations, less the
     -- regions that hold none, such as the @where@.
@@ -85,7 +82,6 @@ bodyOf doc = do
   pure
     Body
       { bodyHeadEnd = headEnd,
-        bodyHeadVaries = choosing (with mempty),
         bodySpare = case sort [s | (s, True) <- regions] of
           [] -> []
           s : _ ->
@@ -232,7 +228,6 @@ reassembled body formatted = do
     -- elements to put in place of the module's, with where they go.
     place (f, d) = do
       b <- bodyOf d
-      guard (fragmentAbove f || not (bodyHeadVaries b))
       let indexed = zip [0 :: Int ..] (bodyItems b)
           within r x =
             maybe False (\(s, e) -> runFrom r <= s && e <= runTo r) (extent x)
