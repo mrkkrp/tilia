@@ -283,9 +283,14 @@ merge settings written conditionals guards varied settledOthers = go Broken
     varying within layout ss =
       let (opening, ss1) = leadingSeparatorIn (sharedStart layout ss)
        in fromMaybe
-            (mconcat opening <> disagreement ss1)
+            (carriedOn opening (disagreement ss1))
             (arrowAhead opening ss1)
       where
+        carriedOn opening d = case (unsnoc opening, spine d) of
+          (Just (front, DSpace), DCppChoice{} : _) ->
+            mconcat front <> onEdge First DSpace d
+          _ -> mconcat opening <> d
+
         disagreement ss1 =
           let (ss2, closing) = sharedEnd layout ss1
               (lead, ss3, trail) = hoisted layout ss2
