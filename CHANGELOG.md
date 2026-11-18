@@ -437,6 +437,13 @@
   has stay out of it, as they do in a GADT constructor, rather than
   going with the whole type into each branch.
   [PR 525](https://github.com/mrkkrp/tilia/pull/525).
+* Code written inside an expression under a conditional that the answers
+  to one around a `LANGUAGE` pragma settle, as `#ifndef PLAIN_RECORDS`
+  around the argument of `sum` where `#ifdef PLAIN_RECORDS` turns
+  `OverloadedRecordDot` off, comes out as written, rather than read with
+  the extensions of the answer that rules it out, its record dot as
+  composition.
+  [PR 526](https://github.com/mrkkrp/tilia/pull/526).
 
 ## Tilia 0.1.4.0
 
