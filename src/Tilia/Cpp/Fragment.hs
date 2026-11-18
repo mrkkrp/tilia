@@ -203,7 +203,7 @@ fragmentText body forest source f
 
 -- | Put what each fragment was formatted to in place of what the module's
 -- body holds there, or 'Nothing' where one of them came out other than a
--- fragment of declarations or split the run after it.
+-- fragment of declarations.
 reassembled ::
   Body ->
   -- | Each fragment, with what it was formatted to.
@@ -238,12 +238,7 @@ reassembled body formatted = do
         Nothing -> Just (length indexed)
         Just r -> listToMaybe [i | (i, x) <- indexed, within r x]
       let new = [x | (i, x) <- indexed, start < i, i < end]
-          whole r =
-            any
-              (\r' -> runFrom r' <= runFrom r && runTo r <= runTo r')
-              (bodyRuns b)
       guard (start < end)
-      guard (all whole (fragmentAfter f))
       pure
         ( f,
           b,
