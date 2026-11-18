@@ -450,6 +450,10 @@
   did where some branch was empty, rather than at its column, where in a
   `do` block it began a statement of its own and did not parse.
   [PR 527](https://github.com/mrkkrp/tilia/pull/527).
+* A module with conditionals formats faster: its comments go to the
+  placement without working out first which region each belongs to,
+  which takes the formatting benchmarks 2.3% fewer instructions.
+  [PR 530](https://github.com/mrkkrp/tilia/pull/530).
 
 ## Tilia 0.1.4.0
 
