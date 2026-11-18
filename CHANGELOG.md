@@ -444,6 +444,12 @@
   the extensions of the answer that rules it out, its record dot as
   composition.
   [PR 526](https://github.com/mrkkrp/tilia/pull/526).
+* Where every branch of a conditional begins with its own version of what
+  goes on with the line before the `#if`, as `$ round total` after
+  `print` does, each branch comes out a step right of that line, as it
+  did where some branch was empty, rather than at its column, where in a
+  `do` block it began a statement of its own and did not parse.
+  [PR 527](https://github.com/mrkkrp/tilia/pull/527).
 
 ## Tilia 0.1.4.0
 
