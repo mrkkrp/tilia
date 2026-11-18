@@ -71,6 +71,7 @@ library
     Tilia.Comments.Place
     Tilia.Cpp
     Tilia.Cpp.Directives
+    Tilia.Cpp.Expansion
     Tilia.Cpp.Fragment
     Tilia.Cpp.Macros
     Tilia.Cpp.Merge

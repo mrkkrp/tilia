@@ -27,7 +27,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
-import Data.Choice (Choice, fromBool, isFalse, isTrue)
+import Data.Choice (Choice, fromBool, isTrue)
 import Data.Foldable (traverse_)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Map.Strict (Map)
@@ -80,6 +80,7 @@ import Tilia.Cpp
     usesCpp,
     withoutRuledOut,
   )
+import Tilia.Cpp.Expansion (hashLines)
 import Tilia.Cpp.Macros (Macros)
 import Tilia.Doc (printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
@@ -579,12 +580,18 @@ formatTurnedOn session path source = runExceptT $ do
             traverse_ misplaced (misplacedMagicComment text (pure parsed))
             render <- renderConfigFor extensions (pure parsed)
             pure (printDoc settings (renderModule render parsed), Just parsed)
-  let inForce@(extensions, cpp) = extensionsAndCpp source
+  let inForce@(extensions, _) = extensionsAndCpp source
   when (movesPositions (Set.toList extensions) source) $
     throwE (PositionPragmas path)
   (formatted, tree) <- formatting inForce Nothing source
   let (changed, printedTree) =
-        rewritten config astCheck cpp path (source, tree) formatted
+        rewritten
+          config
+          astCheck
+          (Set.toList extensions)
+          path
+          (source, tree)
+          formatted
       astCheck = sessionCheckAst session
   traverse_ (throwE . NotEquivalent path) changed
   when (isTrue (sessionCheckIdempotence session)) $ do
@@ -620,8 +627,8 @@ rewritten ::
   -- | Whether to compare the two, and in which configurations where the
   -- file uses the preprocessor.
   AstCheck ->
-  -- | Whether the file uses the preprocessor.
-  Choice "cppUsed" ->
+  -- | The extensions in force.
+  [Extension] ->
   -- | The file, for the parser's messages.
   FilePath ->
   -- | What was read, and the tree it was printed from where it has one.
@@ -630,9 +637,9 @@ rewritten ::
   Text ->
   -- | What formatting changed, and the tree of what was printed.
   (Maybe Text, Maybe ParsedModule)
-rewritten config astCheck cppUsed path (before, printedFrom') after
+rewritten config astCheck extensions path (before, printedFrom') after
   | NoAstCheck <- astCheck = (Nothing, Nothing)
-  | isFalse cppUsed = case parseModule config path after of
+  | not readByCpp = case parseModule config path after of
       Left e ->
         ( Just ("the formatted output does not parse: " <> describeParseError e),
           Nothing
@@ -641,8 +648,9 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
         <|> whatParsed (parseModule config path before) of
         Nothing -> (Nothing, Just a')
         Just b' -> (comparing b' a', Just a')
-  | otherwise = (underCpp, Nothing)
+  | otherwise = (hashLinesDifference before after <|> underCpp, Nothing)
   where
+    readByCpp = any (isTrue . usesCpp extensions) [before, after]
     comparing b' a' =
       syntaxDifference (pmModule b') (pmModule a')
         <|> commentDifference b' a'
@@ -709,6 +717,23 @@ rewritten config astCheck cppUsed path (before, printedFrom') after
         Just ("the input does not parse: " <> describeParseError e)
       _ -> Nothing
     firstJust = foldr (<|>) Nothing
+
+-- | How formatting changed the lines whose first character is a hash, which
+-- cpp acts on or GHC reads past, if it did.
+hashLinesDifference ::
+  -- | What was read.
+  Text ->
+  -- | What was printed.
+  Text ->
+  Maybe Text
+hashLinesDifference before after = go (hashLines before) (hashLines after)
+  where
+    go (b : bs) (a : as)
+      | b == a = go bs as
+      | otherwise = Just ("the line `" <> b <> "` became `" <> a <> "`")
+    go (b : _) [] = Just ("lost the line `" <> b <> "`")
+    go [] (a : _) = Just ("gained the line `" <> a <> "`")
+    go [] [] = Nothing
 
 -- | What a session takes from the project itself: its settings, the
 -- @.cabal@ files of its packages and the modules they declare.

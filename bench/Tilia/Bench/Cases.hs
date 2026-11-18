@@ -249,13 +249,22 @@ subjectOf package ownModules isChecked name source =
       subjectCheck =
         if isChecked
           then
-            Just (fst . rewritten parser EachCppBranch cpp path (source, tree))
+            Just
+              ( fst
+                  . rewritten
+                    parser
+                    EachCppBranch
+                    extensions
+                    path
+                    (source, tree)
+              )
           else Nothing
     }
   where
     path = T.unpack name
     parser = ParserConfig (defaultsFor package)
-    cpp = usesCpp (effectiveExtensionsFor package source) source
+    extensions = effectiveExtensionsFor package source
+    cpp = usesCpp extensions source
     tree
       | isTrue cpp = Nothing
       | otherwise = either (const Nothing) Just (parseModule parser path source)

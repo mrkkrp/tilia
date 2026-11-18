@@ -11,12 +11,14 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.LanguageExtensions.Type (Extension (Cpp))
 import Test.Hspec
 
 import Tilia.Cpp
 import Tilia.Cpp.Directives (configurations, coveringLeaves, guardOf, implied)
 import Tilia.Doc (Doc, regionsIn)
 import Tilia.Equivalence (syntaxDifference)
+import Tilia.Format (AstCheck (..), rewritten)
 import Tilia.Parser (parseModule, pmModule)
 import Tilia.Render (RenderConfig (..), defaultRenderConfig, renderModule)
 import Tilia.Settings (Settings)
@@ -57,6 +59,28 @@ spec = do
           output = "module M where\n#if FLAG\nf = 1\n#else\n#error no\n#endif\n"
       (said (correspondingBranches input output) >>= mapM_ sameBranch)
         `shouldSatisfy` isLeft
+  describe "reading what was printed as cpp does" $ do
+    it "notices a directive taken into a #define above it" $
+      changedBy limitDefined limitTakesInclude `shouldSatisfy` isJust
+
+    it "notices a line marker gone" $
+      changedBy markedLine markerLost `shouldSatisfy` isJust
+
+    it "notices a comment's lines become directives" $
+      changedBy commentedOut commentedOutAtMargin `shouldSatisfy` isJust
+
+    it "notices a macro standing for a constraint closed in brackets" $
+      changedBy callStackMacro callStackBracketed `shouldSatisfy` isJust
+
+    it "notices a macro line that leaves a comma short after expansion" $
+      changedBy alsoHup alsoHupTrailing `shouldSatisfy` isJust
+
+    it "notices that when a block comment sits under the macro line" $
+      changedBy alsoHupNoted alsoHupNotedTrailing `shouldSatisfy` isJust
+
+    it "sees past a use given its arguments after a space" $
+      changedBy callStackMacro callStackSpaced `shouldBe` Nothing
+
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       fmap guardText . cfgGuards <$> configurations atDeclarations
@@ -352,6 +376,217 @@ spec = do
 
     it "does not take an indented line for one, as cpp does not" $
       directiveOnLine "    #if FOO" `shouldBe` Nothing
+
+----------------------------------------------------------------------------
+-- What was read and printed, as the AST check compares them
+
+-- | What the AST check finds formatting changed, in every configuration.
+changedBy ::
+  -- | What was read.
+  Text ->
+  -- | What was printed.
+  Text ->
+  Maybe Text
+changedBy input output =
+  fst
+    ( rewritten
+        defaultParserConfig
+        (EachCppConfiguration 64)
+        [Cpp]
+        "example.hs"
+        (input, Nothing)
+        output
+    )
+
+-- | A @#define@ ended by an empty line, and a directive under it.
+limitDefined :: Text
+limitDefined =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Terminal.Limits where",
+      "#define LIMIT \\",
+      "  80 \\",
+      "",
+      "#include \"terminal.h\"",
+      "width :: Int",
+      "width = LIMIT"
+    ]
+
+-- | 'limitDefined' with the empty line gone, so that the @#define@ takes
+-- the @#include@.
+limitTakesInclude :: Text
+limitTakesInclude =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Terminal.Limits where",
+      "#define LIMIT \\",
+      "  80 \\",
+      "#include \"terminal.h\"",
+      "width :: Int",
+      "width = LIMIT"
+    ]
+
+-- | A line marker in a module using cpp.
+markedLine :: Text
+markedLine =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Steps where",
+      "#ifdef DEBUG",
+      "import Debug.Trace (trace)",
+      "#endif",
+      "# 40 \"Steps.hs\"",
+      "step :: Int -> Int",
+      "step = succ"
+    ]
+
+-- | 'markedLine' without its line marker.
+markerLost :: Text
+markerLost =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Steps where",
+      "#ifdef DEBUG",
+      "import Debug.Trace (trace)",
+      "#endif",
+      "step :: Int -> Int",
+      "step = succ"
+    ]
+
+-- | A block comment holding lines that would be directives at the margin.
+commentedOut :: Text
+commentedOut =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module A where",
+      "  {- Not yet:",
+      "  #ifdef WITH_LOCKS",
+      "  lock :: s -> IO ()",
+      "  #endif",
+      "  -}",
+      "foo :: Int",
+      "foo = 1"
+    ]
+
+-- | 'commentedOut' at the margin.
+commentedOutAtMargin :: Text
+commentedOutAtMargin =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module A where",
+      "{- Not yet:",
+      "#ifdef WITH_LOCKS",
+      "lock :: s -> IO ()",
+      "#endif",
+      "-}",
+      "foo :: Int",
+      "foo = 1"
+    ]
+
+-- | A context headed by a macro standing for a constraint and its arrow.
+callStackMacro :: Text
+callStackMacro =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module M where",
+      "import GHC.Stack (HasCallStack)",
+      "#define CALLSTACK HasCallStack =>",
+      "#define EQUAL(a, b) (a == b)",
+      "assertEqual :: CALLSTACK (Eq a, Show a) => a -> a -> IO ()",
+      "assertEqual expected actual = print EQUAL(expected,actual)"
+    ]
+
+-- | 'callStackMacro' with the context in brackets.
+callStackBracketed :: Text
+callStackBracketed =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module M where",
+      "import GHC.Stack (HasCallStack)",
+      "#define CALLSTACK HasCallStack =>",
+      "#define EQUAL(a, b) (a == b)",
+      "assertEqual :: (CALLSTACK (Eq a, Show a)) => a -> a -> IO ()",
+      "assertEqual expected actual = print EQUAL(expected,actual)"
+    ]
+
+-- | 'callStackMacro' with a space before the arguments of a use.
+callStackSpaced :: Text
+callStackSpaced =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module M where",
+      "import GHC.Stack (HasCallStack)",
+      "#define CALLSTACK HasCallStack =>",
+      "#define EQUAL(a, b) (a == b)",
+      "assertEqual :: CALLSTACK (Eq a, Show a) => a -> a -> IO ()",
+      "assertEqual expected actual = print EQUAL (expected, actual)"
+    ]
+
+-- | A macro line standing for an item and the comma before it.
+alsoHup :: Text
+alsoHup =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Signals (handled) where",
+      "#define ALSO(name) , name",
+      "handled :: [String]",
+      "handled =",
+      "  [ \"INT\"",
+      "  , \"TERM\"",
+      "  ALSO(\"HUP\")",
+      "  , \"QUIT\"",
+      "  ]"
+    ]
+
+-- | 'alsoHup' with trailing commas.
+alsoHupTrailing :: Text
+alsoHupTrailing =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Signals (handled) where",
+      "#define ALSO(name) , name",
+      "handled :: [String]",
+      "handled =",
+      "  [ \"INT\",",
+      "    \"TERM\",",
+      "    ALSO(\"HUP\")",
+      "    \"QUIT\"",
+      "  ]"
+    ]
+
+-- | 'alsoHup' with a block comment under the macro line.
+alsoHupNoted :: Text
+alsoHupNoted =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Signals (handled) where",
+      "#define ALSO(name) , name",
+      "handled :: [String]",
+      "handled =",
+      "  [ \"INT\"",
+      "  , \"TERM\"",
+      "  ALSO(\"HUP\")",
+      "  {- hang up -}",
+      "  , \"QUIT\"",
+      "  ]"
+    ]
+
+-- | 'alsoHupNoted' with trailing commas.
+alsoHupNotedTrailing :: Text
+alsoHupNotedTrailing =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Signals (handled) where",
+      "#define ALSO(name) , name",
+      "handled :: [String]",
+      "handled =",
+      "  [ \"INT\",",
+      "    \"TERM\",",
+      "    ALSO(\"HUP\")",
+      "    {- hang up -}",
+      "    \"QUIT\"",
+      "  ]"
+    ]
 
 ----------------------------------------------------------------------------
 -- The modules the question is asked of
