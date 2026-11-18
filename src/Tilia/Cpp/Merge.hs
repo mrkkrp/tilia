@@ -109,7 +109,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
     alongside _ [] = mempty
     alongside layout xs
       | Just wds <- traverse unwrap xs,
-        Just w <- joint wds =
+        Just w <- joint (fmap fst wds) =
           case (w, go (layoutInside layout w) (fmap snd wds)) of
             (WLocated _, merged)
               | spans <- [s | (WLocated s, _) <- wds],
@@ -842,9 +842,9 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
     (bs, ss) -> spliced bs ss
   where
     descend b xs = do
-      own@(_, i) <- unwrap b
+      (own, i) <- unwrap b
       others <- traverse (traverse unwrap) xs
-      w <- joint (own : fmap snd others)
+      w <- joint (own : fmap (fst . snd) others)
       wrap w <$> combine (layoutInside layout w) i (fmap (fmap snd) others)
 
     spliced bs ss = do
@@ -915,17 +915,17 @@ inWrittenOrder bs = concatMap reorder . groupBy ((==) `on` gap)
       [] -> Nothing
       ls -> Just (minimum (fmap fst ls))
 
--- | The wrapper standing for those of several documents, if each is of a
--- kind with the first: the smallest span covering theirs for a region, and
--- for a group broken if any that holds something is.
-joint :: [(Wrapper, Doc)] -> Maybe Wrapper
-joint wds = case fmap fst wds of
+-- | The wrapper standing for several, if each is of a kind with the first:
+-- the smallest span covering theirs for a region, and for a group broken if
+-- any is.
+joint :: [Wrapper] -> Maybe Wrapper
+joint = \case
   w : ws | all (kin w) ws -> Just $ case w of
     WLocated s -> WLocated (foldr (<>) s [t | WLocated t <- ws])
     WFence s -> WFence (foldr (<>) s [t | WFence t <- ws])
     WGroup _
-      | Broken `elem` layoutsOf wds -> WGroup Broken
-      | Frangible `elem` layoutsOf wds -> WGroup Frangible
+      | WGroup Broken `elem` (w : ws) -> WGroup Broken
+      | WGroup Frangible `elem` (w : ws) -> WGroup Frangible
       | otherwise -> WGroup Flat
     _ -> w
   _ -> Nothing
@@ -937,10 +937,6 @@ kin a b = case (a, b) of
   (WFence s, WFence t) -> meets s t
   (WGroup _, WGroup _) -> True
   _ -> a == b
-
--- | The layouts of the groups that hold something.
-layoutsOf :: [(Wrapper, Doc)] -> [Layout]
-layoutsOf wds = [l | (WGroup l, d) <- wds, not (printsNothing d)]
 
 -- | A stretch of the baseline, and what one document put there instead.
 data Change = Change
