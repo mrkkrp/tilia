@@ -1271,7 +1271,6 @@ anchoring ::
   Doc ->
   Bool
 anchoring = \case
-  DVerbatimBreak _ _ -> False
   DText "," -> False
   DText "|" -> False
   d | d `elem` [leadingComma, leadingSemicolon] -> False
