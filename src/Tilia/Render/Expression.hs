@@ -726,8 +726,8 @@ stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
         | (position, stmt) <- positioned xs
         ]
     item position stmt =
-      blockItem position (bracingWithin (getLoc es) (siteBracing site)) $
-        \bracing -> at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
+      blockItem position NoBrace $ \bracing ->
+        at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
@@ -796,9 +796,7 @@ caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
     <> space
     <> indent (keywordAt ctx (spanOf hsCaseAnnOf) "of")
     <> breakOrSpace
-    <> bracedForSite site alternatives
-  where
-    alternatives b = underSite site (matchGroup ctx b mkBody CaseStyle mg)
+    <> underSite site (matchGroup ctx (siteBracing site) mkBody CaseStyle mg)
 
 -- | A lambda, in any of its three spellings.
 lambda ::
@@ -820,9 +818,13 @@ lambda ::
   Doc
 lambda ctx site variant' mkBody mg = case keyword of
   Nothing -> matchGroup ctx (siteBracing site) mkBody LambdaStyle mg
-  Just kw -> txt kw <> breakOrSpace <> bracedForSite site alternatives
+  Just kw ->
+    txt kw
+      <> breakOrSpace
+      <> underSite
+        site
+        (matchGroup ctx (siteBracing site) mkBody LambdaCaseStyle mg)
   where
-    alternatives b = underSite site (matchGroup ctx b mkBody LambdaCaseStyle mg)
     keyword = case variant' of
       LamSingle -> Nothing
       LamCase -> Just "\\case"
@@ -1115,12 +1117,11 @@ matchGroup ctx bracing mkBody style MG{..}
       itemsOrBraces (getLoc mg_alts) blockBracing (\_ _ -> False) $
         [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
   where
-    blockBracing = if isCaseStyle style then bracing else NoBrace
+    (blockBracing, lastBracing)
+      | isCaseStyle style = (bracing, NoBrace)
+      | otherwise = (NoBrace, bracing)
     rendered (position, m) =
-      blockItem
-        position
-        (bracingWithin (getLoc mg_alts) bracing)
-        (\b -> at ctx m (renderMatch b))
+      blockItem position lastBracing (\b -> at ctx m (renderMatch b))
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1537,18 +1538,6 @@ itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
   ListBraces{} -> braced blank
   _ -> items bracing . keepBlanks blank
 
--- | The bracing a block hands on to its items: none where it was written
--- between braces, whose closing one delimits the last of them.
-bracingWithin ::
-  -- | The block's annotation, which holds its braces.
-  EpAnn (AnnList a) ->
-  -- | Whether the block may brace itself when flat.
-  Bracing ->
-  Bracing
-bracingWithin ann bracing = case al_brackets (anns ann) of
-  ListBraces{} -> NoBrace
-  _ -> bracing
-
 -- | An item of a block: the last one keeps the block's bracing, and any
 -- other may brace itself when the block is flat.
 blockItem :: Position -> Bracing -> (Bracing -> Doc) -> Doc
@@ -1561,15 +1550,6 @@ blockItem position bracing render = case position of
 mayBraceWhenFlat :: Bracing -> (Bracing -> Doc) -> Doc
 mayBraceWhenFlat whenBroken render =
   variant (render MayBrace) (render whenBroken)
-
--- | A @case@ or lambda standing as a block item has to delimit itself when
--- the block is flat, unless it is the function of an application, where the
--- argument that follows already does so.
-bracedForSite :: Site -> (Bracing -> Doc) -> Doc
-bracedForSite site render
-  | siteInBlock site && not (siteApplicand site) =
-      mayBraceWhenFlat (siteBracing site) render
-  | otherwise = render (siteBracing site)
 
 ----------------------------------------------------------------------------
 -- Bodies
