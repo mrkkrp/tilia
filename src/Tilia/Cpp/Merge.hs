@@ -117,6 +117,13 @@ merge settings written conditionals guards varied settledOthers = go Broken
                   unwrapping layout spans xs $ \parts ->
                     onlyChoice merged || coveredAmong spans parts ->
                   opened
+              | x : _ <-
+                  [ x
+                  | (x, (v, d)) <- zip xs wds,
+                    v /= w,
+                    agree varied layout merged d
+                  ] ->
+                  x
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged),
@@ -827,7 +834,14 @@ spaceOf layout = go 0 False False
 -- side rather than chosen between. Which is what makes varying the
 -- conditionals one at a time add up to varying them together, and so what
 -- makes the cost linear.
-combine :: Layout -> Doc -> [(Varied, Doc)] -> Maybe Doc
+combine ::
+  -- | The layout of the group they are printed in.
+  Layout ->
+  -- | The baseline.
+  Doc ->
+  -- | Each document, with the lines its conditional can change.
+  [(Varied, Doc)] ->
+  Maybe Doc
 combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds of
   [] -> Just base
   [(_, only)] -> Just only
@@ -861,21 +875,26 @@ combine layout base ds = case filter (\(v, d) -> not (agree v layout base d)) ds
     cluster _ [c] = Just c
     cluster bs cs
       | to - from == 1,
-        Just xs <- traverse (\c -> (,) (chVaried c) <$> sole (chWith c)) cs,
+        Just xs <-
+          traverse (\c -> (,) (chVaried c) <$> listToMaybe (chWith c)) cs,
         (b : _) <- drop from bs =
           ( \d ->
               Change
                 { chFrom = from,
                   chTo = to,
-                  chWith = [d],
-                  chVaried = Varied (concatMap (variedLines . chVaried) cs)
+                  chWith = d : concatMap (drop 1 . chWith) cs,
+                  chVaried = varied
                 }
           )
-            <$> combine layout b xs
+            <$> case xs of
+              (_, x) : others
+                | all (agree varied layout x . snd) others -> Just x
+              _ -> combine layout b xs
       | otherwise = Nothing
       where
         from = minimum (fmap chFrom cs)
         to = maximum (fmap chTo cs)
+        varied = Varied (concatMap (variedLines . chVaried) cs)
 
     applied bs = go 0
       where

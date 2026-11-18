@@ -444,6 +444,12 @@
   the extensions of the answer that rules it out, its record dot as
   composition.
   [PR 526](https://github.com/mrkkrp/tilia/pull/526).
+* An instance whose members are all behind two or more conditionals, each
+  with an empty first branch, keeps its `where`, rather than losing it,
+  which left the configurations taking another branch unable to parse. A
+  class whose members are so written keeps each conditional after the
+  first after its `#endif`, rather than in each of its branches.
+  [PR 528](https://github.com/mrkkrp/tilia/pull/528).
 
 ## Tilia 0.1.4.0
 
