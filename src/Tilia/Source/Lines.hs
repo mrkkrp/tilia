@@ -17,6 +17,7 @@ module Tilia.Source.Lines
     columnOf,
     contentColumn,
     directivePresentOnLine,
+    directiveWrittenOnLine,
     directiveOnLine,
     isDirective,
     conditionalKeywords,
@@ -133,6 +134,16 @@ directivePresentOnLine ::
   Lines ->
   Bool
 directivePresentOnLine n ls = any isDirective (lineAt n ls)
+
+-- | Was this line written as a preprocessor directive, whether or not this
+-- configuration has it?
+directiveWrittenOnLine ::
+  -- | The line's number.
+  Int ->
+  -- | The lines.
+  Lines ->
+  Bool
+directiveWrittenOnLine n = any isDirective . IntMap.lookup n . lnWritten
 
 -- | The keyword a directive line opens with, and everything after its @#@.
 --

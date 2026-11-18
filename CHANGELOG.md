@@ -411,6 +411,11 @@
   `case` is a statement of a `do` block or is bound in a binding followed
   by another on its line.
   [PR 520](https://github.com/mrkkrp/tilia/pull/520).
+* In a module with CPP, a line of a block comment or a block Haddock
+  written off the margin that begins like a directive, as
+  `  #ifdef WITH_LOCKS`, stays with the comment's other lines, rather
+  than going to the margin, where cpp reads it as a directive.
+  [PR 521](https://github.com/mrkkrp/tilia/pull/521).
 
 ## Tilia 0.1.4.0
 
