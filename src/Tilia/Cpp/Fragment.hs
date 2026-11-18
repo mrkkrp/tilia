@@ -75,7 +75,6 @@ data Run = Run
 bodyOf :: Doc -> Maybe Body
 bodyOf doc = do
   (head', _ : items) <- Just (break (== declarationsStart) (spineAt Broken doc))
-  guard (case items of [DGroup Flat _] -> False; _ -> True)
   let with = (mconcat (head' <> [declarationsStart]) <>)
   runs <- runsOf items
   let headEnd = case runs of
