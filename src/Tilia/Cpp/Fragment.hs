@@ -76,8 +76,8 @@ bodyOf :: Doc -> Maybe Body
 bodyOf doc = do
   (head', _ : items) <- Just (break (== declarationsStart) (spineAt Broken doc))
   let with = (mconcat (head' <> [declarationsStart]) <>)
-  runs <- runsOf items
-  let headEnd = case runs of
+      runs = runsOf items
+      headEnd = case runs of
         r : _ -> runFrom r - 1
         [] -> maximum (0 : fmap snd (printedFrom doc))
       regions =
@@ -100,9 +100,8 @@ bodyOf doc = do
       }
 
 -- | Cut the elements of a body into runs at the empty lines between them.
-runsOf :: [Doc] -> Maybe [Run]
-runsOf items =
-  ordered (mapMaybe asRun (pieces (zip [0 ..] items)))
+runsOf :: [Doc] -> [Run]
+runsOf items = mapMaybe asRun (pieces (zip [0 ..] items))
   where
     pieces xs = case break ((== DBreak) . snd) xs of
       (piece, []) -> [piece]
@@ -117,10 +116,6 @@ runsOf items =
               runFrom = minimum (fmap (fst . snd) located),
               runTo = maximum (fmap (snd . snd) located)
             }
-    ordered runs
-      | and (zipWith (\a b -> runTo a < runFrom b) runs (drop 1 runs)) =
-          Just runs
-      | otherwise = Nothing
 
 -- | The conditionals that reach one fragment of a module.
 data Fragment = Fragment
