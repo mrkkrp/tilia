@@ -48,7 +48,6 @@ import Data.Maybe
     mapMaybe,
     maybeToList,
   )
-import Data.Monoid (Any (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -69,7 +68,6 @@ import Tilia.Doc
   ( Doc (..),
     Layout (..),
     conditionalRange,
-    foldChildren,
     mapChildren,
     printDoc,
     printedFrom,
@@ -539,16 +537,13 @@ together ::
   Configurations ->
   Spending (Doc, CommentSummary)
 together formatter reached c
-  | differentlyRead parser c = settledOr (fst <$> formatted False)
+  | differentlyRead parser c = formatted True
   | otherwise =
-      (fst <$> formatted False) `catchE` \case
-        e@(ConfigurationNotParsed answers _)
-          | isNothing (implied answers) -> settledOr (refuse e)
+      formatted False `catchE` \case
+        ConfigurationNotParsed answers _
+          | isNothing (implied answers) -> formatted True
         e -> refuse e
   where
-    settledOr unsettled = do
-      (found, blind) <- formatted True
-      if blind then unsettled else pure found
     readingOf = reading formatter
     parser = formatterParser formatter
     texts = cfgTexts c
@@ -579,7 +574,7 @@ together formatter reached c
               varied
               settled
               docs
-      pure ((merged, foldMap (snd . snd) found), blindOver ranges merged)
+      pure (merged, foldMap (snd . snd) found)
     firstParsed ((r, t) :| rest) =
       formatAllConfigs formatter (readingOf r t) `catchE` \case
         ConfigurationNotParsed answers _
@@ -587,13 +582,6 @@ together formatter reached c
             next : more <- rest ->
               firstParsed (next :| more)
         e -> refuse e
-    blindOver ranges d = case d of
-      DCppChoice [] bs _
-        | fmap fst bs == fmap guardText (cfgGuards c),
-          any (\(a, b) -> any (\(from, to) -> a <= to && from <= b) ranges) $
-            printedFrom d ->
-            True
-      _ -> getAny (foldChildren (Any . blindOver ranges) d)
     complete found (i, t) = case lookup i found of
       Just d -> Right d
       Nothing -> case listToMaybe found >>= errorBranch (cfgWholes c) t . snd of
