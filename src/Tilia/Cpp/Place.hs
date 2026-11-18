@@ -144,13 +144,7 @@ restoreUnprinted source found doc = do
         ]
   let shelled = foldl (restoreConditional written) (widened doc) groups
       marked = spacedApart written (realized (widened shelled))
-      printed = Set.fromList (Nothing : fmap (scope . fst) (regionsIn marked))
-      noted =
-        attachScopedComments
-          margin
-          scope
-          (filter ((`Set.member` printed) . scope . commentSpan) notes)
-          marked
+      noted = attachScopedComments margin scope notes marked
       margin =
         Margin
           { marginLine = (`directiveWrittenOnLine` written),
