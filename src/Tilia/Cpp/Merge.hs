@@ -604,22 +604,24 @@ merge settings written conditionals guards varied settledOthers = go Broken
           fallback
       Nothing -> mempty
 
-    settledChoice ds s = do
-      (open', bs, e) <-
-        listToMaybe
-          [ (d, bs, e)
-          | d <- ds,
-            [DCppChoice cs bs e] <- [filter (not . onlySpacing) (spine d)],
-            settledConditional s `elem` cs
-          ]
-      let taken k = maybe e snd (listToMaybe (drop k bs))
-          printsAlike a b =
-            agree varied Broken a b || (printsNothing a && printsNothing b)
-          fits k d =
-            any (\j -> printsAlike (taken j) d) k || printsAlike open' d
-      if and (zipWith fits (settledBranches s) ds)
-        then Just open'
-        else Nothing
+    settledChoice ds s =
+      listToMaybe
+        [ open'
+        | open' <- ds,
+          holds open',
+          and (zipWith (fits open') (settledBranches s) ds)
+        ]
+      where
+        fits open' k d = printed k open' == printed k d
+        printed k = printDoc settings . maybe id taking k
+        holds = \case
+          DCppChoice cs _ _ | settled cs -> True
+          d -> getAny (foldChildren (Any . holds) d)
+        taking k = \case
+          DCppChoice cs bs e
+            | settled cs -> maybe e snd (listToMaybe (drop k bs))
+          d -> mapChildren (taking k) d
+        settled = elem (settledConditional s)
 
     asTaken ws k alternatives = fromMaybe alternatives $ do
       s <- find ((`elem` ws) . settledConditional) settledOthers
