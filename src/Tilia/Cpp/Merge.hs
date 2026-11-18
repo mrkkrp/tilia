@@ -111,11 +111,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
       | Just wds <- traverse unwrap xs,
         Just w <- joint (fmap fst wds) =
           case (w, go (layoutInside layout w) (fmap snd wds)) of
-            (WLocated _, merged)
+            (WLocated _, _)
               | spans <- [s | (WLocated s, _) <- wds],
-                Just opened <-
-                  unwrapping layout spans xs $ \parts ->
-                    onlyChoice merged || coveredAmong spans parts ->
+                Just opened <- unwrapping layout spans xs (coveredAmong spans) ->
                   opened
             (WGroup l, merged)
               | l /= Broken,
