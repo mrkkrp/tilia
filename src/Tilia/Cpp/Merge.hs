@@ -1086,7 +1086,6 @@ partsOf layout = walk [[]] False
       [] -> (reverse ls, place, cut)
       x : xs
         | Just (w, y) <- unwrap x,
-          w /= WCppMarginNote,
           w /= WAlign || place == Between,
           let inside = layoutInside layout w,
           (ps, place', cut') <- partsOf inside place (spineAt inside y),
