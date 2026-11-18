@@ -63,6 +63,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 
+import Tilia.Cpp.Expansion (Macro (..), cppExpansion, definition)
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar, questionOf)
 import Tilia.Doc (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
@@ -469,8 +470,8 @@ ruledOutBranch source = do
         | gs <- forest
         ]
 
--- | Each configuration either module has, as the one and the other read in
--- it, with 'Nothing' where an @#error@ rules it out.
+-- | Each configuration either module has, as cpp hands the one and the
+-- other to GHC in it, with 'Nothing' where an @#error@ rules it out.
 correspondingBranches ::
   -- | Before.
   Text ->
@@ -493,7 +494,7 @@ correspondingBranches before after = do
     reading source forest assignment =
       let selected = configurationOf forest assignment source
        in if null (unconditionalErrors selected)
-            then Just (withoutOpaque selected)
+            then Just (cppExpansion selected)
             else Nothing
 
 -- | An unconditional @#error@ means this configuration has no Haskell
@@ -573,8 +574,8 @@ repeated forest = distinct Map.empty [q | q@(g, _) <- asked forest, twice g]
 guardsToTie :: Integer
 guardsToTie = 4096
 
--- | Every configuration some definition of the macros gives, and the
--- answers that reach it.
+-- | Every configuration some definition of the macros gives, as cpp hands
+-- it to GHC, and the answers that reach it.
 answeredLeaves ::
   -- | The module.
   Text ->
@@ -625,8 +626,8 @@ answeredBaseline answers source = case configurations source of
     [] -> Right [(answers, source)]
     t : _ -> answeredBaseline (Map.insert (cfgGuards c) 0 answers) t
 
--- | A module with every conditional answered, and the answers that reach
--- it, unless it aborts with @#error@.
+-- | A module with every conditional answered, as cpp hands it to GHC, and
+-- the answers that reach it, unless it aborts with @#error@.
 answeredLeaf ::
   -- | The answers that reach it.
   Assignment ->
@@ -635,7 +636,7 @@ answeredLeaf ::
   Either CppError [(Assignment, Text)]
 answeredLeaf answers source
   | null (unconditionalErrors source) =
-      [(answers, withoutOpaque source)] <$ readConditionals source
+      [(answers, cppExpansion source)] <$ readConditionals source
   | otherwise = Right []
 
 ----------------------------------------------------------------------------
@@ -871,11 +872,7 @@ macroLines source =
         [ name
         | d <- written,
           dKeyword d == "define",
-          let (name, rest) =
-                T.span
-                  isNameChar
-                  (T.stripStart (T.drop (T.length "define") (dText d))),
-          T.isPrefixOf "(" rest
+          Just (name, Macro (Just _) _) <- [definition (dText d)]
         ]
     -- One parenthesized list of arguments, and nothing after it.
     enclosed arguments =

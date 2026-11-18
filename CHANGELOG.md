@@ -454,6 +454,13 @@
   placement without working out first which region each belongs to,
   which takes the formatting benchmarks 2.3% fewer instructions.
   [PR 530](https://github.com/mrkkrp/tilia/pull/530).
+* `--check-ast` reads the input and the output of a module that uses CPP
+  as cpp hands them to GHC, with lines ending in a backslash joined and
+  macros expanded, so it catches a change only cpp's reading shows: a
+  line of a comment moved to column 1 that begins with `#if`, a macro
+  line that expands differently, or a string gap whose re-indented lines
+  cpp splices into the literal.
+  [PR 531](https://github.com/mrkkrp/tilia/pull/531).
 
 ## Tilia 0.1.4.0
 

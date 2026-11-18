@@ -8,6 +8,7 @@ module Tilia.Cpp.Macros
     guardHolds,
     impliedBy,
     questionOf,
+    isNameStart,
     isNameChar,
   )
 where
@@ -355,6 +356,7 @@ argumentList ts = do
 punctuation :: [Text]
 punctuation = ["&&", "||", "==", "!=", "<=", ">=", "(", ")", ",", "!", "<", ">"]
 
+-- | Can a preprocessor name begin with a character?
 isNameStart :: Char -> Bool
 isNameStart c = isAsciiLower c || isAsciiUpper c || c == '_'
 

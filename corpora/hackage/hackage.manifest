@@ -446,8 +446,8 @@ formatted       8306cd22b948  Agda-2.8.0/src/setup/Agda/Version.hs
 formatted       34621e271e23  Agda-2.8.0/src/setup/Agda/VersionCommit.hs
 formatted       90cd663d9426  HUnit-1.6.2.0/examples/Example.hs
 formatted       9b1cac4b6c09  HUnit-1.6.2.0/src/Test/HUnit.hs
-formatted       c459d295c38b  HUnit-1.6.2.0/src/Test/HUnit/Base.hs
-formatted       4ad553d1144c  HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
+broken          c459d295c38b  HUnit-1.6.2.0/src/Test/HUnit/Base.hs
+broken          4ad553d1144c  HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
 formatted       f9959d10adae  HUnit-1.6.2.0/src/Test/HUnit/Terminal.hs
 formatted       c4d0e6dbcb94  HUnit-1.6.2.0/src/Test/HUnit/Text.hs
 formatted       358e8e211fe4  HUnit-1.6.2.0/tests/HUnitTestExtended.hs
@@ -653,7 +653,7 @@ formatted       d4dbe051544d  attoparsec-0.14.4/benchmarks/Numbers.hs
 formatted       171c3573564b  attoparsec-0.14.4/benchmarks/Sets.hs
 formatted       e11c9089eeb7  attoparsec-0.14.4/benchmarks/TextFastSet.hs
 formatted       8125ea3002df  attoparsec-0.14.4/benchmarks/Warp.hs
-formatted       b0ad3cc958a0  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
+broken          b0ad3cc958a0  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
 formatted       1f7d3a417fb5  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/RequestHeader.hs
 formatted       e499f8a728b2  attoparsec-0.14.4/examples/Atto_RFC2616.hs
 formatted       6023dd27f36e  attoparsec-0.14.4/examples/Parsec_RFC2616.hs

@@ -1,6 +1,145 @@
 Hackage modules that currently do not format cleanly.
 
-5275 examples, 5223 formatted.
+5275 examples, 5220 formatted.
+
+==========================================================================
+broken (3)
+==========================================================================
+
+HUnit-1.6.2.0/src/Test/HUnit/Base.hs
+    formatting HUnit-1.6.2.0/src/Test/HUnit/Base.hs changed the program: in one configuration, L > HsQualTy > L > HsFunTy > L > HsDocTy became HsTyVar
+    --- input
+    +++ output
+    @@ -1,6 +1,5 @@
+     {-# LANGUAGE CPP #-}
+     {-# LANGUAGE FlexibleContexts #-}
+    -
+     #if __GLASGOW_HASKELL__ >= 704
+     {-# LANGUAGE ConstraintKinds #-}
+     #define HasCallStack_ HasCallStack =>
+    @@ -17,59 +16,73 @@
+     --   implementing test controllers (which are used to execute tests).
+     --   See "Test.HUnit.Text" for a great example of how to implement a test
+     --   controller.
+    -
+     module Test.HUnit.Base
+    -(
+    -  -- ** Declaring tests
+    -  Test(..),
+    -  (~=?), (~?=), (~:), (~?),
+    +  ( -- ** Declaring tests
+    +    Test (..),
+    +    (~=?),
+    +    (~?=),
+    +    (~:),
+    +    (~?),
+     
+    -  -- ** Making assertions
+    -  assertFailure, {- from Test.HUnit.Lang: -}
+    -  assertBool, assertEqual, assertString,
+    -  Assertion, {- from Test.HUnit.Lang: -}
+    -  (@=?), (@?=), (@?),
+    +    -- ** Making assertions
+    +    assertFailure, {- from Test.HUnit.Lang: -}
+    +    assertBool,
+    +    assertEqual,
+    +    assertString,
+    +    Assertion, {- from Test.HUnit.Lang: -}
+    +    (@=?),
+    +    (@?=),
+    +    (@?),
+     
+    -  -- ** Extending the assertion functionality
+    -  Assertable(..), ListAssertable(..),
+    -  AssertionPredicate, AssertionPredicable(..),
+    -  Testable(..),
+    +    -- ** Extending the assertion functionality
+    +    Assertable (..),
+    +    ListAssertable (..),
+    +    AssertionPredicate,
+    +    AssertionPredicable (..),
+    +    Testable (..),
+     
+    -  -- ** Test execution
+    -  -- $testExecutionNote
+    -  State(..), Counts(..),
+    -  Path, Node(..),
+    -  testCasePaths,
+    -  testCaseCount,
+    -  ReportStart, ReportProblem,
+    -  performTest
+    -) where
+    +    -- ** Test execution
+    … and 429 more lines
+
+HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
+    formatting HUnit-1.6.2.0/src/Test/HUnit/Lang.hs changed the program: in one configuration, L > HsQualTy > L > HsFunTy > L > HsDocTy became HsTyVar
+    --- input
+    +++ output
+    @@ -1,7 +1,6 @@
+     {-# LANGUAGE CPP #-}
+     {-# LANGUAGE DeriveDataTypeable #-}
+     {-# LANGUAGE FlexibleContexts #-}
+    -
+     #if __GLASGOW_HASKELL__ >= 704
+     {-# LANGUAGE ConstraintKinds #-}
+     #define HasCallStack_ HasCallStack =>
+    @@ -9,28 +8,29 @@
+     #define HasCallStack_
+     #endif
+     
+    -module Test.HUnit.Lang (
+    -  Assertion,
+    -  assertFailure,
+    -  assertEqual,
+    +module Test.HUnit.Lang
+    +  ( Assertion,
+    +    assertFailure,
+    +    assertEqual,
+    +    Result (..),
+    +    performTestCase,
+     
+    -  Result (..),
+    -  performTestCase,
+    --- * Internals
+    --- |
+    --- /Note:/ This is not part of the public API!  It is exposed so that you can
+    --- tinker with the internals of HUnit, but do not expect it to be stable!
+    -  HUnitFailure (..),
+    -  FailureReason (..),
+    -  formatFailureReason
+    -) where
+    +    -- * Internals
+    +    -- |
+    +    -- /Note:/ This is not part of the public API!  It is exposed so that you can
+    +    -- tinker with the internals of HUnit, but do not expect it to be stable!
+    +    HUnitFailure (..),
+    +    FailureReason (..),
+    +    formatFailureReason,
+    +  )
+    +where
+     
+    -import           Control.DeepSeq
+    -import           Control.Exception as E
+    -import           Control.Monad
+    -import           Data.List
+    -import           Data.Typeable
+    -import           Data.CallStack
+    +import Control.DeepSeq
+    +import Control.Exception as E
+    +import Control.Monad
+    +import Data.CallStack
+    +import Data.List
+    +import Data.Typeable
+     
+     -- | When an assertion is evaluated, it will output a message if and only if the
+     -- assertion fails.
+    @@ -39,12 +39,12 @@
+     type Assertion = IO ()
+    … and 104 more lines
+
+attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
+    with the alternative settings: formatting attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs changed the program: in one configuration, L > HsApp > L > HsLit > HsStringPrim > Data.ByteString.ByteString changed
 
 ==========================================================================
 does-not-parse (1)

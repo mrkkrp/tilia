@@ -6,7 +6,7 @@
 module Steps where
 
 #define ARG(x) (x)
-#define STEP(x) print (x)
+#define STEP(x) print "step"
 
 g :: Int -> Maybe Int
 g x = do
