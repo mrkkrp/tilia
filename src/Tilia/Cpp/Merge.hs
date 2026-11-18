@@ -62,7 +62,7 @@ import Tilia.Doc
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Settings (Settings)
 import Tilia.Source (Lines, lineAt, offsetOf)
-import Tilia.Span (Span (..), covers, endOf, meets, startOf, zeroWidth)
+import Tilia.Span (Span (..), covers, endOf, meets, startOf)
 
 -- | A conditional other than the one asked about that answering a question
 -- settles, for some answers at least.
@@ -691,8 +691,7 @@ agreeOn varied layout x y = case (x, y) of
   where
     inside = agree varied layout
 
--- | Is this a region of some width printed from lines the conditional left
--- alone?
+-- | Is this a region printed from lines the conditional left alone?
 untouchedRegion ::
   -- | The lines the answer can change.
   Varied ->
@@ -700,7 +699,7 @@ untouchedRegion ::
   Doc ->
   Bool
 untouchedRegion varied = \case
-  DLocated s x -> untouched varied (spanWithHaddock s x) && not (zeroWidth s)
+  DLocated s x -> untouched varied (spanWithHaddock s x)
   _ -> False
 
 -- | Is this document one choice, in nothing but wrappers?
