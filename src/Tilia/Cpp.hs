@@ -86,7 +86,6 @@ import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
   ( Lines,
     Written (..),
-    blankAcross,
     comments,
     dropping,
     linesOf,
@@ -315,7 +314,7 @@ formatAllConfigs formatter r = do
       let pragma = readingPragma r
           least = max 1 (linesHeld (vaBaseline apart))
           affordable =
-            linearCost (budget `div` least) forest source * least <= budget
+            linearCost (budget `div` least) forest * least <= budget
           linearly =
             affordable && all (null . drop 1 . (`sameGuard` forest)) pragma
       base <-
@@ -346,32 +345,21 @@ formatAllConfigs formatter r = do
         d <- combine Broken (fst base) merged
         pure (d, found)
 
--- | How many formattings varying a module's conditionals one at a time
--- takes at the least, counted as far as one past the given number.
-linearCost :: Int -> [GroupSpec] -> Text -> Int
-linearCost limit forest source = go forest
+-- | How many configurations varying a module's conditionals one at a time
+-- goes through, counted as far as one past the given number.
+linearCost :: Int -> [GroupSpec] -> Int
+linearCost limit forest = go forest
   where
-    written = linesOf (Written source)
     go = \case
       [] -> 1
       gss ->
         upTo
           0
           ( go (concatMap (`nestedIn` 0) gss)
-              : [ if blankAcross r written
-                    && all (`blankAcross` written) (take 1 (gsBranches gs))
-                    then 0
-                    else go (nestedIn gs i <> concatMap (`nestedIn` 0) others)
+              : [ go (nestedIn gs i <> concatMap (`nestedIn` 0) others)
                 | (k, gs) <- zip [0 :: Int ..] gss,
                   let others = [o | (j, o) <- zip [0 ..] gss, j /= k],
-                  (i, r) <-
-                    zip
-                      [1 ..]
-                      ( drop 1 (gsBranches gs)
-                          <> [ (1, 0)
-                             | not (gsHasElse gs)
-                             ]
-                      )
+                  i <- [1 .. gsCount gs - 1]
                 ]
           )
     upTo acc = \case
