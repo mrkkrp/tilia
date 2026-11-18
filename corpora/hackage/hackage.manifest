@@ -2156,7 +2156,7 @@ formatted       9d98dc262b39  fay-0.24.2.0/tests/mutableReference.hs
 formatted       f983711e6f6b  fay-0.24.2.0/tests/nameGen.hs
 formatted       00499901b441  fay-0.24.2.0/tests/namedFieldPuns.hs
 formatted       68fcd666b331  fay-0.24.2.0/tests/negation.hs
-formatted       7f4b9b9ce267  fay-0.24.2.0/tests/newtype.hs
+formatted       cbc98cad1753  fay-0.24.2.0/tests/newtype.hs
 formatted       36cf37d7cd68  fay-0.24.2.0/tests/newtypeIndirectApp.hs
 formatted       a587812e6602  fay-0.24.2.0/tests/numTheory.hs
 formatted       40bd883716b3  fay-0.24.2.0/tests/nums.hs
@@ -2806,7 +2806,7 @@ formatted       e865ae48f11b  intero-0.1.40/Setup.hs
 formatted       51d9dd55b8d1  intero-0.1.40/src/Completion.hs
 formatted       120bb98c69b1  intero-0.1.40/src/GhciFind.hs
 partly-checked  a5cc29811ddf  intero-0.1.40/src/GhciInfo.hs
-formatted       39095affe0bc  intero-0.1.40/src/GhciMonad.hs
+formatted       0d533a498e75  intero-0.1.40/src/GhciMonad.hs
 formatted       4e51b04458bf  intero-0.1.40/src/GhciTags.hs
 formatted       c6d5e5e5158b  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
@@ -4916,7 +4916,7 @@ formatted       29b96a9fb799  unliftio-0.2.25.1/test/UnliftIO/IO/FileSpec.hs
 formatted       caf8d9709e1a  unliftio-0.2.25.1/test/UnliftIO/IOSpec.hs
 formatted       f46fd4361289  unliftio-0.2.25.1/test/UnliftIO/MemoizeSpec.hs
 formatted       d160025177cb  unliftio-0.2.25.1/test/UnliftIO/PooledAsyncSpec.hs
-formatted       b11bfc7b5d58  unordered-containers-0.2.21/Data/HashMap/Internal.hs
+formatted       ad692a9e7cd3  unordered-containers-0.2.21/Data/HashMap/Internal.hs
 declined        -             unordered-containers-0.2.21/Data/HashMap/Internal/Array.hs
 formatted       ce9a49299e20  unordered-containers-0.2.21/Data/HashMap/Internal/Debug.hs
 formatted       60ef335fb795  unordered-containers-0.2.21/Data/HashMap/Internal/List.hs

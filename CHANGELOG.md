@@ -426,6 +426,12 @@
   comes out after the `#endif` one step in from the statement, rather
   than at the column of the statement, where it did not parse.
   [PR 523](https://github.com/mrkkrp/tilia/pull/523).
+* A `case` or a `\case` written on one line as a statement of a `do`
+  block, such as `case mode of Plain -> do hFlush stdout`, comes out as
+  written, rather than with braces around its alternatives and around
+  the block at their end, which it needs only where another statement
+  follows it on its line.
+  [PR 524](https://github.com/mrkkrp/tilia/pull/524).
 
 ## Tilia 0.1.4.0
 
