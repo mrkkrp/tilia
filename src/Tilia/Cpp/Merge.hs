@@ -346,6 +346,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
     middle layout ss@(s : rest)
       | all (alike layout s) rest = mconcat s
       | Just xs <- traverse sole ss = go layout xs
+      | n : _ <- [n | [DNest n _] <- ss],
+        Just xs <- traverse (nestedIn n) ss =
+          DNest n (go layout xs)
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | Just (fronts, c) <- commaTrailed layout ss = middle layout fronts <> c
       | Just tails <- traverse (stripPrefix [leadingComma]) ss,
@@ -368,6 +371,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
             or cuts =
               [factored whole layout ls]
           | otherwise = []
+        nestedIn n = \case
+          [DNest m x] | m == n -> Just x
+          [] -> Just mempty
+          _ -> Nothing
         continuing = \case
           x : xs
             | printsNothing x -> continuing xs
@@ -553,7 +560,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
                         | ((h, z), (_, z')) <- zip rest rest'
                         ]
                   )
-                  (e <> between <> e')
+                  ( if printsNothing (e <> e')
+                      then mempty
+                      else e <> between <> e'
+                  )
                 <> closing
           where
             between = gap <> gap'
