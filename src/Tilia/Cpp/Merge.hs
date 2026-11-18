@@ -345,8 +345,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
             closing -> (ends, closing)
 
     middle _ [] = mempty
-    middle layout ss@(s : rest)
-      | all (alike layout s) rest = mconcat s
+    middle layout ss
       | Just xs <- traverse sole ss = go layout xs
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | Just (fronts, c) <- commaTrailed layout ss = middle layout fronts <> c
