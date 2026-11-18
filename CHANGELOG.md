@@ -444,6 +444,12 @@
   the extensions of the answer that rules it out, its record dot as
   composition.
   [PR 526](https://github.com/mrkkrp/tilia/pull/526).
+* Where the members of a class or an instance, or the bindings of a
+  `where`, are all behind two conditionals one after the other, one of
+  them with an empty first branch, the second comes out after the
+  `#endif` of the first, as written, rather than copied into each of its
+  branches.
+  [PR 529](https://github.com/mrkkrp/tilia/pull/529).
 
 ## Tilia 0.1.4.0
 
