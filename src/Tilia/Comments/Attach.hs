@@ -43,9 +43,10 @@ attachComments = attachScopedComments noMargin (const ())
 
 -- | What parts of a comment go at the margin.
 data Margin = Margin
-  { -- | A line of a comment, as a preprocessor directive written in one has
+  { -- | A line of the module, by its number, that a comment written over it
+    -- prints at the margin, as a preprocessor directive written in one has
     -- to: the preprocessor reads directives out of comments as well.
-    marginLine :: Text -> Bool,
+    marginLine :: Int -> Bool,
     -- | A comment that goes to the margin when it comes out right above a
     -- preprocessor directive, which it then documents.
     marginComment :: Comment -> Bool
@@ -271,11 +272,11 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill -> foldMap (heldBack spill) (commentBody c)
+  HeldBack spill -> foldMap (uncurry (heldBack spill)) (numbered c)
   OnItsOwnLines -> ownLines margin atTheEnd c
   where
-    heldBack spill x
-      | marginLine margin x = DHoldBack SpillAtMargin x
+    heldBack spill n x
+      | marginLine margin n = DHoldBack SpillAtMargin x
       | otherwise = DHoldBack spill x
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
@@ -308,13 +309,21 @@ commentText ::
   -- | The comment.
   Comment ->
   Doc
-commentText margin c = note . align $ case NE.toList (commentBody c) of
+commentText margin c = note . align $ case numbered c of
   [] -> mempty
-  l : ls -> txt l <> foldMap (\x -> breakBefore x <> txt x) ls
+  (_, l) : ls -> txt l <> foldMap (\(n, x) -> breakBefore n <> txt x) ls
   where
-    breakBefore x
-      | marginLine margin x = DVerbatimBreak AtMargin TrimWhitespace
+    breakBefore n
+      | marginLine margin n = DVerbatimBreak AtMargin TrimWhitespace
       | otherwise = DVerbatimBreak AtIndent TrimWhitespace
     note
       | marginComment margin c = DCppMarginNote
       | otherwise = id
+
+-- | The lines of a comment, each with the number of the line of the module
+-- it was written on.
+numbered ::
+  -- | The comment.
+  Comment ->
+  [(Int, Text)]
+numbered c = zip [spanStartLine (commentSpan c) ..] (NE.toList (commentBody c))

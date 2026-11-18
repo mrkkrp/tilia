@@ -18,6 +18,7 @@ module Tilia.Source
     blankAcross,
     offsetOf,
     directivePresentOnLine,
+    directiveWrittenOnLine,
     directiveOnLine,
     isDirective,
 

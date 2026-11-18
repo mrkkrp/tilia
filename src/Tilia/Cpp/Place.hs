@@ -66,6 +66,7 @@ import Tilia.Source
   ( Lines,
     Written (..),
     blankAt,
+    directiveWrittenOnLine,
     isDirective,
     lineAt,
     lineTextsFrom,
@@ -152,7 +153,7 @@ restoreUnprinted source found doc = do
           marked
       margin =
         Margin
-          { marginLine = isDirective,
+          { marginLine = (`directiveWrittenOnLine` written),
             marginComment = isNothing . commentPragma
           }
   directed <-

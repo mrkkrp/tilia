@@ -42,7 +42,7 @@ import Tilia.Comments.Attach (Margin (..), commentText)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
-import Tilia.Source (isDirective, sourceLines)
+import Tilia.Source (directiveWrittenOnLine, sourceLines)
 import Tilia.Span
 import Tilia.Span.Ghc
 
@@ -136,7 +136,9 @@ docBody ctx block style doc@(L l str)
   where
     text = renderHsDocString (hsDocString str)
     margin = Margin directive (const False)
-    directive t = extensionOn ctx Cpp && isDirective t
+    directive n =
+      extensionOn ctx Cpp
+        && directiveWrittenOnLine n (sourceLines (ctxSource ctx))
     writtenAt = fence (spanOfSrcSpan l)
     emptyBlock = txt (blockOpener style) <> space <> txt "-}"
     rebuilt =
