@@ -432,6 +432,11 @@
   the block at their end, which it needs only where another statement
   follows it on its line.
   [PR 524](https://github.com/mrkkrp/tilia/pull/524).
+* Where a conditional gives some of the arguments of a signature's or a
+  foreign import's type Haddocks, the arguments that every configuration
+  has stay out of it, as they do in a GADT constructor, rather than
+  going with the whole type into each branch.
+  [PR 525](https://github.com/mrkkrp/tilia/pull/525).
 
 ## Tilia 0.1.4.0
 
