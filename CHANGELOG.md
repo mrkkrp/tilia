@@ -416,6 +416,11 @@
   `  #ifdef WITH_LOCKS`, stays with the comment's other lines, rather
   than going to the margin, where cpp reads it as a directive.
   [PR 521](https://github.com/mrkkrp/tilia/pull/521).
+* The head of a type synonym that goes on the line after `type`, as one
+  written in each branch of a conditional or under a comment after `type`
+  does, comes out a step in, as that of a `data` declaration does, rather
+  than at the margin, where it did not parse.
+  [PR 522](https://github.com/mrkkrp/tilia/pull/522).
 
 ## Tilia 0.1.4.0
 

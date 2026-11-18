@@ -442,22 +442,27 @@ synDecl ::
   Doc
 synDecl ctx tyCon fixity HsQTvs{..} rhs =
   txt "type"
-    <> space
-    <> typeHead
-      ctx
-      Outdented
-      fixity
-      tyCon
-      spanOf
-      (at_ ctx (tyVarBndr ctx))
-      hsq_explicit
+    <> indent
+      ( space
+          <> layoutFrom
+            ctx
+            headSpan
+            ( defHead
+                Outdented
+                (fromBool (fixity == Infix))
+                (Isn't #indentArgs)
+                (name ctx tyCon)
+                (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
+            )
+      )
     <> indent
       ( space
           <> txt "="
           <> layoutFrom
             ctx
-            (fmap endOf (spanOf tyCon <> spansOf hsq_explicit) <> spanOf rhs)
+            (fmap endOf headSpan <> spanOf rhs)
             (separator <> hsType ctx rhs)
       )
   where
+    headSpan = spanOf tyCon <> spansOf hsq_explicit
     separator = typeBreak (typeIsDocumented (unLoc rhs))
