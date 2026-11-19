@@ -67,7 +67,6 @@ import Tilia.Cpp.Expansion
   ( Macro (..),
     cppExpansion,
     definition,
-    endsInBackslash,
     joinedTo,
   )
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar, questionOf)
@@ -80,6 +79,7 @@ import Tilia.Source.Lines
     contentColumn,
     continuesGroup,
     directiveOnLine,
+    endsInBackslash,
     isDirective,
     linesOf,
     opaqueKeywords,

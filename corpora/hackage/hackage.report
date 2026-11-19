@@ -3,7 +3,7 @@ Hackage modules that currently do not format cleanly.
 5380 examples, 5323 formatted.
 
 ==========================================================================
-broken (4)
+broken (2)
 ==========================================================================
 
 HUnit-1.6.2.0/src/Test/HUnit/Base.hs
@@ -137,61 +137,6 @@ HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
     @@ -39,12 +39,12 @@
      type Assertion = IO ()
     … and 104 more lines
-
-attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
-    with the alternative settings: formatting attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs changed the program: in one configuration, L > HsApp > L > HsLit > HsStringPrim > Data.ByteString.ByteString changed
-
-dhall-1.42.3/src/Dhall/Marshal/Decode.hs
-    formatting dhall-1.42.3/src/Dhall/Marshal/Decode.hs changed the program: in one configuration, L > OpApp > L > HsLit > HsString > FastString changed
-    --- input
-    +++ output
-    @@ -1,183 +1,179 @@
-    -{-# LANGUAGE ApplicativeDo              #-}
-    -{-# LANGUAGE CPP                        #-}
-    -{-# LANGUAGE ConstraintKinds            #-}
-    -{-# LANGUAGE DefaultSignatures          #-}
-    -{-# LANGUAGE DeriveFunctor              #-}
-    -{-# LANGUAGE DerivingStrategies         #-}
-    -{-# LANGUAGE FlexibleContexts           #-}
-    -{-# LANGUAGE FlexibleInstances          #-}
-    +{-# LANGUAGE ApplicativeDo #-}
-    +{-# LANGUAGE CPP #-}
-    +{-# LANGUAGE ConstraintKinds #-}
-    +{-# LANGUAGE DefaultSignatures #-}
-    +{-# LANGUAGE DeriveFunctor #-}
-    +{-# LANGUAGE DerivingStrategies #-}
-    +{-# LANGUAGE FlexibleContexts #-}
-    +{-# LANGUAGE FlexibleInstances #-}
-     {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-    -{-# LANGUAGE MultiParamTypeClasses      #-}
-    -{-# LANGUAGE NamedFieldPuns             #-}
-    -{-# LANGUAGE OverloadedStrings          #-}
-    -{-# LANGUAGE PolyKinds                  #-}
-    -{-# LANGUAGE RankNTypes                 #-}
-    -{-# LANGUAGE RecordWildCards            #-}
-    -{-# LANGUAGE ScopedTypeVariables        #-}
-    -{-# LANGUAGE StandaloneDeriving         #-}
-    -{-# LANGUAGE TypeApplications           #-}
-    -{-# LANGUAGE TypeFamilies               #-}
-    -{-# LANGUAGE TypeOperators              #-}
-    -{-# LANGUAGE UndecidableInstances       #-}
-    -{-# LANGUAGE ViewPatterns               #-}
-    +{-# LANGUAGE MultiParamTypeClasses #-}
-    +{-# LANGUAGE NamedFieldPuns #-}
-    +{-# LANGUAGE OverloadedStrings #-}
-    +{-# LANGUAGE PolyKinds #-}
-    +{-# LANGUAGE RankNTypes #-}
-    +{-# LANGUAGE RecordWildCards #-}
-    +{-# LANGUAGE ScopedTypeVariables #-}
-    +{-# LANGUAGE StandaloneDeriving #-}
-    +{-# LANGUAGE TypeApplications #-}
-    +{-# LANGUAGE TypeFamilies #-}
-    +{-# LANGUAGE TypeOperators #-}
-    +{-# LANGUAGE UndecidableInstances #-}
-    +{-# LANGUAGE ViewPatterns #-}
-     
-     {-| Please read the "Dhall.Tutorial" module, which contains a tutorial explaining
-         how to use the language
 
 ==========================================================================
 does-not-parse (1)
@@ -329,14 +274,20 @@ unliftio-0.2.25.1/src/UnliftIO/Directory.hs
     1024 configurations is more than the 64 this checks, so only the ones varying a single conditional were compared
 
 ==========================================================================
-declined (11)
+declined (13)
 ==========================================================================
+
+attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
+    will not format attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs: the string at line 54 uses CPP for joining lines
 
 cryptonite-0.30/Crypto/Random/Entropy/Windows.hs
     cryptonite-0.30/Crypto/Random/Entropy/Windows.hs:64:16-28: parse error on input `WINDOWS_CCONV', in the configuration taking #if defined(ARCH_X86)
 
 dhall-1.42.3/src/Dhall/DirectoryTree.hs
     dhall-1.42.3/src/Dhall/DirectoryTree.hs:442:26-98: lexical error at character '\n', in the configuration taking #ifdef mingw32_HOST_OS
+
+dhall-1.42.3/src/Dhall/Marshal/Decode.hs
+    will not format dhall-1.42.3/src/Dhall/Marshal/Decode.hs: the string at line 1584 uses CPP for joining lines
 
 hlint-3.10/data/HLint_TypeCheck.hs
     will not format hlint-3.10/data/HLint_TypeCheck.hs: it uses {-# LINE #-} or {-# COLUMN #-} pragmas or #line, #pragma or #! lines, and no reformatting can leave those true

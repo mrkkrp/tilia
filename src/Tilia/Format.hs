@@ -77,6 +77,7 @@ import Tilia.Cpp
     describeCppError,
     everyBranch,
     formatWithCpp,
+    stringJoinedByCpp,
     usesCpp,
     withoutRuledOut,
   )
@@ -146,6 +147,9 @@ data FormatError
   | -- | The file carries @{-# LINE #-}@ or @{-# COLUMN #-}@ pragmas, or lines
     -- GHC's lexer reads past, such as @#line@ ones.
     PositionPragmas FilePath
+  | -- | A string literal written over lines cpp joins, and the line it
+    -- begins on.
+    StringJoinedByCpp FilePath Int
   | -- | The file uses the preprocessor in a way we cannot handle.
     CppUnsupported FilePath CppError
   | -- | A @{- TILIA_OFF -}@ or @{- TILIA_ON -}@ at this line cannot be
@@ -192,6 +196,12 @@ describeFormatError palette = \case
       <> file path
       <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas or #line, #pragma"
       <> " or #! lines, and no reformatting can leave those true"
+  StringJoinedByCpp path n ->
+    "will not format "
+      <> file path
+      <> ": the string at line "
+      <> tshow n
+      <> " uses CPP for joining lines"
   CppUnsupported path why -> case why of
     ConfigurationNotParsed{} ->
       "will not format " <> located (describeCppError why)
@@ -209,14 +219,6 @@ describeFormatError palette = \case
           "the region that {- TILIA_OFF -} starts at line "
             <> tshow n
             <> " includes a CPP directive which is not supported"
-  Unreadable path why -> "cannot read " <> file path <> ": " <> why
-  Unwritable path why -> "cannot write " <> file path <> ": " <> why
-  NotEquivalent path why ->
-    "formatting " <> file path <> " changed the program: " <> why
-  NotIdempotent path why ->
-    "formatting " <> file path <> " is not idempotent: " <> why
-  Threw path why ->
-    "formatting " <> file path <> " threw an exception: " <> why
   UnknownFixity path unknown ->
     "will not format "
       <> file path
@@ -238,6 +240,14 @@ describeFormatError palette = \case
             Ambiguous offers ->
               (if single then "is " else "are ")
                 <> spellDisagreement palette offers
+  Unreadable path why -> "cannot read " <> file path <> ": " <> why
+  Unwritable path why -> "cannot write " <> file path <> ": " <> why
+  NotEquivalent path why ->
+    "formatting " <> file path <> " changed the program: " <> why
+  NotIdempotent path why ->
+    "formatting " <> file path <> " is not idempotent: " <> why
+  Threw path why ->
+    "formatting " <> file path <> " threw an exception: " <> why
   where
     file = paint palette Place . T.pack
     located t = case T.breakOn ":" t of
@@ -249,70 +259,73 @@ formatErrorExitCode :: FormatError -> Int
 formatErrorExitCode = \case
   NoProject{} -> 2
   NoBuildPlan{} -> 3
-  NotParsed{} -> 4
-  PositionPragmas{} -> 5
+  NoOwnModules{} -> 4
+  InvalidSettings{} -> 5
   NoPackage _ problem -> case problem of
     NoPackageFile -> 6
     PackageUnreadable{} -> 7
     PackageMalformed{} -> 8
     FileUnclaimed{} -> 9
+  NotParsed{} -> 10
+  PositionPragmas{} -> 11
+  StringJoinedByCpp{} -> 12
   CppUnsupported _ why -> case why of
-    MalformedConditional{} -> 10
-    TooManyConfigurations -> 11
-    ConfigurationNotParsed{} -> 12
-    DirectiveInQuotedText{} -> 13
-    MacroInQuotedText{} -> 14
-    BeforeLeadingComma{} -> 15
-    RuledOutBranch{} -> 16
-    AbortingAlternative{} -> 17
-  UnknownFixity{} -> 18
-  Unreadable{} -> 19
-  NotEquivalent{} -> 20
-  NotIdempotent{} -> 21
-  Threw{} -> 22
-  Unwritable{} -> 23
-  MisplacedMagicComment{} -> 24
-  NoOwnModules{} -> 25
-  InvalidSettings{} -> 26
+    MalformedConditional{} -> 13
+    TooManyConfigurations -> 14
+    ConfigurationNotParsed{} -> 15
+    DirectiveInQuotedText{} -> 16
+    MacroInQuotedText{} -> 17
+    BeforeLeadingComma{} -> 18
+    RuledOutBranch{} -> 19
+    AbortingAlternative{} -> 20
+  MisplacedMagicComment{} -> 21
+  UnknownFixity{} -> 22
+  Unreadable{} -> 23
+  Unwritable{} -> 24
+  NotEquivalent{} -> 25
+  NotIdempotent{} -> 26
+  Threw{} -> 27
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
 refused = \case
+  NoProject{} -> False
+  NoBuildPlan{} -> False
+  NoOwnModules{} -> False
+  InvalidSettings{} -> False
+  NoPackage{} -> False
+  NotParsed{} -> False
   PositionPragmas{} -> True
+  StringJoinedByCpp{} -> True
   CppUnsupported{} -> True
   MisplacedMagicComment{} -> True
   UnknownFixity{} -> True
-  NotParsed{} -> False
-  NoPackage{} -> False
-  InvalidSettings{} -> False
   Unreadable{} -> False
   Unwritable{} -> False
   NotEquivalent{} -> False
   NotIdempotent{} -> False
   Threw{} -> False
-  NoProject{} -> False
-  NoBuildPlan{} -> False
-  NoOwnModules{} -> False
 
 -- | Did formatting itself fail, rather than the file or the project keep
 -- it from starting?
 formattingFailed :: FormatError -> Bool
 formattingFailed = \case
-  NotEquivalent{} -> True
-  NotIdempotent{} -> True
-  Threw{} -> True
-  PositionPragmas{} -> False
-  CppUnsupported{} -> False
-  MisplacedMagicComment{} -> False
-  UnknownFixity{} -> False
-  NotParsed{} -> False
-  NoPackage{} -> False
-  InvalidSettings{} -> False
-  Unreadable{} -> False
-  Unwritable{} -> False
   NoProject{} -> False
   NoBuildPlan{} -> False
   NoOwnModules{} -> False
+  InvalidSettings{} -> False
+  NoPackage{} -> False
+  NotParsed{} -> False
+  PositionPragmas{} -> False
+  StringJoinedByCpp{} -> False
+  CppUnsupported{} -> False
+  MisplacedMagicComment{} -> False
+  UnknownFixity{} -> False
+  Unreadable{} -> False
+  Unwritable{} -> False
+  NotEquivalent{} -> True
+  NotIdempotent{} -> True
+  Threw{} -> True
 
 -- | What a run works out once and then uses for every file.
 data Session = Session
@@ -583,6 +596,10 @@ formatTurnedOn session path source = runExceptT $ do
   let inForce@(extensions, _) = extensionsAndCpp source
   when (movesPositions (Set.toList extensions) source) $
     throwE (PositionPragmas path)
+  when (Set.member Cpp extensions) $
+    traverse_
+      (throwE . StringJoinedByCpp path)
+      (stringJoinedByCpp config source)
   (formatted, tree) <- formatting inForce Nothing source
   let (changed, printedTree) =
         rewritten

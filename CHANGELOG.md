@@ -42,7 +42,7 @@
 * A project can set, in a `tilia.toml` file in its root, the column past
   which a construct is broken over several lines, 80 unless set, as in
   `column-limit = 100`. A setting Tilia does not know, one set twice, or a
-  value Tilia does not take is an error, with exit code 26.
+  value Tilia does not take is an error, with exit code 5.
 * With `leading-commas = true` in `tilia.toml`, a list, a tuple, a record,
   an import or export list, a context, a `deriving` clause, a guard and
   every other construct that separates its parts with commas puts each
@@ -158,7 +158,7 @@
   `inplace`, as it already did in `for-editor`, rather than stopping the run
   with an uncaught exception and exit code 1.
   [PR 425](https://github.com/mrkkrp/tilia/pull/425).
-* `for-editor` stops with exit code 25 in a project whose `cabal.project`
+* `for-editor` stops with exit code 4 in a project whose `cabal.project`
   names no packages that exist, for the reason `check` gives, rather than
   having `cabal` solve the project and exiting with 3.
   [PR 425](https://github.com/mrkkrp/tilia/pull/425).
@@ -464,6 +464,14 @@
 * A line beginning with `#` under a line that ends in a backslash is no
   longer read as a directive: cpp joins it to that line, so it is not one.
   [PR 531](https://github.com/mrkkrp/tilia/pull/531).
+* A module with CPP in force is declined, with exit code 12, where a
+  string is written over lines cpp joins at a backslash: cpp makes the
+  indentation of those lines part of the string, and re-indenting them
+  changed it. [PR 536](https://github.com/mrkkrp/tilia/pull/536).
+* The exit codes run from 2 without gaps, in the order of the errors they
+  stand for, so most of them change: formatting that changes the program
+  now exits with 25, and formatting that is not idempotent with 26.
+  [PR 536](https://github.com/mrkkrp/tilia/pull/536).
 
 ## Tilia 0.1.4.0
 
