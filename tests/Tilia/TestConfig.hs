@@ -17,6 +17,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Driver.Session qualified as GHC
 import GHC.LanguageExtensions.Type (Extension (ImportQualifiedPost))
@@ -33,7 +34,12 @@ import Tilia.Fixity
   )
 import Tilia.Fixity.Plan (Resolver (..))
 import Tilia.Format (AstCheck (..), FormatError, Session (..), formatSource)
-import Tilia.Pragma (Defaults, defaultsOf, effectiveExtensions)
+import Tilia.Pragma
+  ( Defaults,
+    defaultsOf,
+    editionExtensions,
+    effectiveExtensions,
+  )
 import Tilia.Settings (Settings)
 import Tilia.TestUtils (inBothNamespaces)
 
@@ -89,8 +95,8 @@ defaultsFor ::
   Defaults
 defaultsFor = fromMaybe (defaultsOf edition [])
   where
-    edition = filter (/= ImportQualifiedPost) ghc2021
-    ghc2021 = GHC.languageExtensions (Just GHC.GHC2021)
+    edition =
+      Set.delete ImportQualifiedPost (editionExtensions (Just GHC.GHC2021))
 
 -- | The extensions in force in a corpus example, given what its package
 -- puts in force.
@@ -99,7 +105,7 @@ effectiveExtensionsFor ::
   Maybe Defaults ->
   -- | The example.
   Text ->
-  [Extension]
+  Set Extension
 effectiveExtensionsFor = effectiveExtensions . defaultsFor
 
 -- | What a module in scope exports, as far as the corpus is concerned: a

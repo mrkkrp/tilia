@@ -98,7 +98,13 @@ import System.FilePath
 import System.IO.Unsafe (unsafePerformIO)
 
 import Tilia.Cabal.Project (cabalFilesIn, startingDirectory)
-import Tilia.Pragma (Defaults, defaultsOf, lookupEdition, nameSwitch)
+import Tilia.Pragma
+  ( Defaults,
+    defaultsOf,
+    editionExtensions,
+    lookupEdition,
+    nameSwitch,
+  )
 import Tilia.Process (readProgramOutput)
 import Tilia.Utils (pathUnder, quietly, readBytes, tshow)
 
@@ -165,7 +171,7 @@ newPackageReader planned flags project = do
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
-                pure (Right (defaultsOf (GHC.languageExtensions Nothing) []))
+                pure (Right (defaultsOf (editionExtensions Nothing) []))
             | Just c <- claiming file components ->
                 pure (Right (componentExtensions c))
             | otherwise -> elsewhere file (FileUnclaimed cabalFile)
@@ -502,8 +508,8 @@ moduleExtensions described = \modName ->
       where
         infos = [sectionInfo (ownSection branch) | branch <- branches]
         baseline = case mapMaybe (ghcLanguage <=< defaultLanguage) infos of
-          [] -> GHC.languageExtensions (Just GHC.Haskell98)
-          editions -> nub (concatMap (GHC.languageExtensions . Just) editions)
+          [] -> editionExtensions (Just GHC.Haskell98)
+          editions -> foldMap (editionExtensions . Just) editions
 
 -- | What one branch of a component declares.
 data ComponentSection = ComponentSection
@@ -652,7 +658,7 @@ sourceDirsOf bi = case fmap getSymbolicPath (hsSourceDirs bi) of
 extensionsInForce :: BuildInfo -> Defaults
 extensionsInForce bi =
   defaultsOf
-    (GHC.languageExtensions edition)
+    (editionExtensions edition)
     (mapMaybe extensionSwitch (usedExtensions bi))
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))

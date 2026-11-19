@@ -58,6 +58,7 @@ import Data.List (sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe, maybeToList)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -99,12 +100,12 @@ import Tilia.Utils (tshow)
 -- | Is CPP enabled and there is at least one CPP directive present?
 usesCpp ::
   -- | The extensions in force.
-  [Extension] ->
+  Set Extension ->
   -- | The module.
   Text ->
   Choice "cppUsed"
 usesCpp extensions source =
-  fromBool (Cpp `elem` extensions && any isDirective (T.lines source))
+  fromBool (Set.member Cpp extensions && any isDirective (T.lines source))
 
 -- | Blank out the directive lines, keeping every branch.
 blankCpp :: Text -> Text

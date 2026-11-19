@@ -490,7 +490,7 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
             (Just (numbers compiledWith))
             (fmap numbers compiledPackages),
         sessionPackage =
-          \_ -> pure (Right (defaultsOf [] (On <$> compiledExtensions))),
+          \_ -> pure (Right (defaultsOf Set.empty (On <$> compiledExtensions))),
         sessionCheckAst = astCheckFor checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = Nothing
@@ -537,7 +537,7 @@ formatTurnedOn session path source = runExceptT $ do
       misplaced (n, why) = throwE (MisplacedMagicComment path n why)
       extensionsAndCpp text =
         let declared = effectiveExtensions package text
-         in (Set.fromList declared, usesCpp declared text)
+         in (declared, usesCpp declared text)
       renderConfigWith extensions =
         defaultRenderConfig
           { rcOwnModules = sessionOwnModules session,
@@ -594,7 +594,7 @@ formatTurnedOn session path source = runExceptT $ do
             render <- renderConfigFor extensions (pure parsed)
             pure (printDoc settings (renderModule render parsed), Just parsed)
   let inForce@(extensions, _) = extensionsAndCpp source
-  when (movesPositions (Set.toList extensions) source) $
+  when (movesPositions extensions source) $
     throwE (PositionPragmas path)
   when (Set.member Cpp extensions) $
     traverse_
@@ -605,7 +605,7 @@ formatTurnedOn session path source = runExceptT $ do
         rewritten
           config
           astCheck
-          (Set.toList extensions)
+          extensions
           path
           (source, tree)
           formatted
@@ -645,7 +645,7 @@ rewritten ::
   -- file uses the preprocessor.
   AstCheck ->
   -- | The extensions in force.
-  [Extension] ->
+  Set Extension ->
   -- | The file, for the parser's messages.
   FilePath ->
   -- | What was read, and the tree it was printed from where it has one.
@@ -667,7 +667,7 @@ rewritten config astCheck extensions path (before, printedFrom') after
         Just b' -> (comparing b' a', Just a')
   | otherwise = (hashLinesDifference before after <|> underCpp, Nothing)
   where
-    readByCpp = Cpp `elem` extensions && any changedByCpp [before, after]
+    readByCpp = Set.member Cpp extensions && any changedByCpp [before, after]
     comparing b' a' =
       syntaxDifference (pmModule b') (pmModule a')
         <|> commentDifference b' a'

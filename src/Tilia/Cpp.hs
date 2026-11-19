@@ -650,7 +650,7 @@ formatSingleConfig formatter reached text =
     Right parsed ->
       let render =
             (formatterRender formatter)
-              { rcExtensions = Set.fromList (pmExtensions parsed)
+              { rcExtensions = pmExtensions parsed
               }
           (document, loose) = renderConfiguration render parsed
        in Right (document, summarizeComments loose (comments (pmSource parsed)))
