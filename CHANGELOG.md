@@ -461,6 +461,9 @@
   line that expands differently, or a string gap whose re-indented lines
   cpp splices into the literal.
   [PR 531](https://github.com/mrkkrp/tilia/pull/531).
+* A line beginning with `#` under a line that ends in a backslash is no
+  longer read as a directive: cpp joins it to that line, so it is not one.
+  [PR 531](https://github.com/mrkkrp/tilia/pull/531).
 
 ## Tilia 0.1.4.0
 

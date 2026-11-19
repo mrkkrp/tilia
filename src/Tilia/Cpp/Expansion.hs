@@ -6,6 +6,8 @@
 module Tilia.Cpp.Expansion
   ( cppExpansion,
     hashLines,
+    joinedTo,
+    endsInBackslash,
     Macro (..),
     definition,
   )
@@ -72,13 +74,38 @@ spliced ::
   [Text] ->
   [Text]
 spliced = \case
-  l : n : ls
-    | Just joined <- T.stripSuffix "\\" (T.stripEnd l) ->
-        case spliced ((joined <> n) : ls) of
-          whole : rest -> whole : "" : rest
-          [] -> []
-  l : ls -> l : spliced ls
   [] -> []
+  l : ls -> case joinedTo l ls of
+    (continued, rest) ->
+      T.concat (cut l continued) : ("" <$ continued) <> spliced rest
+  where
+    cut l = \case
+      [] -> [l]
+      n : ns -> T.dropEnd 1 (T.stripEnd l) : cut n ns
+
+-- | The lines cpp joins to a line, each because the line before it ends in
+-- a backslash, and the lines after them.
+joinedTo ::
+  -- | The line.
+  Text ->
+  -- | The lines after it.
+  [Text] ->
+  ([Text], [Text])
+joinedTo l = \case
+  n : ls | endsInBackslash l -> case joinedTo n ls of
+    (more, rest) -> (n : more, rest)
+  ls -> ([], ls)
+
+-- | Does cpp join the line after this one to it?
+endsInBackslash ::
+  -- | The line.
+  Text ->
+  Bool
+endsInBackslash l
+  | T.null l = False
+  | otherwise = case T.last l of
+      '\\' -> True
+      c -> isSpace c && endsInBackslash (T.init l)
 
 -- | A macro: its parameters, unless it is object-like, and its body.
 data Macro = Macro (Maybe [Text]) Text

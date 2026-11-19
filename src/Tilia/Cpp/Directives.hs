@@ -63,7 +63,13 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (..))
 
-import Tilia.Cpp.Expansion (Macro (..), cppExpansion, definition)
+import Tilia.Cpp.Expansion
+  ( Macro (..),
+    cppExpansion,
+    definition,
+    endsInBackslash,
+    joinedTo,
+  )
 import Tilia.Cpp.Macros (Macros, guardHolds, impliedBy, isNameChar, questionOf)
 import Tilia.Doc (Conditional (..))
 import Tilia.Parser (ParseError, describeParseError)
@@ -660,26 +666,25 @@ dSpan d = mkSpan (dLine d, 1) (dLastLine d, 1)
 
 -- | Every directive in a module, in the order they are written.
 directives :: Text -> [Directive]
-directives = go . zip [1 ..] . T.lines
+directives = go 1 "" . T.lines
   where
-    go = \case
+    go !n above = \case
       [] -> []
-      (n, l) : ls
-        | Just (keyword, body) <- directiveOnLine l ->
-            let (continued, rest) = continuation l ls
-             in Directive
-                  { dLine = n,
-                    dLastLine = n + length continued,
-                    dKeyword = keyword,
-                    dText = T.intercalate "\n" (fmap T.stripEnd (body : continued))
-                  }
-                  : go rest
-        | otherwise -> go ls
-    continuation l ls
-      | T.isSuffixOf "\\" (T.stripEnd l),
-        (_, next) : rest <- ls =
-          let (more, rest') = continuation next rest in (next : more, rest')
-      | otherwise = ([], ls)
+      l : ls
+        | Just (keyword, body) <- directiveOnLine l,
+          not (endsInBackslash above) ->
+            case joinedTo l ls of
+              (continued, rest) ->
+                let next = n + 1 + length continued
+                 in Directive
+                      { dLine = n,
+                        dLastLine = next - 1,
+                        dKeyword = keyword,
+                        dText =
+                          T.intercalate "\n" (fmap T.stripEnd (body : continued))
+                      }
+                      : go next "" rest
+        | otherwise -> go (n + 1) l ls
 
 -- | A module's conditionals, each with the ones inside its branches, or why
 -- they do not make sense.

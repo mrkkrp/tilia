@@ -377,6 +377,10 @@ spec = do
     it "does not take an indented line for one, as cpp does not" $
       directiveOnLine "    #if FOO" `shouldBe` Nothing
 
+    it "does not take a line cpp joins to the one above for one" $ do
+      let input = "-- Built on C:\\\n#include \"paths.h\"\nf = 1\n"
+      blankCpp input `shouldBe` input
+
 ----------------------------------------------------------------------------
 -- What was read and printed, as the AST check compares them
 
