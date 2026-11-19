@@ -10,6 +10,7 @@ module Tilia.Parser
     parseConfiguration,
     readAlike,
     importLayout,
+    stringLiterals,
     ParseError (..),
     describeParseError,
     ParserConfig (..),
@@ -26,7 +27,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Data.EnumSet qualified as EnumSet
-import GHC.Data.FastString (mkFastString)
+import GHC.Data.FastString (mkFastString, unpackFS)
 import GHC.Data.StringBuffer qualified as GHC
 import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
@@ -34,6 +35,7 @@ import GHC.LanguageExtensions.Type (Extension)
 import GHC.Parser qualified as GHC
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
+import GHC.Types.SourceText (SourceText (..))
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
@@ -205,6 +207,33 @@ importLayout config source =
       GHC.ITvccurly -> False
       GHC.ITsemi -> False
       t -> not (isComment t)
+
+-- | The line each string literal of a module begins on and the literal as
+-- written, or none where the module does not lex.
+stringLiterals ::
+  -- | Parser config.
+  ParserConfig ->
+  -- | The module, with its preprocessor directives blanked.
+  Text ->
+  [(Int, Text)]
+stringLiterals config source =
+  case GHC.lexTokenStream
+    (GHC.options s)
+    (GHC.buffer s)
+    (GHC.psRealLoc (GHC.loc s)) of
+    GHC.PFailed _ -> []
+    GHC.POk _ tokens ->
+      [ (GHC.srcSpanStartLine l, T.pack (unpackFS w))
+      | GHC.L (GHC.RealSrcSpan l _) t <- tokens,
+        SourceText w <- [written t]
+      ]
+  where
+    s = stateFor (effectiveExtensions (pcDefaults config) source) "" source
+    written = \case
+      GHC.ITstring w _ -> w
+      GHC.ITstringMulti w _ -> w
+      GHC.ITprimstring w _ -> w
+      _ -> NoSourceText
 
 -- | Lex every comment, in source order, and the line each quasi-quotation
 -- written over several lines ends on, by the line it begins on, from the

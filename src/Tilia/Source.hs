@@ -21,6 +21,7 @@ module Tilia.Source
     directiveWrittenOnLine,
     directiveOnLine,
     isDirective,
+    endsInBackslash,
 
     -- * Its comments
     comments,

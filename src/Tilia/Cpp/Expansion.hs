@@ -8,7 +8,6 @@ module Tilia.Cpp.Expansion
     hashLines,
     changedByCpp,
     joinedTo,
-    endsInBackslash,
     Macro (..),
     definition,
   )
@@ -24,7 +23,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Tilia.Cpp.Macros (isNameChar, isNameStart)
-import Tilia.Source.Lines (conditionalKeywords, directiveOnLine, isDirective)
+import Tilia.Source.Lines
+  ( conditionalKeywords,
+    directiveOnLine,
+    endsInBackslash,
+    isDirective,
+  )
 
 -- | A configuration as cpp hands it to GHC: lines ending in a backslash
 -- joined to the next, directives blanked, and the macros it defines
@@ -104,17 +108,6 @@ joinedTo l = \case
   n : ls | endsInBackslash l -> case joinedTo n ls of
     (more, rest) -> (n : more, rest)
   ls -> ([], ls)
-
--- | Does cpp join the line after this one to it?
-endsInBackslash ::
-  -- | The line.
-  Text ->
-  Bool
-endsInBackslash l
-  | T.null l = False
-  | otherwise = case T.last l of
-      '\\' -> True
-      c -> isSpace c && endsInBackslash (T.init l)
 
 -- | A macro: its parameters, unless it is object-like, and its body.
 data Macro = Macro (Maybe [Text]) Text

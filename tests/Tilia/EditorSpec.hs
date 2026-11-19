@@ -81,7 +81,7 @@ spec = describe "formatting what an editor holds" $ do
   it "declines an operator from a module it cannot read" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
-        `shouldReturn` CameDeclined 18
+        `shouldReturn` CameDeclined 22
 
   it "takes fixities for a buffer whose branches do not parse together" $
     withProject $ \buffer ->
@@ -90,7 +90,7 @@ spec = describe "formatting what an editor holds" $ do
   it "declines an operator it cannot settle where the branches do not parse together" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") alternativesUsingUnknown
-        `shouldReturn` CameDeclined 18
+        `shouldReturn` CameDeclined 22
 
   it "leaves alone a file the project's .tiliaignore excludes" $
     withProject $ \buffer ->
@@ -100,7 +100,7 @@ spec = describe "formatting what an editor holds" $ do
   it "fails on a buffer that does not parse" $
     withProject $ \buffer ->
       buffer ("src" </> "Ops.hs") "module Ops where\nx = (\n"
-        `shouldReturn` CameFailed 4
+        `shouldReturn` CameFailed 10
 
   it "fails where no project is above the file" $
     withSystemTempDirectory "tilia-editor" $ \dir ->
@@ -127,7 +127,7 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #checkAst)
           (Don't #checkIdempotence)
           (Don't #debugFixity)
-        `shouldReturn` Just 25
+        `shouldReturn` Just 4
 
   it "fails before solving where the project names no packages" $
     withSystemTempDirectory "tilia-editor" $ \dir -> do
@@ -141,7 +141,7 @@ spec = describe "formatting what an editor holds" $ do
           (Don't #checkAst)
           (Don't #checkIdempotence)
           (Don't #debugFixity)
-        `shouldReturn` Just 25
+        `shouldReturn` Just 4
 
   describe "given the project's tilia.toml" $ do
     it "breaks what runs past the column limit it sets" $
@@ -162,7 +162,7 @@ spec = describe "formatting what an editor holds" $ do
     it "fails where it cannot be used" $
       withProjectHolding [("tilia.toml", "column-limit = 0\n")] $ \buffer ->
         buffer ("src" </> "Ops.hs") "module Ops where\nx=1\n"
-          `shouldReturn` CameFailed 26
+          `shouldReturn` CameFailed 5
 
   describe "given what compiling the project establishes" $ do
     it "puts the imports of the project's own modules after the rest" $
@@ -179,7 +179,7 @@ spec = describe "formatting what an editor holds" $ do
     it "declines an operator from a module it is given no interface of" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
-          `shouldReturn` CameDeclined 18
+          `shouldReturn` CameDeclined 22
 
     it "parses with the extensions it is given rather than the package's" $
       withCompiled $ \buffer ->
@@ -189,7 +189,7 @@ spec = describe "formatting what an editor holds" $ do
     it "fails a module whose formatting throws rather than throwing itself" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Boom\nx=a <?> b\n"
-          `shouldReturn` CameFailed 22
+          `shouldReturn` CameFailed 27
 
     it "leaves out the branches the versions it is given rule out" $
       withCompiled $ \buffer ->

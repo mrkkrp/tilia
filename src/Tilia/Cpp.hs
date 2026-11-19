@@ -13,6 +13,7 @@ module Tilia.Cpp
     blankCpp,
     withoutRuledOut,
     everyBranch,
+    stringJoinedByCpp,
     CppError (..),
     describeCppError,
 
@@ -81,6 +82,7 @@ import Tilia.Parser
     pmExtensions,
     pmSource,
     readAlike,
+    stringLiterals,
   )
 import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
@@ -88,6 +90,7 @@ import Tilia.Source
     Written (..),
     comments,
     dropping,
+    endsInBackslash,
     linesOf,
   )
 import Tilia.Span (spanEndLine, spanStartLine)
@@ -168,6 +171,23 @@ everyBranch parser path source =
         | Right texts <- [branchLeaves source],
           Right parsed <- fmap (parseModule parser path) texts
         ]
+
+-- | The line the first string literal begins on that has a line cpp joins
+-- to the next one.
+stringJoinedByCpp ::
+  -- | What to lex with.
+  ParserConfig ->
+  -- | The module, directives and all.
+  Text ->
+  Maybe Int
+stringJoinedByCpp parser source
+  | any endsInBackslash (T.lines source) =
+      listToMaybe
+        [ n
+        | (n, literal) <- stringLiterals parser (blankCpp source),
+          any endsInBackslash (drop 1 (reverse (T.lines literal)))
+        ]
+  | otherwise = Nothing
 
 -- | The lines imports must not be sorted across: the directives of every
 -- conditional but one that only continues the item above it, such as a

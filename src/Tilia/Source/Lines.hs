@@ -20,6 +20,7 @@ module Tilia.Source.Lines
     directiveWrittenOnLine,
     directiveOnLine,
     isDirective,
+    endsInBackslash,
     conditionalKeywords,
     opensGroup,
     continuesGroup,
@@ -165,6 +166,17 @@ isDirective ::
   Text ->
   Bool
 isDirective = isJust . directiveOnLine
+
+-- | Does cpp join the line after this one to it?
+endsInBackslash ::
+  -- | The line.
+  Text ->
+  Bool
+endsInBackslash l
+  | T.null l = False
+  | otherwise = case T.last l of
+      '\\' -> True
+      c -> isSpace c && endsInBackslash (T.init l)
 
 -- | Every directive the C preprocessor takes, whether or not this module
 -- can do anything with the ones it names.
