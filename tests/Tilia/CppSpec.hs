@@ -81,6 +81,9 @@ spec = do
     it "sees past a use given its arguments after a space" $
       changedBy callStackMacro callStackSpaced `shouldBe` Nothing
 
+    it "notices a string's joined lines moved where nothing is a directive" $
+      changedBy joinedString joinedStringMoved `shouldSatisfy` isJust
+
   describe "splitting a module on its conditional" $ do
     it "keeps the directive as written, keyword and all" $
       fmap guardText . cfgGuards <$> configurations atDeclarations
@@ -590,6 +593,32 @@ alsoHupNotedTrailing =
       "    {- hang up -}",
       "    \"QUIT\"",
       "  ]"
+    ]
+
+-- | A string whose lines cpp joins, in a module with no directive.
+joinedString :: Text
+joinedString =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Table (table) where",
+      "table :: String",
+      "table = id",
+      "      \"abc\\",
+      "      \\\\x41\""
+    ]
+
+-- | 'joinedString' with the joined lines moved, which changes the string
+-- cpp gives.
+joinedStringMoved :: Text
+joinedStringMoved =
+  T.unlines
+    [ "{-# LANGUAGE CPP #-}",
+      "module Table (table) where",
+      "table :: String",
+      "table =",
+      "  id",
+      "    \"abc\\",
+      "    \\\\x41\""
     ]
 
 ----------------------------------------------------------------------------

@@ -39,7 +39,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Version (Version, versionBranch)
 import GHC.Driver.Session (OnOff (..))
-import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
+import GHC.LanguageExtensions.Type (Extension (Cpp, ImplicitPrelude))
 import System.Directory (canonicalizePath)
 import System.FilePath ((</>))
 
@@ -80,7 +80,7 @@ import Tilia.Cpp
     usesCpp,
     withoutRuledOut,
   )
-import Tilia.Cpp.Expansion (hashLines)
+import Tilia.Cpp.Expansion (changedByCpp, hashLines)
 import Tilia.Cpp.Macros (Macros)
 import Tilia.Doc (printDoc)
 import Tilia.Equivalence (commentDifference, syntaxDifference)
@@ -650,7 +650,7 @@ rewritten config astCheck extensions path (before, printedFrom') after
         Just b' -> (comparing b' a', Just a')
   | otherwise = (hashLinesDifference before after <|> underCpp, Nothing)
   where
-    readByCpp = any (isTrue . usesCpp extensions) [before, after]
+    readByCpp = Cpp `elem` extensions && any changedByCpp [before, after]
     comparing b' a' =
       syntaxDifference (pmModule b') (pmModule a')
         <|> commentDifference b' a'
