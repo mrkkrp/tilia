@@ -468,6 +468,10 @@
   backslash ending a line, comes out with those lines as written: their
   indentation is part of the string cpp gives, and re-indenting them
   changed it. [PR 535](https://github.com/mrkkrp/tilia/pull/535).
+* A module whose strings rely on cpp to join a line ending in a backslash
+  to the next one, as in `"…\n\\` with the gap closed on the next line,
+  can be formatted: it is read as cpp joins it, and those lines come out
+  as written. [PR 535](https://github.com/mrkkrp/tilia/pull/535).
 
 ## Tilia 0.1.4.0
 

@@ -17,28 +17,44 @@ module Tilia.Parser
   )
 where
 
+import Control.Monad (guard)
 import Data.Foldable (toList)
+import Data.Generics.Aliases (mkT)
+import Data.Generics.Schemes (everywhere, listify)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet (IntSet)
+import Data.IntSet qualified as IntSet
 import Data.List (isSuffixOf, sortOn)
-import Data.Maybe (catMaybes, listToMaybe)
+import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
-import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
+import GHC.Hs
+  ( AnnsModule (..),
+    EpAnn (anns),
+    HsExpr (..),
+    HsLit (..),
+    HsModule (..),
+    LHsExpr,
+    XModulePs (..),
+  )
 import GHC.Hs.Extension (GhcPs)
-import GHC.LanguageExtensions.Type (Extension)
+import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Parser qualified as GHC
+import GHC.Parser.Errors.Types (LexErrKind (..), PsMessage (..))
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
+import GHC.Types.SourceText (SourceText (..))
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Unit.Module.Warnings (emptyWarningCategorySet)
 import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 
+import Tilia.Cpp.Expansion (endsInBackslash)
 import Tilia.Gathered (Gathered (..), gathered)
 import Tilia.Pragma (Defaults, effectiveExtensions, headerPragmas)
 import Tilia.Source
@@ -46,8 +62,10 @@ import Tilia.Source
     Source,
     SourceType (..),
     Written (..),
+    lineAt,
     lineTexts,
     linesOf,
+    offsetOf,
     sourceOf,
   )
 import Tilia.Span (Span (..), startPoint)
@@ -99,7 +117,8 @@ parseModule ::
 parseModule config path source =
   parseConfiguration config path (linesOf (Written source)) source
 
--- | Parse one configuration of a module.
+-- | Parse one configuration of a module, reading a string that relies on
+-- cpp to join a line ending in a backslash as cpp joins it.
 parseConfiguration ::
   ParserConfig ->
   -- | Path, reported back in positions, whose extension tells a signature
@@ -112,25 +131,13 @@ parseConfiguration ::
   Text ->
   Either ParseError ParsedModule
 parseConfiguration config path written source =
-  case GHC.unP entryPoint start of
-    GHC.PFailed pstate -> Left (whyNot pstate)
-    GHC.POk pstate (GHC.L _ hsModule)
-      | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
-          Left (whyNot pstate)
-      | otherwise ->
-          Right
-            ParsedModule
-              { pmModule = hsModule,
-                pmSource = uncurry (sourceOf written) (lexed start),
-                pmGathered = gathered hsModule,
-                pmSourceType = sourceType,
-                pmPrologue = prologueOf (lineTexts written),
-                pmHeaderEnd = headerEndOf hsModule,
-                pmExtensions = extensions
-              }
+  case attempt source of
+    Right (start, hsModule) -> Right (parsedFrom start hsModule)
+    Left failed -> case joined source IntSet.empty failed of
+      Just (start, hsModule) -> Right (parsedFrom start hsModule)
+      Nothing -> Left (whyNot failed)
   where
     extensions = effectiveExtensions (pcDefaults config) source
-    start = stateFor extensions path source
 
     sourceType = sourceTypeOf path
 
@@ -138,14 +145,54 @@ parseConfiguration config path written source =
       ModuleSource -> GHC.parseModule
       SignatureSource -> GHC.parseSignature
 
-    whyNot pstate =
-      case sortOn at (toList (GHC.getMessages (GHC.getPsErrorMessages pstate))) of
-        m : _ -> ParseError{peSpan = GHC.errMsgSpan m, peProblem = saying m}
-        [] ->
-          ParseError
-            { peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate),
-              peProblem = "parse error"
-            }
+    attempt text = case GHC.unP entryPoint start of
+      GHC.PFailed pstate -> Left pstate
+      GHC.POk pstate (GHC.L _ hsModule)
+        | not (GHC.isEmptyMessages (GHC.getPsErrorMessages pstate)) ->
+            Left pstate
+        | otherwise -> Right (start, hsModule)
+      where
+        start = stateFor extensions path text
+
+    joined text taken failed = do
+      guard (Cpp `elem` extensions)
+      m <- firstMessage failed
+      PsErrLexer _ (LexErrKind_Char '\n') <- pure (GHC.errMsgDiagnostic m)
+      n <- GHC.srcSpanEndLine <$> GHC.srcSpanToRealSrcSpan (GHC.errMsgSpan m)
+      l <- listToMaybe (drop (n - 1) (T.lines text))
+      guard (endsInBackslash l && IntSet.notMember n taken)
+      let text' = unjoined n text
+          taken' = IntSet.insert n taken
+      case attempt text' of
+        Right (start, hsModule) ->
+          (start,) <$> restoredAsWritten written taken' hsModule
+        Left failed' -> joined text' taken' failed'
+
+    parsedFrom start hsModule =
+      ParsedModule
+        { pmModule = hsModule,
+          pmSource = uncurry (sourceOf written) (lexed start),
+          pmGathered = gathered hsModule,
+          pmSourceType = sourceType,
+          pmPrologue = prologueOf (lineTexts written),
+          pmHeaderEnd = headerEndOf hsModule,
+          pmExtensions = extensions
+        }
+
+    whyNot pstate = case firstMessage pstate of
+      Just m -> ParseError{peSpan = GHC.errMsgSpan m, peProblem = saying m}
+      Nothing ->
+        ParseError
+          { peSpan = GHC.mkSrcSpanPs (GHC.last_loc pstate),
+            peProblem = "parse error"
+          }
+
+    firstMessage =
+      listToMaybe
+        . sortOn at
+        . toList
+        . GHC.getMessages
+        . GHC.getPsErrorMessages
 
     at m = case GHC.srcSpanToRealSrcSpan (GHC.errMsgSpan m) of
       Just s -> (GHC.srcSpanStartLine s, GHC.srcSpanStartCol s)
@@ -158,6 +205,71 @@ parseConfiguration config path written source =
         . GHC.unDecorated
         . GHC.diagnosticMessage GHC.NoDiagnosticOpts
         . GHC.errMsgDiagnostic
+
+-- | A text with the backslash ending one of its lines taken off, as cpp
+-- takes it off when it joins that line to the next.
+unjoined ::
+  -- | The line.
+  Int ->
+  -- | The text.
+  Text ->
+  Text
+unjoined n =
+  T.unlines . zipWith cut [1 ..] . T.lines
+  where
+    cut i l = if i == n then T.dropEnd 1 (T.stripEnd l) else l
+
+-- | A module with each string literal that spans one of the lines given
+-- read back as written, unless one of those lines is in no such literal.
+restoredAsWritten ::
+  -- | The lines of the module as written.
+  Lines ->
+  -- | The lines whose ending backslash was taken off.
+  IntSet ->
+  -- | The module read with those backslashes taken off.
+  HsModule GhcPs ->
+  Maybe (HsModule GhcPs)
+restoredAsWritten written taken hsModule = do
+  guard (all (\n -> any (holds n) literals) (IntSet.toList taken))
+  pure (everywhere (mkT restore) hsModule)
+  where
+    literals =
+      mapMaybe
+        (\(GHC.L l _) -> spanOf l)
+        (listify isString hsModule)
+    isString :: LHsExpr GhcPs -> Bool
+    isString (GHC.L _ (HsLit _ lit)) = case lit of
+      HsString{} -> True
+      HsStringPrim{} -> True
+      HsMultilineString{} -> True
+      _ -> False
+    isString _ = False
+    holds n s = spanStartLine s <= n && n < spanEndLine s
+    restore :: LHsExpr GhcPs -> LHsExpr GhcPs
+    restore e@(GHC.L l (HsLit x lit))
+      | isString e,
+        Just s <- spanOf l,
+        any (`holds` s) (IntSet.toList taken) =
+          GHC.L l (HsLit x (asWritten (SourceText (writtenAt s)) lit))
+    restore e = e
+    asWritten w = \case
+      HsString _ v -> HsString w v
+      HsStringPrim _ v -> HsStringPrim w v
+      HsMultilineString _ v -> HsMultilineString w v
+      other -> other
+    writtenAt s =
+      mkFastString . T.unpack . T.intercalate "\n" $
+        zipWith
+          (cut s)
+          [spanStartLine s ..]
+          (mapMaybe (`lineAt` written) [spanStartLine s .. spanEndLine s])
+    cut s i l
+      | i == spanStartLine s = T.drop (offsetOf l (spanStartColumn s)) l'
+      | otherwise = l'
+      where
+        l'
+          | i == spanEndLine s = T.take (offsetOf l (spanEndColumn s)) l
+          | otherwise = l
 
 -- | Return each line among the imports that a token other than a comment
 -- begins on, and whether the leftmost such token on the line begins an
