@@ -230,6 +230,7 @@ hackageReleases =
     "contravariant-1.5.6",
     "criterion-1.6.5.0",
     "cryptonite-0.30",
+    "dhall-1.42.3",
     "diagrams-core-1.5.1.2",
     "distributed-process-0.7.8",
     "dlist-1.0",
