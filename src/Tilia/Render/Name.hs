@@ -64,9 +64,9 @@ name ctx l = at ctx l $ \x -> adorn ctx (spanOf l) x (getLoc l) (bareName x)
 -- | The name itself, with nothing around it.
 bareName :: RdrName -> Doc
 bareName = \case
-  Unqual occName -> outputable occName
+  Unqual occName -> occurrence occName
   Qual mname occName -> qualifiedName mname occName
-  Orig _ occName -> outputable occName
+  Orig _ occName -> occurrence occName
   Exact n -> outputable n
 
 -- | Put back whatever brackets, backticks or ticks the author used.
@@ -100,7 +100,12 @@ adorn ctx here x = go
 
 -- | A name written with its module.
 qualifiedName :: ModuleName -> OccName -> Doc
-qualifiedName mname occName = outputable mname <> txt "." <> outputable occName
+qualifiedName mname occName =
+  txt (T.pack (moduleNameString mname)) <> txt "." <> occurrence occName
+
+-- | A name as it is spelled, without a module.
+occurrence :: OccName -> Doc
+occurrence = txt . T.pack . occNameString
 
 -- | The name in a module header, with the keyword that introduces it.
 moduleHeadName :: Ctx -> ModuleName -> Doc
