@@ -6,6 +6,7 @@
 module Tilia.Cpp.Expansion
   ( cppExpansion,
     hashLines,
+    changedByCpp,
     joinedTo,
     endsInBackslash,
     Macro (..),
@@ -23,7 +24,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Tilia.Cpp.Macros (isNameChar, isNameStart)
-import Tilia.Source.Lines (conditionalKeywords, directiveOnLine)
+import Tilia.Source.Lines (conditionalKeywords, directiveOnLine, isDirective)
 
 -- | A configuration as cpp hands it to GHC: lines ending in a backslash
 -- joined to the next, directives blanked, and the macros it defines
@@ -66,6 +67,14 @@ hashLines = mapMaybe hashed . spliced . T.lines
         Nothing | Just (c, _) <- T.uncons rest, c == '!' || isDigit c -> pure ()
         _ -> Nothing
       pure ("#" <> T.stripEnd rest)
+
+-- | Does cpp change a module before GHC reads it: is a line a directive,
+-- or one it joins to the next?
+changedByCpp ::
+  -- | The module.
+  Text ->
+  Bool
+changedByCpp = any (\l -> isDirective l || endsInBackslash l) . T.lines
 
 -- | Lines with the backslash ending each joined to the next, as cpp joins
 -- them, and an empty line in place of each line joined on.
