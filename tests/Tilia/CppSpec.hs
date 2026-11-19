@@ -9,6 +9,7 @@ import Data.List (sort)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust, maybeToList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (Cpp))
@@ -399,7 +400,7 @@ changedBy input output =
     ( rewritten
         defaultParserConfig
         (EachCppConfiguration 64)
-        [Cpp]
+        (Set.singleton Cpp)
         "example.hs"
         (input, Nothing)
         output

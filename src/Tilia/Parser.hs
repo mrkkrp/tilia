@@ -23,6 +23,8 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (isSuffixOf, sortOn)
 import Data.Maybe (catMaybes, listToMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -79,7 +81,7 @@ data ParsedModule = ParsedModule
     -- top of the module would change its meaning.
     pmHeaderEnd :: Maybe Span,
     -- | The extensions it was read with.
-    pmExtensions :: [Extension]
+    pmExtensions :: Set Extension
   }
 
 -- | Was something that begins here written in the header, before what
@@ -276,7 +278,7 @@ isQuasiQuote = \case
 -- | The state to start reading a module in.
 stateFor ::
   -- | The extensions to read it with.
-  [Extension] ->
+  Set Extension ->
   -- | Path, reported back in positions.
   FilePath ->
   -- | The module.
@@ -297,10 +299,10 @@ readAlike config a b =
       GHC.pExtsBitmap . parserOpts . effectiveExtensions (pcDefaults config)
 
 -- | Options to parse with.
-parserOpts :: [Extension] -> GHC.ParserOpts
+parserOpts :: Set Extension -> GHC.ParserOpts
 parserOpts extensions =
   GHC.mkParserOpts
-    (EnumSet.fromList extensions)
+    (EnumSet.fromList (Set.toList extensions))
     quietDiagnostics
     False -- safe imports
     True -- keep Haddock tokens

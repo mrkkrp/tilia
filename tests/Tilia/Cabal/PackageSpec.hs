@@ -8,6 +8,7 @@ import Data.Either (isRight)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Distribution.PackageDescription (mkFlagAssignment)
@@ -114,7 +115,7 @@ spec = do
     it "are the language edition's" $
       inPackage twoComponents ["src"] $ \root -> do
         library <- asked (root </> "src" </> "M.hs")
-        (length . (`effectiveExtensions` "") <$> library)
+        (Set.size . (`effectiveExtensions` "") <$> library)
           `shouldSatisfy` either (const False) (> 40)
 
     it "are Haskell98's where it names no edition, as cabal builds it" $
@@ -498,7 +499,7 @@ unreadableOrMissing :: Either PackageProblem Defaults -> Bool
 unreadableOrMissing = either (const True) (const False)
 
 has :: Extension -> Either PackageProblem Defaults -> Bool
-has e = either (const False) ((e `elem`) . (`effectiveExtensions` ""))
+has e = either (const False) (Set.member e . (`effectiveExtensions` ""))
 
 unclaimed :: Either PackageProblem Defaults -> Bool
 unclaimed = either isFileUnclaimed (const False)

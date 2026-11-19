@@ -8,6 +8,7 @@ module Tilia.Pragma
     movesPositions,
     Defaults,
     defaultsOf,
+    editionExtensions,
     effectiveExtensions,
     lookupExtension,
     lookupEdition,
@@ -26,6 +27,7 @@ import Data.List (unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -112,7 +114,7 @@ spacedOnce = T.unwords . wordsOf . T.strip
 -- @#pragma@ lines are directives, which formatting keeps.
 movesPositions ::
   -- | The extensions in force.
-  [Extension] ->
+  Set Extension ->
   -- | The module's source.
   Text ->
   Bool
@@ -131,14 +133,19 @@ data Defaults = Defaults
     -- of an edition the module names in its place.
     defaultsSwitches :: [GHC.OnOff Extension],
     -- | What its edition and those switches put in force, worked out once.
-    defaultsInForce :: [Extension]
+    defaultsInForce :: Set Extension
   }
   deriving (Eq, Show)
 
 -- | What a component puts in force, given the extensions of its edition and
 -- what it switches on top of them, in order.
-defaultsOf :: [Extension] -> [GHC.OnOff Extension] -> Defaults
+defaultsOf :: Set Extension -> [GHC.OnOff Extension] -> Defaults
 defaultsOf edition switches = Defaults switches (foldl' switch edition switches)
+
+-- | The extensions an edition of the language puts in force, the
+-- compiler's default one where none is named.
+editionExtensions :: Maybe GHC.Language -> Set Extension
+editionExtensions = Set.fromList . GHC.languageExtensions
 
 -- | The extensions actually in force in a module.
 --
@@ -151,7 +158,7 @@ effectiveExtensions ::
   -- | The module's source, read here for the @LANGUAGE@, @OPTIONS_GHC@ and
   -- @OPTIONS@ pragmas of its header alone.
   Text ->
-  [Extension]
+  Set Extension
 effectiveExtensions defaults source =
   foldl' switch inForce (concat switches)
   where
@@ -165,7 +172,7 @@ effectiveExtensions defaults source =
       named ->
         foldl'
           switch
-          (GHC.languageExtensions (Just (last named)))
+          (editionExtensions (Just (last named)))
           (defaultsSwitches defaults)
 
 -- | Do two orders of the same pragmas, each given by its name and body,
@@ -176,7 +183,7 @@ sameInForce :: [(Text, Text)] -> [(Text, Text)] -> Bool
 sameInForce a b = not (turnsOff a) || inForce a == inForce b
   where
     turnsOff = foldl' (switchWith (const id) (\_ _ -> True)) False . switches
-    inForce = foldl' (switchWith Set.insert Set.delete) Set.empty . switches
+    inForce = foldl' switch Set.empty . switches
     switches = concatMap (uncurry switchesOf)
 
 -- | What a pragma of this name and body turns on and off.
@@ -227,12 +234,9 @@ flagSwitches flag
   where
     oldFlag name = maybeToList (Map.lookup name extensionsByOldFlag)
 
--- | Turn an extension on or off in a list kept in the order extensions were
--- turned on in.
-switch :: [Extension] -> GHC.OnOff Extension -> [Extension]
-switch = switchWith turnOn (filter . (/=))
-  where
-    turnOn e acc = if e `elem` acc then acc else acc <> [e]
+-- | Turn an extension on or off.
+switch :: Set Extension -> GHC.OnOff Extension -> Set Extension
+switch = switchWith Set.insert Set.delete
 
 -- | Turn an extension on, and then what it implies, or turn it off alone, as
 -- GHC does.
@@ -295,7 +299,7 @@ byFlagName flags =
 -- lexer reads past and formatting would lose.
 pastCode ::
   -- | The extensions in force.
-  [Extension] ->
+  Set Extension ->
   -- | How to carry on from where a piece of code ends.
   (Text -> [Bool]) ->
   -- | What is left of the module.
@@ -308,12 +312,12 @@ pastCode extensions = past
       Just ('"', after) -> go (skipString after)
       Just ('\'', after) -> go (skipCharacter after)
       _
-        | QuasiQuotes `elem` extensions,
+        | Set.member QuasiQuotes extensions,
           Just body <- quasiQuotation t ->
             go (T.drop 2 (snd (T.breakOn "|]" body)))
         | otherwise -> go (skipCode t)
 
-    withoutCpp = Cpp `notElem` extensions
+    withoutCpp = Set.notMember Cpp extensions
     readPast l = case T.uncons l of
       Just ('#', rest) ->
         (withoutCpp && any (`T.isPrefixOf` rest) ["line", "pragma"])

@@ -4,6 +4,7 @@
 module Tilia.PragmaSpec (spec) where
 
 import Data.Map.Strict (Map)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -54,20 +55,22 @@ spec = do
           ("a #! line below the top", "module M where\n#!/bin/sh\n"),
           ("a #! line after a space", " #!/bin/sh\nmodule M where\n")
         ]
-        (\source -> movesPositions [QuasiQuotes] source `shouldBe` True)
+        ( \source ->
+            movesPositions (Set.singleton QuasiQuotes) source `shouldBe` True
+        )
 
       it "one after a list comprehension, where quasi-quotes are off" $
         movesPositions
-          []
+          Set.empty
           "module M where\nxs = [x|x<-[1]]\n{-# LINE 9 \"O.hs\" #-}\n"
           `shouldBe` True
 
       it "a line marker written with a number where CPP is on, which cpp passes on" $
-        movesPositions [Cpp] "module M where\n# 9 \"O.hs\"\n"
+        movesPositions (Set.singleton Cpp) "module M where\n# 9 \"O.hs\"\n"
           `shouldBe` True
 
       it "a #! line below the top where CPP is on, which cpp passes on" $
-        movesPositions [Cpp] "module M where\n#!/bin/sh\n"
+        movesPositions (Set.singleton Cpp) "module M where\n#!/bin/sh\n"
           `shouldBe` True
 
     describe "says nothing of" $ do
@@ -101,64 +104,66 @@ spec = do
           ("a hash and a number in a block comment", "{-\n#15888 says\n-}\n"),
           ("a label opening an indented line", "module M where\nf = g\n  #line\n")
         ]
-        (\source -> movesPositions [QuasiQuotes] source `shouldBe` False)
+        ( \source ->
+            movesPositions (Set.singleton QuasiQuotes) source `shouldBe` False
+        )
 
       it "a line marker where CPP is on, which cpp reads" $
-        movesPositions [Cpp] "module M where\n#line 9 \"O.hs\"\n"
+        movesPositions (Set.singleton Cpp) "module M where\n#line 9 \"O.hs\"\n"
           `shouldBe` False
 
       it "a #pragma line where CPP is on, which cpp reads" $
-        movesPositions [Cpp] "module M where\n#pragma once\n"
+        movesPositions (Set.singleton Cpp) "module M where\n#pragma once\n"
           `shouldBe` False
   describe "the extensions in force" $ do
     it "keeps what the package puts in force" $
       inForceUnder [ImplicitPrelude, GADTs] "module M where\n"
-        `shouldBe` [ImplicitPrelude, GADTs]
+        `shouldBe` Set.fromList [ImplicitPrelude, GADTs]
     it "reads one extension" $
       inForceUnder [] "{-# LANGUAGE BangPatterns #-}\nmodule M where\n"
-        `shouldBe` [BangPatterns]
+        `shouldBe` Set.fromList [BangPatterns]
     it "reads several from one pragma" $
       inForceUnder
         []
         "{-# LANGUAGE LambdaCase, MagicHash #-}\nmodule M where\n"
-        `shouldBe` [LambdaCase, MagicHash]
+        `shouldBe` Set.fromList [LambdaCase, MagicHash]
     it "reads several pragmas" $
       inForceUnder
         []
         "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE MagicHash #-}\n"
-        `shouldBe` [LambdaCase, MagicHash]
+        `shouldBe` Set.fromList [LambdaCase, MagicHash]
     it "ignores flags that turn on no extension" $
       inForceUnder
         []
         "{-# OPTIONS_GHC -Wall #-}\n{-# LANGUAGE LambdaCase #-}\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "reads the -X flags of OPTIONS_GHC" $
       inForceUnder
         [GADTs]
         "{-# OPTIONS_GHC -Wall -XLambdaCase -XNoGADTs #-}\nmodule M where\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "reads the flags of OPTIONS" $
       inForceUnder [] "{-# OPTIONS -XLambdaCase #-}\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "reads the flags of an options pragma as GHC splits them" $
       inForceUnder [] "{-# OPTIONS_GHC \"-XLambdaCase\" #-}\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "reads -cpp as turning on CPP" $
       inForceUnder [] "{-# OPTIONS_GHC -cpp #-}\n"
-        `shouldBe` [Cpp]
+        `shouldBe` Set.fromList [Cpp]
     it "reads the old -f spellings of extensions" $
       inForceUnder
         [ImplicitPrelude]
         "{-# OPTIONS_GHC -fbang-patterns -fno-implicit-prelude #-}\n"
-        `shouldBe` [BangPatterns]
+        `shouldBe` Set.fromList [BangPatterns]
     it "reads -fglasgow-exts as turning on what it stands for" $
       inForceUnder [] "{-# OPTIONS_GHC -fglasgow-exts #-}\n"
-        `shouldSatisfy` \es -> all (`elem` es) glasgowExtsFlags
+        `shouldSatisfy` \es -> all (`Set.member` es) glasgowExtsFlags
     it "reads -fno-glasgow-exts as turning that off again" $
       inForceUnder
         []
         "{-# OPTIONS_GHC -fglasgow-exts -fno-glasgow-exts #-}\n"
-        `shouldSatisfy` not . any (`elem` glasgowExtsFlags)
+        `shouldSatisfy` \es -> not (any (`Set.member` es) glasgowExtsFlags)
     it "reads the pragmas in the order they are written" $
       inForceUnder
         []
@@ -166,93 +171,93 @@ spec = do
             <> "{-# OPTIONS_GHC -XNoLambdaCase -XMagicHash #-}\n"
             <> "{-# LANGUAGE NoMagicHash #-}\n"
         )
-        `shouldBe` []
+        `shouldBe` Set.empty
     it "reads the names of a language pragma past the comments in it" $
       inForceUnder
         []
         "{-# LANGUAGE\n    LambdaCase -- for f\n  , {- c -} MagicHash\n  #-}\nmodule M where\n"
-        `shouldBe` [LambdaCase, MagicHash]
+        `shouldBe` Set.fromList [LambdaCase, MagicHash]
     it "ignores a pragma below the module line, which GHC does not read" $
       inForceUnder [] "module M where\n{-# LANGUAGE LambdaCase #-}\n"
-        `shouldBe` []
+        `shouldBe` Set.empty
     it "reads the pragmas between the directives of a header" $
       inForceUnder
         []
         "{-# LANGUAGE CPP #-}\n#if 1\n{-# LANGUAGE LambdaCase #-}\n#endif\nmodule M where\n"
-        `shouldBe` [Cpp, LambdaCase]
+        `shouldBe` Set.fromList [Cpp, LambdaCase]
     it "takes an edition the module names in place of the component's" $
       inForceUnder
         (languageExtensions (Just Haskell2010))
         "{-# LANGUAGE GHC2024 #-}\nmodule M where\n"
-        `shouldBe` languageExtensions (Just GHC2024)
+        `shouldBe` editionExtensions (Just GHC2024)
     it "keeps what the component switches on top of the module's edition" $
       effectiveExtensions
-        (defaultsOf (languageExtensions (Just Haskell2010)) [On OverloadedStrings])
+        (defaultsOf (editionExtensions (Just Haskell2010)) [On OverloadedStrings])
         "{-# LANGUAGE GHC2021 #-}\nmodule M where\n"
         `shouldSatisfy` \es ->
-          all (`elem` es) [OverloadedStrings, ImportQualifiedPost]
+          all (`Set.member` es) [OverloadedStrings, ImportQualifiedPost]
     it "switches what the module switches on top of its edition, wherever named" $
       inForceUnder
         []
         "{-# LANGUAGE NoLambdaCase #-}\n{-# LANGUAGE GHC2024 #-}\nmodule M where\n"
-        `shouldSatisfy` notElem LambdaCase
+        `shouldSatisfy` Set.notMember LambdaCase
     it "takes the edition named last" $
       inForceUnder
         []
         "{-# LANGUAGE GHC2024 #-}\n{-# LANGUAGE Haskell2010 #-}\nmodule M where\n"
-        `shouldBe` languageExtensions (Just Haskell2010)
+        `shouldBe` editionExtensions (Just Haskell2010)
     it "reads an edition from a -X flag" $
       inForceUnder [] "{-# OPTIONS_GHC -XGHC2024 #-}\nmodule M where\n"
-        `shouldBe` languageExtensions (Just GHC2024)
+        `shouldBe` editionExtensions (Just GHC2024)
     it "ignores the options of other compilers" $
       inForceUnder [] "{-# OPTIONS_JHC -fffi -cpp #-}\n"
-        `shouldBe` []
+        `shouldBe` Set.empty
     it "ignores an unknown extension rather than failing" $
       inForceUnder [] "{-# LANGUAGE LambdaCase, NotARealExtension #-}\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "treats a No-prefix as turning one off" $
       inForceUnder
         [ImplicitPrelude]
         "{-# LANGUAGE NoImplicitPrelude #-}\n"
-        `shouldBe` []
+        `shouldBe` Set.empty
     it "lets a module refuse what its package put in force" $
       inForceUnder [ImplicitPrelude, GADTs] "{-# LANGUAGE NoGADTs #-}\n"
-        `shouldBe` [ImplicitPrelude]
+        `shouldBe` Set.fromList [ImplicitPrelude]
     it "lets a module take back a Prelude its package turned off" $
       inForceUnder [GADTs] "{-# LANGUAGE ImplicitPrelude #-}\n"
-        `shouldBe` [GADTs, ImplicitPrelude]
+        `shouldBe` Set.fromList [GADTs, ImplicitPrelude]
     it "does not repeat an extension named twice" $
       inForceUnder
         []
         "{-# LANGUAGE LambdaCase #-}\n{-# LANGUAGE LambdaCase #-}\n"
-        `shouldBe` [LambdaCase]
+        `shouldBe` Set.fromList [LambdaCase]
     it "turns on what an extension implies, as GHC does" $
       inForceUnder [] "{-# LANGUAGE RankNTypes #-}\n"
-        `shouldBe` [RankNTypes, ExplicitForAll]
+        `shouldBe` Set.fromList [RankNTypes, ExplicitForAll]
     it "turns off what an extension implies is off" $
       inForceUnder
         [ImplicitPrelude]
         "{-# LANGUAGE RebindableSyntax #-}\n"
-        `shouldBe` [RebindableSyntax]
+        `shouldBe` Set.fromList [RebindableSyntax]
     it "leaves on what an extension turned off had implied" $
       inForceUnder [] "{-# LANGUAGE RankNTypes, NoRankNTypes #-}\n"
-        `shouldBe` [ExplicitForAll]
+        `shouldBe` Set.fromList [ExplicitForAll]
     it "lets a later name turn off what an earlier one implied" $
       inForceUnder [] "{-# LANGUAGE RankNTypes, NoExplicitForAll #-}\n"
-        `shouldBe` [RankNTypes]
+        `shouldBe` Set.fromList [RankNTypes]
 
   modifyMaxSuccess (const 5000) . describe "against GHC's own flag reader" $ do
     it "leaves on what GHC leaves on" $
       forAll (listOf1 (pragmaNaming headerNames)) $ \pragmas ->
         let ours =
               effectiveExtensions
-                (defaultsOf (languageExtensions Nothing) [])
+                (defaultsOf (editionExtensions Nothing) [])
                 (headerOf pragmas)
             theirs =
               EnumSet.toList
                 (extensionFlags (readFlags (concatMap flagsOf pragmas)))
          in counterexample (T.unpack (headerOf pragmas)) $
-              Set.fromList ours === Set.fromList theirs
+              ours === Set.fromList theirs
     it "takes two orders to be alike where GHC switches alike" $
       forAll (listOf1 (pragmaNaming extensionNames)) $ \pragmas ->
         forAll (shuffle pragmas) $ \shuffled ->
@@ -277,8 +282,9 @@ spec = do
 
 -- | The extensions in force in a module of a component whose edition puts
 -- these in force and which switches nothing itself.
-inForceUnder :: [Extension] -> Text -> [Extension]
-inForceUnder edition = effectiveExtensions (defaultsOf edition [])
+inForceUnder :: [Extension] -> Text -> Set Extension
+inForceUnder edition =
+  effectiveExtensions (defaultsOf (Set.fromList edition) [])
 
 -- | A pragma of a header, as its name and its body, with the flags it hands
 -- GHC.

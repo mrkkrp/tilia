@@ -9,6 +9,8 @@ import Codec.Archive.Tar.Entry qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -217,42 +219,42 @@ spec = do
   describe "what the package puts in force" $ do
     it "reads an extension the .cabal turns on" $
       extensions "library\n  default-extensions: LambdaCase\n"
-        `shouldSatisfy` elem LambdaCase
+        `shouldSatisfy` Set.member LambdaCase
 
     it "reads several, however they are written" $ do
       let found =
             extensions
               "library\n  default-extensions:\n    LambdaCase\n    MultiWayIf, BlockArguments\n"
-      found `shouldSatisfy` elem LambdaCase
-      found `shouldSatisfy` elem MultiWayIf
-      found `shouldSatisfy` elem BlockArguments
+      found `shouldSatisfy` Set.member LambdaCase
+      found `shouldSatisfy` Set.member MultiWayIf
+      found `shouldSatisfy` Set.member BlockArguments
 
     it "reads the extensions field older packages use" $
       extensions "library\n  extensions: BangPatterns\n"
-        `shouldSatisfy` elem BangPatterns
+        `shouldSatisfy` Set.member BangPatterns
 
     it "lets default-extensions take back what that field turns on" $
       extensions
         "library\n\
         \  extensions: LambdaCase\n\
         \  default-extensions: NoLambdaCase\n"
-        `shouldSatisfy` notElem LambdaCase
+        `shouldSatisfy` Set.notMember LambdaCase
 
     it "takes one back that the .cabal turns off" $
       extensions "library\n  default-extensions: ImplicitPrelude, NoImplicitPrelude\n"
-        `shouldSatisfy` notElem ImplicitPrelude
+        `shouldSatisfy` Set.notMember ImplicitPrelude
 
     it "starts from what the language edition puts in force" $ do
       extensions "library\n  default-language: GHC2021\n"
-        `shouldSatisfy` elem TypeOperators
+        `shouldSatisfy` Set.member TypeOperators
       extensions "library\n  default-language: Haskell2010\n"
-        `shouldSatisfy` notElem TypeOperators
+        `shouldSatisfy` Set.notMember TypeOperators
 
     it "starts from Haskell98 where it names no edition, as cabal builds it" $ do
       extensions "library\n  build-depends: base\n"
-        `shouldSatisfy` elem NondecreasingIndentation
+        `shouldSatisfy` Set.member NondecreasingIndentation
       extensions "library\n  build-depends: base\n"
-        `shouldSatisfy` notElem ImportQualifiedPost
+        `shouldSatisfy` Set.notMember ImportQualifiedPost
 
     it "takes what every edition in the file puts in force" $
       extensions
@@ -262,7 +264,7 @@ spec = do
         \  type: exitcode-stdio-1.0\n\
         \  main-is: T.hs\n\
         \  default-language: GHC2021\n"
-        `shouldSatisfy` elem TypeOperators
+        `shouldSatisfy` Set.member TypeOperators
 
     it "still has the earlier edition's own extensions" $
       extensions
@@ -272,11 +274,11 @@ spec = do
         \  type: exitcode-stdio-1.0\n\
         \  main-is: T.hs\n\
         \  default-language: GHC2021\n"
-        `shouldSatisfy` elem ImplicitPrelude
+        `shouldSatisfy` Set.member ImplicitPrelude
 
     it "passes over a name no compiler knows" $
       extensions "library\n  default-extensions: LambdaCase, NotAnExtension\n"
-        `shouldSatisfy` elem LambdaCase
+        `shouldSatisfy` Set.member LambdaCase
 
     it "takes only the components that list the module" $ do
       let found =
@@ -290,9 +292,9 @@ spec = do
               \  type: exitcode-stdio-1.0\n\
               \  main-is: T.hs\n\
               \  default-extensions: NoImplicitPrelude\n"
-      found `shouldSatisfy` elem LambdaCase
-      found `shouldSatisfy` elem MultiWayIf
-      found `shouldSatisfy` elem ImplicitPrelude
+      found `shouldSatisfy` Set.member LambdaCase
+      found `shouldSatisfy` Set.member MultiWayIf
+      found `shouldSatisfy` Set.member ImplicitPrelude
 
     it "takes every component's where none lists the module" $ do
       let found =
@@ -303,8 +305,8 @@ spec = do
               \  type: exitcode-stdio-1.0\n\
               \  main-is: T.hs\n\
               \  default-extensions: MultiWayIf\n"
-      found `shouldSatisfy` elem LambdaCase
-      found `shouldSatisfy` elem MultiWayIf
+      found `shouldSatisfy` Set.member LambdaCase
+      found `shouldSatisfy` Set.member MultiWayIf
 
   describe "the union is deliberate" $
     it "does not need to know which branch a build would take" $ do
@@ -326,7 +328,7 @@ sourceDirs :: Text -> [FilePath]
 sourceDirs = packageSourceDirs . described
 
 -- | What a @.cabal@ of this shape puts in force.
-extensions :: Text -> [Extension]
+extensions :: Text -> Set Extension
 extensions = (`effectiveExtensions` "") . (`moduleExtensions` "M") . described
 
 -- | The text an archive of these files gives for a module, where its

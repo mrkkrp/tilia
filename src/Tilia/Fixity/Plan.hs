@@ -1012,4 +1012,4 @@ configurationsOf macros extensions modName text =
 -- | Does this module see the Prelude without importing it?
 hasImplicitPrelude :: Defaults -> Text -> Choice "implicitPrelude"
 hasImplicitPrelude extensions source =
-  fromBool (ImplicitPrelude `elem` effectiveExtensions extensions source)
+  fromBool (Set.member ImplicitPrelude (effectiveExtensions extensions source))
