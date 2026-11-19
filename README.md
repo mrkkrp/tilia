@@ -267,18 +267,10 @@ server plugin, can use `editorSession` and `formatBuffer` from
   on and is not known to introduce any problems with idempotence, whereas
   Fourmolu warns that setting its `column-limit` option may break
   idempotence.
-* Tilia is capable of handling comments with absolute fidelity—they never
-  move in unexpected ways and never disappear.
 * Tilia separates third-party and first-party imports with a blank line.
   This is analogous to `import-grouping: by-scope`, except Tilia takes all
   packages in your `cabal.project` to be first-party, not only the current
   package that is being formatted.
-* Tilia is more correct. For example, it never rearranges pragmas or GHC
-  options in a way that changes the meaning of the program, whereas Fourmolu
-  does that. It is careful not to merge `hiding` clauses of otherwise
-  matching imports that hide different names—something Fourmolu does,
-  despite it changing the meaning of the program. There are other examples
-  as well.
 
 ## Suggested setup per use-case
 
