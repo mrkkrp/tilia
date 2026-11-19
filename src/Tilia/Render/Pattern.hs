@@ -103,7 +103,7 @@ patBody ctx inParens closing here = \case
         <> joinedBy (reserved ctx "->")
         <> indent (recur p)
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
-  LitPat _ lit -> hsLit lit
+  LitPat _ lit -> hsLit ctx lit
   NPat _ v (isJust -> negated) _ ->
     includeWhen negated (txt "-" <> negativeLiteralGap ctx)
       <> at ctx v (outputable . ol_val)

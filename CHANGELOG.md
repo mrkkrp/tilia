@@ -464,6 +464,10 @@
 * A line beginning with `#` under a line that ends in a backslash is no
   longer read as a directive: cpp joins it to that line, so it is not one.
   [PR 531](https://github.com/mrkkrp/tilia/pull/531).
+* In a module that uses CPP, a string whose lines cpp joins, at a
+  backslash ending a line, comes out with those lines as written: their
+  indentation is part of the string cpp gives, and re-indenting them
+  changed it. [PR 535](https://github.com/mrkkrp/tilia/pull/535).
 
 ## Tilia 0.1.4.0
 

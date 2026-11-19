@@ -1,9 +1,9 @@
 Hackage modules that currently do not format cleanly.
 
-5275 examples, 5220 formatted.
+5275 examples, 5221 formatted.
 
 ==========================================================================
-broken (3)
+broken (2)
 ==========================================================================
 
 HUnit-1.6.2.0/src/Test/HUnit/Base.hs
@@ -137,9 +137,6 @@ HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
     @@ -39,12 +39,12 @@
      type Assertion = IO ()
     … and 104 more lines
-
-attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
-    with the alternative settings: formatting attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs changed the program: in one configuration, L > HsApp > L > HsLit > HsStringPrim > Data.ByteString.ByteString changed
 
 ==========================================================================
 does-not-parse (1)

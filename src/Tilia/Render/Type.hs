@@ -176,7 +176,7 @@ typeBody ctx documented here = \case
             )
         )
   HsTyLit _ t -> case t of
-    HsStrTy (SourceText s) _ -> stringLiteral s
+    HsStrTy (SourceText s) _ -> stringLiteral ctx s
     other -> outputable other
   HsWildCardTy _ -> txt "_"
   XHsType ext -> case ext of

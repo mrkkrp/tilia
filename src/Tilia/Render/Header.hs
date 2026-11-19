@@ -477,7 +477,7 @@ importDecl ctx ImportDecl{..} =
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
       NoRawPkgQual -> mempty
-      RawPkgQual literal -> writtenString literal
+      RawPkgQual literal -> writtenString ctx literal
     levelBefore = case ideclLevelSpec of
       LevelStylePre l -> declLevel l
       _ -> mempty

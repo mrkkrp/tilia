@@ -105,9 +105,9 @@ warned ctx (Warning (namespace, _) names wtxt) =
     <> namespaceSpec namespace
     <> commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
     <> breakOrSpace
-    <> literalList (ctxCommaStyle ctx) literals
+    <> literalList ctx literals
   where
-    (_, category, literals) = warningParts wtxt
+    (_, category, literals) = warningParts ctx wtxt
 
 -- | A warning attached to a name in an export list or to an instance.
 warningTxt ::
@@ -117,9 +117,9 @@ warningTxt ::
   WarningTxt GhcPs ->
   Doc
 warningTxt ctx wtxt =
-  pragma keyword (indent (category <> literalList (ctxCommaStyle ctx) literals))
+  pragma keyword (indent (category <> literalList ctx literals))
   where
-    (keyword, category, literals) = warningParts wtxt
+    (keyword, category, literals) = warningParts ctx wtxt
 
 -- | Which keyword introduces a warning, which category it is filed under,
 -- and what it says.
@@ -127,8 +127,12 @@ warningTxt ctx wtxt =
 -- The keyword is written once for a whole declaration even when it names
 -- several things, whereas the category belongs to each of them separately.
 -- That is why the two do not come back as one piece of text.
-warningParts :: WarningTxt GhcPs -> (Text, Doc, [LocatedE StringLiteral])
-warningParts = \case
+warningParts ::
+  Ctx ->
+  -- | The warning.
+  WarningTxt GhcPs ->
+  (Text, Doc, [LocatedE StringLiteral])
+warningParts ctx = \case
   DeprecatedTxt _ literals -> ("DEPRECATED", mempty, said literals)
   WarningTxt category _ literals ->
     ("WARNING", foldMap named category, said literals)
@@ -136,18 +140,17 @@ warningParts = \case
     said = fmap (fmap hsDocString)
     named (unLoc -> InWarningCategory{..}) =
       txt "in" <> space <> written iwc_st iwc_wc <> space
-    written (SourceText s) _ = stringLiteral s
+    written (SourceText s) _ = stringLiteral ctx s
     written NoSourceText wc = txt ("\"" <> showGhc (unLoc wc) <> "\"")
 
 -- | One message is written bare; several go in a list.
 literalList ::
-  -- | Where the commas go.
-  CommaStyle ->
+  Ctx ->
   -- | The messages.
   [LocatedE StringLiteral] ->
   Doc
-literalList commas = \case
-  [l] -> writtenString (unLoc l)
+literalList ctx = \case
+  [l] -> writtenString ctx (unLoc l)
   ls ->
     bracketWith Outdented "[" "]" $
-      commaSep commas (fmap (writtenString . unLoc) ls)
+      commaSep (ctxCommaStyle ctx) (fmap (writtenString ctx . unLoc) ls)

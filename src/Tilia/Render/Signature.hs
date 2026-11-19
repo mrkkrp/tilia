@@ -258,7 +258,7 @@ sccSig :: Ctx -> LocatedN RdrName -> Maybe (XRec GhcPs StringLiteral) -> Doc
 sccSig ctx n literal =
   pragma "SCC" . indent $
     name ctx n
-      <> foldMap (\l -> breakOrSpace <> writtenString (unLoc l)) literal
+      <> foldMap (\l -> breakOrSpace <> writtenString ctx (unLoc l)) literal
 
 -- | @type T :: k@.
 standaloneKindSig :: Ctx -> StandaloneKindSig GhcPs -> Doc
@@ -287,7 +287,7 @@ ruleDecl ::
   RuleDecl GhcPs ->
   Doc
 ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
-  at ctx ruleName (\n -> writtenString (StringLiteral written n Nothing))
+  at ctx ruleName (\n -> writtenString ctx (StringLiteral written n Nothing))
     <> space
     <> activation phase
     <> space

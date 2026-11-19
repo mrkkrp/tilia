@@ -523,7 +523,7 @@ foreignImport ctx (CImport src callConv safety _ _) =
     <> indent
       ( at ctx src $ \case
           NoSourceText -> mempty
-          SourceText lit -> breakOrSpace <> stringLiteral lit
+          SourceText lit -> breakOrSpace <> stringLiteral ctx lit
       )
 
 -- | The head of a foreign export.

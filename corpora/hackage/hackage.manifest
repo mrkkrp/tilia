@@ -653,7 +653,7 @@ formatted       d4dbe051544d  attoparsec-0.14.4/benchmarks/Numbers.hs
 formatted       171c3573564b  attoparsec-0.14.4/benchmarks/Sets.hs
 formatted       e11c9089eeb7  attoparsec-0.14.4/benchmarks/TextFastSet.hs
 formatted       8125ea3002df  attoparsec-0.14.4/benchmarks/Warp.hs
-broken          b0ad3cc958a0  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
+formatted       b0ad3cc958a0  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/ReadInt.hs
 formatted       1f7d3a417fb5  attoparsec-0.14.4/benchmarks/warp-3.0.1.1/Network/Wai/Handler/Warp/RequestHeader.hs
 formatted       e499f8a728b2  attoparsec-0.14.4/examples/Atto_RFC2616.hs
 formatted       6023dd27f36e  attoparsec-0.14.4/examples/Parsec_RFC2616.hs

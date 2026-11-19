@@ -19,33 +19,56 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (FastString, unpackFS)
 import GHC.Hs (GhcPs, HsLit (..))
+import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Parser.CharClass (is_space)
 import GHC.Types.SourceText (SourceText (..), StringLiteral (..))
 
+import Tilia.Cpp.Expansion (endsInBackslash)
 import Tilia.Doc.Combinators
+import Tilia.Render.Context (Ctx, extensionOn)
 import Tilia.Render.Layout (Position (..), positioned)
 import Tilia.Render.Name (outputable)
 
 -- | A literal, a string one as its author wrote it.
-hsLit :: HsLit GhcPs -> Doc
-hsLit = \case
-  HsString (SourceText s) _ -> stringLiteral s
-  HsStringPrim (SourceText s) _ -> stringLiteral s
-  HsMultilineString (SourceText s) _ -> stringLiteral s
+hsLit ::
+  Ctx ->
+  -- | The literal.
+  HsLit GhcPs ->
+  Doc
+hsLit ctx = \case
+  HsString (SourceText s) _ -> stringLiteral ctx s
+  HsStringPrim (SourceText s) _ -> stringLiteral ctx s
+  HsMultilineString (SourceText s) _ -> stringLiteral ctx s
   other -> outputable other
 
 -- | A string literal as its author wrote it, or the bare text it holds where
 -- none was written, as for an unquoted @SCC@ label.
-writtenString :: StringLiteral -> Doc
-writtenString l = case sl_st l of
-  SourceText s -> stringLiteral s
+writtenString ::
+  Ctx ->
+  -- | The literal.
+  StringLiteral ->
+  Doc
+writtenString ctx l = case sl_st l of
+  SourceText s -> stringLiteral ctx s
   NoSourceText -> txt (T.pack (unpackFS (sl_fs l)))
 
--- | A string literal, from the text the author wrote.
-stringLiteral :: FastString -> Doc
-stringLiteral src = case takeApart (T.pack (unpackFS src)) of
-  Nothing -> error ("Tilia: unparsable string literal: " <> show src)
-  Just literal -> align (renderLiteral literal)
+-- | A string literal, from the text the author wrote, line for line where
+-- cpp joins its lines, since their indentation is then part of the string.
+stringLiteral ::
+  Ctx ->
+  -- | The text the author wrote.
+  FastString ->
+  Doc
+stringLiteral ctx src
+  | extensionOn ctx Cpp,
+    any endsInBackslash (drop 1 (reverse written)) =
+      verbatimLines AtMargin KeepWhitespace written
+  | otherwise = case takeApart text of
+      Nothing -> error ("Tilia: unparsable string literal: " <> show src)
+      Just literal -> align (renderLiteral literal)
+  where
+    text = T.pack (unpackFS src)
+    written = T.splitOn "\n" text
 
 -- | Print a literal back out, on one line or across several.
 renderLiteral :: Literal -> Doc

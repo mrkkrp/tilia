@@ -83,7 +83,7 @@ exprBody ctx site here = \case
   HsOverLabel src _ -> txt "#" <> sourceText src
   HsIPVar _ (HsIPName n) -> txt "?" <> outputable n
   HsOverLit _ v -> outputable (ol_val v)
-  HsLit _ lit -> hsLit lit
+  HsLit _ lit -> hsLit ctx lit
   HsLam _ variant' mg -> lambda ctx site variant' (ExprBody ctx) mg
   HsApp _ f x -> application ctx site f x
   HsAppType at' e a ->
@@ -246,7 +246,7 @@ exprBody ctx site here = \case
   HsPragE _ prag x -> case prag of
     HsPragSCC _ n ->
       txt "{-# SCC "
-        <> writtenString n
+        <> writtenString ctx n
         <> txt " #-}"
         <> breakOrSpace
         <> nest
