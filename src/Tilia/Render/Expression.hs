@@ -88,7 +88,7 @@ exprBody ctx site here = \case
   HsLam _ variant' mg -> lambda ctx site variant' (ExprBody ctx) mg
   HsApp _ f x -> application ctx site f x
   HsAppType at' e a ->
-    hsExpr ctx e
+    hsExprIn ctx (leftmost site) e
       <> breakOrSpace
       <> indent
         ( atSpan
@@ -187,7 +187,7 @@ exprBody ctx site here = \case
         Just l -> [at ctx l (const (txt ".."))]
         Nothing -> []
   RecordUpd{..} ->
-    hsExpr ctx rupd_expr
+    hsExprIn ctx (leftmost site) rupd_expr
       <> breakOrNothing
       <> indent
         ( bracketWith Outdented "{" "}" $
@@ -211,11 +211,13 @@ exprBody ctx site here = \case
             )
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
   HsGetField{..} ->
-    hsExpr ctx gf_expr <> txt "." <> at ctx gf_field (dotField ctx)
+    hsExprIn ctx (leftmost site) gf_expr
+      <> txt "."
+      <> at ctx gf_field (dotField ctx)
   HsProjection{..} -> parens (txt "." <> dotFields ctx proj_flds)
   ExprWithTySig _ x HsWC{hswc_body} ->
     align $
-      hsExprIn ctx (withBracing MayBrace plainSite) x
+      hsExprIn ctx (withBracing MayBrace (leftmost site)) x
         <> if endsWithBlock (unLoc x)
           then
             breakOrSpace

@@ -532,6 +532,10 @@
   under an operator, a kind signature or a kind application, as in
   `'[ 'True ': '[]]`, keeps the space after its opening, rather than
   beginning with a character literal, which did not parse.
+* A statement that opens with brackets written over several lines, and
+  goes on after them with a type signature, a type application, a record
+  update or a field, closes them a step in, rather than at the column of
+  the statement, where the closing bracket did not parse.
 
 ## Tilia 0.1.4.0
 
