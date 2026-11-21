@@ -130,7 +130,8 @@ renderConfiguration render parsed =
           ctxKnot = knot,
           ctxIndentation = settingsIndentation (rcSettings render),
           ctxCommaStyle = settingsCommaStyle (rcSettings render),
-          ctxArrowStyle = settingsArrowStyle (rcSettings render)
+          ctxArrowStyle = settingsArrowStyle (rcSettings render),
+          ctxMacros = rcMacros render
         }
 
 -- | What printing the top level of one configuration takes, and the
