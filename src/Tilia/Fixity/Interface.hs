@@ -43,7 +43,7 @@ data Interface = Interface
     interfaceReexports :: [(Text, Namespace, OpName)],
     -- | The members it exports with each name, which is what @T(..)@ in an
     -- import list stands for.
-    interfaceMembers :: Map OpName (Set OpName),
+    interfaceMembers :: Map OpName (Set (Namespace, OpName)),
     -- | What it certainly brings into scope, where the interface was decoded
     -- rather than read off what @ghc --show-iface@ prints.
     interfaceExports :: Maybe Certain
@@ -87,7 +87,7 @@ fromHiFile modName HiFile{..}
                   (_, namespace, op) <- reexports
                 ],
             interfaceReexports = reexports,
-            interfaceMembers = Map.map (Set.map snd) members,
+            interfaceMembers = members,
             interfaceExports =
               Just
                 Certain
@@ -127,6 +127,9 @@ fromHiFile modName HiFile{..}
       Unneeded -> Nothing
 
 -- | Read what @ghc --show-iface@ printed, if it is this module's interface.
+--
+-- What it prints does not say which namespace a member is in, so each is
+-- taken to be in both.
 parseInterface :: Text -> Text -> Maybe Interface
 parseInterface modName out
   | not (any holdsModule (T.lines out)) = Nothing
@@ -180,7 +183,13 @@ parseInterface modName out
     membersIn section =
       Map.fromListWith
         Set.union
-        [ (nameOnly parent, Set.fromList (fmap nameOnly kids))
+        [ ( nameOnly parent,
+            Set.fromList
+              [ (namespace, nameOnly kid)
+              | kid <- kids,
+                namespace <- [InTypes, InTerms]
+              ]
+          )
         | (parent, _, kids@(_ : _)) <- exportEntries section
         ]
 

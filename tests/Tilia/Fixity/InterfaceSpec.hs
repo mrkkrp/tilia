@@ -340,7 +340,7 @@ passesOn =
 -- | The members of each exported name, in a settled order.
 members :: Text -> [(OpName, [OpName])]
 members =
-  maybe [] (fmap (fmap Set.toList) . Map.toList . interfaceMembers)
+  maybe [] (fmap (fmap (Set.toList . Set.map snd)) . Map.toList . interfaceMembers)
     . parseInterface "M"
     . (header "M" <>)
 

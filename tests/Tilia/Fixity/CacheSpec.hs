@@ -204,8 +204,11 @@ spec = do
                 { establishedMembers =
                     Map.fromList
                       [ (OpName "Empty", Set.empty),
-                        (OpName "NonEmpty", Set.fromList [OpName ":|"]),
-                        (OpName "Seq", Set.fromList [OpName ":<|", OpName ":|>"])
+                        (OpName "NonEmpty", Set.fromList [(InTerms, OpName ":|")]),
+                        ( OpName "Seq",
+                          Set.fromList [(InTerms, OpName ":<|"), (InTerms, OpName ":|>")]
+                        ),
+                        (OpName "Tensor", Set.fromList [(InTypes, OpName "**")])
                       ]
                 }
         storeEstablished cache "thing-1.0" "M" established
@@ -230,7 +233,7 @@ spec = do
                       ),
                   establishedMembers =
                     Map.fromList
-                      [ (OpName "T", Set.fromList [OpName "T", OpName "F"]),
+                      [ (OpName "T", Set.fromList [(InTerms, OpName "T"), (InTypes, OpName "F")]),
                         (OpName "Empty", Set.empty)
                       ]
                 }
@@ -251,7 +254,7 @@ spec = do
                       ),
                   establishedMembers =
                     Map.fromList
-                      [ (OpName "T", Set.fromList [OpName "A", OpName "B"]),
+                      [ (OpName "T", Set.fromList [(InTerms, OpName "A"), (InTerms, OpName "B")]),
                         (OpName "U", Set.empty)
                       ]
                 }
@@ -276,7 +279,9 @@ spec = do
                       )
                       Map.empty,
                   establishedMembers =
-                    Map.singleton (OpName "T") (Set.singleton (OpName "A"))
+                    Map.singleton
+                      (OpName "T")
+                      (Set.singleton (InTerms, OpName "A"))
                 }
         storeEstablished cache "thing-1.0" "M" established
         cachedEstablished cache "thing-1.0" "M" `shouldReturn` Just established
@@ -388,7 +393,10 @@ crowded =
             (OpName "Empty", Set.empty)
           ],
       summaryListedMembers =
-        Map.fromList [(OpName "T", Set.singleton (OpName "A"))],
+        Map.fromList
+          [ (OpName "T", Set.singleton (InTerms, OpName "A")),
+            (OpName "C", Set.fromList [(InTypes, OpName "**"), (InTerms, OpName "**")])
+          ],
       summarySpliced = True
     }
 

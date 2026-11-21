@@ -361,22 +361,27 @@ declaredMembers =
         ]
     entry name d = (opName (unLoc name), Set.fromList (membersOf d))
 
--- | The members a module's export list offers with each name.
-listedMembers :: HsModule GhcPs -> Map OpName (Set OpName)
+-- | The members a module's export list offers with each name, in both
+-- namespaces where the list names one the module does not declare.
+listedMembers :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
 listedMembers hsModule = case hsmodExports hsModule of
   Nothing -> declared
   Just items ->
     Map.fromListWith Set.union (concatMap (fromIE . unLoc) (unLoc items))
   where
-    declared = Map.map (Set.map snd) (declaredMembers hsModule)
+    declared = declaredMembers hsModule
     fromIE = \case
       IEThingAbs _ n _ -> [(nameOf n, Set.empty)]
       IEThingAll _ n _ -> whole n
       IEThingWith _ n wildcard ns _ ->
-        (nameOf n, Set.fromList (fmap nameOf ns))
+        (nameOf n, Set.fromList (concatMap (listed (nameOf n) . nameOf) ns))
           : concat [whole n | IEWildcard _ <- [wildcard]]
       _ -> []
     whole n = [(nameOf n, kids) | Just kids <- [Map.lookup (nameOf n) declared]]
+    listed parent kid =
+      case filter ((== kid) . snd) (foldMap toList (Map.lookup parent declared)) of
+        [] -> [(InTypes, kid), (InTerms, kid)]
+        found -> found
     nameOf = opName . ieWrappedName . unLoc
 
 ----------------------------------------------------------------------------
@@ -476,48 +481,48 @@ importedItem = \case
 -- to hide nothing but @T@ itself.
 mayBring ::
   -- | The members of each name in the list, where they are known.
-  Map OpName (Set OpName) ->
-  -- | The operator being looked for.
-  OpName ->
+  Map OpName (Set (Namespace, OpName)) ->
+  -- | The operator being looked for, and the namespace it is in.
+  (Namespace, OpName) ->
   Import ->
   Bool
-mayBring members op i = case importNames i of
+mayBring members name i = case importNames i of
   Nothing -> True
-  Just (True, hidden) -> not (any (namedBy members False op) hidden)
-  Just (False, shown) -> any (namedBy members True op) shown
+  Just (True, hidden) -> not (any (namedBy members False name) hidden)
+  Just (False, shown) -> any (namedBy members True name) shown
 
 -- | Does an item of an import list name the operator, taking a @T(..)@ whose
 -- members are not known to name it or not as told?
 namedBy ::
   -- | The members of each name in the list, where they are known.
-  Map OpName (Set OpName) ->
+  Map OpName (Set (Namespace, OpName)) ->
   -- | What a @T(..)@ whose members are not known is taken to say.
   Bool ->
-  -- | The operator being looked for.
-  OpName ->
+  -- | The operator being looked for, and the namespace it is in.
+  (Namespace, OpName) ->
   ImportItem ->
   Bool
-namedBy members unknown op = \case
+namedBy members unknown name@(_, op) = \case
   ImportedName _ n -> n == op
   ImportedSome parent ns -> parent == op || op `elem` ns
   ImportedAll parent ->
-    parent == op || maybe unknown (Set.member op) (Map.lookup parent members)
+    parent == op || maybe unknown (Set.member name) (Map.lookup parent members)
 
 -- | Could this import supply the operator to a use written under this
 -- qualifier?
 maySupply ::
   -- | The members of each name in the import's list, where they are
   -- known.
-  Map OpName (Set OpName) ->
+  Map OpName (Set (Namespace, OpName)) ->
   -- | The qualifier written at the use site, if any.
   Maybe Text ->
-  -- | The operator being looked for.
-  OpName ->
+  -- | The operator being looked for, and the namespace it is in.
+  (Namespace, OpName) ->
   Import ->
   Bool
-maySupply members qualifier op i =
+maySupply members qualifier name i =
   maybe (not (importQualified i)) (== importAlias i) qualifier
-    && mayBring members op i
+    && mayBring members name i
 
 -- | Does this import bring the name in for certain, as far as its list says?
 --
@@ -528,22 +533,21 @@ maySupply members qualifier op i =
 certainlyBrings ::
   -- | The members of each name in the import's list, where they are
   -- known.
-  Map OpName (Set OpName) ->
+  Map OpName (Set (Namespace, OpName)) ->
   -- | The name, and the namespace it is in.
   (Namespace, OpName) ->
   Import ->
   Bool
 certainlyBrings members name@(namespace, op) i = case importNames i of
   Nothing -> True
-  Just (True, hidden) -> not (any (namedBy members True op) hidden)
+  Just (True, hidden) -> not (any (namedBy members True name) hidden)
   Just (False, shown) -> any listed shown
   where
     listed = \case
       ImportedName written n -> (written, n) == name
       ImportedSome _ ns -> namespace == InTerms && op `elem` ns
       ImportedAll parent ->
-        namespace == InTerms
-          && maybe False (Set.member op) (Map.lookup parent members)
+        maybe False (Set.member name) (Map.lookup parent members)
 
 -- | Does this import decide the name's fixity, by certainly bringing it
 -- in from a module that settles it?
@@ -722,11 +726,10 @@ resolveScope implicitPrelude known configurations =
           Map.mapMaybe
             (disagreeing . fmap (fromMaybe "Main" (listToMaybe ownNames),))
             (fixitiesIn namespace declaredEach)
-        offered m = fixitiesIn namespace (establishedFixities (known m))
         unqualified =
           Map.unionsWith
             (<>)
-            [ visible offered i
+            [ visible i
             | i <- imports,
               not (importQualified i)
             ]
@@ -740,23 +743,30 @@ resolveScope implicitPrelude known configurations =
         qualifiedFrom =
           Map.unionsWith
             (<>)
-            [ Map.mapKeys (importAlias i,) (visible offered i)
+            [ Map.mapKeys (importAlias i,) (visible i)
             | i <- imports
             ]
+        visible i =
+          Map.map
+            (\fixity -> (importModule i, fixity) :| [])
+            ( fixitiesIn
+                namespace
+                ( Map.filterWithKey
+                    ( \name@(n, _) _ ->
+                        n == namespace
+                          && mayBring (establishedMembers established) name i
+                    )
+                    (establishedFixities established)
+                )
+            )
+          where
+            established = known (importModule i)
 
     settled ((m, fixity) :| _) = (fixity, DeclaredIn m)
 
     disagreeing offers@((_, fixity) :| _)
       | all ((== fixity) . snd) offers = Nothing
       | otherwise = Just (NE.nub offers)
-
-    visible offered i =
-      Map.filterWithKey
-        (\op _ -> mayBring (establishedMembers (known (importModule i))) op i)
-        ( Map.map
-            (\fixity -> (importModule i, fixity) :| [])
-            (offered (importModule i))
-        )
 
 -- | The fixities in one namespace, by the operator alone.
 fixitiesIn :: Namespace -> Map (Namespace, OpName) a -> Map OpName a
@@ -851,7 +861,11 @@ fixityInScope scope namespace qualifier op
         && null
           [ ()
           | (i, established) <- scopeUnsettled scope,
-            maySupply (establishedMembers established) qualifier op i,
+            maySupply
+              (establishedMembers established)
+              qualifier
+              (namespace, op)
+              i,
             _ <- unsettledThrough established (namespace, op)
           ]
 
@@ -894,8 +908,8 @@ unreadThatMightDeclare scope namespace qualifier op
     blamed =
       [ ModuleChain (importModule i :| chain)
       | (i, established) <- scopeUnsettled scope,
-        maySupply (establishedMembers established) qualifier op i,
         n <- namespace : promotedFrom namespace,
+        maySupply (establishedMembers established) qualifier (n, op) i,
         chain <- unsettledThrough established (n, op)
       ]
 
@@ -1121,7 +1135,7 @@ data ModuleSummary = ModuleSummary
     -- | The members of each type or class it declares.
     summaryDeclaredMembers :: Map OpName (Set (Namespace, OpName)),
     -- | The members its export list offers with each name.
-    summaryListedMembers :: Map OpName (Set OpName),
+    summaryListedMembers :: Map OpName (Set (Namespace, OpName)),
     -- | Whether a declaration splice at its top level may declare more.
     summarySpliced :: Bool
   }
@@ -1171,7 +1185,7 @@ data Established = Established
     -- | The members of each of its names, so that a @T(..)@ in an import
     -- list can be told what it brings in. Every type 'establishedCertain'
     -- gives members of is among them.
-    establishedMembers :: Map OpName (Set OpName)
+    establishedMembers :: Map OpName (Set (Namespace, OpName))
   }
   deriving (Eq, Show, Generic)
 

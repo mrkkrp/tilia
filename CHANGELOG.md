@@ -565,6 +565,10 @@
   unsettled included, rather than any operator that module exports, so
   importing `Function (..)` from `Test.QuickCheck` beside `.&.` from
   `Data.Bits` no longer has a module declined.
+* A `T (..)` in an import list brings in the members of `T` in their own
+  namespaces, so an associated type operator of a class imported so no
+  longer brings in a term operator of the same name and has a module that
+  imports that term from elsewhere declined.
 
 ## Tilia 0.1.4.0
 
