@@ -108,9 +108,11 @@ usesCpp ::
 usesCpp extensions source =
   fromBool (Set.member Cpp extensions && any isDirective (T.lines source))
 
--- | Blank out the directive lines, keeping every branch.
+-- | Blank out the directive lines and the macro lines, keeping every
+-- branch.
 blankCpp :: Text -> Text
-blankCpp = withoutDirectives directives
+blankCpp source =
+  withoutDirectives (directives source) (macroLines source) source
 
 -- | Blank out every branch the macros rule out, and the conditionals that
 -- ask about them.
@@ -142,20 +144,29 @@ branchFor holds = go 0 . gsGuards
         Just False -> go (i + 1) rest
         Nothing -> Nothing
 
--- | A module with the opaque directives and the lines using its macros
--- blanked out.
-withoutOpaque :: Text -> Text
-withoutOpaque = withoutDirectives opaqueDirectives
+-- | A configuration of a module with its opaque directives and the
+-- module's macro lines blanked out.
+withoutOpaque ::
+  -- | The module's macro lines, as 'macroLines' reads them from the whole
+  -- module.
+  [(Int, Text)] ->
+  -- | The configuration.
+  Text ->
+  Text
+withoutOpaque macros source =
+  withoutDirectives (opaqueDirectives source) macros source
 
--- | A module with the directives a scan finds and the lines using its
--- macros blanked out.
-withoutDirectives :: (Text -> [Directive]) -> Text -> Text
-withoutDirectives scan source =
-  blanking
-    ( [(dLine d, dLastLine d) | d <- scan source]
-        <> [(n, n) | (n, _) <- macroLines source]
-    )
-    source
+-- | A text with these directives and macro lines blanked out.
+withoutDirectives ::
+  -- | The directives.
+  [Directive] ->
+  -- | The macro lines.
+  [(Int, Text)] ->
+  -- | The text.
+  Text ->
+  Text
+withoutDirectives ds macros =
+  blanking ([(dLine d, dLastLine d) | d <- ds] <> [(n, n) | (n, _) <- macros])
 
 -- | Why a module using the preprocessor could not be formatted.
 data CppError
@@ -332,6 +343,7 @@ coveringLeaves :: Text -> Either CppError [Text]
 coveringLeaves source = do
   forest <- readConditionals source
   let groups = allGroups forest
+      macros = macroLines source
       broad =
         [ (a, leaf)
         | k <- [0 .. maximum (1 : fmap gsCount groups) - 1],
@@ -348,13 +360,13 @@ coveringLeaves source = do
         | a <- branchAssignments forest,
           any (`Set.notMember` taken) (reachedBy forest (completed forest a))
         ]
-  pure (fmap (withoutOpaque . snd) broad <> leavesOf forest rest source)
+  pure (fmap (withoutOpaque macros . snd) broad <> leavesOf forest rest source)
 
 -- | The distinct configurations of a module that the assignments select and
 -- the preprocessor could produce, leaving out those that end in @#error@.
 leavesOf :: [GroupSpec] -> [Assignment] -> Text -> [Text]
 leavesOf forest assignments source =
-  [ withoutOpaque leaf
+  [ withoutOpaque macros leaf
   | leaf <-
       distinct
         [ configurationOf forest a source
@@ -365,6 +377,7 @@ leavesOf forest assignments source =
   ]
   where
     distinct = Map.elems . Map.fromList . fmap (\t -> (t, t))
+    macros = macroLines source
 
 -- | The empty assignment, and then one for every branch of every
 -- conditional, which reaches the conditional and takes the branch.

@@ -44,7 +44,6 @@ import Tilia.Cpp.Directives
     allGroups,
     dSpan,
     directives,
-    macroLines,
     opaqueDirectives,
     readConditionals,
   )
@@ -128,12 +127,14 @@ summarizeComments loose every =
 restoreUnprinted ::
   -- | The module as written.
   Text ->
+  -- | Its macro lines, which its configurations left out.
+  [(Int, Text)] ->
   -- | What its configurations found.
   CommentSummary ->
   -- | The document its configurations were merged into.
   Doc ->
   Either CppError Doc
-restoreUnprinted source found doc = do
+restoreUnprinted source macros found doc = do
   forest <- readConditionals source
   traverse_ (Left . quotedDirective) . find (quoted . dLine) $
     filter (not . inComment . dLine) (directives source)
@@ -171,7 +172,6 @@ restoreUnprinted source found doc = do
       placed
   where
     written = linesOf (Written source)
-    macros = macroLines source
     directiveAt n =
       maybe False isDirective (lineAt n written) || any ((== n) . fst) macros
     inComment n =

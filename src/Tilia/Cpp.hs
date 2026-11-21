@@ -137,15 +137,18 @@ formatWithCpp parser render path source = do
       )
       (configurationBudget * linesHeld source, Map.empty)
   formatted <-
-    printDoc (rcSettings render) <$> restoreUnprinted source found document
+    printDoc (rcSettings render)
+      <$> restoreUnprinted source macros found document
   formatted <$ traverse_ (Left . RuledOutBranch) (ruledOutBranch formatted)
   where
     formatter =
       Formatter
         { formatterParser = parser,
           formatterRender = known,
-          formatterPath = path
+          formatterPath = path,
+          formatterMacroLines = macros
         }
+    macros = macroLines source
     known =
       render
         { rcDirectiveLines = maybe [] (sort . concatMap gsOwnLines) groups,
@@ -293,7 +296,9 @@ data Formatter = Formatter
     -- | What to print it with.
     formatterRender :: RenderConfig,
     -- | The file this is, for the positions in a parse error.
-    formatterPath :: FilePath
+    formatterPath :: FilePath,
+    -- | The module's macro lines, which every configuration leaves out.
+    formatterMacroLines :: [(Int, Text)]
   }
 
 -- | A configuration, with what its conditionals come to worked out once
@@ -336,7 +341,10 @@ reading formatter reached source =
       readingPragma =
         withForest (\f -> splitOnPragma (formatterParser formatter) f source),
       readingFormatted =
-        formatSingleConfig formatter reached (withoutOpaque source)
+        formatSingleConfig
+          formatter
+          reached
+          (withoutOpaque (formatterMacroLines formatter) source)
     }
   where
     forest = readConditionals source
