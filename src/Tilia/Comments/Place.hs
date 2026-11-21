@@ -25,7 +25,8 @@ import Data.Ord (Down (..), comparing)
 import Data.Set qualified as Set
 
 import Tilia.Comments
-  ( Comment (..),
+  ( Above (..),
+    Comment (..),
     carriedOnFrom,
     carriesOn,
     closesItself,
@@ -220,12 +221,20 @@ placeComments regions leads fences comments =
 
         lineOfCode top = do
           r <- nearest (Down . startPoint) (filter linedUp onThatLine)
-          guard (any (larger r) onThatLine)
+          guard (any (larger r) onThatLine && codeEnds)
           pure (r, Under (alignedBy r))
           where
             line = spanStartLine (commentSpan top) - 1
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
             lineEnd = maximum (fmap endPoint onThatLine)
+            codeEnds = case commentAbove top of
+              ContentAt _ stop ->
+                all ((<= lineEnd) . (line,)) $
+                  maybe
+                    (Just stop)
+                    commentCodeBeforeStopsAt
+                    (Map.lookup (line, stop) commentsByEndPoint)
+              _ -> True
             linedUp r =
               not (zeroWidth r)
                 && endPoint r == lineEnd
