@@ -544,6 +544,12 @@
   after its last binding, before a right-hand side that opens braces on the
   next line, no longer makes Tilia throw "a module that parses cannot fail
   to lex".
+* A `let` that ends the qualifiers of a guard comes out between braces, as
+  in `| let { y = x } = y`, rather than with the `=` or `->` of the guard
+  after its last binding, where only a parse error ended its bindings and
+  where one ending with a type signature read the `=` as part of a pattern
+  binding, which did not parse. A `let` that another qualifier follows
+  comes out as written.
 
 ## Tilia 0.1.4.0
 
