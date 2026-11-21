@@ -34,12 +34,13 @@ import Control.Monad (join, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, gets, modify')
+import Data.Array (bounds, inRange, listArray, (!))
 import Data.Foldable (traverse_)
 import Data.Generics.Schemes (listify)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (sort)
+import Data.List (findIndex, sort)
 import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -168,14 +169,48 @@ formatWithCpp parser render path source = do
         }
     defined = definedMacros source
     groups = allGroups <$> scanConditionals source
-    layout = fromMaybe IntMap.empty (importLayout parser (blankCpp source))
-    importBounds
-      | maybe False (not . null) groups = do
-          (first, _) <- IntMap.lookupMin starts
-          (final, _) <- IntMap.lookupMax starts
-          pure (first, final)
-      | otherwise = Nothing
-    starts = IntMap.filter id layout
+    layout =
+      fromMaybe
+        IntMap.empty
+        (importLayout parser conditional (blankCpp source))
+    conditional n =
+      any
+        (any (\g -> fst (gsWhole g) <= n && n <= snd (gsWhole g)))
+        groups
+    importBounds = case groups of
+      Just gs@(_ : _) ->
+        importBoundsAt
+          gs
+          (IntMap.keys (IntMap.filter id layout))
+          (length (T.lines source))
+      _ -> const Nothing
+
+-- | The first and the last line an import begins on in every configuration
+-- that has the given line, or in every configuration at all.
+importBoundsAt ::
+  -- | Every conditional of the module, nested ones included.
+  [GroupSpec] ->
+  -- | The lines an import of some configuration begins on, in order.
+  [Int] ->
+  -- | How many lines the module has.
+  Int ->
+  -- | The line, or 'Nothing' for every configuration.
+  Maybe Int ->
+  Maybe (Int, Int)
+importBoundsAt groups starts count = \case
+  Just n | inRange (bounds byLine) n -> byLine ! n
+  _ -> hull starts
+  where
+    byLine = listArray (1, count) (fmap (hull . heldWith) [1 .. count])
+    heldWith n =
+      let taken = [(g, k) | g <- groups, Just k <- [branchOf g n]]
+       in [ i
+          | i <- starts,
+            all (\(g, k) -> maybe True (== k) (branchOf g i)) taken
+          ]
+    branchOf g n =
+      findIndex (\(from, to) -> from <= n && n <= to) (gsBranches g)
+    hull = fmap (\ls -> (NE.head ls, NE.last ls)) . nonEmpty
 
 -- | A module's branches, parsed: as one module where they parse together,
 -- and otherwise as the branch leaves that parse.

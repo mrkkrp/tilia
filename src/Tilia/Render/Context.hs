@@ -114,10 +114,12 @@ data RenderConfig = RenderConfig
     -- those of every conditional but one that only continues the import
     -- above it, such as a @hiding@ clause written behind a condition.
     rcImportBarriers :: [Int],
-    -- | The lines the first and the last import of any configuration begin
-    -- on, where the module has conditionals, so that every configuration
-    -- agrees on where the imports open and which comments are among them.
-    rcImportBounds :: Maybe (Int, Int),
+    -- | The lines the first and the last import begin on in every
+    -- configuration that has the given line, or in every configuration at
+    -- all, where the module has conditionals, so that the configurations
+    -- that print a comment agree on where the imports open and on whether
+    -- it is among them.
+    rcImportBounds :: Maybe Int -> Maybe (Int, Int),
     -- | The modules the project's own packages declare, each with the names
     -- of those that declare it.
     rcOwnModules :: Map Text (Set Text),
@@ -138,7 +140,7 @@ defaultRenderConfig =
       rcScope = Nothing,
       rcDirectiveLines = [],
       rcImportBarriers = [],
-      rcImportBounds = Nothing,
+      rcImportBounds = const Nothing,
       rcOwnModules = Map.empty,
       rcMacros = Set.empty,
       rcMacroArguments = Set.empty,
