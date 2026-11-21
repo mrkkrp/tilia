@@ -550,6 +550,11 @@
   where one ending with a type signature read the `=` as part of a pattern
   binding, which did not parse. A `let` that another qualifier follows
   comes out as written.
+* A comment at the end of a branch of a conditional, above code after the
+  `#endif` that every branch prints a copy of, comes out at the column of
+  that code, as one under a guard or under an operator ending a line does
+  without the conditional, rather than further left, where the next pass
+  moved it.
 
 ## Tilia 0.1.4.0
 
