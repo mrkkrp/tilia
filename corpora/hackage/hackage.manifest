@@ -331,7 +331,7 @@ formatted       d0eb69432d2d  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Un
 formatted       d90036bc20d4  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/LeftInverse.hs
 formatted       0468a0192d9e  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Unify/Types.hs
 formatted       1fc75bbc88c6  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Record.hs
-formatted       8d60d9a09bf8  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
+formatted       ff0e7b4943aa  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs
 formatted       20b4457a5ad9  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Term.hs-boot
 formatted       5a8ff57f38fd  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise.hs
 formatted       b90e0bbd8130  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Base.hs
@@ -401,7 +401,7 @@ formatted       eb775ca15bff  Agda-2.8.0/src/full/Agda/Utils/IntSet/Infinite.hs
 formatted       5b08ad680e43  Agda-2.8.0/src/full/Agda/Utils/Lens.hs
 formatted       89e41b43691d  Agda-2.8.0/src/full/Agda/Utils/Lens/Examples.hs
 formatted       9a99d307cf9a  Agda-2.8.0/src/full/Agda/Utils/List.hs
-formatted       611d90438b00  Agda-2.8.0/src/full/Agda/Utils/List1.hs
+formatted       ed832ed9a12b  Agda-2.8.0/src/full/Agda/Utils/List1.hs
 formatted       3bd635eb52aa  Agda-2.8.0/src/full/Agda/Utils/List1.hs-boot
 formatted       db787ad92240  Agda-2.8.0/src/full/Agda/Utils/List2.hs
 formatted       d307903a03ae  Agda-2.8.0/src/full/Agda/Utils/ListT.hs
@@ -557,7 +557,7 @@ formatted       1052e9d7d311  aeson-2.3.1.0/src/Data/Aeson/Key.hs
 formatted       8f94dff06962  aeson-2.3.1.0/src/Data/Aeson/KeyMap.hs
 formatted       6d2264e03096  aeson-2.3.1.0/src/Data/Aeson/Parser/Time.hs
 formatted       a5031424b00e  aeson-2.3.1.0/src/Data/Aeson/QQ/Simple.hs
-formatted       3aa0c3920ac8  aeson-2.3.1.0/src/Data/Aeson/RFC8785.hs
+formatted       387a986dd7a1  aeson-2.3.1.0/src/Data/Aeson/RFC8785.hs
 formatted       ae0f6c304e93  aeson-2.3.1.0/src/Data/Aeson/TH.hs
 formatted       12624f484ff0  aeson-2.3.1.0/src/Data/Aeson/Text.hs
 formatted       2ca16628191d  aeson-2.3.1.0/src/Data/Aeson/Types.hs
@@ -2547,7 +2547,7 @@ formatted       df340c61af02  hedgehog-1.7/test/Test/Hedgehog/Skip.hs
 formatted       f290d63c01bf  hedgehog-1.7/test/Test/Hedgehog/Text.hs
 formatted       2e3ebef9ee67  hedgehog-1.7/test/Test/Hedgehog/Zip.hs
 formatted       df799f9ffb57  hedgehog-1.7/test/test.hs
-formatted       a9c543faa829  hledger-1.52.1/Hledger/Cli.hs
+formatted       aef5c0cc644b  hledger-1.52.1/Hledger/Cli.hs
 formatted       4cbd78441bec  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       f1687165b7a8  hledger-1.52.1/Hledger/Cli/Anon.hs
 formatted       0939a8681c27  hledger-1.52.1/Hledger/Cli/CliOptions.hs
@@ -2598,7 +2598,7 @@ declined        -             hlint-3.10/data/HLint_TypeCheck.hs
 formatted       212468216eef  hlint-3.10/data/Test.hs
 formatted       49250665f869  hlint-3.10/src/Apply.hs
 formatted       f6bc5933a034  hlint-3.10/src/CC.hs
-formatted       29c0f2a2e631  hlint-3.10/src/CmdLine.hs
+formatted       7385f88431b0  hlint-3.10/src/CmdLine.hs
 formatted       f19ca4afc8e7  hlint-3.10/src/Config/Compute.hs
 formatted       e64c1ceb27de  hlint-3.10/src/Config/Haskell.hs
 formatted       69f7aa1d0ee5  hlint-3.10/src/Config/Read.hs
@@ -2628,11 +2628,11 @@ formatted       855ec8f2a137  hlint-3.10/src/Hint/Export.hs
 formatted       25d5ddfd3559  hlint-3.10/src/Hint/Extensions.hs
 formatted       93a996020d77  hlint-3.10/src/Hint/Fixities.hs
 formatted       2fdcfb8cf665  hlint-3.10/src/Hint/Import.hs
-formatted       da41972fb407  hlint-3.10/src/Hint/Lambda.hs
+formatted       fe6f3e1521b7  hlint-3.10/src/Hint/Lambda.hs
 formatted       6da39941c86e  hlint-3.10/src/Hint/List.hs
 formatted       c888293d86ed  hlint-3.10/src/Hint/ListRec.hs
 formatted       1e6a0a360b76  hlint-3.10/src/Hint/Match.hs
-formatted       8aea08f7b686  hlint-3.10/src/Hint/Monad.hs
+formatted       49c45a72eb1b  hlint-3.10/src/Hint/Monad.hs
 formatted       d7ad0da81ab4  hlint-3.10/src/Hint/Naming.hs
 formatted       c43c0f119aee  hlint-3.10/src/Hint/Negation.hs
 formatted       9a70d7292e8e  hlint-3.10/src/Hint/NewType.hs
@@ -4278,7 +4278,7 @@ formatted       e865ae48f11b  shake-0.19.9/Setup.hs
 formatted       99d6aa77ded4  shake-0.19.9/docs/manual/Shakefile.hs
 formatted       d9795d85a80d  shake-0.19.9/src/Development/Ninja/All.hs
 formatted       3104f3ca6fe0  shake-0.19.9/src/Development/Ninja/Env.hs
-formatted       3a0b3b1981b9  shake-0.19.9/src/Development/Ninja/Lexer.hs
+formatted       3ae44a58adfd  shake-0.19.9/src/Development/Ninja/Lexer.hs
 formatted       91363ffdc93d  shake-0.19.9/src/Development/Ninja/Parse.hs
 formatted       19572b69b6cd  shake-0.19.9/src/Development/Ninja/Type.hs
 formatted       6696a777e9ba  shake-0.19.9/src/Development/Shake.hs

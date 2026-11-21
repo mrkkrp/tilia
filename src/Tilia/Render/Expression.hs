@@ -1372,7 +1372,10 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
   where
     GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
     guardHead =
-      commaSepAfter (ctxCommaStyle ctx) "|" (fmap (align . hsStmt ctx) guards)
+      commaSepAfter
+        (ctxCommaStyle ctx)
+        "|"
+        (fmap (align . hsStmt ctx) (lastLetBraced guards))
         <> space
         <> indent (txt (reserved ctx separator))
     heldBesideTheHead = if parentPlacement == Normal then id else infrangible
@@ -1395,6 +1398,26 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
     remarkAfter =
       lineCommentWrittenBetween ctx separatorSpan (nextLine <$> separatorSpan)
     nextLine s = mkSpan (spanEndLine s + 1, 1) (spanEndLine s + 1, 1)
+
+-- | The qualifiers of a guard, a @let@ that ends them put between braces,
+-- since what follows it on its line, the guard's @=@ or @->@, ends its
+-- block only as a parse error does, and continues a signature it ends with.
+lastLetBraced ::
+  -- | The qualifiers, as written.
+  [GuardLStmt GhcPs] ->
+  [GuardLStmt GhcPs]
+lastLetBraced guards = case unsnoc guards of
+  Just (qualifiers, L l (LetStmt x binds)) ->
+    qualifiers <> [L l (LetStmt x (betweenBraces binds))]
+  _ -> guards
+  where
+    betweenBraces = \case
+      HsValBinds ann bs -> HsValBinds (withBraces ann) bs
+      HsIPBinds ann bs -> HsIPBinds (withBraces ann) bs
+      bs -> bs
+    withBraces ann = case al_brackets (anns ann) of
+      ListBraces{} -> ann
+      _ -> ann{anns = (anns ann){al_brackets = ListBraces noAnn noAnn}}
 
 -- | A pattern synonym binding.
 patSynBind ::

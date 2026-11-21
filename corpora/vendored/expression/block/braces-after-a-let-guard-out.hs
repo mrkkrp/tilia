@@ -3,7 +3,7 @@
 module Core.Lint where
 
 lintAlt alt
-  | let rhs = altRhs alt = do
+  | let { rhs = altRhs alt } = do
       { ty <- lintExpr rhs
       ; pure ty
       }
