@@ -81,7 +81,7 @@ spec = describe "formatting what an editor holds" $ do
   it "declines an operator from a module it cannot read" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
-        `shouldReturn` CameDeclined 22
+        `shouldReturn` CameDeclined 23
 
   it "takes fixities for a buffer whose branches do not parse together" $
     withProject $ \buffer ->
@@ -90,7 +90,7 @@ spec = describe "formatting what an editor holds" $ do
   it "declines an operator it cannot settle where the branches do not parse together" $
     withProject $ \buffer ->
       buffer ("src" </> "Uses.hs") alternativesUsingUnknown
-        `shouldReturn` CameDeclined 22
+        `shouldReturn` CameDeclined 23
 
   it "leaves alone a file the project's .tiliaignore excludes" $
     withProject $ \buffer ->
@@ -179,7 +179,7 @@ spec = describe "formatting what an editor holds" $ do
     it "declines an operator from a module it is given no interface of" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Nowhere\nx=a <?> b\n"
-          `shouldReturn` CameDeclined 22
+          `shouldReturn` CameDeclined 23
 
     it "parses with the extensions it is given rather than the package's" $
       withCompiled $ \buffer ->
@@ -189,7 +189,7 @@ spec = describe "formatting what an editor holds" $ do
     it "fails a module whose formatting throws rather than throwing itself" $
       withCompiled $ \buffer ->
         buffer ("src" </> "Uses.hs") "module Uses where\nimport Boom\nx=a <?> b\n"
-          `shouldReturn` CameFailed 27
+          `shouldReturn` CameFailed 28
 
     it "leaves out the branches the versions it is given rule out" $
       withCompiled $ \buffer ->

@@ -72,6 +72,7 @@ import Tilia.Cpp
   ( CppError (..),
     answeredLeaves,
     answeredLinearLeaves,
+    contextBeforeHaddock,
     correspondingBranches,
     countLeaves,
     describeCppError,
@@ -150,6 +151,9 @@ data FormatError
   | -- | A string literal written over lines cpp joins, and the line it
     -- begins on.
     StringJoinedByCpp FilePath Int
+  | -- | A macro the file defines as a context heading a part a Haddock
+    -- documents, the macro's line, and the macro.
+    ContextBeforeHaddock FilePath Int Text
   | -- | The file uses the preprocessor in a way we cannot handle.
     CppUnsupported FilePath CppError
   | -- | A @{- TILIA_OFF -}@ or @{- TILIA_ON -}@ at this line cannot be
@@ -202,6 +206,14 @@ describeFormatError palette = \case
       <> ": the string at line "
       <> tshow n
       <> " uses CPP for joining lines"
+  ContextBeforeHaddock path n macro ->
+    "will not format "
+      <> file path
+      <> ": the macro "
+      <> macro
+      <> " at line "
+      <> tshow n
+      <> " stands for a context before a documented part"
   CppUnsupported path why -> case why of
     ConfigurationNotParsed{} ->
       "will not format " <> located (describeCppError why)
@@ -269,22 +281,23 @@ formatErrorExitCode = \case
   NotParsed{} -> 10
   PositionPragmas{} -> 11
   StringJoinedByCpp{} -> 12
+  ContextBeforeHaddock{} -> 13
   CppUnsupported _ why -> case why of
-    MalformedConditional{} -> 13
-    TooManyConfigurations -> 14
-    ConfigurationNotParsed{} -> 15
-    DirectiveInQuotedText{} -> 16
-    MacroInQuotedText{} -> 17
-    BeforeLeadingComma{} -> 18
-    RuledOutBranch{} -> 19
-    AbortingAlternative{} -> 20
-  MisplacedMagicComment{} -> 21
-  UnknownFixity{} -> 22
-  Unreadable{} -> 23
-  Unwritable{} -> 24
-  NotEquivalent{} -> 25
-  NotIdempotent{} -> 26
-  Threw{} -> 27
+    MalformedConditional{} -> 14
+    TooManyConfigurations -> 15
+    ConfigurationNotParsed{} -> 16
+    DirectiveInQuotedText{} -> 17
+    MacroInQuotedText{} -> 18
+    BeforeLeadingComma{} -> 19
+    RuledOutBranch{} -> 20
+    AbortingAlternative{} -> 21
+  MisplacedMagicComment{} -> 22
+  UnknownFixity{} -> 23
+  Unreadable{} -> 24
+  Unwritable{} -> 25
+  NotEquivalent{} -> 26
+  NotIdempotent{} -> 27
+  Threw{} -> 28
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool
@@ -297,6 +310,7 @@ refused = \case
   NotParsed{} -> False
   PositionPragmas{} -> True
   StringJoinedByCpp{} -> True
+  ContextBeforeHaddock{} -> True
   CppUnsupported{} -> True
   MisplacedMagicComment{} -> True
   UnknownFixity{} -> True
@@ -318,6 +332,7 @@ formattingFailed = \case
   NotParsed{} -> False
   PositionPragmas{} -> False
   StringJoinedByCpp{} -> False
+  ContextBeforeHaddock{} -> False
   CppUnsupported{} -> False
   MisplacedMagicComment{} -> False
   UnknownFixity{} -> False
@@ -578,6 +593,9 @@ formatTurnedOn session path source = runExceptT $ do
               Nothing -> pure (renderConfigWith extensions)
               Just branches -> do
                 traverse_ misplaced (misplacedMagicComment text branches)
+                traverse_
+                  (throwE . uncurry (ContextBeforeHaddock path))
+                  (contextBeforeHaddock text branches)
                 renderConfigFor extensions branches
             printed <-
               orElse

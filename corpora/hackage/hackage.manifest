@@ -446,8 +446,8 @@ formatted       8306cd22b948  Agda-2.8.0/src/setup/Agda/Version.hs
 formatted       34621e271e23  Agda-2.8.0/src/setup/Agda/VersionCommit.hs
 formatted       90cd663d9426  HUnit-1.6.2.0/examples/Example.hs
 formatted       9b1cac4b6c09  HUnit-1.6.2.0/src/Test/HUnit.hs
-broken          c459d295c38b  HUnit-1.6.2.0/src/Test/HUnit/Base.hs
-broken          4ad553d1144c  HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
+declined        -             HUnit-1.6.2.0/src/Test/HUnit/Base.hs
+declined        -             HUnit-1.6.2.0/src/Test/HUnit/Lang.hs
 formatted       f9959d10adae  HUnit-1.6.2.0/src/Test/HUnit/Terminal.hs
 formatted       c4d0e6dbcb94  HUnit-1.6.2.0/src/Test/HUnit/Text.hs
 formatted       358e8e211fe4  HUnit-1.6.2.0/tests/HUnitTestExtended.hs

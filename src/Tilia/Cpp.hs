@@ -14,6 +14,7 @@ module Tilia.Cpp
     withoutRuledOut,
     everyBranch,
     stringJoinedByCpp,
+    contextBeforeHaddock,
     CppError (..),
     describeCppError,
 
@@ -34,6 +35,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, catchE, except, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (State, evalState, gets, modify')
 import Data.Foldable (traverse_)
+import Data.Generics.Schemes (listify)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (sort)
@@ -54,8 +56,13 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Traversable (for)
 import GHC.Conc (par)
+import GHC.Hs (GhcPs, HsType (..), LHsType)
+import GHC.Types.Name.Occurrence (occNameString)
+import GHC.Types.Name.Reader (rdrNameOcc)
+import GHC.Types.SrcLoc (GenLocated (..))
 
 import Tilia.Cpp.Directives
+import Tilia.Cpp.Expansion (Macro (..), definition)
 import Tilia.Cpp.Fragment
   ( bodyOf,
     fragmentText,
@@ -80,6 +87,7 @@ import Tilia.Parser
     parseConfiguration,
     parseModule,
     pmExtensions,
+    pmModule,
     pmSource,
     readAlike,
     stringLiterals,
@@ -94,6 +102,7 @@ import Tilia.Source
     linesOf,
   )
 import Tilia.Span (spanEndLine, spanStartLine)
+import Tilia.Span.Ghc (spanOf)
 
 ----------------------------------------------------------------------------
 -- Formatting
@@ -188,6 +197,44 @@ stringJoinedByCpp parser source
           any endsInBackslash (drop 1 (reverse (T.lines literal)))
         ]
   | otherwise = Nothing
+
+-- | The line of the first macro the module defines as a context, as
+-- @HasCallStack =>@, that heads a part a Haddock documents, and the macro.
+contextBeforeHaddock ::
+  -- | The module, directives and all.
+  Text ->
+  -- | Its branches, parsed.
+  NonEmpty ParsedModule ->
+  Maybe (Int, Text)
+contextBeforeHaddock source branches
+  | Set.null contexts = Nothing
+  | otherwise =
+      listToMaybe
+        [ found
+        | parsed <- NE.toList branches,
+          L _ (HsDocTy _ part _) <- listify documented (pmModule parsed),
+          Just found <- [headedBy part]
+        ]
+  where
+    contexts =
+      Set.fromList
+        [ name
+        | d <- opaqueDirectives source,
+          dKeyword d == "define",
+          Just (name, Macro Nothing body) <- [definition (dText d)],
+          "=>" `T.isSuffixOf` body
+        ]
+    documented :: LHsType GhcPs -> Bool
+    documented = \case
+      L _ HsDocTy{} -> True
+      _ -> False
+    headedBy (L _ t) = case t of
+      HsAppTy _ f _ -> headedBy f
+      HsTyVar _ _ (L l n)
+        | name <- T.pack (occNameString (rdrNameOcc n)),
+          Set.member name contexts ->
+            (,name) . spanStartLine <$> spanOf l
+      _ -> Nothing
 
 -- | The lines imports must not be sorted across: the directives of every
 -- conditional but one that only continues the item above it, such as a
