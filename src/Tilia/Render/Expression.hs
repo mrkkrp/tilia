@@ -157,7 +157,7 @@ exprBody ctx site here = \case
     where
       doBlock moduleName word =
         foldMap (\m -> outputable m <> txt ".") moduleName
-          <> keywordAt ctx (doKeywordSpan anns) word
+          <> keywordAt (doKeywordSpan anns) word
           <> statements ctx site (ExprBody ctx) es
   ExplicitList _ xs ->
     commaBracketWith
@@ -429,7 +429,7 @@ fieldBind ctx label HsFieldBind{..} =
     <> includeUnless
       hfbPun
       ( space
-          <> keywordAt ctx (spanOf =<< hfbAnn) "="
+          <> keywordAt (spanOf =<< hfbAnn) "="
           <> attach placement (hsExpr ctx hfbRHS)
       )
   where
@@ -669,7 +669,7 @@ stmtBody ctx site mkBody = \case
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
-      <> nest 1 (space <> keywordAt ctx (spanOf arrow) (reserved ctx "<-"))
+      <> nest 1 (space <> keywordAt (spanOf arrow) (reserved ctx "<-"))
       <> layoutFrom
         ctx
         (fmap endOf (spanOf p) <> spanOf f)
@@ -813,14 +813,14 @@ caseOf ::
   MatchGroup GhcPs (LocatedA body) ->
   Doc
 caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
-  keywordAt ctx (spanOf hsCaseAnnCase) "case"
+  keywordAt (spanOf hsCaseAnnCase) "case"
     <> underComment
       ctx
       (spanOf hsCaseAnnCase)
       (spanOf scrutinee)
       (space <> hsExpr ctx scrutinee)
     <> space
-    <> indent (keywordAt ctx (spanOf hsCaseAnnOf) "of")
+    <> indent (keywordAt (spanOf hsCaseAnnOf) "of")
     <> breakOrSpace
     <> underSite site (matchGroup ctx (siteBracing site) mkBody CaseStyle mg)
 
@@ -881,7 +881,7 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
       )
   where
     branch written word body =
-      keywordAt ctx keywordSpan word
+      keywordAt keywordSpan word
         <> space
         <> layoutFrom
           ctx
@@ -1045,7 +1045,7 @@ cmdBody ctx site = \case
         HsCmdLet{} -> True
         _ -> False
   HsCmdDo anns es ->
-    keywordAt ctx (doKeywordSpan anns) "do"
+    keywordAt (doKeywordSpan anns) "do"
       <> statements ctx site (CmdBody ctx) es
 
 -- | How the arrow of a command application is spelled.
@@ -1310,7 +1310,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
       binds ->
         nest bodyNest . indent $
           breakOrSpace
-            <> keywordAt ctx (whereKeywordSpan binds) "where"
+            <> keywordAt (whereKeywordSpan binds) "where"
             <> includeUnless
               (isEmptyLocalBinds binds)
               (breakOrSpace <> indent (localBinds ctx bracing binds))

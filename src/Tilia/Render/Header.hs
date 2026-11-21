@@ -310,7 +310,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
                 <> foldMap warning hsmodDeprecMessage
                 <> foldMap exports' hsmodExports
             )
-          <> keywordAt ctx (spanOf (am_where (anns hsmodAnn))) "where"
+          <> keywordAt (spanOf (am_where (anns hsmodAnn))) "where"
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
     warning w = at ctx w (indent . warningTxt ctx) <> breakOrSpace
@@ -394,7 +394,7 @@ ieItem ctx here withComma = \case
       <> at ctx n (wrappedName ctx)
       <> space
       <> txt "("
-      <> keywordAt ctx (spanOf dots) ".."
+      <> keywordAt (spanOf dots) ".."
       <> txt ")"
       <> comma'
       <> itemDocumentation doc
@@ -419,7 +419,7 @@ ieItem ctx here withComma = \case
         NoIEWildcard -> rendered
         IEWildcard n' ->
           let (before, after) = splitAt n' rendered
-           in before <> [keywordAt ctx (spanOf dots) ".."] <> after
+           in before <> [keywordAt (spanOf dots) ".."] <> after
   IEModuleContents (warning, _) m ->
     exportWarning warning
       <> at ctx m (\n -> txt "module" <> space <> outputable n)
@@ -462,12 +462,12 @@ isDocEntry = \case
 -- and its import list, each a node of its own past the keyword's column.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
 importDecl ctx ImportDecl{..} =
-  keywordAt ctx (spanOf (importDeclAnnImport annotation)) "import"
+  keywordAt (spanOf (importDeclAnnImport annotation)) "import"
     <> indent
       ( space
           <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")
           <> space
-          <> includeWhen ideclSafe (keywordAt ctx (spanOf =<< importDeclAnnSafe annotation) "safe")
+          <> includeWhen ideclSafe (keywordAt (spanOf =<< importDeclAnnSafe annotation) "safe")
           <> space
           <> levelBefore
           <> space
@@ -484,7 +484,7 @@ importDecl ctx ImportDecl{..} =
       ( \a ->
           indent
             ( space
-                <> keywordAt ctx (spanOf =<< importDeclAnnAs annotation) "as"
+                <> keywordAt (spanOf =<< importDeclAnnAs annotation) "as"
                 <> space
                 <> at ctx a outputable
             )
@@ -494,7 +494,7 @@ importDecl ctx ImportDecl{..} =
   where
     annotation = anns (ideclAnn ideclExt)
     qualified =
-      keywordAt ctx (spanOf =<< importDeclAnnQualified annotation) "qualified"
+      keywordAt (spanOf =<< importDeclAnnQualified annotation) "qualified"
     qualifiedLast = extensionOn ctx ImportQualifiedPost
     isQualified = isImportDeclQualified ideclQualified
     packageQualifier = case ideclPkgQual of
@@ -510,7 +510,7 @@ importDecl ctx ImportDecl{..} =
       let hidden = case interpretation of
             Exactly -> mempty
             EverythingBut ->
-              keywordAt ctx (spanOf (fst (al_rest (anns listLoc)))) "hiding"
+              keywordAt (spanOf (fst (al_rest (anns listLoc)))) "hiding"
           listSpan = spanOfSrcSpan (locA listLoc)
           parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
        in layoutWithin ctx listSpan parensSpan $
