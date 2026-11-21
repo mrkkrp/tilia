@@ -933,9 +933,11 @@ localBinds ctx bracing = \case
           | sameLine (spanOf n) (spanOf e) = exprHangs ctx (unLoc e)
           | otherwise = Normal
     anchored ann d = case ann of
-      EpAnn{anns = AnnList{al_anchor}}
+      EpAnn{anns = AnnList{al_anchor, al_brackets}}
         | not (isZeroWidthSpan (locA al_anchor)) ->
-            atSpan ctx (spanOfSrcSpan (locA al_anchor)) d
+            let held = spanOfSrcSpan (locA al_anchor)
+             in maybe id located (held <> bracketsSpan al_brackets) $
+                  layoutFrom ctx held d
       _ -> d
 
 -- | The equations of a binding, each a binding of its own.
@@ -1522,8 +1524,8 @@ quoted here opener closer x body =
       ClosedTypeFamily Nothing -> True
       _ -> False
 
--- | A block 'braced' where it was written between braces, and 'items'
--- otherwise.
+-- | A block 'braced' where it was written between braces, as the region
+-- they enclose, and 'items' otherwise.
 itemsOrBraces ::
   -- | The block's annotation, which holds its braces.
   EpAnn (AnnList a) ->
@@ -1535,7 +1537,8 @@ itemsOrBraces ::
   [(Maybe Span, Doc)] ->
   Doc
 itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
-  ListBraces{} -> braced blank
+  brackets@ListBraces{} ->
+    maybe id located (bracketsSpan brackets) . braced blank
   _ -> items bracing . keepBlanks blank
 
 -- | An item of a block: the last one keeps the block's bracing, and any
