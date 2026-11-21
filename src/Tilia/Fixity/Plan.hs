@@ -72,6 +72,7 @@ import Tilia.Fixity
 import Tilia.Fixity.Archive
   ( Archive (..),
     InArchive (..),
+    haskellIn,
     moduleEndings,
     moduleIn,
     pathOfModule,
@@ -233,7 +234,7 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                     =<< summariesOf
                       (Left path)
                       modName
-                      (snd (byteOrderMark source))
+                      (haskellIn path (snd (byteOrderMark source)))
         Elsewhere package modName
           | Just original <- heldBy package modName reexported,
             isNothing (heldBy package modName interfaces) ->

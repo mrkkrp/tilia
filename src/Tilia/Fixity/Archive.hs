@@ -11,6 +11,7 @@ module Tilia.Fixity.Archive
     pathOfModule,
     moduleEndings,
     writtenForHsc,
+    haskellIn,
   )
 where
 
@@ -91,7 +92,7 @@ pathOfModule = T.unpack . T.replace "." "/"
 -- | The endings a package may write a module under, in the order they are
 -- tried.
 moduleEndings :: [String]
-moduleEndings = [".hs", ".hsc"]
+moduleEndings = [".hs", ".lhs", ".hsc"]
 
 -- | What an archive holds for a module.
 data InArchive
@@ -105,8 +106,32 @@ data InArchive
 inArchive :: String -> Text -> InArchive
 inArchive ending text
   | writtenForHsc ending = ForHsc
-  | otherwise = Haskell text
+  | otherwise = Haskell (haskellIn ending text)
 
 -- | Is this a module @hsc2hs@ writes rather than one anybody compiles?
 writtenForHsc :: FilePath -> Bool
 writtenForHsc = isSuffixOf ".hsc"
+
+-- | The Haskell that a module's file holds, which is the code of a literate
+-- one, each line where it was written.
+haskellIn ::
+  -- | The file, or the ending of its name.
+  FilePath ->
+  -- | What it holds.
+  Text ->
+  Text
+haskellIn path
+  | ".lhs" `isSuffixOf` path = T.unlines . unlit False . T.lines
+  | otherwise = id
+  where
+    unlit inCode = \case
+      [] -> []
+      l : ls
+        | inCode, written "\\end{code}" -> "" : unlit False ls
+        | inCode -> l : unlit True ls
+        | written "\\begin{code}" -> "" : unlit True ls
+        | Just code <- T.stripPrefix ">" l -> (" " <> code) : unlit False ls
+        | "#" `T.isPrefixOf` l -> l : unlit False ls
+        | otherwise -> "" : unlit False ls
+        where
+          written = (`T.isPrefixOf` T.stripStart l)

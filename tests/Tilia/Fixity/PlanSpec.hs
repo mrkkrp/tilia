@@ -93,6 +93,7 @@ spec = do
   plannedMacros
   reexports
   hscModules
+  literateModules
   generatedModuleSpec
   askedAtOnce
   givenInterfaces
@@ -753,6 +754,27 @@ hscModules = describe "a module written for hsc2hs" $ do
   it "declares nothing, where it comes out of a tarball" $
     withFakeArchive [("Cursed.hsc", cursed)] $
       \rs -> fixitiesOf rs "Cursed" `shouldReturn` Just Map.empty
+
+literateModules :: Spec
+literateModules = describe "a literate module" $ do
+  it "declares what its code does, where it is one of the project's own" $
+    withFakeProject [("src/Ops.lhs", literate)] $
+      \rs -> fixitiesOf rs "Ops" `shouldReturn` Just plusPlus
+
+  it "declares what its code does, where it comes out of a tarball" $
+    withFakeArchive [("Ops.lhs", literate)] $
+      \rs -> fixitiesOf rs "Ops" `shouldReturn` Just plusPlus
+  where
+    literate =
+      T.unlines
+        [ "Operators.",
+          "",
+          "> module Ops ((|+|)) where",
+          "> infixl 6 |+|",
+          "> (|+|) :: Int -> Int -> Int",
+          "> (|+|) = (+)"
+        ]
+    plusPlus = Map.singleton (InTerms, OpName "|+|") (Fixity LeftAssoc 6)
 
 -- | Where a package fetched from a repository is looked for.
 repositories :: Spec
@@ -2882,7 +2904,7 @@ withFakePlan sources act =
         withEnvironment [("XDG_CACHE_HOME", dir </> "cache")] (act plan)
   where
     haskellIn = filter (isModule . fst)
-    isModule path = any (`Data.List.isSuffixOf` path) [".hs", ".hsc"]
+    isModule path = any (`Data.List.isSuffixOf` path) [".hs", ".lhs", ".hsc"]
     named (path, _) = T.pack (takeBaseName path)
 
 -- | A project whose one dependency is a package off Hackage, with the
