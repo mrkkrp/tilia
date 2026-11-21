@@ -13,7 +13,7 @@ module Tilia.Cpp
     blankCpp,
     withoutRuledOut,
     everyBranch,
-    stringJoinedByCpp,
+    joinedByCpp,
     contextBeforeHaddock,
     CppError (..),
     describeCppError,
@@ -38,6 +38,7 @@ import Data.Foldable (traverse_)
 import Data.Generics.Schemes (listify)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -85,6 +86,7 @@ import Tilia.Doc
 import Tilia.Parser
   ( ParsedModule,
     ParserConfig,
+    codeLines,
     importLayout,
     parseConfiguration,
     parseModule,
@@ -92,7 +94,6 @@ import Tilia.Parser
     pmModule,
     pmSource,
     readAlike,
-    stringLiterals,
   )
 import Tilia.Render (RenderConfig (..), renderConfiguration)
 import Tilia.Source
@@ -189,22 +190,32 @@ everyBranch parser path source =
           Right parsed <- fmap (parseModule parser path) texts
         ]
 
--- | The line the first string literal begins on that has a line cpp joins
--- to the next one.
-stringJoinedByCpp ::
+-- | The first line holding code that cpp joins to the line before it, since
+-- it ends in a backslash.
+--
+-- What cpp joins to a comment becomes part of the comment, and what it
+-- joins to a line of a string becomes part of the string, so Tilia does not
+-- read such a module as GHC does.
+joinedByCpp ::
   -- | What to lex with.
   ParserConfig ->
   -- | The module, directives and all.
   Text ->
   Maybe Int
-stringJoinedByCpp parser source
+joinedByCpp parser source
   | any endsInBackslash (T.lines source) =
-      listToMaybe
+      fmap minimum . nonEmpty $
         [ n
-        | (n, literal) <- stringLiterals parser (blankCpp source),
-          any endsInBackslash (drop 1 (reverse (T.lines literal)))
+        | (from, to) <- codeLines parser blanked,
+          Just n <- [IntSet.lookupGE from joined],
+          n <= to
         ]
   | otherwise = Nothing
+  where
+    blanked = blankCpp source
+    joined =
+      IntSet.fromList
+        [n + 1 | (n, l) <- zip [1 ..] (T.lines blanked), endsInBackslash l]
 
 -- | The line of the first macro the module defines as a context, as
 -- @HasCallStack =>@, that heads a part a Haddock documents, and the macro.

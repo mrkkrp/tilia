@@ -464,10 +464,12 @@
 * A line beginning with `#` under a line that ends in a backslash is no
   longer read as a directive: cpp joins it to that line, so it is not one.
   [PR 531](https://github.com/mrkkrp/tilia/pull/531).
-* A module with CPP in force is declined, with exit code 12, where a
-  string is written over lines cpp joins at a backslash: cpp makes the
-  indentation of those lines part of the string, and re-indenting them
-  changed it. [PR 536](https://github.com/mrkkrp/tilia/pull/536).
+* A module with CPP in force is declined, with exit code 12, where cpp
+  joins a line holding code to the line above it, which ends in a
+  backslash: a string written over such lines, whose indentation cpp makes
+  part of the string, so that re-indenting them changed it, or code under
+  a comment ending in a backslash, which cpp makes part of the comment.
+  [PR 536](https://github.com/mrkkrp/tilia/pull/536).
 * The exit codes run from 2 without gaps, in the order of the errors they
   stand for, so most of them change: formatting that changes the program
   now exits with 26, and formatting that is not idempotent with 27.
