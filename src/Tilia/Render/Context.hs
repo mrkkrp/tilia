@@ -14,6 +14,7 @@ module Tilia.Render.Context
     Site (..),
     plainSite,
     withBracing,
+    leftmost,
     underSite,
     closingFor,
 
@@ -231,6 +232,14 @@ plainSite =
 -- | The same site, with a different answer about braces.
 withBracing :: Bracing -> Site -> Site
 withBracing bracing site = site{siteBracing = bracing}
+
+-- | The site of the part a node begins with, which begins whatever item of
+-- a layout block the node begins.
+leftmost ::
+  -- | The site of the node.
+  Site ->
+  Site
+leftmost site = plainSite{siteInBlock = siteInBlock site}
 
 -- | Indent a hanging body, one step further where a line a step in follows.
 underSite ::
