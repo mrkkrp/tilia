@@ -584,6 +584,10 @@
   whose `Prelude` a mixin renames was formatted with the fixities of
   base's, so an operator only the renamed one exports, as relude's `&`,
   was laid out as `infixl 9`.
+* A literate module, in an `.lhs` file, is read for the operators it
+  declares and passes on, its code written with bird tracks or between
+  `\begin{code}` and `\end{code}`, rather than taken for one that could
+  not be read, which had every module importing it declined.
 
 ## Tilia 0.1.4.0
 

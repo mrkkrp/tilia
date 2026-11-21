@@ -216,6 +216,24 @@ spec = do
       textOf "src" "Parser" [("t-0/vendor/src/Parser.hs", "vendored")]
         `shouldBe` Nothing
 
+    it "is the code of a literate module written with bird tracks" $
+      textOf
+        "."
+        "Parser"
+        [("t-0/Parser.lhs", "A parser.\n\n> module Parser where\n>\n#if A\n> f = 1\n#endif\n")]
+        `shouldBe` Just "\n\n  module Parser where\n \n#if A\n  f = 1\n#endif\n"
+
+    it "is the code of a literate module written in code blocks" $
+      textOf
+        "."
+        "Parser"
+        [ ( "t-0/Parser.lhs",
+            "A parser.\n\\begin{code}\nmodule Parser where\n\\end{code}\n\
+            \> code too\n\\begin{spec}\nf = 1\n\\end{spec}\n"
+          )
+        ]
+        `shouldBe` Just "\n\nmodule Parser where\n\n  code too\n\n\n\n"
+
   describe "what the package puts in force" $ do
     it "reads an extension the .cabal turns on" $
       extensions "library\n  default-extensions: LambdaCase\n"
