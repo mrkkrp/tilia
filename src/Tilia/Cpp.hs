@@ -154,8 +154,10 @@ formatWithCpp parser render path source = do
         { rcDirectiveLines = maybe [] (sort . concatMap gsOwnLines) groups,
           rcImportBarriers = maybe [] (importBarriers layout) groups,
           rcImportBounds = importBounds,
-          rcMacros = Set.fromList (fmap fst (definedMacros source))
+          rcMacros = Set.fromList (fmap fst defined),
+          rcMacroArguments = Set.fromList (macroArguments defined source)
         }
+    defined = definedMacros source
     groups = allGroups <$> scanConditionals source
     layout = fromMaybe IntMap.empty (importLayout parser (blankCpp source))
     importBounds

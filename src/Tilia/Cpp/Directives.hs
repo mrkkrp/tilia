@@ -52,6 +52,7 @@ module Tilia.Cpp.Directives
     opaqueDirectives,
     definedMacros,
     macroLines,
+    macroArguments,
   )
 where
 
@@ -68,6 +69,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 
 import Tilia.Cpp.Expansion
   ( Macro (..),
+    argumentLists,
     cppExpansion,
     definition,
     joinedTo,
@@ -78,6 +80,7 @@ import Tilia.Parser (ParseError, describeParseError)
 import Tilia.Source.Lines
   ( Written (..),
     blankAcross,
+    columnOf,
     conditionalKeywords,
     contentColumn,
     continuesGroup,
@@ -869,6 +872,32 @@ definedMacros source =
     dKeyword d == "define",
     Just macro <- [definition (dText d)]
   ]
+
+-- | Where the argument list of each use of a function-like macro the module
+-- defines was written, where it was written on one line and holds no
+-- comment: cpp pastes the arguments into the macro's body as they were
+-- written.
+macroArguments ::
+  -- | The macros the module defines, as 'definedMacros' reads them.
+  [(Text, Macro)] ->
+  -- | The module.
+  Text ->
+  [Span]
+macroArguments defined source
+  | Set.null names = []
+  | otherwise =
+      [ mkSpan (n + 1, columnOf l from) (n + 1, columnOf l to)
+      | (n, from, to) <- argumentLists names undirected,
+        Just l <- [Map.lookup n numbered],
+        let list = T.take (to - from) (T.drop from l),
+        not ("--" `T.isInfixOf` list || "{-" `T.isInfixOf` list)
+      ]
+  where
+    undirected =
+      T.lines
+        (blanking [(dLine d, dLastLine d) | d <- directives source] source)
+    numbered = Map.fromDistinctAscList (zip [0 ..] undirected)
+    names = Set.fromList [name | (name, Macro (Just _) _) <- defined]
 
 -- | The lines that hold nothing but a use of a function-like macro the
 -- module defines, each with what is written on it.

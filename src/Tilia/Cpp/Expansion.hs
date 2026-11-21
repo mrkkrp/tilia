@@ -10,6 +10,7 @@ module Tilia.Cpp.Expansion
     joinedTo,
     Macro (..),
     definition,
+    argumentLists,
   )
 where
 
@@ -194,6 +195,46 @@ scan macros off t ls = case T.uncons t of
     special ch = isQuote ch || isNameStart ch
     rescanned off' text =
       let (pieces, _, _) = scan macros off' text [] in T.concat pieces
+
+-- | Where the argument list of each use of these function-like macros
+-- begins and ends, brackets included, as the index of its line and offsets
+-- into it, where that line holds all of it.
+argumentLists ::
+  -- | The macros' names.
+  Set Text ->
+  -- | The lines, with no directive among them.
+  [Text] ->
+  [(Int, Int, Int)]
+argumentLists names = \case
+  [] -> []
+  l : ls -> go 0 0 l ls
+  where
+    go n at t ls = case T.uncons t of
+      Nothing -> case ls of
+        l : more -> go (n + 1) 0 l more
+        [] -> []
+      Just (c, _)
+        | isQuote c ->
+            let (q, after) = quoted t in go n (at + T.length q) after ls
+        | isNameStart c,
+          (name, after) <- T.span isNameChar t ->
+            case opening n (at + T.length name) after ls of
+              Just (n', from, inside, ls')
+                | Set.member name names,
+                  Just (_, after', _, _) <- arguments inside [],
+                  to <- from + 1 + T.length inside - T.length after' ->
+                    (n', from, to) : go n' to after' ls'
+              _ -> go n (at + T.length name) after ls
+        | otherwise ->
+            let (plain, after) = T.break special t
+             in go n (at + T.length plain) after ls
+    special ch = isQuote ch || isNameStart ch
+    opening n at t ls = case T.span isSpace t of
+      (gap, rest)
+        | Just inside <- T.stripPrefix "(" rest ->
+            Just (n, at + T.length gap, inside, ls)
+        | T.null rest, l : more <- ls -> opening (n + 1) 0 l more
+      _ -> Nothing
 
 -- | The parameters of a use bound to its arguments, what follows the use,
 -- how many lines after it the use took, and the lines left; 'Nothing' where

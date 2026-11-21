@@ -7,4 +7,4 @@ module Terminal.Wrapped where
        ++ b ++ ">")
 
 both :: String
-both = WRAP ("x", "y")
+both = WRAP ("x","y")
