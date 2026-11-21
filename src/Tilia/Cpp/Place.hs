@@ -6,6 +6,7 @@
 module Tilia.Cpp.Place
   ( CommentSummary,
     summarizeComments,
+    readDifferently,
     restoreUnprinted,
   )
 where
@@ -73,7 +74,7 @@ import Tilia.Source
     lineTextsFrom,
     linesOf,
   )
-import Tilia.Span (Span (..), mkSpan)
+import Tilia.Span (Span (..), mkSpan, startPoint)
 
 -- | What the configurations of a module had besides their code.
 data CommentSummary = CommentSummary
@@ -81,6 +82,8 @@ data CommentSummary = CommentSummary
     summaryLoose :: Map Span Comment,
     -- | Where every comment was written, whether a tree carries it or not.
     summaryComments :: Set Span,
+    -- | Where every Haddock a tree carries begins.
+    summaryCarried :: Set (Int, Int),
     -- | Where every Haddock that holds off a comment was written.
     summaryHaddocks :: Set Span
   }
@@ -96,6 +99,7 @@ instance Semigroup CommentSummary where
     CommentSummary
       { summaryLoose = Map.unionWith either' (summaryLoose a) (summaryLoose b),
         summaryComments = Set.union (summaryComments a) (summaryComments b),
+        summaryCarried = Set.union (summaryCarried a) (summaryCarried b),
         summaryHaddocks = Set.union (summaryHaddocks a) (summaryHaddocks b)
       }
     where
@@ -106,21 +110,38 @@ instance Semigroup CommentSummary where
           }
 
 instance Monoid CommentSummary where
-  mempty = CommentSummary Map.empty Set.empty Set.empty
+  mempty = CommentSummary Map.empty Set.empty Set.empty Set.empty
 
 -- | What one configuration found.
 summarizeComments ::
+  -- | Where the Haddocks its syntax tree carries begin.
+  [(Int, Int)] ->
   -- | The comments its syntax tree does not carry.
   [Comment] ->
   -- | Every comment in it.
   [Comment] ->
   CommentSummary
-summarizeComments loose every =
+summarizeComments carried loose every =
   CommentSummary
     { summaryLoose = Map.fromList [(commentSpan c, c) | c <- loose],
       summaryComments = Set.fromList (fmap commentSpan every),
+      summaryCarried = Set.fromList carried,
       summaryHaddocks = Set.fromList [commentSpan c | c <- every, holdsOff c]
     }
+
+-- | The line of the first Haddock that some configurations read and others
+-- ignore.
+readDifferently ::
+  -- | What the configurations found.
+  CommentSummary ->
+  Maybe Int
+readDifferently found =
+  fst
+    <$> Set.lookupMin
+      ( Set.intersection
+          (summaryCarried found)
+          (Set.map startPoint (Map.keysSet (summaryLoose found)))
+      )
 
 -- | Put the conditionals, comments, opaque directives and macro lines back
 -- into the document the configurations were merged into.

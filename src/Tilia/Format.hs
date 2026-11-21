@@ -291,13 +291,14 @@ formatErrorExitCode = \case
     BeforeLeadingComma{} -> 19
     RuledOutBranch{} -> 20
     AbortingAlternative{} -> 21
-  MisplacedMagicComment{} -> 22
-  UnknownFixity{} -> 23
-  Unreadable{} -> 24
-  Unwritable{} -> 25
-  NotEquivalent{} -> 26
-  NotIdempotent{} -> 27
-  Threw{} -> 28
+    HaddockReadDifferently{} -> 22
+  MisplacedMagicComment{} -> 23
+  UnknownFixity{} -> 24
+  Unreadable{} -> 25
+  Unwritable{} -> 26
+  NotEquivalent{} -> 27
+  NotIdempotent{} -> 28
+  Threw{} -> 29
 
 -- | Did we decline to format the file, rather than fail to?
 refused :: FormatError -> Bool

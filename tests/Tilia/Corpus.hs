@@ -150,7 +150,10 @@ vendoredExamples =
                   "cpp" </> "directive" </> "line-marker-passed-on-by-cpp.hs",
                   "magic-comment" </> "magic-comment-inside-a-declaration.hs",
                   "cpp" </> "directive" </> "directive-left-as-written.hs",
-                  "cpp" </> "settled" </> "complementary-conditionals-inside-an-expression.hs"
+                  "cpp" </> "settled" </> "complementary-conditionals-inside-an-expression.hs",
+                  "cpp" </> "haddock" </> "haddock-above-a-branch-opening-with-an-import.hs",
+                  "cpp" </> "haddock" </> "haddock-above-a-field-only-some-configurations-have.hs",
+                  "cpp" </> "haddock" </> "haddock-after-a-record-whose-last-field-is-optional.hs"
                 ]
             },
       corpusInPackages = False

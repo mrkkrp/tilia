@@ -107,7 +107,7 @@ what it gets wrong. Unless told otherwise:
 
 Read the results in this order:
 
-- **Failed checks**, exit 26 (the program changed) or 27 (not idempotent),
+- **Failed checks**, exit 27 (the program changed) or 28 (not idempotent),
   are defects.
 - **Declines**, sorted by cause. A parse error in a configuration that no
   run of cpp produces is a defect, while a macro standing for syntax, such

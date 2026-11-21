@@ -73,7 +73,12 @@ import Tilia.Cpp.Fragment
     reassembled,
   )
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
-import Tilia.Cpp.Place (CommentSummary, restoreUnprinted, summarizeComments)
+import Tilia.Cpp.Place
+  ( CommentSummary,
+    readDifferently,
+    restoreUnprinted,
+    summarizeComments,
+  )
 import Tilia.Doc
   ( Doc (..),
     Layout (..),
@@ -91,11 +96,13 @@ import Tilia.Parser
     parseConfiguration,
     parseModule,
     pmExtensions,
+    pmGathered,
     pmModule,
     pmSource,
     readAlike,
   )
 import Tilia.Render (RenderConfig (..), renderConfiguration)
+import Tilia.Render.Haddock (haddockSpans)
 import Tilia.Source
   ( Lines,
     Written (..),
@@ -104,7 +111,7 @@ import Tilia.Source
     endsInBackslash,
     linesOf,
   )
-import Tilia.Span (spanEndLine, spanStartLine)
+import Tilia.Span (spanEndLine, spanStartLine, startPoint)
 import Tilia.Span.Ghc (spanOf)
 
 ----------------------------------------------------------------------------
@@ -137,6 +144,7 @@ formatWithCpp parser render path source = do
           )
       )
       (configurationBudget * linesHeld source, Map.empty)
+  traverse_ (Left . HaddockReadDifferently) (readDifferently found)
   formatted <-
     printDoc (rcSettings render)
       <$> restoreUnprinted source macros found document
@@ -733,7 +741,13 @@ formatSingleConfig formatter reached text =
               { rcExtensions = pmExtensions parsed
               }
           (document, loose) = renderConfiguration render parsed
-       in Right (document, summarizeComments loose (comments (pmSource parsed)))
+       in Right
+            ( document,
+              summarizeComments
+                (fmap startPoint (haddockSpans (pmGathered parsed)))
+                loose
+                (comments (pmSource parsed))
+            )
 
 -- | How a configuration was reached, and what to call it.
 data Reached = Reached
