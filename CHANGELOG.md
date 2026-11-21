@@ -507,6 +507,10 @@
   out as written, as in `OIDS(name,text)`, rather than spaced as the items
   of a tuple: cpp pastes them into the macro's body with their spaces,
   which turned `TI.b` in the body into `TI. text`.
+* A Haddock documenting what precedes it, written apart under another
+  Haddock, as a `-- ^` under a named chunk `-- $x`, stays apart from it,
+  rather than coming right under it, where GHC read it as more of that
+  Haddock.
 
 ## Tilia 0.1.4.0
 

@@ -348,9 +348,14 @@ isDoc = \case
 
 -- | Should these two declarations be printed with no blank line between
 -- them?
-relatedDecls :: LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
+relatedDecls ::
+  -- | The declaration above.
+  LHsDecl GhcPs ->
+  -- | The declaration under it.
+  LHsDecl GhcPs ->
+  Bool
 relatedDecls a b = case (kindA, kindB) of
-  (_, DocumentsPrevious) -> True
+  (_, DocumentsPrevious) -> not (isDoc (unLoc a))
   pair
     | pair `elem` relatedKinds
         || PragmaDeclaration `elem` [kindA, kindB]
