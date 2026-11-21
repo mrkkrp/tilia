@@ -64,6 +64,8 @@ sourceLines = srcLines
 sourceOf ::
   -- | The lines of the module, as this configuration has them.
   Lines ->
+  -- | The lines a Haddock's text is read from.
+  Lines ->
   -- | Every comment token of the module, in source order, each where the
   -- lexer found it.
   [(GHC.RealSrcSpan, GHC.Token)] ->
@@ -71,10 +73,10 @@ sourceOf ::
   -- the line it begins on.
   IntMap Int ->
   Source
-sourceOf ls cs qs =
+sourceOf ls haddocks cs qs =
   Source
     { srcLines = ls,
-      srcComments = commentsOf ls cs,
+      srcComments = commentsOf ls haddocks cs,
       srcQuotes = qs
     }
 

@@ -116,20 +116,31 @@ data Above
 commentsOf ::
   -- | The module's lines, which every comment is read against.
   Lines ->
+  -- | The lines a Haddock's text is read from.
+  Lines ->
   -- | The module's comment tokens, in source order, each where the lexer
   -- found it.
   [(GHC.RealSrcSpan, GHC.Token)] ->
   [Comment]
-commentsOf ls = mapMaybe (uncurry (mkComment ls))
+commentsOf ls haddocks = mapMaybe (uncurry (mkComment ls haddocks))
 
 -- | Build a comment from a token and the span it occupied, where the token
 -- is a comment.
-mkComment :: Lines -> GHC.RealSrcSpan -> GHC.Token -> Maybe Comment
-mkComment ls spn = \case
+mkComment ::
+  -- | The module's lines, which the comment is read against.
+  Lines ->
+  -- | The lines a Haddock's text is read from.
+  Lines ->
+  -- | Where the token is.
+  GHC.RealSrcSpan ->
+  -- | The token.
+  GHC.Token ->
+  Maybe Comment
+mkComment ls haddocks spn = \case
   GHC.ITlineComment t _ -> Just (commentAt ls s LineComment (T.pack t))
   GHC.ITblockComment t _ -> Just (commentAt ls s BlockComment (T.pack t))
   GHC.ITdocComment _ _ ->
-    Just (commentAt ls s DocComment (sliceSpan ls s))
+    Just (commentAt ls s DocComment (sliceSpan haddocks s))
   _ -> Nothing
   where
     s = spanOfReal spn

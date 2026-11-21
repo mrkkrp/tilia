@@ -745,8 +745,13 @@ rewritten config astCheck extensions path (before, printedFrom') after
       (_, Left e) ->
         Just ("the formatted output does not parse: " <> describeParseError e)
       (Right b', Right a') -> comparing b' a'
-    configuration whole =
-      parseConfiguration config path (linesOf (Written whole))
+    configuration whole t =
+      parseConfiguration
+        config
+        path
+        (linesOf (Written whole))
+        (linesOf (Written t))
+        t
     unread e = case astCheck of
       EachCppConfiguration _ ->
         Just ("the input does not parse: " <> describeParseError e)
