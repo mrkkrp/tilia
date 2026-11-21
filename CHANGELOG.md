@@ -617,6 +617,11 @@
   rather than going after the bar of the next one. With the next
   constructor's Haddock between them, it stayed at first and moved on the
   next formatting.
+* `import safe` parses wherever a Safe Haskell mode is in force, through
+  `Safe`, `Trustworthy` or `Unsafe` in a module's pragmas or in its
+  component's `default-extensions`, as GHC reads it, rather than only where
+  `ForeignFunctionInterface` is, as under `Haskell2010`: under `Haskell98`
+  such a module could not be parsed.
 
 ## Tilia 0.1.4.0
 

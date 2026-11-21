@@ -34,7 +34,7 @@ import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
 import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
-import GHC.LanguageExtensions.Type (Extension (Cpp))
+import GHC.LanguageExtensions.Type (Extension (Cpp, ForeignFunctionInterface))
 import GHC.Parser qualified as GHC
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
@@ -44,7 +44,12 @@ import GHC.Utils.Error qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 
 import Tilia.Gathered (Gathered (..), gathered)
-import Tilia.Pragma (Defaults, effectiveExtensions, headerPragmas)
+import Tilia.Pragma
+  ( Defaults,
+    effectiveExtensions,
+    headerPragmas,
+    safeImportsOn,
+  )
 import Tilia.Source
   ( Lines,
     Source,
@@ -139,7 +144,7 @@ parseConfiguration config path written haddocks source =
   where
     extensions = effectiveExtensions (pcDefaults config) source
     readByCpp = fromBool (Set.member Cpp extensions)
-    start = stateFor extensions path source
+    start = stateFor config extensions path source
 
     sourceType = sourceTypeOf path
 
@@ -181,12 +186,12 @@ importLayout ::
   -- | The import layout.
   Maybe (IntMap Bool)
 importLayout config source =
-  case GHC.unP
-    (lexing Nothing Nothing IntMap.empty)
-    (stateFor (effectiveExtensions (pcDefaults config) source) "" source) of
+  case GHC.unP (lexing Nothing Nothing IntMap.empty) start of
     GHC.POk _ found -> found
     GHC.PFailed _ -> Nothing
   where
+    start =
+      stateFor config (effectiveExtensions (pcDefaults config) source) "" source
     lexing topLevel previous found =
       GHC.lexer False $ \(GHC.L s t) -> case GHC.srcSpanStart s of
         _ | GHC.ITeof <- t -> pure (atTopLevel topLevel found)
@@ -233,7 +238,8 @@ codeLines config source =
         code t
       ]
   where
-    s = stateFor (effectiveExtensions (pcDefaults config) source) "" source
+    s =
+      stateFor config (effectiveExtensions (pcDefaults config) source) "" source
     code = \case
       GHC.ITvocurly -> False
       GHC.ITvccurly -> False
@@ -295,7 +301,13 @@ isQuasiQuote = \case
   _ -> False
 
 -- | The state to start reading a module in.
+--
+-- Safe imports only make @safe@ a keyword, which it is anyway where
+-- @ForeignFunctionInterface@ is in force, so they are asked about only
+-- where it is not.
 stateFor ::
+  -- | Parser config.
+  ParserConfig ->
   -- | The extensions to read it with.
   Set Extension ->
   -- | Path, reported back in positions.
@@ -303,27 +315,47 @@ stateFor ::
   -- | The module.
   Text ->
   GHC.PState
-stateFor extensions path source =
+stateFor config extensions path source =
   GHC.initParserState
-    (parserOpts extensions)
+    (parserOpts extensions safe)
     (GHC.stringBufferFromByteString (T.encodeUtf8 source))
     (GHC.mkRealSrcLoc (mkFastString path) 1 1)
+  where
+    safe =
+      Set.notMember ForeignFunctionInterface extensions
+        && safeImportsOn (pcDefaults config) source
 
 -- | Would the parser read these two texts with the same extensions?
-readAlike :: ParserConfig -> Text -> Text -> Bool
+--
+-- Safe imports decide only whether @import safe@ parses, not how anything
+-- is printed, so they are left out.
+readAlike ::
+  -- | Parser config.
+  ParserConfig ->
+  -- | One text.
+  Text ->
+  -- | The other.
+  Text ->
+  Bool
 readAlike config a b =
   headerPragmas a == headerPragmas b || bits a == bits b
   where
-    bits =
-      GHC.pExtsBitmap . parserOpts . effectiveExtensions (pcDefaults config)
+    bits t =
+      GHC.pExtsBitmap
+        (parserOpts (effectiveExtensions (pcDefaults config) t) False)
 
 -- | Options to parse with.
-parserOpts :: Set Extension -> GHC.ParserOpts
-parserOpts extensions =
+parserOpts ::
+  -- | The extensions in force.
+  Set Extension ->
+  -- | Are safe imports on?
+  Bool ->
+  GHC.ParserOpts
+parserOpts extensions safe =
   GHC.mkParserOpts
     (EnumSet.fromList (Set.toList extensions))
     quietDiagnostics
-    False -- safe imports
+    safe
     True -- keep Haddock tokens
     False -- keep ordinary comment tokens
     True -- let @LINE@ and @COLUMN@ pragmas move the source position

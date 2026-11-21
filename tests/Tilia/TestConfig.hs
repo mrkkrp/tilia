@@ -93,7 +93,7 @@ defaultsFor ::
   -- | What the package around it puts in force, if it is a module of one.
   Maybe Defaults ->
   Defaults
-defaultsFor = fromMaybe (defaultsOf edition [])
+defaultsFor = fromMaybe (defaultsOf False edition [])
   where
     edition =
       Set.delete ImportQualifiedPost (editionExtensions (Just GHC.GHC2021))
