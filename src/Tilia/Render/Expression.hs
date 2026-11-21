@@ -94,13 +94,13 @@ exprBody ctx site here = \case
         ( atSpan
             ctx
             (spanOf at' <> spanOf (hswc_body a))
-            ( txt "@"
+            ( keywordAt (spanOf at') "@"
                 <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a))
             )
         )
   OpApp _ x op y -> exprChain ctx site x op y
   NegApp minus e _ ->
-    txt "-"
+    keywordAt (spanOf minus) "-"
       <> underComment
         ctx
         (spanOf minus)
@@ -216,10 +216,8 @@ exprBody ctx site here = \case
             )
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
   HsGetField{..} ->
-    hsExprIn ctx (leftmost site) gf_expr
-      <> txt "."
-      <> at ctx gf_field (dotField ctx)
-  HsProjection{..} -> parens (txt "." <> dotFields ctx proj_flds)
+    hsExprIn ctx (leftmost site) gf_expr <> at ctx gf_field (dotted ctx)
+  HsProjection{..} -> parens (foldMap (dotted ctx) proj_flds)
   ExprWithTySig _ x HsWC{hswc_body} ->
     align $
       hsExprIn ctx (withBracing MayBrace (leftmost site)) x
@@ -237,8 +235,8 @@ exprBody ctx site here = \case
         BracketNoE{} -> "[||"
         BracketHasE{} -> "[e||"
   HsUntypedBracket _ q -> quotation ctx here q
-  HsTypedSplice _ (HsTypedSpliceExpr _ e) ->
-    spliceTH ctx (Is #typed) e DollarSplice
+  HsTypedSplice _ (HsTypedSpliceExpr tok e) ->
+    spliceTH ctx (Is #typed) (spanOf tok) e DollarSplice
   HsUntypedSplice _ splice -> untypedSplice ctx DollarSplice splice
   HsProc _ p e ->
     txt "proc"
@@ -442,8 +440,23 @@ dotField :: Ctx -> DotFieldOcc GhcPs -> Doc
 dotField ctx = name ctx . fmap (mkVarUnqual . field_label) . dfoLabel
 
 -- | A run of field names, joined by the dots between them.
-dotFields :: Ctx -> NonEmpty (DotFieldOcc GhcPs) -> Doc
-dotFields ctx = sepBy (txt ".") . fmap (dotField ctx) . NE.toList
+dotFields ::
+  -- | The context.
+  Ctx ->
+  -- | The field names.
+  NonEmpty (DotFieldOcc GhcPs) ->
+  Doc
+dotFields ctx (f :| fs) = dotField ctx f <> foldMap (dotted ctx) fs
+
+-- | One field name with the dot written right before it.
+dotted ::
+  -- | The context.
+  Ctx ->
+  -- | The field.
+  DotFieldOcc GhcPs ->
+  Doc
+dotted ctx f =
+  keywordAt (spanOf =<< afDot (dfoExt f)) "." <> dotField ctx f
 
 -- | A chain of operators applied to expressions.
 exprChain ::
@@ -1096,7 +1109,7 @@ valDecl ctx bracing = \case
       PatternBindStyle
       False
       multAnn
-      NoSrcStrict
+      mempty
       [p]
       grhss
   PatSynBind _ psb -> patSynBind ctx psb
@@ -1171,30 +1184,42 @@ adjustStyle m = \case
   FunctionStyle _ | FunRhs{mc_fun = f} <- m_ctxt m -> FunctionStyle f
   style -> style
 
--- | Was a @!@ written in front of the name this equation defines?
-bangBeforeName :: Match id body -> SrcStrictness
+-- | The @!@ or @~@ written in front of the name this equation defines.
+bangBeforeName ::
+  -- | The equation.
+  Match GhcPs body ->
+  Doc
 bangBeforeName = \case
-  Match{m_ctxt = FunRhs{mc_strictness}} -> mc_strictness
-  _ -> NoSrcStrict
+  Match{m_ctxt = FunRhs{mc_strictness, mc_an}} ->
+    strictness (spanOf (afr_strict mc_an)) mc_strictness
+  _ -> mempty
 
 -- | One equation: a head, a body, and possibly a @where@.
 match ::
   (Body b, Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO) =>
+  -- | The context.
   Ctx ->
+  -- | Whether its last block takes braces.
   Bracing ->
+  -- | How to print its body.
   BodyOf body b ->
+  -- | What kind of equation it is.
   MatchStyle ->
   -- | Written infix?
   Bool ->
+  -- | The multiplicity written on it.
   HsMultAnn GhcPs ->
-  SrcStrictness ->
+  -- | The @!@ or @~@ in front of the name it defines.
+  Doc ->
+  -- | Its patterns.
   [LPat GhcPs] ->
+  -- | Its right-hand side.
   GRHSs GhcPs (LocatedA body) ->
   Doc
 match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
   multiplicity (hsType ctx) multAnn
     <> multAnnGap
-    <> strictness strict
+    <> strict
     <> head'
     <> nest bodyNest rightHandSide
     <> whereClause
@@ -1493,9 +1518,16 @@ patSynBind ctx PSB{..} =
           spanOf psb_id <> argSpans <> foldMap spanOf (ap_closec psb_ext)
 
 -- | An untyped splice, either @$x@ or a quasi-quotation.
-untypedSplice :: Ctx -> SpliceDecoration -> HsUntypedSplice GhcPs -> Doc
+untypedSplice ::
+  -- | The context.
+  Ctx ->
+  -- | How it is written.
+  SpliceDecoration ->
+  -- | The splice.
+  HsUntypedSplice GhcPs ->
+  Doc
 untypedSplice ctx deco = \case
-  HsUntypedSpliceExpr _ e -> spliceTH ctx (Isn't #typed) e deco
+  HsUntypedSpliceExpr tok e -> spliceTH ctx (Isn't #typed) (spanOf tok) e deco
   HsQuasiQuote _ quoter str ->
     txt "["
       <> name ctx quoter
@@ -1512,9 +1544,21 @@ untypedSplice ctx deco = \case
               <$> spanOf str
 
 -- | A Template Haskell splice, typed or not.
-spliceTH :: Ctx -> Choice "typed" -> LHsExpr GhcPs -> SpliceDecoration -> Doc
-spliceTH ctx typed e = \case
-  DollarSplice -> txt (if isTrue typed then "$$" else "$") <> spliced
+spliceTH ::
+  -- | The context.
+  Ctx ->
+  -- | Is it typed?
+  Choice "typed" ->
+  -- | Where its dollar was written.
+  Maybe Span ->
+  -- | What is spliced.
+  LHsExpr GhcPs ->
+  -- | How it is written.
+  SpliceDecoration ->
+  Doc
+spliceTH ctx typed dollar e = \case
+  DollarSplice ->
+    keywordAt dollar (if isTrue typed then "$$" else "$") <> spliced
   BareSplice -> spliced
   where
     spliced = at ctx e (align . exprBody ctx plainSite (spanOf e))

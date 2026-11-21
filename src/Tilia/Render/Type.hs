@@ -98,15 +98,19 @@ typeBody ctx documented here = \case
         HsQualTy{} -> recur (unLoc t)
         HsFunTy{} -> hsType ctx t
         _ -> signaturePart ctx recurAt t
-  HsTyVar _ promoted n -> promotion promoted n <> name ctx n
+  HsTyVar tok promoted n -> promotion (spanOf tok) promoted n <> name ctx n
   HsAppTy _ f x ->
     let (func, args) = gatherAppArgs f [x]
      in layoutFrom ctx (spanOf f <> spansOf args) . align $
           hsType ctx func
             <> breakOrSpace
             <> indent (sepBy breakOrSpace (fmap (hsType ctx) args))
-  HsAppKindTy _ ty kd ->
-    align (hsType ctx ty <> breakOrSpace <> indent (txt "@" <> hsType ctx kd))
+  HsAppKindTy tok ty kd ->
+    align
+      ( hsType ctx ty
+          <> breakOrSpace
+          <> indent (keywordAt (spanOf tok) "@" <> hsType ctx kd)
+      )
   HsFunTy _ multAnn x y ->
     signaturePart ctx (hsType ctx) x
       <> joinedByFunctionArrow
@@ -156,8 +160,8 @@ typeBody ctx documented here = \case
     align (hsType ctx t <> typeAscription ctx (spanOf t) (asSigType k))
   HsSpliceTy _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
-  HsExplicitListTy _ promoted xs ->
-    tick promoted
+  HsExplicitListTy (tok, _, _) promoted xs ->
+    tick (spanOf tok) promoted
       <> bracketWith
         Outdented
         "["
@@ -168,8 +172,8 @@ typeBody ctx documented here = \case
                 <> commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs)
             )
         )
-  HsExplicitTupleTy _ promoted xs ->
-    tick promoted
+  HsExplicitTupleTy (tok, _, _) promoted xs ->
+    tick (spanOf tok) promoted
       <> parens
         ( insideBrackets
             here
@@ -183,8 +187,10 @@ typeBody ctx documented here = \case
   HsWildCardTy _ -> txt "_"
   XHsType ext -> case ext of
     HsCoreTy t -> outputable t
-    HsBangTy _ (HsSrcBang _ unpacked strict) t ->
-      unpackPragma unpacked <> strictness strict <> hsType ctx t
+    HsBangTy (_, _, bang) (HsSrcBang _ unpacked strict) t ->
+      unpackPragma unpacked
+        <> strictness (spanOf bang) strict
+        <> hsType ctx t
     HsRecTy _ fields -> recordFields ctx Nothing fields
   where
     recur = typeBody ctx documented Nothing
@@ -272,17 +278,30 @@ tupleBrackets commas = \case
   HsBoxedOrConstraintTuple -> parens
 
 -- | The tick in front of a promoted list or tuple.
-tick :: PromotionFlag -> Doc
-tick = \case
-  IsPromoted -> txt "'"
+tick ::
+  -- | Where the tick was written.
+  Maybe Span ->
+  -- | Whether there is one.
+  PromotionFlag ->
+  Doc
+tick here = \case
+  IsPromoted -> keywordAt here "'"
   NotPromoted -> mempty
 
 -- | The tick on a promoted name, held off it where the name's second
 -- character is a tick too, as @'B'@ would read as a character literal.
-promotion :: PromotionFlag -> LocatedN RdrName -> Doc
-promotion NotPromoted _ = mempty
-promotion IsPromoted n =
-  txt "'" <> includeWhen (beginsWithTick (showGhc (unLoc n))) space
+promotion ::
+  -- | Where the tick was written.
+  Maybe Span ->
+  -- | Whether there is one.
+  PromotionFlag ->
+  -- | The name.
+  LocatedN RdrName ->
+  Doc
+promotion _ NotPromoted _ = mempty
+promotion here IsPromoted n =
+  keywordAt here "'"
+    <> includeWhen (beginsWithTick (showGhc (unLoc n))) space
   where
     beginsWithTick shown = case T.uncons (T.drop 1 shown) of
       Just ('\'', _) -> True
@@ -314,11 +333,16 @@ unpackPragma = \case
   SrcNoUnpack -> txt "{-# NOUNPACK #-}" <> space
   NoSrcUnpack -> mempty
 
--- | The @!@ or @~@ in front of a field.
-strictness :: SrcStrictness -> Doc
-strictness = \case
-  SrcLazy -> txt "~"
-  SrcStrict -> txt "!"
+-- | The @!@ or @~@ in front of a field or a binding.
+strictness ::
+  -- | Where it was written.
+  Maybe Span ->
+  -- | Which it is, if either.
+  SrcStrictness ->
+  Doc
+strictness here = \case
+  SrcLazy -> keywordAt here "~"
+  SrcStrict -> keywordAt here "!"
   NoSrcStrict -> mempty
 
 -- | The break between the parts of a type, a hard one where the type
@@ -433,7 +457,7 @@ instance TyVarBndrFlag (HsBndrVis GhcPs) where
   flagIsInferred _ = False
   flagPrefix = \case
     HsBndrRequired NoExtField -> mempty
-    HsBndrInvisible _ -> txt "@"
+    HsBndrInvisible tok -> keywordAt (spanOf tok) "@"
 
 -- | One type variable binder.
 tyVarBndr :: TyVarBndrFlag flag => Ctx -> HsTyVarBndr flag GhcPs -> Doc
@@ -743,13 +767,21 @@ recordField ctx HsConDeclRecField{..} =
       )
 
 -- | A constructor field, without its documentation or its multiplicity.
-conDeclField :: Ctx -> HsConDeclField GhcPs -> Doc
-conDeclField ctx CDF{..} =
+conDeclField ::
+  -- | The context.
+  Ctx ->
+  -- | The field.
+  HsConDeclField GhcPs ->
+  Doc
+conDeclField ctx CDF{cdf_ext = ((_, _, bang), _), ..} =
   unpackPragma cdf_unpack
     <> at
       ctx
       cdf_type
-      (\ty -> strictness cdf_bang <> hsTypeBody ctx (spanOf cdf_type) ty)
+      ( \ty ->
+          strictness (spanOf bang) cdf_bang
+            <> hsTypeBody ctx (spanOf cdf_type) ty
+      )
 
 -- | A constructor field with its documentation in front of it.
 documentedConDeclField :: Ctx -> HsConDeclField GhcPs -> Doc
@@ -757,10 +789,15 @@ documentedConDeclField ctx cdf =
   foldMap (haddockInline ctx Pipe) (cdf_doc cdf) <> conDeclField ctx cdf
 
 -- | One argument on the left of a family or data instance.
-typeArgument :: Ctx -> LHsTypeArg GhcPs -> Doc
+typeArgument ::
+  -- | The context.
+  Ctx ->
+  -- | The argument.
+  LHsTypeArg GhcPs ->
+  Doc
 typeArgument ctx = \case
   HsValArg NoExtField ty -> hsType ctx ty
-  HsTypeArg _ ty -> txt "@" <> hsType ctx ty
+  HsTypeArg tok ty -> keywordAt (spanOf tok) "@" <> hsType ctx ty
   HsArgPar _ -> error "Tilia: HsArgPar is not expected in parsed source"
 
 -- | Where an argument was.

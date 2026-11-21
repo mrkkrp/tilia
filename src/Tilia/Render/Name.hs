@@ -70,11 +70,23 @@ bareName = \case
   Exact n -> outputable n
 
 -- | Put back whatever brackets, backticks or ticks the author used.
-adorn :: Ctx -> Maybe Span -> RdrName -> EpAnn NameAnn -> Doc -> Doc
+adorn ::
+  -- | The context.
+  Ctx ->
+  -- | Where the name was written.
+  Maybe Span ->
+  -- | The name.
+  RdrName ->
+  -- | What was written around it.
+  EpAnn NameAnn ->
+  -- | The name, printed.
+  Doc ->
+  Doc
 adorn ctx here x = go
   where
     go EpAnn{anns} = case anns of
-      NameAnnQuote{nann_quoted} -> (txt "'" <>) . go nann_quoted
+      NameAnnQuote{nann_quote, nann_quoted} ->
+        (keywordAt (spanOf nann_quote) "'" <>) . go nann_quoted
       NameAnnOnly{nann_adornment = NameParensHash o c} ->
         const (txt "(#" <> space <> inside o c <> space <> txt "#)")
       NameAnnOnly{nann_adornment = NameParens o c} ->

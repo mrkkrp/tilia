@@ -603,6 +603,10 @@
   operator's line, so that each comment stays on the line it was written
   on: before, the second came out on a line of its own, at a column the
   next formatting moved where the operand was more than one line long.
+* An as-pattern, a bang pattern or a type application that each branch of
+  a conditional begins and that goes on past the `#endif` stays whole in
+  each branch, rather than its `@` or `!` coming out after the conditional,
+  apart from what GHC reads it with, which changed or broke the program.
 
 ## Tilia 0.1.4.0
 
