@@ -21,11 +21,55 @@ Write lines that are no longer than 76 characters, if possible. The same
 applies to commit messages and especially commit headers—they always have to
 be under 76 characters.
 
+## Code
+
+Give every function you add or change a one-sentence Haddock and a signature
+with a `-- |` line before each argument, functions of one argument included.
+Bindings in a `where` take no comments.
+
+Use one word for one concept across a module's name, its types and
+functions, the docs, commit messages and the changelog. Grep for the word
+before you take it, so that it does not already mean something else.
+
+`Tilia.Doc` is the interface to documents, and only it imports
+`Tilia.Doc.Internal`; renderers build documents with
+`Tilia.Doc.Combinators`. Let the layout combinators (`layoutFrom`,
+`layoutAcross`, a `variant` inside them) decide layout by how something was
+written rather than checking spans. To say where a token was written, give
+it a region (`keywordAt`, `located`); a `fence` scopes comments. Prefer
+giving the renderer a region to adding a layout primitive or a combinator.
+
+Fix the CPP support in the merge or the machinery around it, never with a
+pass that rewrites the merged document, and never by checking for directives
+in rendering code.
+
+Export a record whole, as `T (..)`.
+
 ## Checking your implementations
 
 Before declaring something done, ask yourself the question: is this the
 simplest and irreducible implementation of this logic? Are
 simplifications/ablations possible that make the solution more elegant?
+
+Before fixing a defect, decide whether it is an oversight, a case the
+existing machinery misses, or a mismatch between the design and real code,
+which no local fix cures without leaving the shapes next to it broken.
+Correct an oversight in the way the machinery already works, and meet a
+mismatch with a principled redesign rather than an ad-hoc fix. Try the
+shapes next to the one you fix, not only its reduction.
+
+Where the smallest fix for a rare shape adds a primitive, a constructor or a
+pipeline stage, report its size and ask before building it: declining such a
+module is an acceptable outcome.
+
+## Commits and pull requests
+
+Make one commit per cause, with its vendored example. Its title, in the
+imperative and under 76 characters, names the feature that changes and the
+effect a user sees, not the mechanism: "Do not report a comment carried on
+under the last import as lost" for a fix to `--check-ast`. The body says
+what went wrong and why, what the change does, where the problem was found,
+and what it costs in the benchmarks.
 
 ## Audits
 
