@@ -630,6 +630,11 @@
   moves in front of what it documents, and the comments stay where they
   were: the lines after its first were compared as ordinary comments, in
   order.
+* A module with conditionals asking about the macro GHC defines for the
+  operating system or the architecture it compiles for, such as
+  `linux_HOST_OS` or `x86_64_HOST_ARCH`, is no longer declined over a
+  configuration taking two of one kind at once, which no compilation
+  produces.
 
 ## Tilia 0.1.4.0
 
