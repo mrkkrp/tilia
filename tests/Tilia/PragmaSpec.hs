@@ -258,12 +258,12 @@ spec = do
                 (extensionFlags (readFlags (concatMap flagsOf pragmas)))
          in counterexample (T.unpack (headerOf pragmas)) $
               ours === Set.fromList theirs
-    it "takes two orders to be alike where GHC switches alike" $
-      forAll (listOf1 (pragmaNaming extensionNames)) $ \pragmas ->
-        forAll (shuffle pragmas) $ \shuffled ->
-          counterexample (T.unpack (headerOf pragmas <> headerOf shuffled)) $
-            sameInForce (fmap namedBody pragmas) (fmap namedBody shuffled)
-              === (ghcSwitches pragmas == ghcSwitches shuffled)
+    it "takes two pragmas to commute where GHC switches alike in either order" $
+      forAll (pragmaNaming extensionNames) $ \a ->
+        forAll (pragmaNaming extensionNames) $ \b ->
+          counterexample (T.unpack (headerOf [a, b])) $
+            commute (switched a) (switched b)
+              === (ghcSwitches [a, b] == ghcSwitches [b, a])
 
   describe "lookupExtension" $ do
     it "knows an extension by the name one writes" $
@@ -327,8 +327,8 @@ headerOf pragmas =
 flagsOf :: HeaderPragma -> [Text]
 flagsOf (_, _, flags) = flags
 
-namedBody :: HeaderPragma -> (Text, Text)
-namedBody (n, b, _) = (n, b)
+switched :: HeaderPragma -> Map Extension Bool
+switched (n, b, _) = switchedBy n b
 
 -- | How GHC takes these pragmas to switch each extension.
 ghcSwitches :: [HeaderPragma] -> Map Extension Bool
