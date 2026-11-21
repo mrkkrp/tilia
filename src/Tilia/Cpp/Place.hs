@@ -496,9 +496,9 @@ placeAt present written n body continuing = among []
       | present ctx = d
       | otherwise = case break startsAfter (spine d) of
           (before, after)
-            | Just (earlier, holder, spacing) <- lastBounded before,
+            | (front, holder : back) <- splitAt (writtenLast before) before,
               maybe False (>= n) (endOf holder) ->
-                mconcat (earlier <> [within ctx holder] <> spacing <> after)
+                mconcat (front <> [within ctx holder] <> back <> after)
             | (later, holder : rest) <- break holds after ->
                 mconcat (before <> later <> [within ctx holder] <> rest)
             | Just (printed, anchor, spacing) <- lastBounded before,
@@ -528,6 +528,11 @@ placeAt present written n body continuing = among []
       if maybe False (> 0) (firstNesting (mconcat following))
         then continuing body
         else body
+
+    writtenLast ds =
+      case [(from, i) | (i, Just from) <- zip [0 ..] (fmap startOf ds)] of
+        [] -> length ds
+        starts -> snd (maximum starts)
 
     holds = \case
       DLocated s _ -> spanStartLine s < n && n <= spanEndLine s
