@@ -132,6 +132,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
               | ls@(l : more) <- [l | (WGroup l, _) <- wds],
                 any (/= l) more ->
                   wrap w (laidOutAsTheirs ls merged)
+            (WLocated _, merged)
+              | cutsTightText written layout merged -> choice xs
             (_, merged) -> wrap w merged
     alongside layout xs@(x : _) = case x of
       DCppChoice ws bs _
@@ -989,6 +991,31 @@ overlapping (c : cs) = go [c] (chTo c) cs
     go acc end (x : xs)
       | chFrom x < end = go (x : acc) (max end (chTo x)) xs
       | otherwise = reverse acc : go [x] (chTo x) xs
+
+-- | Does this document, outside the regions it holds, put a choice right
+-- beside text that GHC reads by the space around it, as the @\@@ of an
+-- as-pattern, the @.@ of a record field or the @!@ of a bang pattern?
+cutsTightText ::
+  -- | The module as written.
+  Lines ->
+  -- | The layout of the group it is printed in.
+  Layout ->
+  -- | The document.
+  Doc ->
+  Bool
+cutsTightText written layout d =
+  or (zipWith beside parts (drop 1 parts)) || any inner parts
+  where
+    parts = spineAt layout d
+    beside a b =
+      tight a && isJust (choiceAt written First b)
+        || isJust (choiceAt written Last a) && tight b
+    tight = (`elem` fmap DText ["@", ".", "!", "~", "-", "$", "$$"])
+    inner x = case unwrap x of
+      Just (WLocated _, _) -> False
+      Just (WFence _, _) -> False
+      Just (w, y) -> cutsTightText written (layoutInside layout w) y
+      Nothing -> False
 
 -- | One end of a document.
 data Edge = First | Last

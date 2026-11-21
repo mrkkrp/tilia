@@ -495,6 +495,11 @@
   a `$` and a lambda does, the body comes out on the next line a step in,
   rather than in each branch at the column of the declaration, statement,
   alternative or `let` binding, where it began another one.
+* Where each branch of a conditional begins an as-pattern, a bang pattern
+  or the expression a record field is taken from, as `x@(Arg …`, and the
+  rest goes on past the `#endif`, the whole of it goes into each branch,
+  rather than its `@`, `!` or `.` coming out on a line apart from what it
+  binds to, where GHC reads it as something else.
 
 ## Tilia 0.1.4.0
 
