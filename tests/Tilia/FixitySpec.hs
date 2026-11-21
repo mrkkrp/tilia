@@ -188,7 +188,7 @@ spec = do
           scope =
             resolveScope
               (Is #implicitPrelude)
-              knowingExports
+              (knowingExports . snd)
               (configuration "l 6" :| [configuration "r 5"])
       disagreement scope InTerms Nothing (OpName "<+>")
         `shouldBe` Just
@@ -440,7 +440,7 @@ spec = do
           scope =
             resolveScope
               (Is #implicitPrelude)
-              leavingMin
+              (leavingMin . snd)
               (pure (pmModule (parsed "module M where\nimport Opaque\n")))
        in lookupFixity scope InTerms Nothing (OpName "min")
             `shouldBe` Unresolved (unreadOnly "Opaque")
@@ -461,7 +461,7 @@ spec = do
           scope =
             resolveScope
               (Is #implicitPrelude)
-              ( \case
+              ( \(_, imported) -> case imported of
                   "A" -> unreadable
                   "Prelude" ->
                     mempty
@@ -1063,12 +1063,15 @@ exportsOfSource = moduleExports . pmModule . parsed
 -- about the ones it cannot.
 fullScope :: Text -> Scope
 fullScope =
-  resolveScope (Is #implicitPrelude) knowingExports . pure . pmModule . parsed
+  resolveScope (Is #implicitPrelude) (knowingExports . snd)
+    . pure
+    . pmModule
+    . parsed
 
 -- | A scope over a module's branch leaves, each parsed on its own.
 scopeOverLeaves :: Text -> Scope
 scopeOverLeaves =
-  resolveScope (Is #implicitPrelude) knowingExports . leavesOf
+  resolveScope (Is #implicitPrelude) (knowingExports . snd) . leavesOf
 
 -- | A module's branch leaves, parsed.
 leavesOf :: Text -> NonEmpty (HsModule GhcPs)
@@ -1123,7 +1126,7 @@ scopeBringing :: [(Text, [(Namespace, Text)])] -> Text -> Scope
 scopeBringing said source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedCertain = certain m})
+    (\(_, m) -> (knowingExports m){establishedCertain = certain m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     certain m =
@@ -1147,7 +1150,7 @@ scopeKnowing :: [(Text, [Text])] -> Text -> Scope
 scopeKnowing said =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> maybe (knowingExports m) leaving (lookup m said))
+    (\(_, m) -> maybe (knowingExports m) leaving (lookup m said))
     . pure
     . pmModule
     . parsed
@@ -1194,7 +1197,7 @@ scopeWithMembers :: Text -> Scope
 scopeWithMembers source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedMembers = membersIn m})
+    (\(_, m) -> (knowingExports m){establishedMembers = membersIn m})
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     membersIn = \case
@@ -1207,6 +1210,7 @@ listing :: [ImportItem] -> Import
 listing items =
   Import
     { importModule = "M",
+      importPackage = Nothing,
       importQualified = False,
       importAlias = "M",
       importNames = Just (False, items)
@@ -1222,7 +1226,7 @@ scopeOfBoth :: Text -> Scope
 scopeOfBoth source =
   resolveScope
     (Is #implicitPrelude)
-    knowingExports
+    (knowingExports . snd)
     (pure (pmModule (parsed ("module M where\n" <> source))))
 
 -- | A scope over an unread module, told the members of its names.
@@ -1233,7 +1237,7 @@ scopeSuspecting :: [(Text, [(Text, [Text])])] -> Text -> Scope
 scopeSuspecting members source =
   resolveScope
     (Is #implicitPrelude)
-    (\m -> (knowingExports m){establishedMembers = membersIn m})
+    (\(_, m) -> (knowingExports m){establishedMembers = membersIn m})
     ( pure
         ( pmModule
             (parsed ("module M where\n" <> source <> "f a b = a <??> b\n"))
@@ -1251,7 +1255,11 @@ unsettledIn :: Text -> [((Maybe Text, OpName), Unknown)]
 unsettledIn src =
   let p = parsed src
    in unknownOperators
-        (resolveScope (Is #implicitPrelude) knowingExports (pure (pmModule p)))
+        ( resolveScope
+            (Is #implicitPrelude)
+            (knowingExports . snd)
+            (pure (pmModule p))
+        )
         (pure (pmGathered p))
 
 -- | A module that takes its Prelude from elsewhere and hides an operator
@@ -1283,7 +1291,7 @@ disagreeingAboutPrelude =
 -- | That world's scope for a module, told whether it has the Prelude.
 scopeAboutPrelude :: Choice "implicitPrelude" -> Text -> Scope
 scopeAboutPrelude implicitPrelude =
-  resolveScope implicitPrelude disagreeingAboutPrelude
+  resolveScope implicitPrelude (disagreeingAboutPrelude . snd)
     . pure
     . pmModule
     . parsed
@@ -1298,7 +1306,7 @@ unsettledAboutPrelude implicitPrelude src =
    in unknownOperators
         ( resolveScope
             implicitPrelude
-            disagreeingAboutPrelude
+            (disagreeingAboutPrelude . snd)
             (pure (pmModule p))
         )
         (pure (pmGathered p))

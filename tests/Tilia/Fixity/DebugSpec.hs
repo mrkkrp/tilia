@@ -251,9 +251,13 @@ notesThrough chains world = notesAgainst answerOf
 notesAgainst :: (Text -> Established) -> Text -> IO [Text]
 notesAgainst answerOf source =
   renderFixityNotes Plain . Map.singleton "M.hs"
-    <$> fixityNotes (Is #implicitPrelude) (pure . answerOf) scope (pure module')
+    <$> fixityNotes
+      (Is #implicitPrelude)
+      (pure . answerOf . snd)
+      scope
+      (pure module')
   where
-    scope = resolveScope (Is #implicitPrelude) answerOf (pure hsModule)
+    scope = resolveScope (Is #implicitPrelude) (answerOf . snd) (pure hsModule)
     hsModule = pmModule module'
     module' = parsed ("module M where\n" <> source)
 

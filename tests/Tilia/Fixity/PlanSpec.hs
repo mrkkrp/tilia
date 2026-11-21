@@ -734,7 +734,7 @@ reexports = describe "an operator a module passes on" $ do
         ("src/Server.hs", "{-# LANGUAGE TypeFamilies #-}\nmodule Server (type (.++)) where\nimport Context\n")
       ]
     $ \rs -> do
-      server <- askModule rs Nothing "Server"
+      server <- askModule rs Nothing (Nothing, "Server")
       unsettledThrough server (InTypes, OpName ".++") `shouldBe` []
 
 -- | What a module written for @hsc2hs@ amounts to, by either route to one.
@@ -748,7 +748,7 @@ hscModules = describe "a module written for hsc2hs" $ do
   it "declares nothing, where it is one of the project's own" $
     withFakeProject [("src/Cursed.hsc", cursed)] $
       \rs -> do
-        askModule rs Nothing "Cursed" `shouldReturn` mempty
+        askModule rs Nothing (Nothing, "Cursed") `shouldReturn` mempty
 
   it "declares nothing, where it comes out of a tarball" $
     withFakeArchive [("Cursed.hsc", cursed)] $
@@ -1400,6 +1400,11 @@ namedAlike = describe "a module another component names alike" $ do
       fixityFrom plan ("app" </> "Other.hs") "Data.Function" "&"
         `shouldReturn` Just (Fixity RightAssoc 0)
 
+  it "is the named package's, where the project holds one of its name" $
+    withFakePlan wrapping $ \plan ->
+      fixityFrom plan "Lib.hs" "Data.Function" "&"
+        `shouldReturn` Just (Fixity LeftAssoc 1)
+
   it "is not one only a branch the build leaves out declares" $
     withFakePlan branched $ \plan ->
       fixityFrom plan "Lib.hs" "Data.Function" "&"
@@ -1417,7 +1422,7 @@ namedAlike = describe "a module another component names alike" $ do
           canonicalizePath
           [dir </> file | LocalPackage dir <- fmap ppSource (bpPackages plan)]
       Map.lookup (InTerms, OpName op) . establishedFixities
-        <$> askModule rs (listToMaybe importer) modName
+        <$> askModule rs (listToMaybe importer) (Nothing, modName)
     components =
       [ ( "fake.cabal",
           T.unlines
@@ -1451,6 +1456,24 @@ namedAlike = describe "a module another component names alike" $ do
         ( "app/Data/Function.hs",
           "module Data.Function ((&)) where\ninfixr 0 &\n\
           \(&) :: a -> (a -> b) -> b\nx & f = f x\n"
+        )
+      ]
+    wrapping =
+      [ ( "fake.cabal",
+          T.unlines
+            [ "cabal-version: 2.4",
+              "name: fake",
+              "version: 0.1.0.0",
+              "library",
+              "  exposed-modules: Lib, Data.Function",
+              "  default-language: Haskell2010"
+            ]
+        ),
+        ("Lib.hs", "module Lib () where\nimport Data.Function ()\n"),
+        ( "Data/Function.hs",
+          "{-# LANGUAGE PackageImports #-}\n\
+          \module Data.Function (module F) where\n\
+          \import \"base\" Data.Function as F\n"
         )
       ]
     branched =
@@ -1515,7 +1538,7 @@ ringSource i =
 -- | What a module exports, where reading it settles every name.
 fixitiesOf :: Resolver -> Text -> IO (Maybe Fixities)
 fixitiesOf resolver modName =
-  settled <$> askModule resolver Nothing modName
+  settled <$> askModule resolver Nothing (Nothing, modName)
   where
     settled established
       | settlesEverything established = Just (establishedFixities established)
@@ -1525,12 +1548,13 @@ fixitiesOf resolver modName =
 membersIn :: Resolver -> Text -> IO (Map.Map OpName (Set.Set OpName))
 membersIn resolver modName =
   Map.map (Set.map snd) . establishedMembers
-    <$> askModule resolver Nothing modName
+    <$> askModule resolver Nothing (Nothing, modName)
 
 -- | Every name a module certainly brings in.
 certainNamesOf :: Resolver -> Text -> IO (Set.Set (Namespace, OpName))
 certainNamesOf resolver modName =
-  certainNames . establishedCertain <$> askModule resolver Nothing modName
+  certainNames . establishedCertain
+    <$> askModule resolver Nothing (Nothing, modName)
 
 -- | A module of the kind @hsc2hs@ takes, declaring an operator nothing can
 -- get at.
@@ -1566,7 +1590,7 @@ chasedModule source =
     "M"
     (summarize (Is #implicitPrelude) (pmModule (parsed source)))
   where
-    reach m =
+    reach (_, m) =
       pure $ case m of
         "Control.Arrow" -> bringing (Fixity RightAssoc 5)
         "Text.PrettyPrint" ->
@@ -1824,7 +1848,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs Nothing "Disagree"
+        answer <- askModule rs Nothing (Nothing, "Disagree")
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
         unsettledThrough answer (InTerms, OpName "sort") `shouldBe` []
 
@@ -1843,7 +1867,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs Nothing "Partly"
+        answer <- askModule rs Nothing (Nothing, "Partly")
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
 
     it "reads a branch at a time where the first ones do not parse together"
@@ -1866,7 +1890,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs Nothing "Apart"
+        answer <- askModule rs Nothing (Nothing, "Apart")
         unsettledThrough answer (InTerms, OpName "<+>") `shouldBe` [[]]
 
     it "keeps the fixity of a name only one configuration exports"
@@ -1919,7 +1943,7 @@ withPlan plan = do
 
   describe "what a package module brings in" $
     it "names what it hands on" $ do
-      answer <- askModule resolver Nothing "Prettyprinter"
+      answer <- askModule resolver Nothing (Nothing, "Prettyprinter")
       certainNames (establishedCertain answer)
         `shouldSatisfy` Set.member (InTerms, OpName "<+>")
 
@@ -2074,7 +2098,7 @@ withPlan plan = do
     it "is what it hands on from where reading gave up" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs -> do
-          answer <- askModule rs Nothing "Opaque"
+          answer <- askModule rs Nothing (Nothing, "Opaque")
           establishedUnsettled answer
             `shouldBe` Map.singleton
               ["No.Such.Module"]
@@ -2092,24 +2116,27 @@ withPlan plan = do
           )
         ]
       $ \rs ->
-        settlesEverything <$> askModule rs Nothing "Wide" `shouldReturn` True
+        settlesEverything <$> askModule rs Nothing (Nothing, "Wide")
+          `shouldReturn` True
 
     it "is everything for a module it cannot find at all" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
-        \rs -> askModule rs Nothing "No.Such.Module" `shouldReturn` unreadable
+        \rs ->
+          askModule rs Nothing (Nothing, "No.Such.Module")
+            `shouldReturn` unreadable
 
     it "is everything it does not certainly bring in, when what it hands on whole cannot be read"
       $ withFakeProject
         [("src/Facade.hs", "module Facade (module No.Such.Module) where\nimport No.Such.Module\n")]
       $ \rs -> do
-        answer <- askModule rs Nothing "Facade"
+        answer <- askModule rs Nothing (Nothing, "Facade")
         establishedUntold answer `shouldBe` Set.singleton ["No.Such.Module"]
 
     it "is the type and its members, when a type it hands on is beyond us"
       $ withFakeProject
         [("src/Facade.hs", "module Facade (T (..)) where\nimport No.Such.Module\n")]
       $ \rs -> do
-        answer <- askModule rs Nothing "Facade"
+        answer <- askModule rs Nothing (Nothing, "Facade")
         unsettledThrough answer (InTypes, OpName "T")
           `shouldBe` [["No.Such.Module"]]
         unsettledThrough answer (InTerms, OpName ":|")
@@ -2120,11 +2147,11 @@ withPlan plan = do
         [ ("src/Ping.hs", "module Ping (module Pong) where\nimport Pong\n"),
           ("src/Pong.hs", "module Pong (module Ping) where\nimport Ping\n")
         ]
-      $ \rs -> askModule rs Nothing "Ping" `shouldReturn` mempty
+      $ \rs -> askModule rs Nothing (Nothing, "Ping") `shouldReturn` mempty
 
     it "is everything for a module whose source will not parse" $
       withFakeProject [("src/Bad.hs", "module Bad ((<+>)) where\nf = (((\n")] $
-        \rs -> askModule rs Nothing "Bad" `shouldReturn` unreadable
+        \rs -> askModule rs Nothing (Nothing, "Bad") `shouldReturn` unreadable
 
     it "is what any configuration leaves unsettled, where none settles every name"
       $ withFakeProject
@@ -2141,7 +2168,7 @@ withPlan plan = do
           )
         ]
       $ \rs -> do
-        answer <- askModule rs Nothing "Both"
+        answer <- askModule rs Nothing (Nothing, "Both")
         establishedUnsettled answer
           `shouldBe` Map.singleton
             ["No.Such.Module"]
@@ -2167,7 +2194,7 @@ withPlan plan = do
     it "names the module that stopped it rather than the import above it" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs ->
-          Map.keys . establishedUnsettled <$> askModule rs Nothing "Opaque"
+          Map.keys . establishedUnsettled <$> askModule rs Nothing (Nothing, "Opaque")
             `shouldReturn` [["No.Such.Module"]]
 
     it "follows the reasons down more than one module"
@@ -2176,13 +2203,13 @@ withPlan plan = do
           ("src/Middle.hs", "module Middle ((<+>)) where\nimport No.Such.Module\n")
         ]
       $ \rs ->
-        Map.keys . establishedUnsettled <$> askModule rs Nothing "Near"
+        Map.keys . establishedUnsettled <$> askModule rs Nothing (Nothing, "Near")
           `shouldReturn` [["Middle", "No.Such.Module"]]
 
     it "has nothing to say about a module that could be read" $
       withFakeProject [("src/Opaque.hs", opaqueSource)] $
         \rs ->
-          settlesEverything <$> askModule rs Nothing "Prelude"
+          settlesEverything <$> askModule rs Nothing (Nothing, "Prelude")
             `shouldReturn` True
 
   describe "what a module brings in" $ do

@@ -32,6 +32,7 @@ import Tilia.Fixity
     Scope (..),
     disagreement,
     fixityInScope,
+    importedFrom,
     lookupFixity,
     moduleImports,
     operatorSpelling,
@@ -99,8 +100,8 @@ fixityNotes ::
   -- the imports exactly when the module actually has it.
   Choice "implicitPrelude" ->
   -- | What reading each module in scope established, as the resolver
-  -- answers it.
-  (Text -> IO Established) ->
+  -- answers it for what 'importedFrom' says of an import.
+  ((Maybe Text, Text) -> IO Established) ->
   -- | The scope the module was formatted under.
   Scope ->
   -- | The module's configurations.
@@ -119,7 +120,7 @@ fixityNotes implicitPrelude resolve scope configurations = do
       }
   where
     alongside i = do
-      answer <- resolve (importModule i)
+      answer <- resolve (importedFrom i)
       let fixities = establishedFixities answer
           readNothing =
             Map.null fixities
