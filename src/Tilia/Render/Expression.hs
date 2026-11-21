@@ -890,6 +890,7 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
         keywordSpan = spanOfSrcSpan written
         placement
           | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
+          | remarkOnEachLine ctx keywordSpan (spanOf body) = Normal
           | otherwise = bodyPlacement (bodyOf body)
 
 -- | A @let@ expression or command, with @in@ ending its line where it is
@@ -1390,14 +1391,10 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
     placement
       | sameLine separatorSpan (spanOf body),
         not (commentPrintedBetween ctx (spansOf guards) separatorSpan),
-        not (remarkBefore && remarkAfter) =
+        not (remarkOnEachLine ctx (spansOf guards) separatorSpan) =
           bodyPlacement bound
       | otherwise = Normal
     separatorSpan = either spanOf spanOf ga_sep
-    remarkBefore = lineCommentWrittenBetween ctx (spansOf guards) separatorSpan
-    remarkAfter =
-      lineCommentWrittenBetween ctx separatorSpan (nextLine <$> separatorSpan)
-    nextLine s = mkSpan (spanEndLine s + 1, 1) (spanEndLine s + 1, 1)
 
 -- | The qualifiers of a guard, a @let@ that ends them put between braces,
 -- since what follows it on its line, the guard's @=@ or @->@, ends its
