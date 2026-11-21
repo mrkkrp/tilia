@@ -38,7 +38,7 @@ import Tilia.Comments
     singleLine,
     triggerOn,
   )
-import Tilia.Comments.Attach (Margin (..), commentText)
+import Tilia.Comments.Attach (Margin (..), commentText, joinedLine)
 import Tilia.Doc.Combinators
 import Tilia.Gathered (Gathered (..))
 import Tilia.Render.Context
@@ -144,10 +144,12 @@ docBody ctx block style doc@(L l str)
     rebuilt =
       sepBy hardBreak (zipWith line' (True : repeat False) written')
         <> mconcat (replicate trailingBlanks (hardBreak <> txt "--"))
-    trailingBlanks = case writtenHaddock ctx (spanOfSrcSpan l) of
+        <> foldMap joinedLine writtenComment
+    trailingBlanks = case writtenComment of
       Nothing -> 0
       Just c ->
         length (takeWhile isBlankLine (reverse (NE.toList (commentBody c))))
+    writtenComment = writtenHaddock ctx (spanOfSrcSpan l)
     isBlankLine t =
       T.null (T.strip (fromMaybe t (T.stripPrefix "--" (T.strip t))))
     line' isFirst t

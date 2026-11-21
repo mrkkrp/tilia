@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -- | The module as its author wrote it.
 module Tilia.Source
   ( -- * The source
@@ -31,6 +33,7 @@ module Tilia.Source
   )
 where
 
+import Data.Choice (Choice)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import GHC.Parser.Lexer qualified as GHC
@@ -62,6 +65,8 @@ sourceLines = srcLines
 
 -- | Read a module's source.
 sourceOf ::
+  -- | Does cpp read the module?
+  Choice "readByCpp" ->
   -- | The lines of the module, as this configuration has them.
   Lines ->
   -- | The lines a Haddock's text is read from.
@@ -73,10 +78,10 @@ sourceOf ::
   -- the line it begins on.
   IntMap Int ->
   Source
-sourceOf ls haddocks cs qs =
+sourceOf cpp ls haddocks cs qs =
   Source
     { srcLines = ls,
-      srcComments = commentsOf ls haddocks cs,
+      srcComments = commentsOf cpp ls haddocks cs,
       srcQuotes = qs
     }
 

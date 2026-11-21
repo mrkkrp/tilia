@@ -7,6 +7,7 @@ module Tilia.Comments.Attach
     attachScopedComments,
     Margin (..),
     commentText,
+    joinedLine,
   )
 where
 
@@ -272,7 +273,9 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
     _ -> space <> body
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill -> foldMap (uncurry (heldBack spill)) (numbered c)
+  HeldBack spill ->
+    foldMap (uncurry (heldBack spill)) (numbered c)
+      <> includeWhen (commentJoined c) (DHoldBack spill "")
   OnItsOwnLines -> ownLines margin atTheEnd c
   where
     heldBack spill n x
@@ -302,7 +305,8 @@ ownLines margin atTheEnd c =
 commentDoc :: Comment -> Doc -> Doc
 commentDoc = located . commentSpan
 
--- | The text of a comment, laid out as it was written.
+-- | The text of a comment, laid out as it was written, and the empty line
+-- cpp joins to it.
 commentText ::
   -- | What goes at the margin.
   Margin ->
@@ -311,7 +315,10 @@ commentText ::
   Doc
 commentText margin c = note . align $ case numbered c of
   [] -> mempty
-  (_, l) : ls -> txt l <> foldMap (\(n, x) -> breakBefore n <> txt x) ls
+  (_, l) : ls ->
+    txt l
+      <> foldMap (\(n, x) -> breakBefore n <> txt x) ls
+      <> joinedLine c
   where
     breakBefore n
       | marginLine margin n = DVerbatimBreak AtMargin TrimWhitespace
@@ -319,6 +326,15 @@ commentText margin c = note . align $ case numbered c of
     note
       | marginComment margin c = DCppMarginNote
       | otherwise = id
+
+-- | The empty line cpp joins to a comment, if it joins one, reproduced
+-- under it.
+joinedLine ::
+  -- | The comment.
+  Comment ->
+  Doc
+joinedLine c =
+  includeWhen (commentJoined c) (DVerbatimBreak AtMargin TrimWhitespace)
 
 -- | The lines of a comment, each with the number of the line of the module
 -- it was written on.
