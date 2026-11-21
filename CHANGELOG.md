@@ -622,6 +622,9 @@
   component's `default-extensions`, as GHC reads it, rather than only where
   `ForeignFunctionInterface` is, as under `Haskell2010`: under `Haskell98`
   such a module could not be parsed.
+* `--check-ast` no longer reports a change where a line of a Haddock ends
+  in a Unicode space, such as a no-break space, which formatting drops as
+  it drops any space at the end of a line, and as Haddock reads it.
 
 ## Tilia 0.1.4.0
 

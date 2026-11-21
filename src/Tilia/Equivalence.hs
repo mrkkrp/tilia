@@ -28,6 +28,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import GHC.Data.FastString (FastString)
 import GHC.Hs (HsModule (..), XModulePs (..))
 import GHC.Hs.Decls (DerivClauseTys (..), DocDecl (..), HsDecl (..), LHsDecl)
@@ -436,17 +437,23 @@ asDocString path x y = case (cast x, cast y) of
       HsDocStringNamed n -> "named " <> T.pack n
       HsDocStringGroup n -> "group " <> tshow n
 
--- | What a doc string says, with the whitespace thrown away.
-docWords :: HsDocString -> [ByteString]
+-- | What a doc string says, with the whitespace thrown away: what
+-- 'Data.Char.isSpace' takes for it, as Haddock and the printer do.
+docWords ::
+  -- | The doc string.
+  HsDocString ->
+  [ByteString]
 docWords =
   concatMap chunkWords . \case
     MultiLineDocString _ cs -> fmap unLoc (NE.toList cs)
     NestedDocString _ c -> [unLoc c]
     GeneratedDocString c -> [c]
   where
-    chunkWords (HsDocStringChunk bytes) =
-      filter (not . BS.null) (BS.splitWith isAsciiSpace bytes)
-    isAsciiSpace w = w == 32 || w == 9 || w == 10 || w == 13
+    chunkWords (HsDocStringChunk bytes)
+      | BS.all (< 0x80) bytes =
+          filter (not . BS.null) (BS.splitWith isAsciiSpace bytes)
+      | otherwise = fmap T.encodeUtf8 (T.words (T.decodeUtf8 bytes))
+    isAsciiSpace w = w == 32 || (9 <= w && w <= 13)
 
 -- | Compare two values of a type that will not be taken apart.
 opaque :: forall a b. (Data a, Data b) => a -> b -> Bool
