@@ -70,15 +70,15 @@ patBody ::
 patBody ctx inParens closing here = \case
   WildPat _ -> txt "_"
   VarPat _ n -> name ctx n
-  LazyPat _ p -> txt "~" <> recur p
-  AsPat _ n p -> name ctx n <> txt "@" <> recur p
+  LazyPat tok p -> keywordAt (spanOf tok) "~" <> recur p
+  AsPat tok n p -> name ctx n <> keywordAt (spanOf tok) "@" <> recur p
   ParPat _ p ->
     bracketWith
       closing
       "("
       ")"
       (insideBrackets here (hsPatIn ctx (Is #inParens) Indented p))
-  BangPat _ p -> txt "!" <> recur p
+  BangPat tok p -> keywordAt (spanOf tok) "!" <> recur p
   ListPat _ ps ->
     commaBracketWith (ctxCommaStyle ctx) closing "[" "]" $
       insideBrackets
@@ -104,8 +104,8 @@ patBody ctx inParens closing here = \case
         <> indent (recur p)
   SplicePat _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   LitPat _ lit -> hsLit lit
-  NPat _ v (isJust -> negated) _ ->
-    includeWhen negated (txt "-" <> negativeLiteralGap ctx)
+  NPat tok v (isJust -> negated) _ ->
+    includeWhen negated (keywordAt (spanOf tok) "-" <> negativeLiteralGap ctx)
       <> at ctx v (outputable . ol_val)
   NPlusKPat _ n k _ _ _ ->
     align $
@@ -115,7 +115,8 @@ patBody ctx inParens closing here = \case
   SigPat _ p HsPS{..} ->
     recur p <> typeAscription ctx (spanOf p) (asSigType hsps_body)
   EmbTyPat _ (HsTP _ ty) -> txt "type" <> space <> hsType ctx ty
-  InvisPat _ (HsTP _ ty) -> txt "@" <> hsType ctx ty
+  InvisPat (tok, _) (HsTP _ ty) ->
+    keywordAt (spanOf tok) "@" <> hsType ctx ty
   where
     recur = hsPatIn ctx inParens Indented
 
