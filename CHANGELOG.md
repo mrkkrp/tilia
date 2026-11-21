@@ -490,6 +490,11 @@
 * A module with a conditional inside a quasi-quotation or a multi-line
   string is declined, with exit code 17, as one with an `#include` there
   is, rather than formatted with the declaration in each branch.
+* Where a conditional varies the first line of a body that hangs after an
+  `=`, a `<-` or a `->`, as an argument written behind a conditional before
+  a `$` and a lambda does, the body comes out on the next line a step in,
+  rather than in each branch at the column of the declaration, statement,
+  alternative or `let` binding, where it began another one.
 
 ## Tilia 0.1.4.0
 

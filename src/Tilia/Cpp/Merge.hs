@@ -116,6 +116,11 @@ merge settings written conditionals guards varied settledOthers = go Broken
                 Just opened <-
                   unwrapping layout spans xs (coveredAmong settings xs) ->
                   opened
+            (WGroup _, _)
+              | any (isJust . unhung) xs,
+                l : ls <- fmap (openingLine (layoutInside layout w) . snd) wds,
+                any (/= l) ls ->
+                  go layout [fromMaybe x (unhung x) | x <- xs]
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged),
@@ -1216,9 +1221,34 @@ lineOf layout d = case spineAt layout d of
     (line, []) -> (mconcat line, mempty)
   where
     broken = \case
-      DGroup _ (DCat DSpace x) -> DGroup Broken (Doc.attach Doc.Normal x)
       DGroup Frangible x -> DGroup Broken x
-      x -> x
+      x -> fromMaybe x (unhung x)
+
+-- | The text a document prints before it ends its first line.
+openingLine ::
+  -- | The layout of the group it is printed in.
+  Layout ->
+  -- | The document.
+  Doc ->
+  [Text]
+openingLine layout d =
+  [ t
+  | (_, DText t) <- takeWhile (not . uncurry opensWithBreak) (leaves layout d)
+  ]
+  where
+    leaves l = concatMap (leaf l) . spineAt l
+    leaf l x =
+      maybe [(l, x)] (\(w, y) -> leaves (layoutInside l w) y) (unwrap x)
+
+-- | A group that hangs a body after a space, laid out broken and indented
+-- before the body instead.
+unhung ::
+  -- | The group.
+  Doc ->
+  Maybe Doc
+unhung = \case
+  DGroup _ (DCat DSpace x) -> Just (DGroup Broken (Doc.attach Doc.Normal x))
+  _ -> Nothing
 
 -- | Does this document print one token, spaces aside?
 printsOneToken :: Layout -> Doc -> Bool

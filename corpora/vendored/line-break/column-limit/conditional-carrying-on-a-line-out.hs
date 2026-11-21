@@ -7,13 +7,12 @@ module Report.Flush (flush) where
 
 flush :: Bool -> IO ()
 flush verbose =
-#if defined(TRACE)
   when verbose $
+#if defined(TRACE)
     do
       traceIO
         "flushing the standard output and the standard error streams first"
       hFlush stdout
 #else
-  when verbose $
     hFlush stdout
 #endif
