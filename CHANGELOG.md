@@ -573,6 +573,11 @@
   leaves out declares, as citeproc's `Prelude` under `if impl(ghc < 8.8)`,
   no longer stands in for the module of that name for the files the build
   compiles, which had every module of citeproc declined.
+* An import that names a package, as in `import "fin" Data.Fin`, is read
+  from a module of that package, rather than from whichever module of its
+  name comes first, which was the importing module itself where the two
+  share a name, as in ansi-wl-pprint's `Text.PrettyPrint.ANSI.Leijen`, and
+  had every module using it declined.
 
 ## Tilia 0.1.4.0
 

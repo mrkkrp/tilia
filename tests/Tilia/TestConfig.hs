@@ -67,7 +67,7 @@ formatExample checking settings package ownModules =
         sessionOwnModules = ownModules,
         sessionSettings = settings,
         sessionResolver =
-          Resolver $ \_ name ->
+          Resolver $ \_ (_, name) ->
             pure mempty{establishedFixities = exportsOf name},
         sessionMacros = mempty,
         sessionPackage = \_ -> pure (Right (defaultsFor package)),

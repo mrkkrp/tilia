@@ -214,7 +214,8 @@ fixityBenchmarks dir toResolve held = do
             resolver <-
               newResolverWith [FromSource] kept [] tarballs packageReader plan
             pure $ do
-              answers <- traverse (askModule resolver Nothing) modules
+              answers <-
+                traverse (askModule resolver Nothing . (Nothing,)) modules
               length <$> evaluate (force answers)
       packages <- for toResolve $ \release -> do
         modules <- fromMaybe [] <$> packageModules (tarballOf release)

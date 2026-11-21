@@ -27,6 +27,7 @@ module Tilia.Fixity
     Import (..),
     ImportItem (..),
     moduleImports,
+    importedFrom,
     maySupply,
     certainlyBrings,
     decides,
@@ -85,11 +86,14 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Read qualified as T
+import GHC.Data.FastString (unpackFS)
 import GHC.Generics (Generic)
 import GHC.Hs hiding (Fixity, OpName)
 import GHC.Types.Fixity qualified as GHC
 import GHC.Types.Name.Occurrence (isDataOcc, occNameString)
 import GHC.Types.Name.Reader (RdrName (..), rdrNameOcc)
+import GHC.Types.PkgQual (RawPkgQual (..))
+import GHC.Types.SourceText (StringLiteral (..))
 import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 
 import Tilia.Gathered (Gathered (..))
@@ -391,6 +395,9 @@ listedMembers hsModule = case hsmodExports hsModule of
 data Import = Import
   { -- | The module being imported.
     importModule :: Text,
+    -- | The package the import names, as in @import \"base\" Data.List@,
+    -- if it names one.
+    importPackage :: Maybe Text,
     -- | Whether it is @qualified@, bringing no unqualified names in.
     importQualified :: Bool,
     -- | The name qualified uses go through: the alias if there is one,
@@ -440,6 +447,7 @@ moduleImports implicitPrelude configurations = prelude <> written
       | otherwise =
           [ Import
               { importModule = "Prelude",
+                importPackage = Nothing,
                 importQualified = False,
                 importAlias = "Prelude",
                 importNames = Nothing
@@ -448,6 +456,9 @@ moduleImports implicitPrelude configurations = prelude <> written
     fromDecl d =
       Import
         { importModule = modName (unLoc (ideclName d)),
+          importPackage = case ideclPkgQual d of
+            RawPkgQual literal -> Just (T.pack (unpackFS (sl_fs literal)))
+            NoRawPkgQual -> Nothing,
           importQualified = ideclQualified d /= NotQualified,
           importAlias =
             maybe (modName (unLoc (ideclName d))) (modName . unLoc) (ideclAs d),
@@ -458,6 +469,11 @@ moduleImports implicitPrelude configurations = prelude <> written
         mapMaybe (importedItem . unLoc) (unLoc names)
       )
     modName = T.pack . moduleNameString
+
+-- | The module an import names: the package it names, if it names one,
+-- and the module's name.
+importedFrom :: Import -> (Maybe Text, Text)
+importedFrom i = (importPackage i, importModule i)
 
 -- | One entry of an import list, as written.
 importedItem :: IE GhcPs -> Maybe ImportItem
@@ -653,8 +669,9 @@ reachIn = \case
 resolveScope ::
   -- | Whether @ImplicitPrelude@ is on.
   Choice "implicitPrelude" ->
-  -- | What reading each module this one imports established.
-  (Text -> Established) ->
+  -- | What reading each module this one imports established, by what
+  -- 'importedFrom' says of its import.
+  ((Maybe Text, Text) -> Established) ->
   -- | The module's configurations, parsed.
   NonEmpty (HsModule GhcPs) ->
   Scope
@@ -664,13 +681,15 @@ resolveScope implicitPrelude known configurations =
       scopeInTerms = reachAmong InTerms,
       scopeUnsettled =
         [ (i, established)
-        | i <- imports,
-          let established = known (importModule i),
+        | (i, established) <- answered,
           not (settlesEverything established)
         ]
     }
   where
-    imports = moduleImports implicitPrelude configurations
+    answered =
+      [ (i, known (importedFrom i))
+      | i <- moduleImports implicitPrelude configurations
+      ]
     declaredEach =
       Map.fromListWith
         (flip (<>))
@@ -704,8 +723,7 @@ resolveScope implicitPrelude known configurations =
                 qualifier <- Nothing : fmap Just ownNames
               ]
                 <> [ (qualifier, op)
-                   | i <- imports,
-                     let established = known (importModule i),
+                   | (i, established) <- answered,
                      name@(n, op) <-
                        Set.toList
                          (certainNames (establishedCertain established)),
@@ -729,10 +747,7 @@ resolveScope implicitPrelude known configurations =
         unqualified =
           Map.unionsWith
             (<>)
-            [ visible i
-            | i <- imports,
-              not (importQualified i)
-            ]
+            [offers | (i, offers) <- visible, not (importQualified i)]
         qualified = Map.union ownQualified (Map.map settled qualifiedFrom)
         ownQualified =
           Map.fromList
@@ -743,24 +758,27 @@ resolveScope implicitPrelude known configurations =
         qualifiedFrom =
           Map.unionsWith
             (<>)
-            [ Map.mapKeys (importAlias i,) (visible i)
-            | i <- imports
-            ]
-        visible i =
-          Map.map
-            (\fixity -> (importModule i, fixity) :| [])
-            ( fixitiesIn
-                namespace
-                ( Map.filterWithKey
-                    ( \name@(n, _) _ ->
-                        n == namespace
-                          && mayBring (establishedMembers established) name i
+            [Map.mapKeys (importAlias i,) offers | (i, offers) <- visible]
+        visible =
+          [ ( i,
+              Map.map
+                (\fixity -> (importModule i, fixity) :| [])
+                ( fixitiesIn
+                    namespace
+                    ( Map.filterWithKey
+                        ( \name@(n, _) _ ->
+                            n == namespace
+                              && mayBring
+                                (establishedMembers established)
+                                name
+                                i
+                        )
+                        (establishedFixities established)
                     )
-                    (establishedFixities established)
                 )
             )
-          where
-            established = known (importModule i)
+          | (i, established) <- answered
+          ]
 
     settled ((m, fixity) :| _) = (fixity, DeclaredIn m)
 

@@ -150,7 +150,7 @@ withPlan plan = do
     it "resolves every module they import" $ do
       answers <-
         traverse
-          (\(path, m) -> (m,) <$> askModule resolver (Just path) m)
+          (\(path, m) -> (m,) <$> askModule resolver (Just path) (Nothing, m))
           (importedByOwn own)
       [m | (m, answer) <- answers, not (settlesEverything answer)]
         `shouldBe` []
@@ -286,7 +286,7 @@ ownModules = do
 -- | What a module exports, where reading it settles every name.
 fixitiesThrough :: Resolver -> Text -> IO (Maybe Fixities)
 fixitiesThrough resolver modName =
-  settled <$> askModule resolver Nothing modName
+  settled <$> askModule resolver Nothing (Nothing, modName)
   where
     settled established
       | settlesEverything established = Just (establishedFixities established)

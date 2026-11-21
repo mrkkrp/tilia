@@ -24,7 +24,7 @@ import Control.Concurrent (MVar, getNumCapabilities)
 import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
-import Control.Monad (filterM, guard, join)
+import Control.Monad (filterM, guard, join, mfilter)
 import Data.Choice (Choice, fromBool, pattern Do)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (asum, toList)
@@ -32,7 +32,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isNothing, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -115,9 +115,19 @@ data Route
 newtype Resolver = Resolver
   { -- | What reading a module established about the names it exports, as
     -- the file at the canonical path given, where it is one of the
-    -- project's own, imports it.
-    askModule :: Maybe FilePath -> Text -> IO Established
+    -- project's own, imports it with the package and module 'importedFrom'
+    -- gives.
+    askModule :: Maybe FilePath -> (Maybe Text, Text) -> IO Established
   }
+
+-- | Where the module an import names is read from.
+data Whereabouts
+  = -- | One of the project's own modules, by its name, in the file given.
+    Home Text FilePath
+  | -- | A module of a package the project depends on, of the package
+    -- given, or of the first to hold a module of its name where none is
+    -- given, by its name.
+    Elsewhere (Maybe Text) Text
 
 -- | Build a new 'Resolver' for the project in the current directory.
 --
@@ -185,8 +195,8 @@ newResolverWith routes cache installed tarballs packageReader plan = do
   extensionsRead <- newMemo
   archivesRead <- newMemo
   reading <- newQSem =<< getNumCapabilities
-  interfaceOf <- interfaceMemo flights $ \modName ->
-    case Map.lookup modName interfaces of
+  interfaceOf <- interfaceMemo flights $ \(package, modName) ->
+    case heldBy package modName interfaces of
       Nothing -> pure Nothing
       Just (_, path) ->
         bracket_ (waitQSem reading) (signalQSem reading) $
@@ -194,81 +204,90 @@ newResolverWith routes cache installed tarballs packageReader plan = do
   let generated = generatedModules plan
       reexported =
         Map.fromListWith
-          (\_ first' -> first')
-          [pair | i <- installed, pair <- ipReexports i]
+          (flip (<>))
+          [ (visible, [(ipName i, original)])
+          | i <- installed,
+            (visible, original) <- ipReexports i
+          ]
       -- The stand-in is what 'withReexports' makes of a module it is in the
       -- middle of reading.
-      reach visiting local modName
+      reach visiting local target
         | key `Set.member` visiting = pure mempty
         | otherwise =
             memoized flights answersRead mempty key $
-              resolveModule (Set.insert key visiting) found modName
+              resolveModule (Set.insert key visiting) found
         where
-          found = local modName
-          key = maybe modName T.pack found
-      resolveModule visiting found modName
-        | Just path <- found,
-          writtenForHsc path =
-            pure mempty
-        | Just path <- found =
-            readUtf8File path >>= \case
-              Nothing -> pure unreadable
-              Just source ->
-                fromSummaries (reach visiting (importable found)) modName
-                  =<< summariesOf found modName (snd (byteOrderMark source))
-        | Just original <- Map.lookup modName reexported,
-          Map.notMember modName interfaces =
-            reach visiting fromDependency original
-        | otherwise = answered <$> firstAnswer (fmap taking routes)
-        where
-          fromDependency = importable Nothing
+          found = local target
+          key = case found of
+            Home _ path -> T.pack path
+            Elsewhere package modName -> keyOf package modName
+      resolveModule visiting = \case
+        Home modName path
+          | writtenForHsc path -> pure mempty
+          | otherwise ->
+              readUtf8File path >>= \case
+                Nothing -> pure unreadable
+                Just source ->
+                  fromSummaries (reach visiting (importable (Just path))) modName
+                    =<< summariesOf
+                      (Left path)
+                      modName
+                      (snd (byteOrderMark source))
+        Elsewhere package modName
+          | Just original <- heldBy package modName reexported,
+            isNothing (heldBy package modName interfaces) ->
+              reach visiting fromDependency (Nothing, original)
+          | otherwise -> answered <$> firstAnswer (fmap taking routes)
+          where
+            fromDependency = importable Nothing
 
-          taking = \case
-            FromInterface -> viaInterface
-            FromSource -> viaArchive
+            taking = \case
+              FromInterface -> viaInterface
+              FromSource -> viaArchive
 
-          -- A route that read some of the module is kept in case no later
-          -- one reads all of it.
-          firstAnswer = go Nothing
-            where
-              go partial [] = pure (fromMaybe unreadable partial)
-              go partial (route : rest) =
-                route >>= \case
-                  Just established
-                    | settlesEverything established -> pure established
-                    | established /= unreadable ->
-                        go (partial <|> Just established) rest
-                  _ -> go partial rest
+            -- A route that read some of the module is kept in case no later
+            -- one reads all of it.
+            firstAnswer = go Nothing
+              where
+                go partial [] = pure (fromMaybe unreadable partial)
+                go partial (route : rest) =
+                  route >>= \case
+                    Just established
+                      | settlesEverything established -> pure established
+                      | established /= unreadable ->
+                          go (partial <|> Just established) rest
+                    _ -> go partial rest
 
-          viaInterface = case Map.lookup modName interfaces of
-            Nothing -> pure Nothing
-            Just (key, _) ->
-              throughCache key (Just <$> fromInterface interfaceOf modName)
+            viaInterface = case heldBy package modName interfaces of
+              Nothing -> pure Nothing
+              Just (key, _) ->
+                throughCache key $
+                  Just <$> fromInterface interfaceOf (package, modName)
 
-          viaArchive = case Map.lookup modName index of
-            Nothing -> pure Nothing
-            Just (package, tarball) ->
-              throughCache package $
-                fromSource
-                  moduleInArchive
-                  (summariesOf Nothing)
-                  (reach visiting fromDependency)
-                  tarball
-                  modName
+            viaArchive = case heldBy package modName index of
+              Nothing -> pure Nothing
+              Just held@(key, tarball) ->
+                throughCache key $
+                  fromSource
+                    moduleInArchive
+                    (summariesOf (Right held))
+                    (reach visiting fromDependency)
+                    tarball
+                    modName
 
-          answered established
-            | settlesEverything established = established
-            | Set.member modName generated =
-                established
-                  { establishedFixities = Map.empty,
-                    establishedUnsettled = Map.empty,
-                    establishedUntold = Set.empty
-                  }
-            | otherwise = established
-          throughCache key =
-            recalled
-              (cachedEstablished cache key modName)
-              (storeEstablished cache key modName)
+            answered established
+              | settlesEverything established = established
+              | Set.member modName generated =
+                  established
+                    { establishedFixities = Map.empty,
+                      establishedUnsettled = Map.empty,
+                      establishedUntold = Set.empty
+                    }
+              | otherwise = established
+            throughCache key =
+              recalled
+                (cachedEstablished cache key modName)
+                (storeEstablished cache key modName)
       summariesOf found modName text =
         extensionsOf found modName >>= \case
           Nothing -> pure Nothing
@@ -279,29 +298,28 @@ newResolverWith routes cache installed tarballs packageReader plan = do
                 stamp =
                   digestOf . T.intercalate "\n" $
                     [tshow extensions, macrosRead, text]
-            case digestOf . T.pack <$> found of
-              Nothing -> summarized
-              Just key ->
+            case found of
+              Right _ -> summarized
+              Left path -> do
+                let key = digestOf (T.pack path)
                 join
                   <$> recalled
                     (cachedSummaries cache key stamp)
                     (storeSummaries cache key stamp)
                     (Just <$> summarized)
       macrosRead = tshow (macrosOf plan)
-      extensionsOf found modName
-        | Just path <- found =
-            either (const Nothing) Just <$> packageReader path
-        | Just (package, tarball) <- Map.lookup modName index =
-            fmap ($ modName)
-              <$> memoized
-                flights
-                extensionsRead
-                Nothing
-                package
-                ( fmap moduleExtensions . (archiveCabal =<<)
-                    <$> archiveOf tarball
-                )
-        | otherwise = pure Nothing
+      extensionsOf found modName = case found of
+        Left path -> either (const Nothing) Just <$> packageReader path
+        Right (key, tarball) ->
+          fmap ($ modName)
+            <$> memoized
+              flights
+              extensionsRead
+              Nothing
+              key
+              ( fmap moduleExtensions . (archiveCabal =<<)
+                  <$> archiveOf tarball
+              )
       archiveOf tarball =
         memoized
           flights
@@ -318,16 +336,42 @@ newResolverWith routes cache installed tarballs packageReader plan = do
 interfaceMemo ::
   -- | Who is working out what, across the resolver's tables.
   MVar Flights ->
-  -- | How to read a module's interface.
-  (Text -> IO (Maybe Interface)) ->
-  IO (Text -> IO (Maybe Interface))
+  -- | How to read the interface of a module, given as 'importedFrom' gives
+  -- it.
+  ((Maybe Text, Text) -> IO (Maybe Interface)) ->
+  IO ((Maybe Text, Text) -> IO (Maybe Interface))
 interfaceMemo flights read' = do
   interfacesRead <- newMemo
-  pure $ \modName ->
-    memoized flights interfacesRead Nothing modName $
+  pure $ \target@(package, modName) ->
+    memoized flights interfacesRead Nothing (keyOf package modName) $
       case Map.lookup modName primopFixities of
         Just declared -> pure (Just (asInterface declared))
-        Nothing -> read' modName
+        Nothing -> read' target
+
+-- | The key a module of a package, or of whichever package holds one of
+-- its name where none is given, is remembered under.
+keyOf ::
+  -- | The package.
+  Maybe Text ->
+  -- | The module.
+  Text ->
+  Text
+keyOf package modName = maybe modName (<> ":" <> modName) package
+
+-- | What the package given holds under a module's name, or the first
+-- package to hold one where none is given.
+heldBy ::
+  -- | The package.
+  Maybe Text ->
+  -- | The module.
+  Text ->
+  -- | What each package holds under each name, by name, the packages in
+  -- the order they are taken in.
+  Map Text [(Text, a)] ->
+  Maybe a
+heldBy package modName held = do
+  holders <- Map.lookup modName held
+  maybe (snd <$> listToMaybe holders) (`lookup` holders) package
 
 -- | A 'Resolver' that reads every module out of the interface given for it,
 -- for a program that has compiled the project and holds its interfaces.
@@ -338,13 +382,13 @@ newResolverFrom ::
 newResolverFrom given = do
   flights <- newFlights
   answersRead <- newMemo
-  interfaceOf <- interfaceMemo flights $ \modName ->
+  interfaceOf <- interfaceMemo flights $ \(_, modName) ->
     (either (const Nothing) Just . fromHiFile modName =<<) <$> given modName
   pure
     Resolver
-      { askModule = \_ modName ->
+      { askModule = \_ (_, modName) ->
           memoized flights answersRead unreadable modName $
-            fromInterface interfaceOf modName
+            fromInterface interfaceOf (Nothing, modName)
       }
 
 -- | Work out what a module can see, using a resolver to reach its imports.
@@ -374,7 +418,7 @@ scopeFor resolver importer implicitPrelude configurations = do
   answers <-
     inParallel
       (\m -> (m,) <$> asked m)
-      (fmap importModule imports)
+      (fmap importedFrom imports)
   let table = Map.fromList answers
   pure $
     resolveScope
@@ -382,7 +426,7 @@ scopeFor resolver importer implicitPrelude configurations = do
       (\m -> Map.findWithDefault unreadable m table)
       configurations
 
--- | Which package and tarball holds each module.
+-- | Which packages and tarballs hold each module.
 buildModuleIndex ::
   -- | Where to remember each package's module list.
   Cache ->
@@ -391,11 +435,12 @@ buildModuleIndex ::
   [InstalledPackage] ->
   -- | Every package that might have a tarball, and where it would be.
   [(PlanPackage, FilePath)] ->
-  -- | For each module, the package that holds it (as a cache key) and
-  -- the tarball holding its source.
-  IO (Map Text (Text, FilePath))
+  -- | For each module, each package that holds it, in the order given, by
+  -- name, with the package as a cache key and the tarball holding its
+  -- source.
+  IO (Map Text [(Text, (Text, FilePath))])
 buildModuleIndex cache installed tarballs =
-  Map.fromListWith (\_ first' -> first') . concat <$> traverse one tarballs
+  Map.fromListWith (flip (<>)) . concat <$> traverse one tarballs
   where
     byNameVersion =
       Map.fromList [((ipName i, ipVersion i), ipModules i) | i <- installed]
@@ -403,14 +448,18 @@ buildModuleIndex cache installed tarballs =
       let key = cacheKey p
       let exposed = Map.lookup (ppName p, ppVersion p) byNameVersion
       held <- fromCabalFile cache tarball p
-      pure [(m, (key, tarball)) | m <- concat (catMaybes [exposed, held])]
+      pure
+        [ (m, [(ppName p, (key, tarball))])
+        | m <- concat (catMaybes [exposed, held])
+        ]
 
--- | Where each installed module's compiled interface is.
-interfaceIndex :: [InstalledPackage] -> Map Text (Text, FilePath)
+-- | Where each installed module's compiled interface is, for each package
+-- that holds one, by name, with a cache key for the directory it is in.
+interfaceIndex :: [InstalledPackage] -> Map Text [(Text, (Text, FilePath))]
 interfaceIndex installed =
   Map.fromListWith
-    (\_ first' -> first')
-    [ (m, (key, dir </> pathOfModule m <> ".hi"))
+    (flip (<>))
+    [ (m, [(ipName i, (key, dir </> pathOfModule m <> ".hi"))])
     | i <- installed,
       dir <- ipImportDirs i,
       -- Bound out here so that the directory is hashed once rather than
@@ -438,13 +487,14 @@ asInterface fixities =
 -- | What a compiled interface says a module exports, with the fixities of
 -- what it passes on read from where each is declared.
 fromInterface ::
-  -- | A module's interface, if it has one.
-  (Text -> IO (Maybe Interface)) ->
-  -- | The module to read.
-  Text ->
+  -- | A module's interface, if it has one, given as 'importedFrom' gives
+  -- the module.
+  ((Maybe Text, Text) -> IO (Maybe Interface)) ->
+  -- | The module to read, as 'importedFrom' gives it.
+  (Maybe Text, Text) ->
   IO Established
-fromInterface interfaceOf modName =
-  interfaceOf modName >>= \case
+fromInterface interfaceOf target =
+  interfaceOf target >>= \case
     Nothing -> pure unreadable
     Just iface -> do
       declarers <-
@@ -475,7 +525,7 @@ fromInterface interfaceOf modName =
           }
   where
     asked m = do
-      interface <- interfaceOf m
+      interface <- interfaceOf (Nothing, m)
       pure (m, interface)
     distinct = Map.keys . Map.fromList . fmap (,())
 
@@ -513,9 +563,10 @@ fromSource ::
   (FilePath -> Text -> IO (Maybe InArchive)) ->
   -- | What each configuration of a module says, given its text.
   (Text -> Text -> IO (Maybe (NonEmpty ModuleSummary))) ->
-  -- | How to reach another module, for chasing re-exports. This is the
-  -- resolver tied back on itself, with the visiting set already extended.
-  (Text -> IO Established) ->
+  -- | How to reach another module, given as 'importedFrom' gives it, for
+  -- chasing re-exports. This is the resolver tied back on itself, with the
+  -- visiting set already extended.
+  ((Maybe Text, Text) -> IO Established) ->
   -- | The tarball holding this module's source.
   FilePath ->
   -- | The module to read.
@@ -536,9 +587,10 @@ fromSource moduleInArchive summariesOf reach tarball modName =
 
 -- | What a module exports, out of what each of its configurations says.
 fromSummaries ::
-  -- | How to reach another module, for chasing re-exports. This is the
-  -- resolver tied back on itself, with the visiting set already extended.
-  (Text -> IO Established) ->
+  -- | How to reach another module, given as 'importedFrom' gives it, for
+  -- chasing re-exports. This is the resolver tied back on itself, with the
+  -- visiting set already extended.
+  ((Maybe Text, Text) -> IO Established) ->
   -- | The name the module was looked up under.
   Text ->
   -- | What each configuration of it says, or 'Nothing' where none of them
@@ -616,17 +668,21 @@ agreeing answers =
         }
 
 -- | Where each module the file at the canonical path given, where it is one
--- of the project's own, imports from a directory rather than an archive is.
+-- of the project's own, imports is, given as 'importedFrom' gives it.
 --
 -- A module of the component with the source directory nearest above the
 -- file comes before any library's, as GHC looks in a component's own
 -- source directories before the packages it depends on. Components whose
 -- directories are as near count together. Each component is taken as a
 -- build on this machine configures it, unless only a build elsewhere
--- compiles the file, which takes it with what every branch declares.
-localModules :: BuildPlan -> IO (Maybe FilePath -> Text -> Maybe FilePath)
+-- compiles the file, which takes it with what every branch declares. An
+-- import naming a package other than the project's own leaves them all
+-- out.
+localModules ::
+  BuildPlan ->
+  IO (Maybe FilePath -> (Maybe Text, Text) -> Whereabouts)
 localModules plan = do
-  (declared, built) <-
+  (declared, built, named) <-
     mconcat
       <$> traverse forPackage (nubOrd (concatMap directoryOf (bpPackages plan)))
   let elsewhere = Set.difference (filesOf declared) (filesOf built)
@@ -641,6 +697,7 @@ localModules plan = do
          in (held, Map.unions [modules | (Lib, _, modules) <- held])
       ofBuild = viewOf built
       ofEvery = viewOf declared
+      own = Set.fromList ("this" : named)
   pure $ \importer ->
     let (components, libraries)
           | any (`Set.member` elsewhere) importer = ofEvery
@@ -653,9 +710,11 @@ localModules plan = do
           ]
         holding =
           [modules | (n, modules) <- covering, all ((n <=) . fst) covering]
-     in \modName ->
-          asum (fmap (Map.lookup modName) holding)
-            <|> Map.lookup modName libraries
+     in \(package, modName) ->
+          case asum (fmap (Map.lookup modName) holding)
+            <|> Map.lookup modName libraries of
+            Just path | all (`Set.member` own) package -> Home modName path
+            _ -> Elsewhere (mfilter (/= "this") package) modName
   where
     directoryOf p = case ppSource p of
       LocalPackage dir -> [dir]
@@ -678,7 +737,7 @@ localModules plan = do
                   )
                   described
               let components = packageComponents described
-              (,)
+              (,,)
                 <$> for components (\(kind, _, branches) -> component dir kind (declaredModules branches))
                 <*> for
                   [ (kind, builtSection b valueOf)
@@ -692,6 +751,7 @@ localModules plan = do
                         | d <- sourceDirsOf (sectionInfo section)
                         ]
                   )
+                <*> pure [packageOf described]
     component dir kind sources = do
       placed <- for sources $ \(d, modules) -> do
         root <- canonicalizePath (dir </> d)
@@ -705,8 +765,9 @@ localModules plan = do
 -- | What a module exports, out of what it declares and what its imports
 -- bring in.
 withReexports ::
-  -- | How to reach another module, for names this one only passes on.
-  (Text -> IO Established) ->
+  -- | How to reach another module, given as 'importedFrom' gives it, for
+  -- names this one only passes on.
+  ((Maybe Text, Text) -> IO Established) ->
   -- | The name this module was looked up under.
   Text ->
   -- | The module.
@@ -736,7 +797,7 @@ withReexports reach modName summary =
               not (local qualifier (snd kid))
             ]
       more <- reached $ \i ->
-        Map.notMember (importModule i) listed && any (suppliedBy i) members
+        Map.notMember (importedFrom i) listed && any (suppliedBy i) members
       let answers = Map.union listed more
           parts = fmap (exported answers reexported) items
       pure . together $
@@ -775,7 +836,7 @@ withReexports reach modName summary =
       Map.fromList
         <$> traverse
           (\m -> (m,) <$> reach m)
-          (Set.toList (Set.fromList [importModule i | i <- imports, wanted i]))
+          (Set.toList (Set.fromList [importedFrom i | i <- imports, wanted i]))
     suppliedBy i (qualifier, name) = maySupply Map.empty qualifier name i
     named = \case
       ExportName namespace qualifier op ->
@@ -896,7 +957,7 @@ withReexports reach modName summary =
     candidates answers qualifier name =
       [ (i, established)
       | i <- imports,
-        Just established <- [Map.lookup (importModule i) answers],
+        Just established <- [Map.lookup (importedFrom i) answers],
         maySupply (establishedMembers established) qualifier name i
       ]
 
@@ -984,7 +1045,7 @@ withReexports reach modName summary =
           establishedMembers = establishedMembers established
         }
       where
-        established = Map.findWithDefault mempty (importModule i) answers
+        established = Map.findWithDefault mempty (importedFrom i) answers
         certain = establishedCertain established
         admitted name =
           maySupply (establishedMembers established) Nothing name i

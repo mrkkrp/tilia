@@ -277,7 +277,7 @@ renderSummaries = \case
       ExportModule m -> ["export", "module", m]
     under qualifier ops = fromMaybe "-" qualifier : [op | OpName op <- ops]
     renderImport i =
-      ["import", importModule i, qualification i, importAlias i]
+      (["import", importModule i, qualification i, importAlias i] <> toList (importPackage i))
         : case importNames i of
           Nothing -> []
           Just (hiding, items) ->
@@ -327,15 +327,22 @@ parseSummaries = \case
         item <- exportItem fields
         items <- summaryExports s
         go s{summaryExports = Just (item : items)} rest
-      ["import", m, how, alias] : rest -> do
+      ("import" : m : how : alias : named) : rest -> do
         qualified <- case how of
           "qualified" -> Just True
           "open" -> Just False
           _ -> Nothing
+        package <- case named of
+          [] -> Just Nothing
+          [p] -> Just (Just p)
+          _ -> Nothing
         let (listed, rest') = span isListed rest
         list <- importList listed
         go
-          s{summaryImports = Import m qualified alias list : summaryImports s}
+          s
+            { summaryImports =
+                Import m package qualified alias list : summaryImports s
+            }
           rest'
       ("fixity" : fields) : rest -> do
         (key, fixity) <- parseFixity fields

@@ -346,10 +346,11 @@ crowded =
             ExportModule "Data.List"
           ],
       summaryImports =
-        [ Import "Prelude" False "Prelude" Nothing,
-          Import "Data.List" True "Q" Nothing,
+        [ Import "Prelude" Nothing False "Prelude" Nothing,
+          Import "Data.List" (Just "base") True "Q" Nothing,
           Import
             "Data.Map"
+            Nothing
             False
             "Data.Map"
             ( Just
@@ -362,6 +363,7 @@ crowded =
             ),
           Import
             "Data.Set"
+            (Just "this")
             False
             "S"
             ( Just
@@ -371,7 +373,7 @@ crowded =
                   ]
                 )
             ),
-          Import "Data.Void" False "Data.Void" (Just (False, []))
+          Import "Data.Void" Nothing False "Data.Void" (Just (False, []))
         ],
       summaryFixities =
         Map.fromList
