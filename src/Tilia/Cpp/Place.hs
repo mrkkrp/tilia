@@ -18,7 +18,7 @@ import Data.Foldable (traverse_)
 import Data.List (find, sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Ord (Down (..))
 import Data.Set (Set)
@@ -416,11 +416,15 @@ anchoredIn ::
   [Conditional] ->
   -- | Which alternative this is.
   Int ->
+  -- | The alternative.
   Doc ->
   Doc
 anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
   where
-    anchor x (n, s) = placeAt (const False) Nothing n (DLocated s mempty) id x
+    anchor x (n, s) =
+      fromMaybe
+        (placeAt (const False) Nothing n (DLocated s mempty) id x)
+        (beforeWrittenAfter (startPoint s) (DLocated s mempty) x)
     here n = case alternativeAt n cs of
       Everywhere -> True
       Only i -> i == k
@@ -433,6 +437,27 @@ anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
               closing - 1 > from
             ]
       [] -> []
+
+-- | Put a document right before the first region another prints that was
+-- written after a point, inside whatever holds that region, if it prints
+-- one, as a comment above that region would be.
+beforeWrittenAfter ::
+  -- | The point.
+  (Int, Int) ->
+  -- | What to put there.
+  Doc ->
+  -- | The document to put it in.
+  Doc ->
+  Maybe Doc
+beforeWrittenAfter point body = go
+  where
+    go = \case
+      d@(DLocated s x)
+        | startPoint s > point -> Just (body <> d)
+        | otherwise -> DLocated s <$> go x
+      DCat a b -> (`DCat` b) <$> go a <|> DCat a <$> go b
+      DVariant a b -> DVariant (fromMaybe (a <> body) (go a)) <$> go b
+      d -> unwrap d >>= \(w, x) -> wrap w <$> go x
 
 -- | A column past the end of any line, for an anchor that has to come after
 -- everything written on its line.
