@@ -202,8 +202,12 @@ data FamilyStyle
 
 -- | What the surroundings of a node oblige it to do.
 data Site = Site
-  { -- | Is this the function of an application, as @f@ is in @f a@?
-    siteApplicand :: Bool,
+  { -- | Is it followed by a line a step in, as @f@ may be by one with @a@
+    -- in @f a@, and @x@ by one with @- 1@ in @x - 1@?
+    --
+    -- A layout block it ends with puts its items a further step in, so that
+    -- the layout rule ends the block before that line.
+    siteFollowed :: Bool,
     -- | Is this an item of a layout block?
     --
     -- Such an item may not leave a bracket open for the block's own layout
@@ -219,7 +223,7 @@ data Site = Site
 plainSite :: Site
 plainSite =
   Site
-    { siteApplicand = False,
+    { siteFollowed = False,
       siteInBlock = False,
       siteBracing = NoBrace
     }
@@ -228,10 +232,15 @@ plainSite =
 withBracing :: Bracing -> Site -> Site
 withBracing bracing site = site{siteBracing = bracing}
 
--- | Indent a hanging body, one step further when it hangs off an applicand.
-underSite :: Site -> Doc -> Doc
+-- | Indent a hanging body, one step further where a line a step in follows.
+underSite ::
+  -- | The site of the node the body hangs off.
+  Site ->
+  -- | The body.
+  Doc ->
+  Doc
 underSite site =
-  nest (if siteApplicand site then 2 else 1)
+  nest (if siteFollowed site then 2 else 1)
 
 -- | Where a bracket opened here has to close.
 closingFor :: Site -> ClosingIndent

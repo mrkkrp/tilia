@@ -523,6 +523,11 @@
   conditional whose branches begin with an import in one and a declaration
   in another: it came out twice in the configurations that read it, as a
   Haddock and escaped as `-- \|`.
+* Where a minus goes on a line of its own after an operand that ends with
+  a `case`, a `do` or another layout block, the block's items go a step
+  further in, as they do before an argument, rather than at the column of
+  the minus, where it began another alternative or statement and negated
+  it.
 
 ## Tilia 0.1.4.0
 

@@ -13,7 +13,7 @@ module Tilia.Render.Operator
   )
 where
 
-import Data.List (tails, zip4)
+import Data.List (zip4)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isNothing, mapMaybe)
@@ -121,11 +121,17 @@ splitOn cuts (x0 :| xs) ops = go (x0 :| []) [] (zip ops xs)
       | otherwise = go (NE.cons y current) (op : currentOps) rest
 
 -- | Each operator of a chain level with the operands either side of it,
--- and whether the one after it is the last.
+-- and the operator after the second of them, if there is one.
 links ::
-  NonEmpty (OpChain a op) -> [op] -> [(OpChain a op, op, OpChain a op, Bool)]
+  NonEmpty (OpChain a op) ->
+  [op] ->
+  [(OpChain a op, op, OpChain a op, Maybe op)]
 links (firstOne :| rest) operators =
-  zip4 (firstOne : rest) operators rest (fmap null (drop 1 (tails rest)))
+  zip4
+    (firstOne : rest)
+    operators
+    rest
+    (fmap Just (drop 1 operators) <> repeat Nothing)
 
 -- | The region of the input a chain came from.
 chainSpan :: (a -> Maybe Span) -> OpChain a op -> Maybe Span
