@@ -197,6 +197,9 @@ data CppError
   | -- | An alternative that aborts with @#error@ that cannot be formatted
     -- without parsing it, and the line of the @#error@.
     AbortingAlternative Int
+  | -- | A Haddock that some configurations read and others ignore, and the
+    -- line it begins on.
+    HaddockReadDifferently Int
 
 -- | What is wrong with a conditional directive.
 data Malformation
@@ -241,6 +244,10 @@ describeCppError = \case
     "the alternative that the #error at line "
       <> tshow n
       <> " aborts cannot be formatted without parsing it"
+  HaddockReadDifferently n ->
+    "the Haddock at line "
+      <> tshow n
+      <> " is read by some configurations and ignored by others"
 
 -- | Which configuration, in words. Empty where there is only one.
 inConfiguration :: [([Guard], Int)] -> Text

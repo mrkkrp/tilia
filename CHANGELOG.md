@@ -472,7 +472,7 @@
   [PR 536](https://github.com/mrkkrp/tilia/pull/536).
 * The exit codes run from 2 without gaps, in the order of the errors they
   stand for, so most of them change: formatting that changes the program
-  now exits with 26, and formatting that is not idempotent with 27.
+  now exits with 27, and formatting that is not idempotent with 28.
   [PR 536](https://github.com/mrkkrp/tilia/pull/536).
 * A module with CPP in force is declined, with exit code 13, where a macro
   it defines as a context, as `#define HasCallStack_ HasCallStack =>`, is
@@ -518,6 +518,11 @@
 * A comment after code that the conditional above it has every branch
   print a copy of comes out after each copy, rather than after the copy
   in the first branch only, or after the `#endif`.
+* A module with CPP in force is declined, with exit code 22, where some
+  of its configurations read a Haddock that others ignore, as one above a
+  conditional whose branches begin with an import in one and a declaration
+  in another: it came out twice in the configurations that read it, as a
+  Haddock and escaped as `-- \|`.
 
 ## Tilia 0.1.4.0
 
