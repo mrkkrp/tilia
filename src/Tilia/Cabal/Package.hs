@@ -11,6 +11,7 @@ module Tilia.Cabal.Package
     declaredModules,
     declaredModuleNames,
     modulesOf,
+    renamedModules,
     packageSourceDirs,
     sourceDirsOf,
     moduleExtensions,
@@ -63,7 +64,10 @@ import Distribution.PackageDescription
     FlagAssignment,
     ForeignLib (..),
     GenericPackageDescription (..),
+    IncludeRenaming (..),
     Library (..),
+    Mixin (..),
+    ModuleRenaming (..),
     PackageDescription (..),
     PackageFlag (..),
     TestSuite (..),
@@ -464,6 +468,20 @@ modulesOf section =
     )
   | (sub, name) <- sectionModules section
   ]
+
+-- | The modules of other packages a component's @mixins@ give other names:
+-- each such name, with the package and the module's name there.
+renamedModules :: BuildInfo -> [(Text, (Text, Text))]
+renamedModules bi =
+  [ ( dotted new,
+      (T.pack (unPackageName (mixinPackageName mixin)), dotted original)
+    )
+  | mixin <- mixins bi,
+    ModuleRenaming pairs <- [includeProvidesRn (mixinIncludeRenaming mixin)],
+    (original, new) <- pairs
+  ]
+  where
+    dotted = T.intercalate "." . fmap T.pack . ModuleName.components
 
 -- | The names of the modules a package declares, whatever the conditions in
 -- its @.cabal@ file.

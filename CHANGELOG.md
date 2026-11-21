@@ -578,6 +578,12 @@
   name comes first, which was the importing module itself where the two
   share a name, as in ansi-wl-pprint's `Text.PrettyPrint.ANSI.Leijen`, and
   had every module using it declined.
+* A module that a component's `mixins` give another name, as in `mixins:
+  base (Prelude as BasePrelude)` or `relude (Relude as Prelude)`, is read
+  under that name. A module importing such a name was declined, and one
+  whose `Prelude` a mixin renames was formatted with the fixities of
+  base's, so an operator only the renamed one exports, as relude's `&`,
+  was laid out as `infixl 9`.
 
 ## Tilia 0.1.4.0
 
