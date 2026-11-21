@@ -528,6 +528,10 @@
   further in, as they do before an argument, rather than at the column of
   the minus, where it began another alternative or statement and negated
   it.
+* A promoted list or tuple whose first item begins with a promoted type
+  under an operator, a kind signature or a kind application, as in
+  `'[ 'True ': '[]]`, keeps the space after its opening, rather than
+  beginning with a character literal, which did not parse.
 
 ## Tilia 0.1.4.0
 

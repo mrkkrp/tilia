@@ -297,6 +297,9 @@ quoteGap _ _ = mempty
 startsWithTick :: HsType GhcPs -> Bool
 startsWithTick = \case
   HsAppTy _ (L _ f) _ -> startsWithTick f
+  HsAppKindTy _ (L _ t) _ -> startsWithTick t
+  HsOpTy _ _ (L _ x) _ _ -> startsWithTick x
+  HsKindSig _ (L _ t) _ -> startsWithTick t
   HsTyVar _ IsPromoted _ -> True
   HsExplicitTupleTy{} -> True
   HsExplicitListTy{} -> True
