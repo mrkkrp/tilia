@@ -612,6 +612,11 @@
   `!` and moving left on the next formatting, and a comment written above
   a field's `{-# UNPACK #-}` stays above the pragma, rather than coming
   out between the pragma and the field.
+* A comment lined up with the last line of a constructor that another
+  follows, as one under its last argument, stays under that constructor,
+  rather than going after the bar of the next one. With the next
+  constructor's Haddock between them, it stayed at first and moved on the
+  next formatting.
 
 ## Tilia 0.1.4.0
 

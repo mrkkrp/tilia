@@ -210,6 +210,7 @@ placeComments regions leads fences comments =
 
         under
           | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,
+            not (commentGapAbove top),
             all (beginsUnder (commentNextLine bottom)) next =
               lineOfCode top
           | otherwise = Nothing
