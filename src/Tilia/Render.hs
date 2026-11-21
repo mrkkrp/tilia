@@ -150,8 +150,8 @@ moduleCtx render parsed held =
       { mcRender = render,
         mcOpening = opening,
         mcHeadings = Set.toList (Set.fromList (mapMaybe heading held)),
-        mcUnderImports = maybe id (IntMap.delete . snd) bounds underImports,
-        mcBelowImports = (`IntMap.lookup` underImports) . snd =<< bounds,
+        mcUnderImports = maybe id IntMap.delete final underImports,
+        mcBelowImports = (`IntMap.lookup` underImports) =<< final,
         mcMagicCommentRanges = magicCommentRanges
       },
     [ if among c && isNothing (heading c) || IntSet.member (line c) travellers
@@ -165,14 +165,13 @@ moduleCtx render parsed held =
   where
     hsMod = pmModule parsed
     ls = sourceLines (pmSource parsed)
-    opening = importsOpening ls held (fst <$> bounds)
+    opening = importsOpening ls held (fst <$> bounds Nothing)
     imports = mapMaybe spanOf (hsmodImports hsMod)
-    among = amongImports bounds imports
-    bounds =
-      rcImportBounds render
-        <|> fmap
-          (\starts -> (NE.head starts, NE.last starts))
-          (NE.nonEmpty (fmap spanStartLine imports))
+    among c = amongImports (bounds (Just (line c))) imports c
+    final = snd <$> (bounds . Just . NE.last =<< NE.nonEmpty starts)
+    bounds having = rcImportBounds render having <|> own
+    own = (\ss -> (NE.head ss, NE.last ss)) <$> NE.nonEmpty starts
+    starts = fmap spanStartLine imports
     blocks =
       commentRuns (filter (\c -> among c && not (commentTrailing c)) held)
     heading c = do
@@ -390,7 +389,7 @@ headsImports barriers ls imports column (above, under) =
 -- | Is a comment written between imports rather than inside one?
 amongImports ::
   -- | The first and the last line an import begins on in any configuration
-  -- of the module, where it has imports.
+  -- that has the comment, where they have imports.
   Maybe (Int, Int) ->
   -- | Where the imports of this configuration are.
   [Span] ->

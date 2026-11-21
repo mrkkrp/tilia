@@ -179,43 +179,52 @@ parseConfiguration config path written haddocks source =
         . GHC.diagnosticMessage GHC.NoDiagnosticOpts
         . GHC.errMsgDiagnostic
 
--- | Return each line among the imports that a token other than a comment
--- begins on, and whether the leftmost such token on the line begins an
--- import.
+-- | Return each line among the imports of any branch that a token other
+-- than a comment begins on, and whether the leftmost such token on the line
+-- begins an import. A declaration written inside a conditional is passed
+-- over, since another branch may hold imports after it.
 -- 'Nothing' if the module has no imports, writes its top level in explicit
 -- braces, or does not lex.
 importLayout ::
   -- | Parser config.
   ParserConfig ->
+  -- | Is a line written inside a conditional?
+  (Int -> Bool) ->
   -- | The module, with its preprocessor directives blanked.
   Text ->
   -- | The import layout.
   Maybe (IntMap Bool)
-importLayout config source =
-  case GHC.unP (lexing Nothing Nothing IntMap.empty) start of
+importLayout config conditional source =
+  case GHC.unP (lexing Nothing Nothing False IntMap.empty) start of
     GHC.POk _ found -> found
     GHC.PFailed _ -> Nothing
   where
     start =
       stateFor config (effectiveExtensions (pcDefaults config) source) "" source
-    lexing topLevel previous found =
+    lexing topLevel previous passing found =
       GHC.lexer False $ \(GHC.L s t) -> case GHC.srcSpanStart s of
         _ | GHC.ITeof <- t -> pure (atTopLevel topLevel found)
         GHC.RealSrcLoc l _
           | code t ->
-              let column = GHC.srcLocCol l
-                  found' = IntMap.insertWith min (GHC.srcLocLine l) column found
+              let line = GHC.srcLocLine l
+                  column = GHC.srcLocCol l
+                  found' = IntMap.insertWith min line column found
                in case (t, previous, topLevel) of
                     (GHC.ITocurly, Just GHC.ITwhere, Nothing) -> pure Nothing
                     (GHC.ITimport, _, Nothing) ->
-                      lexing (Just column) (Just t) found'
-                    (_, _, Nothing) -> lexing topLevel (Just t) found
+                      lexing (Just column) (Just t) False found'
+                    (_, _, Nothing) -> lexing topLevel (Just t) False found
                     (_, _, Just c)
                       | column <= c,
                         not (isImport t) ->
-                          pure (atTopLevel topLevel found)
-                    _ -> lexing topLevel (Just t) found'
-        _ -> lexing topLevel previous found
+                          if conditional line
+                            then lexing topLevel (Just t) True found
+                            else pure (atTopLevel topLevel found)
+                      | passing,
+                        column > c ->
+                          lexing topLevel (Just t) True found
+                    _ -> lexing topLevel (Just t) False found'
+        _ -> lexing topLevel previous passing found
     atTopLevel topLevel found = (\c -> fmap (<= c) found) <$> topLevel
     isImport = \case
       GHC.ITimport -> True
