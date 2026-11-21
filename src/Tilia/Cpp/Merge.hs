@@ -113,7 +113,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
           case (w, go (layoutInside layout w) (fmap snd wds)) of
             (WLocated _, _)
               | spans <- [s | (WLocated s, _) <- wds],
-                Just opened <- unwrapping layout spans xs (coveredAmong spans) ->
+                Just opened <-
+                  unwrapping layout spans xs (coveredAmong settings xs) ->
                   opened
             (WGroup l, merged)
               | l /= Broken,
@@ -709,17 +710,32 @@ onlyChoice = \case
   DCppChoice{} -> True
   d -> maybe False (onlyChoice . snd) (unwrap d)
 
--- | Is one of these regions, but the one covering them all, among these
--- parts?
+-- | Is one of these documents, but one covering them all, among these
+-- parts, printing the same text there?
+--
+-- A part and a document printed from the same region can differ where the
+-- region is a child's in one and its parent's in the other, the parent
+-- printing a separator after the child.
 coveredAmong ::
-  -- | The regions.
-  [Span] ->
+  -- | What the documents are printed with.
+  Settings ->
+  -- | The documents.
+  [Doc] ->
   -- | The parts.
   [Doc] ->
   Bool
-coveredAmong spans = any (maybe False covered . regionOf)
+coveredAmong settings xs parts =
+  or
+    [ text p == text x
+    | p <- parts,
+      Just s <- [regionOf p],
+      not (all (covers s) spans),
+      x <- xs,
+      regionOf x == Just s
+    ]
   where
-    covered s = s `elem` spans && not (all (covers s) spans)
+    spans = mapMaybe regionOf xs
+    text = T.filter (not . isSpace) . printDoc settings
 
 -- | Does this document, laid out flat, print a choice before anything else?
 beginsWithChoice :: Doc -> Bool
