@@ -223,7 +223,7 @@ indentedBy settings n =
 -- | What to parse a module of no package with: GHC2021.
 defaultParserConfig :: ParserConfig
 defaultParserConfig =
-  ParserConfig (defaultsOf (editionExtensions (Just GHC.GHC2021)) [])
+  ParserConfig (defaultsOf False (editionExtensions (Just GHC.GHC2021)) [])
 
 -- | Parse a module, or stop the test saying why it does not parse.
 parsed :: Text -> ParsedModule

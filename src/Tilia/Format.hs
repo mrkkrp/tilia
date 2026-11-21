@@ -506,7 +506,9 @@ compiledSession file Compiled{..} checkAst checkIdempotence = runExceptT $ do
             (Just (numbers compiledWith))
             (fmap numbers compiledPackages),
         sessionPackage =
-          \_ -> pure (Right (defaultsOf Set.empty (On <$> compiledExtensions))),
+          \_ ->
+            pure
+              (Right (defaultsOf False Set.empty (On <$> compiledExtensions))),
         sessionCheckAst = astCheckFor checkAst,
         sessionCheckIdempotence = checkIdempotence,
         sessionFixityNotes = Nothing

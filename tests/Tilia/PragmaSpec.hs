@@ -192,7 +192,7 @@ spec = do
         `shouldBe` editionExtensions (Just GHC2024)
     it "keeps what the component switches on top of the module's edition" $
       effectiveExtensions
-        (defaultsOf (editionExtensions (Just Haskell2010)) [On OverloadedStrings])
+        (defaultsOf False (editionExtensions (Just Haskell2010)) [On OverloadedStrings])
         "{-# LANGUAGE GHC2021 #-}\nmodule M where\n"
         `shouldSatisfy` \es ->
           all (`Set.member` es) [OverloadedStrings, ImportQualifiedPost]
@@ -251,7 +251,7 @@ spec = do
       forAll (listOf1 (pragmaNaming headerNames)) $ \pragmas ->
         let ours =
               effectiveExtensions
-                (defaultsOf (editionExtensions Nothing) [])
+                (defaultsOf False (editionExtensions Nothing) [])
                 (headerOf pragmas)
             theirs =
               EnumSet.toList
@@ -284,7 +284,7 @@ spec = do
 -- these in force and which switches nothing itself.
 inForceUnder :: [Extension] -> Text -> Set Extension
 inForceUnder edition =
-  effectiveExtensions (defaultsOf (Set.fromList edition) [])
+  effectiveExtensions (defaultsOf False (Set.fromList edition) [])
 
 -- | A pragma of a header, as its name and its body, with the flags it hands
 -- GHC.

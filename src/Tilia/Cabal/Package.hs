@@ -178,7 +178,7 @@ newPackageReader planned flags project = do
           Left problem -> pure (Left problem)
           Right components
             | equalFilePath file (takeDirectory cabalFile </> setupScript) ->
-                pure (Right (defaultsOf (editionExtensions Nothing) []))
+                pure (Right (defaultsOf False (editionExtensions Nothing) []))
             | Just c <- claiming file components ->
                 pure (Right (componentExtensions c))
             | otherwise -> elsewhere file (FileUnclaimed cabalFile)
@@ -528,10 +528,12 @@ moduleExtensions described = \modName ->
     whole = inForce (concat components)
     inForce branches =
       defaultsOf
+        (namesSafeMode used)
         baseline
-        (mapMaybe extensionSwitch (concatMap usedExtensions infos))
+        (mapMaybe extensionSwitch used)
       where
         infos = [sectionInfo (ownSection branch) | branch <- branches]
+        used = concatMap usedExtensions infos
         baseline = case mapMaybe (ghcLanguage <=< defaultLanguage) infos of
           [] -> editionExtensions (Just GHC.Haskell98)
           editions -> foldMap (editionExtensions . Just) editions
@@ -679,13 +681,27 @@ sourceDirsOf bi = case fmap getSymbolicPath (hsSourceDirs bi) of
   ds -> ds
 
 -- | What a component puts in force, before any module's pragmas.
-extensionsInForce :: BuildInfo -> Defaults
+extensionsInForce ::
+  -- | The component's build settings.
+  BuildInfo ->
+  Defaults
 extensionsInForce bi =
   defaultsOf
+    (namesSafeMode (usedExtensions bi))
     (editionExtensions edition)
     (mapMaybe extensionSwitch (usedExtensions bi))
   where
     edition = ghcLanguage (fromMaybe Cabal.Haskell98 (defaultLanguage bi))
+
+-- | Does a component name a Safe Haskell mode among its extensions?
+namesSafeMode ::
+  -- | Its extensions, as Cabal reads them.
+  [Cabal.Extension] ->
+  Bool
+namesSafeMode = any $ \case
+  Cabal.EnableExtension e ->
+    e `elem` [Cabal.Safe, Cabal.Trustworthy, Cabal.Unsafe]
+  _ -> False
 
 -- | GHC's reading of an extension Cabal turns on or off, where GHC knows it.
 extensionSwitch :: Cabal.Extension -> Maybe (GHC.OnOff Extension)

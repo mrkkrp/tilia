@@ -10,6 +10,7 @@ module Tilia.Pragma
     defaultsOf,
     editionExtensions,
     effectiveExtensions,
+    safeImportsOn,
     lookupExtension,
     lookupEdition,
     nameSwitch,
@@ -134,14 +135,23 @@ data Defaults = Defaults
     -- of an edition the module names in its place.
     defaultsSwitches :: [GHC.OnOff Extension],
     -- | What its edition and those switches put in force, worked out once.
-    defaultsInForce :: Set Extension
+    defaultsInForce :: Set Extension,
+    -- | Whether it names a Safe Haskell mode.
+    defaultsSafe :: Bool
   }
   deriving (Eq, Show)
 
--- | What a component puts in force, given the extensions of its edition and
--- what it switches on top of them, in order.
-defaultsOf :: Set Extension -> [GHC.OnOff Extension] -> Defaults
-defaultsOf edition switches = Defaults switches (foldl' switch edition switches)
+-- | What a component puts in force.
+defaultsOf ::
+  -- | Whether it names a Safe Haskell mode.
+  Bool ->
+  -- | The extensions of its edition.
+  Set Extension ->
+  -- | What it switches on top of them, in order.
+  [GHC.OnOff Extension] ->
+  Defaults
+defaultsOf safe edition switches =
+  Defaults switches (foldl' switch edition switches) safe
 
 -- | The extensions an edition of the language puts in force, the
 -- compiler's default one where none is named.
@@ -175,6 +185,23 @@ effectiveExtensions defaults source =
           switch
           (editionExtensions (Just (last named)))
           (defaultsSwitches defaults)
+
+-- | Are safe imports on, as GHC has them wherever a Safe Haskell mode is in
+-- force and @-fno-safe-haskell@ is not given?
+safeImportsOn ::
+  -- | What the component the module belongs to puts in force.
+  Defaults ->
+  -- | The module's source, read here for its header pragmas alone.
+  Text ->
+  Bool
+safeImportsOn defaults source =
+  (defaultsSafe defaults || any (`elem` modes) flags)
+    && notElem "-fno-safe-haskell" flags
+  where
+    flags =
+      concat
+        [pragmaFlags (pragmaName p) (pragmaBody p) | p <- headerPragmas source]
+    modes = ["-XSafe", "-XTrustworthy", "-XUnsafe"]
 
 -- | Whether a pragma of this name and body, with what it implies, last
 -- turns each extension it switches on or off.
