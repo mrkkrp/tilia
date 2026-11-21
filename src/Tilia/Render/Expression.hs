@@ -24,6 +24,7 @@ import Data.List (unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Data.FastString (unpackFS)
@@ -338,14 +339,21 @@ application ctx site f x =
     (func, args) = gatherArgs f (x :| [])
     initArgs = NE.init args
     lastArg = NE.last args
-    lastArgDoc = hsExprIn ctx (withBracing (siteBracing site) plainSite) lastArg
+    lastArgDoc =
+      hsExprIn
+        ctx
+        plainSite
+          { siteFollowed = siteFollowed site,
+            siteBracing = siteBracing site
+          }
+        lastArg
     initSpan = spanOf f <> (startOf <$> spanOf lastArg)
     placement
       | maybe False (writtenOnOneLine ctx) initSpan =
           exprHangs ctx (unLoc lastArg)
       | otherwise = Normal
     headAndInit bracing =
-      hsExprIn ctx site{siteApplicand = True, siteBracing = bracing} func
+      hsExprIn ctx site{siteFollowed = True, siteBracing = bracing} func
         <> foldMap
           ( nest (if placement == Hanging then 0 else 1)
               . (breakOrSpace <>)
@@ -505,10 +513,15 @@ operatorChain ctx outerSite mkBody isDo =
             infrangible
               ( render
                   afterOperator
-                  (withBracing (firstBracing bracing) site)
+                  ( followedBy
+                      (listToMaybe operators)
+                      (withBracing (firstBracing bracing) site)
+                  )
                   firstOne
               )
               <> foldr (piece bracing) mempty (links operands operators)
+          followedBy next s =
+            s{siteFollowed = maybe (siteFollowed site) isMinus next}
           -- A step would carry the operators on the last statement of a do
           -- block written on one line before them, unless an operator puts
           -- the block further right. They stay at the chain's indentation
@@ -524,11 +537,13 @@ operatorChain ctx outerSite mkBody isDo =
             | leadingDo && not (siteInBlock site) =
                 breakOrSpace <> attached Hanging
             | otherwise = attached placement
-          piece bracing (previous, o, operand, isLast) rest' =
-            let operandSite =
-                  withBracing
-                    (if isLast then siteBracing site else bracing)
-                    plainSite
+          piece bracing (previous, o, operand, next) rest' =
+            let isLast = isNothing next
+                operandSite =
+                  followedBy next $
+                    withBracing
+                      (if isLast then siteBracing site else bracing)
+                      plainSite
                 kept
                   | isLast = id
                   | otherwise = infrangible
@@ -1002,7 +1017,7 @@ cmdBody ctx site = \case
   HsCmdArrForm _ _ Infix _ ->
     error "Tilia: an infix command form always has exactly two operands"
   HsCmdApp _ cmd e ->
-    hsCmd ctx site{siteApplicand = True} cmd
+    hsCmd ctx site{siteFollowed = True} cmd
       <> breakOrSpace
       <> indent (hsExprIn ctx (withBracing (siteBracing site) plainSite) e)
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
@@ -1655,3 +1670,13 @@ operatorName :: LHsExpr GhcPs -> Maybe RdrName
 operatorName e = case unLoc e of
   HsVar _ (L _ n) -> Just n
   _ -> Nothing
+
+-- | Is this operator the minus, the one operator that can also begin an
+-- expression?
+isMinus ::
+  -- | The operator.
+  LHsExpr GhcPs ->
+  Bool
+isMinus o = case operatorName o of
+  Just (Unqual n) -> occNameString n == "-"
+  _ -> False
