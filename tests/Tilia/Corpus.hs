@@ -147,7 +147,8 @@ vendoredExamples =
                   "cpp" </> "macro" </> "macro-for-a-context-before-a-haddock.hs",
                   "cpp" </> "directive" </> "line-marker-passed-on-by-cpp.hs",
                   "magic-comment" </> "magic-comment-inside-a-declaration.hs",
-                  "cpp" </> "directive" </> "directive-left-as-written.hs"
+                  "cpp" </> "directive" </> "directive-left-as-written.hs",
+                  "cpp" </> "settled" </> "complementary-conditionals-inside-an-expression.hs"
                 ]
             },
       corpusInPackages = False
