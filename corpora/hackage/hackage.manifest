@@ -2743,7 +2743,7 @@ formatted       dbc61c90dc60  hspec-core-2.11.17/test/Test/Hspec/Core/UtilSpec.h
 formatted       cae8eb552a0d  hspec-core-2.11.17/vendor/Data/Algorithm/Diff.hs
 partly-checked  de31baeb2835  hspec-core-2.11.17/vendor/async-2.2.5/Control/Concurrent/Async.hs
 formatted       220d41b7fb0c  hspec-core-2.11.17/vendor/stm-2.5.0.1/Control/Concurrent/STM/TMVar.hs
-formatted       99bf7032dab1  http-client-0.7.19/Data/KeyedPool.hs
+formatted       10c197f21c50  http-client-0.7.19/Data/KeyedPool.hs
 formatted       d317e7d799cf  http-client-0.7.19/Network/HTTP/Client.hs
 formatted       773da0642167  http-client-0.7.19/Network/HTTP/Client/Body.hs
 formatted       dcc5bd80b279  http-client-0.7.19/Network/HTTP/Client/Connection.hs
@@ -2755,7 +2755,7 @@ formatted       28c79134fe05  http-client-0.7.19/Network/HTTP/Client/Manager.hs
 formatted       9ccae15d66b4  http-client-0.7.19/Network/HTTP/Client/MultipartFormData.hs
 formatted       4b7a336a5792  http-client-0.7.19/Network/HTTP/Client/Request.hs
 formatted       c74a00816aea  http-client-0.7.19/Network/HTTP/Client/Response.hs
-formatted       a7aa9a721b27  http-client-0.7.19/Network/HTTP/Client/Types.hs
+formatted       f1e379bcee25  http-client-0.7.19/Network/HTTP/Client/Types.hs
 formatted       ca6a48d5e983  http-client-0.7.19/Network/HTTP/Client/Util.hs
 formatted       badf4504e844  http-client-0.7.19/Network/HTTP/Proxy.hs
 formatted       e865ae48f11b  http-client-0.7.19/Setup.hs
