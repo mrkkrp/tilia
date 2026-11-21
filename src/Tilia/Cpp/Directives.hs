@@ -38,6 +38,7 @@ module Tilia.Cpp.Directives
     -- * The directives themselves
     Directive (..),
     dSpan,
+    directives,
     readConditionals,
     scanConditionals,
     GroupSpec (..),
