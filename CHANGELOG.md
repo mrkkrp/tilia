@@ -482,6 +482,11 @@
   pragmas whose order matters keep the order they are written in, and the
   rest are sorted around them, rather than all of them keeping it.
   [PR 541](https://github.com/mrkkrp/tilia/pull/541).
+* A `#define`, an `#include` or a conditional written inside a conditional
+  around a `LANGUAGE` or options pragma stays inside it where the module
+  has a Haddock, and goes above the Haddock with the pragma, rather than
+  staying under the Haddock outside the conditional, where the definitions
+  of every branch were in force, or leaving an empty copy of itself there.
 
 ## Tilia 0.1.4.0
 
