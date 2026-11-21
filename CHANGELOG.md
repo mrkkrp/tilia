@@ -588,6 +588,11 @@
   declares and passes on, its code written with bird tracks or between
   `\begin{code}` and `\end{code}`, rather than taken for one that could
   not be read, which had every module importing it declined.
+* A comment written on a line of its own after an item's comma, lined up
+  under the item's last line, comes out after the comma, above the next
+  item, rather than before the comma, which was left on a line of its own
+  and moved on the next pass. The same goes for a comment after a `->` that
+  ends a line of a signature.
 
 ## Tilia 0.1.4.0
 

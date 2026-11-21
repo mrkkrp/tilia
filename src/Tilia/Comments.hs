@@ -114,8 +114,9 @@ data Above
     TopOfFile
   | -- | An empty line.
     BlankLine
-  | -- | Something, beginning at this column.
-    ContentAt !Int
+  | -- | Something, beginning at the first column and stopping at the
+    -- second, one past its last character.
+    ContentAt !Int !Int
   deriving (Eq, Show)
 
 -- | Every comment in a module, in source order.
@@ -197,7 +198,8 @@ commentAt cpp ls spn style raw =
       Nothing -> TopOfFile
       Just l
         | T.all isSpace l -> BlankLine
-        | otherwise -> ContentAt (contentColumn l)
+        | otherwise ->
+            ContentAt (contentColumn l) (columnOf l (T.length (T.stripEnd l)))
     backTo =
       listToMaybe
         [ (n, column)
@@ -388,13 +390,16 @@ carriedOnFrom cs = \c ->
         ]
     go column line above
       | Just remark <- IntMap.lookup line remarks,
-        above == ContentAt column || remark <= column =
+        beginsAt column above || remark <= column =
           Just (line, remark)
       | Just (col, above') <- IntMap.lookup line ownLineComments,
         col == column,
-        above == ContentAt column =
+        beginsAt column above =
           go column (line - 1) above'
       | otherwise = Nothing
+    beginsAt column = \case
+      ContentAt from _ -> from == column
+      _ -> False
 
 -- | Put a space between a doc comment's trigger and the text after it, so
 -- that @-- |Foo@ comes out as @-- | Foo@.
