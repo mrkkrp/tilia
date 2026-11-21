@@ -225,10 +225,7 @@ codeLines ::
   Text ->
   [(Int, Int)]
 codeLines config source =
-  case GHC.lexTokenStream
-    (GHC.options s)
-    (GHC.buffer s)
-    (GHC.psRealLoc (GHC.loc s)) of
+  case tokensOf s of
     GHC.PFailed _ -> []
     GHC.POk _ tokens ->
       [ (GHC.srcSpanStartLine l, GHC.srcSpanEndLine l)
@@ -248,7 +245,7 @@ codeLines config source =
 -- state a parse starts in.
 lexed :: GHC.PState -> ([(GHC.RealSrcSpan, GHC.Token)], IntMap Int)
 lexed s =
-  case GHC.lexTokenStream (GHC.options s) (GHC.buffer s) loc of
+  case tokensOf s of
     GHC.PFailed _ -> error "Tilia: a module that parses cannot fail to lex"
     GHC.POk _ tokens ->
       ( [ (l, t)
@@ -263,8 +260,24 @@ lexed s =
             GHC.srcSpanStartLine l < GHC.srcSpanEndLine l
           ]
       )
+
+-- | Lex a module from the state a parse starts in, with relaxed layout:
+-- with no parser to close a layout block at a token that cannot continue
+-- it, a brace that opens a block left of a block left open would not lex.
+tokensOf ::
+  -- | The state a parse of the module starts in.
+  GHC.PState ->
+  GHC.ParseResult [GHC.Located GHC.Token]
+tokensOf s =
+  GHC.lexTokenStream
+    options
+      { GHC.pExtsBitmap =
+          GHC.xset GHC.RelaxedLayoutBit (GHC.pExtsBitmap options)
+      }
+    (GHC.buffer s)
+    (GHC.psRealLoc (GHC.loc s))
   where
-    loc = GHC.psRealLoc (GHC.loc s)
+    options = GHC.options s
 
 -- | Is this token a comment?
 isComment :: GHC.Token -> Bool

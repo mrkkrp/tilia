@@ -540,6 +540,10 @@
   the line under a comment written between them and the `case` or the
   minus, rather than at their column, where in a `do` block it began a
   statement of its own and did not parse.
+* A guard whose last qualifier is a `let` written with the `=` or `->`
+  after its last binding, before a right-hand side that opens braces on the
+  next line, no longer makes Tilia throw "a module that parses cannot fail
+  to lex".
 
 ## Tilia 0.1.4.0
 
