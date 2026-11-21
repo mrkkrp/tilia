@@ -487,6 +487,9 @@
   has a Haddock, and goes above the Haddock with the pragma, rather than
   staying under the Haddock outside the conditional, where the definitions
   of every branch were in force, or leaving an empty copy of itself there.
+* A module with a conditional inside a quasi-quotation or a multi-line
+  string is declined, with exit code 17, as one with an `#include` there
+  is, rather than formatted with the declaration in each branch.
 
 ## Tilia 0.1.4.0
 
