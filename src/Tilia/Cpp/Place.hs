@@ -312,10 +312,15 @@ partiallyPrinted = \case
           <> foldMap partiallyPrinted alternatives
   d -> foldChildren partiallyPrinted d
 
--- | The lines a conditional was written on, from its @#if@ to its @#endif@.
-conditionalSpan :: Conditional -> Maybe Span
+-- | The lines a conditional was written on, from its @#if@ to its @#endif@,
+-- beginning left of the first column: a directive stays at the margin
+-- whatever the code's indentation, so nothing lines up with it.
+conditionalSpan ::
+  -- | The conditional.
+  Conditional ->
+  Maybe Span
 conditionalSpan c =
-  (\(from, to) -> mkSpan (from, 1) (to, 1)) <$> conditionalRange c
+  (\(from, to) -> mkSpan (from, 0) (to, 1)) <$> conditionalRange c
 
 -- | The part of the module a region was written in: the innermost branch of
 -- a conditional holding all of it, or 'Nothing' for the module itself.

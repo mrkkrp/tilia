@@ -635,6 +635,11 @@
   `linux_HOST_OS` or `x86_64_HOST_ARCH`, is no longer declined over a
   configuration taking two of one kind at once, which no compilation
   produces.
+* A comment under the code a conditional holds, or under the code its
+  `#endif` leads on to, stays at the margin or at the code's indentation,
+  as it was written, rather than lining up with the conditional's
+  directives, which moved it from one to the other, under the last
+  declaration of a module on every formatting.
 
 ## Tilia 0.1.4.0
 
