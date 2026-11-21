@@ -1960,6 +1960,45 @@ withPlan plan = do
         ]
       $ \rs -> membersIn rs "Ping" `shouldReturn` Map.empty
 
+    it "keeps those of a configuration passed over for leaving a name unsettled"
+      $ withFakeProject
+        [ ( "src/Facade.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "module Facade",
+                "  ( (.&.),",
+                "#ifndef NO_CLASS",
+                "    C (..),",
+                "    unseen,",
+                "#endif",
+                "  )",
+                "where",
+                "import Inner",
+                "#ifndef NO_CLASS",
+                "import No.Such.Module",
+                "#endif"
+              ]
+          ),
+          ( "src/Inner.hs",
+            T.unlines
+              [ "module Inner where",
+                "infixr 1 .&.",
+                "(.&.) :: Bool -> Bool -> Bool",
+                "(.&.) = (&&)",
+                "class C a where",
+                "  m :: a -> a"
+              ]
+          )
+        ]
+      $ \rs -> do
+        let m =
+              parsed
+                "module M where\nimport Data.Bits ((.&.))\nimport Facade (C (..))\n"
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName ".&.")
+          `shouldBe` Resolved (Fixity LeftAssoc 7) (DeclaredIn "Data.Bits")
+        disagreement scope InTerms Nothing (OpName ".&.") `shouldBe` Nothing
+
     it "keeps to what a local module's export list hands on"
       $ withFakeProject
         [("src/Members.hs", "module Members (T (A)) where\ndata T = A | Int :| Int\n")]

@@ -560,6 +560,11 @@
   two case alternatives or two constructors, rather than going, which for
   a comment first lined up under a right-hand side it did on the next
   pass.
+* A `T (..)` in an import list brings in what `T` holds in any
+  configuration of the module imported, one passed over for leaving names
+  unsettled included, rather than any operator that module exports, so
+  importing `Function (..)` from `Test.QuickCheck` beside `.&.` from
+  `Data.Bits` no longer has a module declined.
 
 ## Tilia 0.1.4.0
 
