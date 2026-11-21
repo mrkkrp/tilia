@@ -330,8 +330,9 @@ data Reading = Reading
     readingSource :: Text,
     -- | Its conditionals.
     readingForest :: Either CppError [GroupSpec],
-    -- | Its conditionals split one at a time, with the reading of the
-    -- baseline they are varied against, where it has any.
+    -- | Its conditionals split one at a time, those asking the question of
+    -- 'readingPragma' together, with the reading of the baseline they are
+    -- varied against, where it has any.
     readingApart :: Maybe (Variation, Reading),
     -- | The conditional to split on first, where one holds a pragma that
     -- changes how the rest is parsed.
@@ -355,11 +356,10 @@ reading formatter reached source =
       readingSource = source,
       readingForest = forest,
       readingApart = do
-        apart <- withForest (`variations` source)
+        apart <- withForest (\f -> variations (tied f) f source)
         let baseline = without (vaBaselineDropped apart) reached
         pure (apart, reading formatter baseline (vaBaseline apart)),
-      readingPragma =
-        withForest (\f -> splitOnPragma (formatterParser formatter) f source),
+      readingPragma = pragma,
       readingFormatted =
         formatSingleConfig
           formatter
@@ -369,6 +369,9 @@ reading formatter reached source =
   where
     forest = readConditionals source
     withForest f = either (const Nothing) f forest
+    pragma =
+      withForest (\f -> splitOnPragma (formatterParser formatter) f source)
+    tied f = maybe [] (`sameGuard` f) pragma
 
 -- | What the first configuration 'formatAllConfigs' formats comes to, where
 -- it is sure to start with the one every question is answered in with its
@@ -412,10 +415,8 @@ formatAllConfigs formatter r = do
           least = max 1 (linesHeld (vaBaseline apart))
           affordable =
             linearCost (budget `div` least) forest * least <= budget
-          linearly =
-            affordable && all (null . drop 1 . (`sameGuard` forest)) pragma
       base <-
-        if isNothing pragma || linearly
+        if isNothing pragma || affordable
           then
             attempt (formatAllConfigs formatter baseline)
           else pure Nothing
@@ -424,7 +425,7 @@ formatAllConfigs formatter r = do
           join <$> attempt (inFragments formatter reached forest source b)
         _ -> pure Nothing
       linear <- case (fragmented, base) of
-        (Nothing, Just b) | linearly -> oneAtATime apart b
+        (Nothing, Just b) | affordable -> oneAtATime apart b
         _ -> pure Nothing
       case fragmented <|> linear of
         Just found -> pure found
@@ -474,9 +475,18 @@ data Variation = Variation
     vaGroups :: [Configurations]
   }
 
--- | Split a module on every conditional at its top level, one at a time.
-variations :: [GroupSpec] -> Text -> Maybe Variation
-variations forest source
+-- | Split a module on every conditional at its top level, one at a time,
+-- but on those asking one question together.
+variations ::
+  -- | The conditionals asking the question, nested ones included, which
+  -- each configuration answers alike.
+  [GroupSpec] ->
+  -- | The conditionals at the top level.
+  [GroupSpec] ->
+  -- | The module.
+  Text ->
+  Maybe Variation
+variations tied forest source
   | null forest = Nothing
   | otherwise =
       Just
@@ -489,19 +499,24 @@ variations forest source
                     cfgTexts = [held (varying k i) | i <- [0 .. gsCount gs - 1]],
                     cfgDropped =
                       [gone (varying k i) | i <- [0 .. gsCount gs - 1]],
-                    cfgWholes = Varied [gsWhole gs],
-                    cfgConditionals = [gsConditional gs]
+                    cfgWholes = Varied (fmap gsWhole unit),
+                    cfgConditionals = fmap gsConditional unit
                   }
-              | (k, gs) <- zip [0 ..] forest
+              | (k, unit@(gs : _)) <- zip [0 ..] units
               ]
           }
   where
+    units = case break isTied forest of
+      (before, _ : after) ->
+        fmap pure before <> [tied] <> [[gs] | gs <- after, not (isTied gs)]
+      _ -> fmap pure forest
+    isTied gs = gsWhole gs `elem` fmap gsWhole tied
     held at =
       blanking
-        (concat [blankingFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest])
+        (concat [blankingFor gs (at k) | (k, unit) <- numbered, gs <- unit])
         source
-    gone at =
-      concat [droppedFor gs (at k) | (k, gs) <- zip [0 :: Int ..] forest]
+    gone at = concat [droppedFor gs (at k) | (k, unit) <- numbered, gs <- unit]
+    numbered = zip [0 :: Int ..] units
     varying k i j = if j == k then i else 0
 
 -- | Vary each conditional on its own, holding the others at their first
