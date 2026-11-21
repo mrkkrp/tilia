@@ -351,8 +351,13 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
         not (isDocEntry (unLoc x)) =
           separatingComma LeadingCommas <> entry False x
       | otherwise = breakOrSpace <> gapAbove before x <> entry False x
-    entry withComma x =
-      align (at ctx (widenToDoc x) (ieItem ctx (spanOf x) withComma))
+    entry withComma x@(L _ ie) =
+      align . atSpan ctx (spanOf (widenToDoc x)) $
+        ieItem ctx (spanOf x) ie
+          <> includeWhen (withComma && not (isDocEntry ie)) comma
+          <> foldMap
+            (\d -> breakOrSpace <> haddock ctx Caret Open d)
+            (itemDoc ie)
     gapAbove before x@(L _ here) = case before of
       Nothing -> mempty
       Just p
@@ -384,22 +389,30 @@ widenToDoc l@(L ann ie) = case itemDoc ie of
   Nothing -> l
   Just (L docSpan _) -> L (ann <> noAnnSrcSpan docSpan) ie
 
--- | One item of an import or export list.
-ieItem :: Ctx -> Maybe Span -> Bool -> IE GhcPs -> Doc
-ieItem ctx here withComma = \case
-  IEVar warning n doc -> plain warning n doc
-  IEThingAbs warning n doc -> plain warning n doc
-  IEThingAll (warning, (_, dots, _)) n doc ->
-    exportWarning warning
-      <> at ctx n (wrappedName ctx)
-      <> space
-      <> txt "("
-      <> keywordAt (spanOf dots) ".."
-      <> txt ")"
-      <> comma'
-      <> itemDocumentation doc
-  IEThingWith (warning, (open, dots, _, close)) n wildcard members doc ->
-    align
+-- | One item of an import or export list, without the comma after it and
+-- the Haddock after that, in a region of its own unless it is a name
+-- alone, which has the name's.
+ieItem ::
+  -- | The context.
+  Ctx ->
+  -- | Where the item was written.
+  Maybe Span ->
+  -- | The item.
+  IE GhcPs ->
+  Doc
+ieItem ctx here = \case
+  IEVar warning n _ -> plain warning n
+  IEThingAbs warning n _ -> plain warning n
+  IEThingAll (warning, (_, dots, _)) n _ ->
+    region $
+      exportWarning warning
+        <> at ctx n (wrappedName ctx)
+        <> space
+        <> txt "("
+        <> keywordAt (spanOf dots) ".."
+        <> txt ")"
+  IEThingWith (warning, (open, dots, _, close)) n wildcard members _ ->
+    region . align $
       ( exportWarning warning
           <> at ctx n (wrappedName ctx)
           <> layoutWithin
@@ -409,9 +422,7 @@ ieItem ctx here withComma = \case
             ( breakOrSpace
                 <> indent (parens (insideBrackets here listed))
             )
-          <> comma'
       )
-      <> itemDocumentation doc
     where
       listed = commaSep (ctxCommaStyle ctx) (align <$> withWildcard)
       rendered = fmap (at_ ctx (wrappedName ctx)) members
@@ -421,25 +432,21 @@ ieItem ctx here withComma = \case
           let (before, after) = splitAt n' rendered
            in before <> [keywordAt (spanOf dots) ".."] <> after
   IEModuleContents (warning, _) m ->
-    exportWarning warning
-      <> at ctx m (\n -> txt "module" <> space <> outputable n)
-      <> comma'
+    region $
+      exportWarning warning
+        <> at ctx m (\n -> txt "module" <> space <> outputable n)
   IEGroup NoExtField n str -> haddock ctx (Section n) Open str
   IEDoc NoExtField str -> haddock ctx Pipe Open str
   IEDocNamed NoExtField n -> case writtenHaddock ctx here of
     Just c -> verbatimLines AtIndent TrimWhitespace (NE.toList (commentBody c))
     Nothing -> txt (docSectionName n)
   where
-    plain warning n doc =
-      exportWarning warning
-        <> at ctx n (wrappedName ctx)
-        <> comma'
-        <> itemDocumentation doc
-    comma' = includeWhen withComma comma
+    plain warning n = case warning of
+      Nothing -> at ctx n (wrappedName ctx)
+      Just _ -> region (exportWarning warning <> at ctx n (wrappedName ctx))
+    region = maybe id located here
     exportWarning =
       foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace)
-    itemDocumentation =
-      foldMap (\d -> breakOrSpace <> haddock ctx Caret Open d)
 
 -- | The documentation written with an export list item, if any.
 itemDoc :: IE GhcPs -> Maybe (ExportDoc GhcPs)
