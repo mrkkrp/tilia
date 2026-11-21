@@ -78,7 +78,7 @@ import Tilia.Cpp
     describeCppError,
     everyBranch,
     formatWithCpp,
-    stringJoinedByCpp,
+    joinedByCpp,
     usesCpp,
     withoutRuledOut,
   )
@@ -148,9 +148,9 @@ data FormatError
   | -- | The file carries @{-# LINE #-}@ or @{-# COLUMN #-}@ pragmas, or lines
     -- GHC's lexer reads past, such as @#line@ ones.
     PositionPragmas FilePath
-  | -- | A string literal written over lines cpp joins, and the line it
-    -- begins on.
-    StringJoinedByCpp FilePath Int
+  | -- | A line holding code that cpp joins to the line before it, and its
+    -- number.
+    JoinedByCpp FilePath Int
   | -- | A macro the file defines as a context heading a part a Haddock
     -- documents, the macro's line, and the macro.
     ContextBeforeHaddock FilePath Int Text
@@ -200,12 +200,12 @@ describeFormatError palette = \case
       <> file path
       <> ": it uses {-# LINE #-} or {-# COLUMN #-} pragmas or #line, #pragma"
       <> " or #! lines, and no reformatting can leave those true"
-  StringJoinedByCpp path n ->
+  JoinedByCpp path n ->
     "will not format "
       <> file path
-      <> ": the string at line "
+      <> ": CPP joins the code at line "
       <> tshow n
-      <> " uses CPP for joining lines"
+      <> " to the line above it"
   ContextBeforeHaddock path n macro ->
     "will not format "
       <> file path
@@ -280,7 +280,7 @@ formatErrorExitCode = \case
     FileUnclaimed{} -> 9
   NotParsed{} -> 10
   PositionPragmas{} -> 11
-  StringJoinedByCpp{} -> 12
+  JoinedByCpp{} -> 12
   ContextBeforeHaddock{} -> 13
   CppUnsupported _ why -> case why of
     MalformedConditional{} -> 14
@@ -309,7 +309,7 @@ refused = \case
   NoPackage{} -> False
   NotParsed{} -> False
   PositionPragmas{} -> True
-  StringJoinedByCpp{} -> True
+  JoinedByCpp{} -> True
   ContextBeforeHaddock{} -> True
   CppUnsupported{} -> True
   MisplacedMagicComment{} -> True
@@ -331,7 +331,7 @@ formattingFailed = \case
   NoPackage{} -> False
   NotParsed{} -> False
   PositionPragmas{} -> False
-  StringJoinedByCpp{} -> False
+  JoinedByCpp{} -> False
   ContextBeforeHaddock{} -> False
   CppUnsupported{} -> False
   MisplacedMagicComment{} -> False
@@ -616,8 +616,8 @@ formatTurnedOn session path source = runExceptT $ do
     throwE (PositionPragmas path)
   when (Set.member Cpp extensions) $
     traverse_
-      (throwE . StringJoinedByCpp path)
-      (stringJoinedByCpp config source)
+      (throwE . JoinedByCpp path)
+      (joinedByCpp config source)
   (formatted, tree) <- formatting inForce Nothing source
   let (changed, printedTree) =
         rewritten
