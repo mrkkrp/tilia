@@ -99,11 +99,16 @@ exprBody ctx site here = \case
             )
         )
   OpApp _ x op y -> exprChain ctx site x op y
-  NegApp _ e _ ->
+  NegApp minus e _ ->
     txt "-"
-      <> includeWhen (isLiteral e) (negativeLiteralGap ctx)
-      <> includeWhen (startsWithSymbol e) space
-      <> hsExpr ctx e
+      <> underComment
+        ctx
+        (spanOf minus)
+        (spanOf e)
+        ( includeWhen (isLiteral e) (negativeLiteralGap ctx)
+            <> includeWhen (startsWithSymbol e) space
+            <> hsExpr ctx e
+        )
   HsPar _ e ->
     layoutWithin ctx here (spanOf e) $
       bracketWith
@@ -808,8 +813,11 @@ caseOf ::
   Doc
 caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
   keywordAt ctx (spanOf hsCaseAnnCase) "case"
-    <> space
-    <> hsExpr ctx scrutinee
+    <> underComment
+      ctx
+      (spanOf hsCaseAnnCase)
+      (spanOf scrutinee)
+      (space <> hsExpr ctx scrutinee)
     <> space
     <> indent (keywordAt ctx (spanOf hsCaseAnnOf) "of")
     <> breakOrSpace
@@ -859,7 +867,11 @@ ifThenElse ::
   Doc
 ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
   txt "if"
-    <> underComment (space <> hsExpr ctx condition)
+    <> underComment
+      ctx
+      (spanOf aiIf)
+      (spanOf condition)
+      (space <> hsExpr ctx condition)
     <> breakOrSpace
     <> indent
       ( branch (locA aiThen) "then" thenBody
@@ -867,9 +879,6 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
           <> branch (locA aiElse) "else" elseBody
       )
   where
-    underComment
-      | lineCommentWrittenBetween ctx (spanOf aiIf) (spanOf condition) = indent
-      | otherwise = id
     branch written word body =
       keywordAt ctx keywordSpan word
         <> space
