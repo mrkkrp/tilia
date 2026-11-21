@@ -1399,6 +1399,16 @@ namedAlike = describe "a module another component names alike" $ do
     withFakePlan components $ \plan ->
       fixityFrom plan ("app" </> "Other.hs") "Data.Function" "&"
         `shouldReturn` Just (Fixity RightAssoc 0)
+
+  it "is not one only a branch the build leaves out declares" $
+    withFakePlan branched $ \plan ->
+      fixityFrom plan "Lib.hs" "Data.Function" "&"
+        `shouldReturn` Just (Fixity LeftAssoc 1)
+
+  it "is one a branch the build leaves out declares, for a file of it" $
+    withFakePlan branched $ \plan ->
+      fixityFrom plan ("old" </> "Compat.hs") "Data.Function" "&"
+        `shouldReturn` Just (Fixity RightAssoc 0)
   where
     fixityFrom plan file modName op = do
       rs <- newResolver plan
@@ -1439,6 +1449,30 @@ namedAlike = describe "a module another component names alike" $ do
         ("tests/Main.hs", "module Main (main) where\nimport Utils ()\n"),
         ("tests/Utils.hs", utils "infixr 5"),
         ( "app/Data/Function.hs",
+          "module Data.Function ((&)) where\ninfixr 0 &\n\
+          \(&) :: a -> (a -> b) -> b\nx & f = f x\n"
+        )
+      ]
+    branched =
+      [ ( "fake.cabal",
+          T.unlines
+            [ "cabal-version: 2.4",
+              "name: fake",
+              "version: 0.1.0.0",
+              "flag old",
+              "  default: False",
+              "  manual: True",
+              "library",
+              "  exposed-modules: Lib",
+              "  default-language: Haskell2010",
+              "  if flag(old)",
+              "    hs-source-dirs: old",
+              "    other-modules: Compat, Data.Function"
+            ]
+        ),
+        ("Lib.hs", "module Lib () where\nimport Data.Function ()\n"),
+        ("old/Compat.hs", "module Compat () where\nimport Data.Function ()\n"),
+        ( "old/Data/Function.hs",
           "module Data.Function ((&)) where\ninfixr 0 &\n\
           \(&) :: a -> (a -> b) -> b\nx & f = f x\n"
         )

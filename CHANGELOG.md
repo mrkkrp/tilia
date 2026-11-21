@@ -569,6 +569,10 @@
   namespaces, so an associated type operator of a class imported so no
   longer brings in a term operator of the same name and has a module that
   imports that term from elsewhere declined.
+* A module of a project that only a branch of its `.cabal` file the build
+  leaves out declares, as citeproc's `Prelude` under `if impl(ghc < 8.8)`,
+  no longer stands in for the module of that name for the files the build
+  compiles, which had every module of citeproc declined.
 
 ## Tilia 0.1.4.0
 
