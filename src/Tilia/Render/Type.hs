@@ -241,6 +241,7 @@ renderChain ctx = \case
   where
     piece (previous, op, operand, _) =
       attachOperator
+        ctx
         Normal
         (chainSpan spanOf previous)
         (spanOf op)

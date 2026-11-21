@@ -1,10 +1,10 @@
--- Where an operator joins its operand, their remarks are for one line. The
--- second goes on a line of its own, and what carries it on goes with it.
+-- Where a remark ends the line of an operator and another that of its
+-- operand, the operand stays on its line, and what carries it on with it.
 guess =
   catA
     [ isBinaryDoc
-        >>> constA isoLatin1, -- 0. guess
-        -- the content
-        -- this handling
+        >>> -- 0. guess
+        constA isoLatin1, -- the content
+                          -- this handling
       getChildren -- 1. guess
     ]

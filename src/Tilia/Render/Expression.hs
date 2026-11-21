@@ -571,6 +571,7 @@ operatorChain ctx outerSite mkBody isDo =
                     operatorLine
                       ( \p ->
                           attachOperator
+                            ctx
                             p
                             (chainSpan spanOf previous)
                             (spanOf o)
@@ -1460,6 +1461,7 @@ patSynBind ctx PSB{..} =
         ( space
             <> name ctx l
             <> attachOperator
+              ctx
               Normal
               (spanOf l)
               (spanOf psb_id)

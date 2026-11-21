@@ -598,6 +598,11 @@
   and what follows goes on that next line a step in, as under a guard,
   rather than both comments going to the end of one line, where the second
   came out on a line of its own and moved on the next pass.
+* Where a comment ends the line of an operator and another the line of its
+  operand, the operand goes on the next line rather than onto the
+  operator's line, so that each comment stays on the line it was written
+  on: before, the second came out on a line of its own, at a column the
+  next formatting moved where the operand was more than one line long.
 
 ## Tilia 0.1.4.0
 
