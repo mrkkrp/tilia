@@ -1405,6 +1405,11 @@ namedAlike = describe "a module another component names alike" $ do
       fixityFrom plan "Lib.hs" "Data.Function" "&"
         `shouldReturn` Just (Fixity LeftAssoc 1)
 
+  it "is the one a name the component's mixins give stands for" $
+    withFakePlan renaming $ \plan ->
+      fixityFrom plan "Lib.hs" "Fn" "&"
+        `shouldReturn` Just (Fixity LeftAssoc 1)
+
   it "is not one only a branch the build leaves out declares" $
     withFakePlan branched $ \plan ->
       fixityFrom plan "Lib.hs" "Data.Function" "&"
@@ -1475,6 +1480,21 @@ namedAlike = describe "a module another component names alike" $ do
           \module Data.Function (module F) where\n\
           \import \"base\" Data.Function as F\n"
         )
+      ]
+    renaming =
+      [ ( "fake.cabal",
+          T.unlines
+            [ "cabal-version: 2.4",
+              "name: fake",
+              "version: 0.1.0.0",
+              "library",
+              "  exposed-modules: Lib",
+              "  build-depends: base",
+              "  mixins: base (Data.Function as Fn), base",
+              "  default-language: Haskell2010"
+            ]
+        ),
+        ("Lib.hs", "module Lib () where\nimport Fn ()\n")
       ]
     branched =
       [ ( "fake.cabal",

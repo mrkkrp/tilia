@@ -57,6 +57,7 @@ import Tilia.Cabal.Package
     packageComponents,
     packageOf,
     readPackageDescription,
+    renamedModules,
     sourceDirsOf,
   )
 import Tilia.Cabal.Plan
@@ -673,11 +674,12 @@ agreeing answers =
 -- A module of the component with the source directory nearest above the
 -- file comes before any library's, as GHC looks in a component's own
 -- source directories before the packages it depends on. Components whose
--- directories are as near count together. Each component is taken as a
--- build on this machine configures it, unless only a build elsewhere
--- compiles the file, which takes it with what every branch declares. An
--- import naming a package other than the project's own leaves them all
--- out.
+-- directories are as near count together, and a name their @mixins@ give
+-- a module of another package stands for that module. Each component is
+-- taken as a build on this machine configures it, unless only a build
+-- elsewhere compiles the file, which takes it with what every branch
+-- declares. An import naming a package other than the project's own leaves
+-- them all out.
 localModules ::
   BuildPlan ->
   IO (Maybe FilePath -> (Maybe Text, Text) -> Whereabouts)
@@ -688,13 +690,16 @@ localModules plan = do
   let elsewhere = Set.difference (filesOf declared) (filesOf built)
       filesOf components =
         Set.fromList
-          [path | (_, _, modules) <- components, (_, path) <- modules]
+          [path | (_, _, modules) <- components, (_, Home _ path) <- modules]
       viewOf components =
-        let held =
-              [ (kind, dirs, Map.fromListWith (\_ first' -> first') modules)
-              | (kind, dirs, modules) <- components
-              ]
-         in (held, Map.unions [modules | (Lib, _, modules) <- held])
+        ( [(kind, dirs, firstOf modules) | (kind, dirs, modules) <- components],
+          firstOf
+            [ held
+            | (Lib, _, modules) <- components,
+              held@(_, Home _ _) <- modules
+            ]
+        )
+      firstOf = Map.fromListWith (\_ first' -> first')
       ofBuild = viewOf built
       ofEvery = viewOf declared
       own = Set.fromList ("this" : named)
@@ -713,7 +718,7 @@ localModules plan = do
      in \(package, modName) ->
           case asum (fmap (Map.lookup modName) holding)
             <|> Map.lookup modName libraries of
-            Just path | all (`Set.member` own) package -> Home modName path
+            Just found | all (`Set.member` own) package -> found
             _ -> Elsewhere (mfilter (/= "this") package) modName
   where
     directoryOf p = case ppSource p of
@@ -738,7 +743,18 @@ localModules plan = do
                   described
               let components = packageComponents described
               (,,)
-                <$> for components (\(kind, _, branches) -> component dir kind (declaredModules branches))
+                <$> for
+                  components
+                  ( \(kind, _, branches) ->
+                      component
+                        dir
+                        kind
+                        (declaredModules branches)
+                        ( concatMap
+                            (renamedModules . sectionInfo . ownSection)
+                            branches
+                        )
+                  )
                 <*> for
                   [ (kind, builtSection b valueOf)
                   | (kind, _, b : _) <- components
@@ -750,17 +766,25 @@ localModules plan = do
                         [ (d, modulesOf section)
                         | d <- sourceDirsOf (sectionInfo section)
                         ]
+                        (renamedModules (sectionInfo section))
                   )
                 <*> pure [packageOf described]
-    component dir kind sources = do
+    component dir kind sources renamed = do
       placed <- for sources $ \(d, modules) -> do
         root <- canonicalizePath (dir </> d)
         (root,) . concat <$> traverse (locate root) modules
-      pure (kind, fmap fst placed, concatMap snd placed)
+      pure
+        ( kind,
+          fmap fst placed,
+          concatMap snd placed
+            <> [ (m, Elsewhere (Just package) original)
+               | (m, (package, original)) <- renamed
+               ]
+        )
     locate root (m, unwritten) = do
       found <-
         filterM doesFileExist [root </> unwritten <> e | e <- moduleEndings]
-      pure [(m, path) | path <- take 1 found]
+      pure [(m, Home m path) | path <- take 1 found]
 
 -- | What a module exports, out of what it declares and what its imports
 -- bring in.
