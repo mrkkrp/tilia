@@ -24,6 +24,7 @@ module Tilia.Comments
     triggerEscaped,
     opensHaddock,
     opensSectionHeading,
+    splitTrigger,
     afterOpener,
     triggerOn,
     commentsWithin,
