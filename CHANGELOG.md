@@ -555,6 +555,11 @@
   that code, as one under a guard or under an operator ending a line does
   without the conditional, rather than further left, where the next pass
   moved it.
+* An empty line written under a comment that carries a trailing comment
+  on stays, as one under any other comment does, also between two guards,
+  two case alternatives or two constructors, rather than going, which for
+  a comment first lined up under a right-hand side it did on the next
+  pass.
 
 ## Tilia 0.1.4.0
 

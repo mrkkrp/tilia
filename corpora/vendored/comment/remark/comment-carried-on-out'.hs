@@ -49,3 +49,24 @@ gapUnderTheRemark = a ++ b
                 -- and never twice
 
         b = []
+
+-- So does one under a comment that carries the remark on, among guards,
+-- which keep no empty line of their own.
+gapUnderTheRemarkAmongGuards x
+    | x > 1 = 1 -- said once
+                -- and never twice
+
+    | x > 0 =
+        2 -- said once
+        -- and never twice
+
+    | otherwise = 3
+
+-- Such a comment gets no empty line where the author left none, as right
+-- above a Haddock that moves up to what it documents.
+data NoGapAboveAHaddock = NoGapAboveAHaddock
+    { first :: Int -- said once
+                   -- and never twice
+    , second :: Int
+      -- ^ said elsewhere
+    }
