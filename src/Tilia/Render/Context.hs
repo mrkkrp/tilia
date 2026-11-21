@@ -509,9 +509,13 @@ layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
 -- | 'attach' an operator and its operand, leaving the operator's region at
 -- the end of the line when it was written there, so that the comments
--- written around it stay on that line, and giving the indentation of the
--- operand's line a region, so that those above the operand come before it.
+-- written around it stay on that line, giving the indentation of the
+-- operand's line a region, so that those above the operand come before it,
+-- and putting the operand on the next line where a remark ends both lines.
 attachOperator ::
+  -- | The context.
+  Ctx ->
+  -- | How the operator and its operand attach to what they follow.
   Placement ->
   -- | What the operator follows.
   Maybe Span ->
@@ -524,7 +528,7 @@ attachOperator ::
   -- | Its operand, printed.
   Doc ->
   Doc
-attachOperator placement before here after op operand = case here of
+attachOperator ctx placement before here after op operand = case here of
   Just s
     | placement == Normal,
       sameLine before here,
@@ -533,7 +537,11 @@ attachOperator placement before here after op operand = case here of
           <> attach
             Normal
             (foldMap indentation after <> unclaimed op <> space <> operand)
-  _ -> attach placement (op <> space <> operand)
+  _ -> attach placement (op <> gap <> operand)
+  where
+    gap
+      | remarkOnEachLine ctx here after = hardBreak
+      | otherwise = space
 
 -- | The @::@, @=>@ or @->@ that joins two parts of a type, at the end of a
 -- line or at the start of the next one, as the project asks.

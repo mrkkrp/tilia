@@ -154,6 +154,7 @@ conPattern ctx inParens here con = \case
     layoutFrom ctx (spanOf l <> spanOf r) $
       recur l
         <> attachOperator
+          ctx
           Normal
           (spanOf l)
           (spanOf con)
