@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -32,6 +33,7 @@ module Tilia.Comments
 where
 
 import Data.Char (isSpace)
+import Data.Choice (Choice, fromBool, isTrue)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List.NonEmpty (NonEmpty (..))
@@ -48,6 +50,7 @@ import Tilia.Source.Lines
     blankAt,
     columnOf,
     contentColumn,
+    endsInBackslash,
     isDirective,
     lineAt,
     lineTextsFrom,
@@ -84,6 +87,9 @@ data Comment = Comment
     commentGapAbove :: Bool,
     -- | Whether to leave an empty line below it when it is printed.
     commentGapBelow :: Bool,
+    -- | Whether cpp joins the empty line under it to it, so that this line
+    -- has to stay under it.
+    commentJoined :: Bool,
     -- | Where the first line under it that is neither empty nor a directive
     -- begins, if there is one.
     commentNextLine :: Maybe (Int, Int)
@@ -114,6 +120,8 @@ data Above
 
 -- | Every comment in a module, in source order.
 commentsOf ::
+  -- | Does cpp read the module?
+  Choice "readByCpp" ->
   -- | The module's lines, which every comment is read against.
   Lines ->
   -- | The lines a Haddock's text is read from.
@@ -122,11 +130,13 @@ commentsOf ::
   -- found it.
   [(GHC.RealSrcSpan, GHC.Token)] ->
   [Comment]
-commentsOf ls haddocks = mapMaybe (uncurry (mkComment ls haddocks))
+commentsOf cpp ls haddocks = mapMaybe (uncurry (mkComment cpp ls haddocks))
 
 -- | Build a comment from a token and the span it occupied, where the token
 -- is a comment.
 mkComment ::
+  -- | Does cpp read the module?
+  Choice "readByCpp" ->
   -- | The module's lines, which the comment is read against.
   Lines ->
   -- | The lines a Haddock's text is read from.
@@ -136,18 +146,29 @@ mkComment ::
   -- | The token.
   GHC.Token ->
   Maybe Comment
-mkComment ls haddocks spn = \case
-  GHC.ITlineComment t _ -> Just (commentAt ls s LineComment (T.pack t))
-  GHC.ITblockComment t _ -> Just (commentAt ls s BlockComment (T.pack t))
+mkComment cpp ls haddocks spn = \case
+  GHC.ITlineComment t _ -> Just (commentAt cpp ls s LineComment (T.pack t))
+  GHC.ITblockComment t _ -> Just (commentAt cpp ls s BlockComment (T.pack t))
   GHC.ITdocComment _ _ ->
-    Just (commentAt ls s DocComment (sliceSpan haddocks s))
+    Just (commentAt cpp ls s DocComment (sliceSpan haddocks s))
   _ -> Nothing
   where
     s = spanOfReal spn
 
 -- | Build a comment of this style from the span it occupied and its text.
-commentAt :: Lines -> Span -> CommentStyle -> Text -> Comment
-commentAt ls spn style raw =
+commentAt ::
+  -- | Does cpp read the module?
+  Choice "readByCpp" ->
+  -- | The module's lines, which the comment is read against.
+  Lines ->
+  -- | Where it is.
+  Span ->
+  -- | How it was written.
+  CommentStyle ->
+  -- | Its text.
+  Text ->
+  Comment
+commentAt cpp ls spn style raw =
   Comment
     { commentSpan = spn,
       commentBody = normalizeBody (spanStartColumn spn) style raw,
@@ -159,6 +180,11 @@ commentAt ls spn style raw =
       commentFollowed = followed,
       commentGapAbove = above == BlankLine,
       commentGapBelow = not followed && blankAt (spanEndLine spn + 1) ls,
+      commentJoined =
+        isTrue cpp
+          && not followed
+          && any endsInBackslash (lineAt (spanEndLine spn) ls)
+          && blankAt (spanEndLine spn + 1) ls,
       commentNextLine = nextLine
     }
   where
@@ -437,7 +463,14 @@ asOrdinary ls c
                     then spanEndColumn s
                     else columnOf l (T.length l)
               }
-      pure (commentAt ls piece DocComment (sliceSpan ls piece))
+      pure
+        ( commentAt
+            (fromBool (commentJoined c))
+            ls
+            piece
+            DocComment
+            (sliceSpan ls piece)
+        )
 
 -- | Has 'asOrdinary' escaped this comment's trigger?
 --

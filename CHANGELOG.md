@@ -493,6 +493,10 @@
 * In a module with conditionals, a line using a macro that a `#define`
   between two declarations defines comes out once, as written, rather than
   formatted as code with a copy of the line inside it.
+* In a module with CPP in force, the empty line under a comment that ends
+  in a backslash stays, as between two guards, two items of a list or a
+  Haddock and its declaration, rather than going and letting cpp join the
+  code under it to the comment.
 
 ## Tilia 0.1.4.0
 

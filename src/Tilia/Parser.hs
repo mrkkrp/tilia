@@ -18,6 +18,7 @@ module Tilia.Parser
   )
 where
 
+import Data.Choice (fromBool)
 import Data.Foldable (toList)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
@@ -33,7 +34,7 @@ import GHC.Data.FastString (mkFastString, unpackFS)
 import GHC.Data.StringBuffer qualified as GHC
 import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
-import GHC.LanguageExtensions.Type (Extension)
+import GHC.LanguageExtensions.Type (Extension (Cpp))
 import GHC.Parser qualified as GHC
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
@@ -128,7 +129,8 @@ parseConfiguration config path written haddocks source =
           Right
             ParsedModule
               { pmModule = hsModule,
-                pmSource = uncurry (sourceOf written haddocks) (lexed start),
+                pmSource =
+                  uncurry (sourceOf readByCpp written haddocks) (lexed start),
                 pmGathered = gathered hsModule,
                 pmSourceType = sourceType,
                 pmPrologue = prologueOf (lineTexts written),
@@ -137,6 +139,7 @@ parseConfiguration config path written haddocks source =
               }
   where
     extensions = effectiveExtensions (pcDefaults config) source
+    readByCpp = fromBool (Set.member Cpp extensions)
     start = stateFor extensions path source
 
     sourceType = sourceTypeOf path

@@ -30,6 +30,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Tilia.Settings (Settings (..), indentationColumns)
+import Tilia.Source.Lines (endsInBackslash)
 import Tilia.Span (Span)
 import Tilia.Utils (opensLineComment)
 
@@ -657,7 +658,8 @@ noting note out
     note' = note && (not (started out) || lineNote l)
 
 -- | Put a directive at the margin, on a line of its own, with no empty line
--- above one that ends a branch.
+-- above one that ends a branch but the one cpp joins to a line ending in a
+-- backslash.
 directive :: CppDirectiveType -> Text -> Out -> Out
 directive type' t =
   closeLine 0 . typed . putText 0 t . endingBranch . closeLine 0
@@ -668,7 +670,10 @@ directive type' t =
       CppDirectiveContinues -> unspaced out
       CppDirectiveCloses -> unspaced out
       _ -> out
-    unspaced out = out{outLines = dropWhile (T.null . lineBody) (outLines out)}
+    unspaced out = out{outLines = unspacedLines (outLines out)}
+    unspacedLines ls = case span (T.null . lineBody) ls of
+      (blank : _, l : rest) | endsInBackslash (lineBody l) -> blank : l : rest
+      (_, rest) -> rest
 
 -- | Append a fragment, starting the line at the indentation if this is the
 -- first thing on it.
