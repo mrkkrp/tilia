@@ -14,7 +14,7 @@ where
 
 import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust, isNothing, mapMaybe)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
 import GHC.Hs
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.ForeignCall (CType (..), Header (..))
@@ -154,12 +154,18 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
             ConDeclGADT{} -> False
 
           alternatives =
-            sepBy
-              separator
-              ( fmap
-                  (keepTogether . at_ ctx (conDecl ctx (fromBool singleRecCon)))
-                  cons
-              )
+            keepTogether (constructor firstCon)
+              <> mconcat (zipWith alternative cons (drop 1 cons))
+          alternative previous c =
+            separator
+              <> keepTogether
+                ( maybe
+                    id
+                    located
+                    (barAfter previous <> spanOf c)
+                    (constructor c)
+                )
+          constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
     derivings =
       includeUnless (null dd_derivs) beforeDerivings
         <> indent
@@ -184,6 +190,14 @@ argumentsDocumented ctx = \case
       (fieldsUnder ctx)
       (mapMaybe (fieldDoc . unLoc) (unLoc l))
   InfixCon{} -> False
+
+-- | Where the bar after a constructor was written.
+barAfter ::
+  -- | The constructor.
+  LConDecl GhcPs ->
+  Maybe Span
+barAfter (L l _) =
+  listToMaybe [s | AddVbarAnn t <- lann_trailing (anns l), Just s <- [spanOf t]]
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool

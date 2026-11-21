@@ -50,7 +50,7 @@ formatted       c65c22ac0d74  Agda-2.8.0/src/full/Agda/Interaction/BasicOps.hs
 formatted       aae00389ebed  Agda-2.8.0/src/full/Agda/Interaction/BuildLibrary.hs
 formatted       bc88e948d2f7  Agda-2.8.0/src/full/Agda/Interaction/Command.hs
 formatted       08a797f62d5b  Agda-2.8.0/src/full/Agda/Interaction/CommandLine.hs
-formatted       48f63c601fcf  Agda-2.8.0/src/full/Agda/Interaction/EmacsCommand.hs
+formatted       edce4f9492af  Agda-2.8.0/src/full/Agda/Interaction/EmacsCommand.hs
 formatted       21d191af10e6  Agda-2.8.0/src/full/Agda/Interaction/EmacsTop.hs
 formatted       05a9823fff57  Agda-2.8.0/src/full/Agda/Interaction/ExitCode.hs
 formatted       94b98b13cd44  Agda-2.8.0/src/full/Agda/Interaction/FindFile.hs
@@ -153,7 +153,7 @@ formatted       e35e2d6099af  Agda-2.8.0/src/full/Agda/Syntax/Parser/Literate.hs
 formatted       6412e84f0423  Agda-2.8.0/src/full/Agda/Syntax/Parser/LookAhead.hs
 formatted       8d09b17d0bd6  Agda-2.8.0/src/full/Agda/Syntax/Parser/Monad.hs
 formatted       08e6e9f4bff2  Agda-2.8.0/src/full/Agda/Syntax/Parser/StringLiterals.hs
-formatted       8538397d73ce  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
+formatted       6062c515cc44  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
 formatted       593be98e1eba  Agda-2.8.0/src/full/Agda/Syntax/Position.hs
 formatted       d16539c2a462  Agda-2.8.0/src/full/Agda/Syntax/Position.hs-boot
 formatted       8b3b2b12fa20  Agda-2.8.0/src/full/Agda/Syntax/Reflected.hs
@@ -1490,7 +1490,7 @@ formatted       533774d6a2e6  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       c61b5e2d6a72  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Floating.hs
 formatted       02dca655c839  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Indent.hs
 formatted       f6a84d0ce013  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Par.hs
-formatted       845450798fa2  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Types.hs
+formatted       5e28784b7609  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Types.hs
 formatted       a0d34cf4d44c  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Utils.hs
 formatted       9e32548ffa37  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Main.hs
 formatted       3838cff98834  brittany-0.14.0.2/source/test-suite/Main.hs
@@ -2421,7 +2421,7 @@ formatted       a522adaa1079  hakyll-4.17.0.0/lib/Hakyll/Web/Tags.hs
 formatted       88318866ba14  hakyll-4.17.0.0/lib/Hakyll/Web/Template.hs
 formatted       ca0afdc2d195  hakyll-4.17.0.0/lib/Hakyll/Web/Template/Context.hs
 formatted       46295fe0766a  hakyll-4.17.0.0/lib/Hakyll/Web/Template/Internal.hs
-formatted       7619df9c871c  hakyll-4.17.0.0/lib/Hakyll/Web/Template/Internal/Element.hs
+formatted       57c50fd55f9f  hakyll-4.17.0.0/lib/Hakyll/Web/Template/Internal/Element.hs
 formatted       7741b1b5c63c  hakyll-4.17.0.0/lib/Hakyll/Web/Template/Internal/Trim.hs
 formatted       270fe0160883  hakyll-4.17.0.0/lib/Hakyll/Web/Template/List.hs
 formatted       697bb3d63330  hakyll-4.17.0.0/src/Init.hs
@@ -2828,11 +2828,11 @@ formatted       1633df0a3282  idris-1.3.4/src/Idris/Core/CaseTree.hs
 formatted       308e910d0bc1  idris-1.3.4/src/Idris/Core/Constraints.hs
 formatted       9f2889f4ce25  idris-1.3.4/src/Idris/Core/DeepSeq.hs
 formatted       49d4a28c31a3  idris-1.3.4/src/Idris/Core/Elaborate.hs
-formatted       699c38efcb6c  idris-1.3.4/src/Idris/Core/Evaluate.hs
+formatted       480f03ea0c7a  idris-1.3.4/src/Idris/Core/Evaluate.hs
 formatted       c40163fdebb7  idris-1.3.4/src/Idris/Core/Execute.hs
 formatted       e32c5463cdd7  idris-1.3.4/src/Idris/Core/ProofState.hs
 formatted       b76c9b2dfb27  idris-1.3.4/src/Idris/Core/ProofTerm.hs
-formatted       ef46dd6a6ea2  idris-1.3.4/src/Idris/Core/TT.hs
+formatted       d711130800ff  idris-1.3.4/src/Idris/Core/TT.hs
 formatted       59ec68b8fb3b  idris-1.3.4/src/Idris/Core/Typecheck.hs
 formatted       59c53219535d  idris-1.3.4/src/Idris/Core/Unify.hs
 formatted       6c96b2dd85f4  idris-1.3.4/src/Idris/Core/WHNF.hs
@@ -3314,7 +3314,7 @@ formatted       3cb13f8a11b2  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/
 formatted       09ac925b181d  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/SetMap.hs
 formatted       03296c1a5cf6  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/Utils.hs
 formatted       dff692124036  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/XMLConverter.hs
-formatted       113eb911bc05  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Namespaces.hs
+formatted       5d074b45ccd0  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Namespaces.hs
 formatted       dc008bab0554  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/StyleReader.hs
 formatted       d6727d3e38e6  pandoc-3.10.2/src/Text/Pandoc/Readers/OOXML/Shared.hs
 formatted       366d13509d0d  pandoc-3.10.2/src/Text/Pandoc/Readers/OPML.hs
@@ -3834,7 +3834,7 @@ formatted       cb5a6cd8f843  purescript-0.15.15/src/Language/PureScript/Graph.h
 formatted       e1bc2cd1e4f1  purescript-0.15.15/src/Language/PureScript/Hierarchy.hs
 formatted       181be061d092  purescript-0.15.15/src/Language/PureScript/Ide.hs
 formatted       e2b57d642db7  purescript-0.15.15/src/Language/PureScript/Ide/CaseSplit.hs
-formatted       07c8a5e0629f  purescript-0.15.15/src/Language/PureScript/Ide/Command.hs
+formatted       8ae4d25c8532  purescript-0.15.15/src/Language/PureScript/Ide/Command.hs
 formatted       8192d0f7aaca  purescript-0.15.15/src/Language/PureScript/Ide/Completion.hs
 formatted       57a345e565b2  purescript-0.15.15/src/Language/PureScript/Ide/Error.hs
 formatted       725dbdad19a4  purescript-0.15.15/src/Language/PureScript/Ide/Externs.hs
