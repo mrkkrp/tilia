@@ -77,7 +77,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
               <> indent (funDeps ctx fdeps)
               <> includeUnless
                 onlyDocs
-                (breakOrSpace <> keywordAt ctx whereSpan "where")
+                (breakOrSpace <> keywordAt whereSpan "where")
           )
 
     classHead
@@ -169,7 +169,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
                      layoutFrom ctx typeSpan (hsSigTypeBody ctx (unLoc cid_poly_ty))
                        <> includeUnless
                          (null members)
-                         (breakOrSpace <> keywordAt ctx whereSpan "where")
+                         (breakOrSpace <> keywordAt whereSpan "where")
                  )
           )
 

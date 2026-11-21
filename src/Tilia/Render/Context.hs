@@ -474,8 +474,13 @@ atSpan _ Nothing d = d
 atSpan ctx (Just s) d = located s (layoutFrom ctx (Just s) d)
 
 -- | A keyword, claiming the span it was written on.
-keywordAt :: Ctx -> Maybe Span -> Text -> Doc
-keywordAt ctx s = atSpan ctx s . txt
+keywordAt ::
+  -- | Where it was written.
+  Maybe Span ->
+  -- | The keyword.
+  Text ->
+  Doc
+keywordAt s = maybe id located s . txt
 
 -- | Lay a region out broken where it was written over several lines, and
 -- otherwise flat where it fits within the column limit, claiming nothing.
