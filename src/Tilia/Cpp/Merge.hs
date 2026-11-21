@@ -684,6 +684,7 @@ agreeOn varied layout x y = case (x, y) of
       && length bs == length cs
       && and [g == h && inside p q | ((g, p), (h, q)) <- zip bs cs]
       && inside x' y'
+  (DFence s x', DFence t y') -> meets s t && inside x' y'
   _ -> case (unwrap x, unwrap y) of
     (Just (w, x'), Just (v, y')) ->
       w == v && agree varied (layoutInside layout w) x' y'
