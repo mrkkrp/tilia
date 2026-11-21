@@ -536,6 +536,10 @@
   goes on after them with a type signature, a type application, a record
   update or a field, closes them a step in, rather than at the column of
   the statement, where the closing bracket did not parse.
+* The scrutinee of a `case`, and what a minus negates, goes a step in on
+  the line under a comment written between them and the `case` or the
+  minus, rather than at their column, where in a `do` block it began a
+  statement of its own and did not parse.
 
 ## Tilia 0.1.4.0
 

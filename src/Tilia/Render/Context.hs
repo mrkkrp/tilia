@@ -29,6 +29,7 @@ module Tilia.Render.Context
     -- * What lies between two spans
     commentPrintedBetween,
     lineCommentWrittenBetween,
+    underComment,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -342,6 +343,23 @@ lineCommentWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
 lineCommentWrittenBetween ctx (Just a) (Just b) =
   holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
 lineCommentWrittenBetween _ _ _ = False
+
+-- | What follows a token on its line, a step in where a comment written
+-- between the two ends the line, so that it does not begin the next line at
+-- the indentation in force, where a layout block would take it for an item.
+underComment ::
+  -- | The context.
+  Ctx ->
+  -- | The token.
+  Maybe Span ->
+  -- | What follows it.
+  Maybe Span ->
+  -- | What follows it, printed.
+  Doc ->
+  Doc
+underComment ctx token part
+  | lineCommentWrittenBetween ctx token part = indent
+  | otherwise = id
 
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no
