@@ -115,6 +115,8 @@ data RenderConfig = RenderConfig
     -- | The modules the project's own packages declare, each with the names
     -- of those that declare it.
     rcOwnModules :: Map Text (Set Text),
+    -- | The names the module defines macros by, in whichever configuration.
+    rcMacros :: Set Text,
     -- | What the project sets.
     rcSettings :: Settings
   }
@@ -129,6 +131,7 @@ defaultRenderConfig =
       rcImportBarriers = [],
       rcImportBounds = Nothing,
       rcOwnModules = Map.empty,
+      rcMacros = Set.empty,
       rcSettings = defaultSettings
     }
 
@@ -159,7 +162,9 @@ data Ctx = Ctx
     -- | Where a list laid out on several lines puts its commas.
     ctxCommaStyle :: CommaStyle,
     -- | Where a type laid out on several lines puts its arrows.
-    ctxArrowStyle :: ArrowStyle
+    ctxArrowStyle :: ArrowStyle,
+    -- | The names the module defines macros by, in whichever configuration.
+    ctxMacros :: Set Text
   }
 
 -- | The backward edges of the rendering knot.

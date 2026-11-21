@@ -50,6 +50,7 @@ module Tilia.Cpp.Directives
     blankingFor,
     droppedFor,
     opaqueDirectives,
+    definedMacros,
     macroLines,
   )
 where
@@ -855,6 +856,19 @@ droppedFor gs i
 -- | The directives that do not introduce configurations.
 opaqueDirectives :: Text -> [Directive]
 opaqueDirectives = filter ((`elem` opaqueKeywords) . dKeyword) . directives
+
+-- | The macros a module defines, in whichever configuration, each with its
+-- name.
+definedMacros ::
+  -- | The module.
+  Text ->
+  [(Text, Macro)]
+definedMacros source =
+  [ macro
+  | d <- directives source,
+    dKeyword d == "define",
+    Just macro <- [definition (dText d)]
+  ]
 
 -- | The lines that hold nothing but a use of a function-like macro the
 -- module defines, each with what is written on it.

@@ -41,11 +41,13 @@ import Data.Choice (Choice, fromBool, isTrue)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (UnicodeSyntax))
 import GHC.Types.Basic (funPrec)
-import GHC.Types.Name.Reader (RdrName)
+import GHC.Types.Name.Occurrence (occNameString)
+import GHC.Types.Name.Reader (RdrName, isUnqual, rdrNameOcc)
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 import GHC.Types.Var (Specificity (..))
@@ -355,8 +357,14 @@ context ctx l =
       HsOpTy{} -> True
       other -> not (hsTypeNeedsParens funPrec other)
     unbracket t = case unLoc t of
-      HsParTy _ inner -> unbracket inner
+      HsParTy _ inner | not (headedByMacro inner) -> unbracket inner
       _ -> t
+    headedByMacro t = case unLoc t of
+      HsTyVar _ _ (L _ n) ->
+        isUnqual n
+          && Set.member (T.pack (occNameString (rdrNameOcc n))) (ctxMacros ctx)
+      HsAppTy _ f _ -> headedByMacro f
+      _ -> False
 
 -- | A context standing to the left of a @=>@, with the arrow and the break
 -- beside it.

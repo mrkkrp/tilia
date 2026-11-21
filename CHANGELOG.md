@@ -497,6 +497,10 @@
   in a backslash stays, as between two guards, two items of a list or a
   Haddock and its declaration, rather than going and letting cpp join the
   code under it to the comment.
+* A context of one constraint headed by a macro the module defines keeps
+  the parentheses written around it, as in `(IS_MONAD_STRING Monad m) =>`,
+  since the macro may stand for more constraints than one, as
+  `#define IS_MONAD_STRING IsString e,` does.
 
 ## Tilia 0.1.4.0
 

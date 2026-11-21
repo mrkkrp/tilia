@@ -63,7 +63,7 @@ import GHC.Types.Name.Reader (rdrNameOcc)
 import GHC.Types.SrcLoc (GenLocated (..))
 
 import Tilia.Cpp.Directives
-import Tilia.Cpp.Expansion (Macro (..), definition)
+import Tilia.Cpp.Expansion (Macro (..))
 import Tilia.Cpp.Fragment
   ( bodyOf,
     fragmentText,
@@ -153,7 +153,8 @@ formatWithCpp parser render path source = do
       render
         { rcDirectiveLines = maybe [] (sort . concatMap gsOwnLines) groups,
           rcImportBarriers = maybe [] (importBarriers layout) groups,
-          rcImportBounds = importBounds
+          rcImportBounds = importBounds,
+          rcMacros = Set.fromList (fmap fst (definedMacros source))
         }
     groups = allGroups <$> scanConditionals source
     layout = fromMaybe IntMap.empty (importLayout parser (blankCpp source))
@@ -224,9 +225,7 @@ contextBeforeHaddock source branches
     contexts =
       Set.fromList
         [ name
-        | d <- opaqueDirectives source,
-          dKeyword d == "define",
-          Just (name, Macro Nothing body) <- [definition (dText d)],
+        | (name, Macro Nothing body) <- definedMacros source,
           "=>" `T.isSuffixOf` body
         ]
     documented :: LHsType GhcPs -> Bool
