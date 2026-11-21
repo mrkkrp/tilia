@@ -266,18 +266,27 @@ conditionalSpan c =
 -- A region is printed in exactly the configurations that take its branch,
 -- so this is also which configurations it is in, and a comment written in
 -- one branch goes only next to what that branch holds.
-scopeIn :: [Conditional] -> Span -> Maybe (Int, Int)
-scopeIn conditionals s =
+scopeIn ::
+  -- | The conditionals.
+  [Conditional] ->
+  -- | Where the region was written.
+  Span ->
+  Maybe (Int, Int)
+scopeIn conditionals = \s ->
   listToMaybe
-    ( sortOn
+    [ b
+    | b@(from, to) <- branches,
+      from < spanStartLine s,
+      spanEndLine s < to
+    ]
+  where
+    branches =
+      sortOn
         (Down . fst)
         [ (from, to)
         | ls <- fmap conditionalLines conditionals,
-          (from, to) <- zip ls (drop 1 ls),
-          from < spanStartLine s,
-          spanEndLine s < to
+          (from, to) <- zip ls (drop 1 ls)
         ]
-    )
 
 -- | Mark out every choice the merge made as the region of the input it was
 -- printed from, and give every branch of it something to hold on to.
