@@ -57,7 +57,7 @@ data Lines = Lines
 linesOf :: Written -> Lines
 linesOf (Written text) =
   Lines
-    { lnWritten = IntMap.fromList (zip [1 ..] (T.lines text)),
+    { lnWritten = IntMap.fromDistinctAscList (zip [1 ..] (T.lines text)),
       lnDropped = IntSet.empty
     }
 
