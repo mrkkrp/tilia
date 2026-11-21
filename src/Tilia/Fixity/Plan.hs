@@ -45,13 +45,19 @@ import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath ((</>))
 
 import Tilia.Cabal.Package
-  ( Kind (Lib),
+  ( BranchSections (..),
+    ComponentSection (..),
+    Kind (Lib),
     PackageReader,
+    conditionValues,
     declaredModules,
     moduleExtensions,
+    modulesOf,
     newPackageReader,
     packageComponents,
+    packageOf,
     readPackageDescription,
+    sourceDirsOf,
   )
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
@@ -615,15 +621,31 @@ agreeing answers =
 -- A module of the component with the source directory nearest above the
 -- file comes before any library's, as GHC looks in a component's own
 -- source directories before the packages it depends on. Components whose
--- directories are as near count together.
+-- directories are as near count together. Each component is taken as a
+-- build on this machine configures it, unless only a build elsewhere
+-- compiles the file, which takes it with what every branch declares.
 localModules :: BuildPlan -> IO (Maybe FilePath -> Text -> Maybe FilePath)
 localModules plan = do
-  components <-
-    concat
+  (declared, built) <-
+    mconcat
       <$> traverse forPackage (nubOrd (concatMap directoryOf (bpPackages plan)))
-  let libraries = Map.unions [modules | (Lib, _, modules) <- components]
+  let elsewhere = Set.difference (filesOf declared) (filesOf built)
+      filesOf components =
+        Set.fromList
+          [path | (_, _, modules) <- components, (_, path) <- modules]
+      viewOf components =
+        let held =
+              [ (kind, dirs, Map.fromListWith (\_ first' -> first') modules)
+              | (kind, dirs, modules) <- components
+              ]
+         in (held, Map.unions [modules | (Lib, _, modules) <- held])
+      ofBuild = viewOf built
+      ofEvery = viewOf declared
   pure $ \importer ->
-    let covering =
+    let (components, libraries)
+          | any (`Set.member` elsewhere) importer = ofEvery
+          | otherwise = ofBuild
+        covering =
           [ (length rest, modules)
           | Just file <- [importer],
             (_, dirs, modules) <- components,
@@ -639,23 +661,42 @@ localModules plan = do
       LocalPackage dir -> [dir]
       CheckedOut dir -> [dir]
       _ -> []
-    forPackage dir = quietly [] $ do
+    forPackage dir = quietly mempty $ do
       cabalFilesIn dir >>= \case
-        [] -> pure []
+        [] -> pure mempty
         (cabalFile : _) ->
           readPackageDescription cabalFile >>= \case
-            Left _ -> pure []
-            Right described ->
-              traverse (component dir) (packageComponents described)
-    component dir (kind, _, branches) = do
-      placed <- for (declaredModules branches) $ \(d, modules) -> do
+            Left _ -> pure mempty
+            Right described -> do
+              valueOf <-
+                conditionValues
+                  (pure (plannedCompiler plan))
+                  ( Map.findWithDefault
+                      mempty
+                      (packageOf described)
+                      (plannedFlags plan)
+                  )
+                  described
+              let components = packageComponents described
+              (,)
+                <$> for components (\(kind, _, branches) -> component dir kind (declaredModules branches))
+                <*> for
+                  [ (kind, builtSection b valueOf)
+                  | (kind, _, b : _) <- components
+                  ]
+                  ( \(kind, section) ->
+                      component
+                        dir
+                        kind
+                        [ (d, modulesOf section)
+                        | d <- sourceDirsOf (sectionInfo section)
+                        ]
+                  )
+    component dir kind sources = do
+      placed <- for sources $ \(d, modules) -> do
         root <- canonicalizePath (dir </> d)
         (root,) . concat <$> traverse (locate root) modules
-      pure
-        ( kind,
-          fmap fst placed,
-          Map.fromListWith (\_ first' -> first') (concatMap snd placed)
-        )
+      pure (kind, fmap fst placed, concatMap snd placed)
     locate root (m, unwritten) = do
       found <-
         filterM doesFileExist [root </> unwritten <> e | e <- moduleEndings]

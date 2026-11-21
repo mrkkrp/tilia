@@ -10,12 +10,15 @@ module Tilia.Cabal.Package
     parsePackageDescription,
     declaredModules,
     declaredModuleNames,
+    modulesOf,
     packageSourceDirs,
+    sourceDirsOf,
     moduleExtensions,
     PackageReader,
     newPackageReader,
+    conditionValues,
     ComponentSection (..),
-    BranchSections,
+    BranchSections (..),
     Kind (..),
     packageOf,
     packageComponents,
@@ -407,7 +410,7 @@ sectionsInForce valueOf described =
   ( \BranchSections{..} ->
       inheritedSection
         <> ownSection
-        <> ComponentSection (builtSettings valueOf) [] []
+        <> ComponentSection (sectionInfo (builtSection valueOf)) [] []
   )
     <$> packageBranches described
 
@@ -447,15 +450,19 @@ packageOf =
 -- extension.
 declaredModules :: [BranchSections] -> [(FilePath, [(Text, FilePath)])]
 declaredModules branches =
-  [ ( d,
-      [ ( T.intercalate "." (fmap T.pack (splitDirectories sub <> [name])),
-          joined sub name
-        )
-      | (sub, name) <- sectionModules section
-      ]
-    )
+  [ (d, modulesOf section)
   | branch <- branches,
     (d, section) <- addedSources branch
+  ]
+
+-- | Every module a section declares, with where it would be written under
+-- a source directory, without an extension.
+modulesOf :: ComponentSection -> [(Text, FilePath)]
+modulesOf section =
+  [ ( T.intercalate "." (fmap T.pack (splitDirectories sub <> [name])),
+      joined sub name
+    )
+  | (sub, name) <- sectionModules section
   ]
 
 -- | The names of the modules a package declares, whatever the conditions in
@@ -536,9 +543,9 @@ data BranchSections = BranchSections
     inheritedSection :: ComponentSection,
     -- | What it declares itself.
     ownSection :: ComponentSection,
-    -- | The build settings of its component in a build, given the value the
-    -- build gives each variable a condition asks about.
-    builtSettings :: (ConfVar -> Either ConfVar Bool) -> BuildInfo
+    -- | Its component as a build configures it, given the value the build
+    -- gives each variable a condition asks about.
+    builtSection :: (ConfVar -> Either ConfVar Bool) -> ComponentSection
   }
 
 -- | Every branch of a library.
@@ -579,8 +586,7 @@ branchesOf ::
   [BranchSections]
 branchesOf f root = go mempty root
   where
-    built valueOf =
-      sectionInfo (f (simplifyCondTree valueOf root))
+    built valueOf = f (simplifyCondTree valueOf root)
     go inherited node =
       let own = f (condTreeData node)
        in BranchSections inherited own built
