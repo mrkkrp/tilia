@@ -490,6 +490,9 @@
 * A module with a conditional inside a quasi-quotation or a multi-line
   string is declined, with exit code 17, as one with an `#include` there
   is, rather than formatted with the declaration in each branch.
+* In a module with conditionals, a line using a macro that a `#define`
+  between two declarations defines comes out once, as written, rather than
+  formatted as code with a copy of the line inside it.
 
 ## Tilia 0.1.4.0
 
