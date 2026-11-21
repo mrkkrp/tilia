@@ -607,6 +607,11 @@
   a conditional begins and that goes on past the `#endif` stays whole in
   each branch, rather than its `@` or `!` coming out after the conditional,
   apart from what GHC reads it with, which changed or broke the program.
+* A comment lined up with the type of a constructor's field after its `!`
+  or `~` stays lined up with the type, rather than coming out under the
+  `!` and moving left on the next formatting, and a comment written above
+  a field's `{-# UNPACK #-}` stays above the pragma, rather than coming
+  out between the pragma and the field.
 
 ## Tilia 0.1.4.0
 

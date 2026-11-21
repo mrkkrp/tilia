@@ -773,15 +773,13 @@ conDeclField ::
   -- | The field.
   HsConDeclField GhcPs ->
   Doc
-conDeclField ctx CDF{cdf_ext = ((_, _, bang), _), ..} =
-  unpackPragma cdf_unpack
-    <> at
-      ctx
-      cdf_type
-      ( \ty ->
-          strictness (spanOf bang) cdf_bang
-            <> hsTypeBody ctx (spanOf cdf_type) ty
-      )
+conDeclField ctx CDF{..} =
+  maybe id located (spanOf pragma <> spanOf bang <> spanOf cdf_type) $
+    unpackPragma cdf_unpack
+      <> strictness (spanOf bang) cdf_bang
+      <> hsType ctx cdf_type
+  where
+    ((pragma, _, bang), _) = cdf_ext
 
 -- | A constructor field with its documentation in front of it.
 documentedConDeclField :: Ctx -> HsConDeclField GhcPs -> Doc
