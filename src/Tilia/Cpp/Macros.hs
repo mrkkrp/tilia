@@ -15,7 +15,7 @@ where
 
 import Control.Applicative ((<|>))
 import Data.Char (isAsciiLower, isAsciiUpper, isDigit)
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -105,8 +105,20 @@ impliedBy holds = maybe mempty (go holds) . expressionOf
       _ -> mempty
 
 -- | Whether a macro is defined, where that is known.
-isDefined :: Macros -> Text -> Maybe Bool
+--
+-- A macro is not defined where another of its 'family' is, which makes two
+-- of them defined a contradiction.
+isDefined ::
+  -- | What is known about the macros.
+  Macros ->
+  -- | The macro.
+  Text ->
+  Maybe Bool
 isDefined macros n
+  | not (Set.null (macroDefined macros)),
+    Just f <- family n,
+    any (\m -> m /= n && family m == Just f) (macroDefined macros) =
+      Just False
   | Map.member n (macroExactVersions macros)
       || Map.member n (macroExactNumbers macros)
       || Set.member n (macroDefined macros) =
@@ -117,6 +129,17 @@ isDefined macros n
     Set.notMember p held =
       Just False
   | otherwise = Nothing
+
+-- | The family of macros a macro belongs to, of which the compiler defines
+-- one: the @_HOST_OS@ macro of the operating system it compiles for, and the
+-- @_HOST_ARCH@ one of its architecture.
+family ::
+  -- | The macro.
+  Text ->
+  Maybe Text
+family n = find named ["_HOST_OS", "_HOST_ARCH"]
+  where
+    named suffix = maybe False (not . T.null) (T.stripSuffix suffix n)
 
 -- | The number a macro stands for, where that is known.
 numberOf :: Macros -> Text -> Maybe Integer
