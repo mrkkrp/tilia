@@ -131,7 +131,8 @@ renderConfiguration render parsed =
           ctxIndentation = settingsIndentation (rcSettings render),
           ctxCommaStyle = settingsCommaStyle (rcSettings render),
           ctxArrowStyle = settingsArrowStyle (rcSettings render),
-          ctxMacros = rcMacros render
+          ctxMacros = rcMacros render,
+          ctxMacroArguments = rcMacroArguments render
         }
 
 -- | What printing the top level of one configuration takes, and the

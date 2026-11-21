@@ -56,6 +56,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 import GHC.Hs hiding (Fixity, UnicodeSyntax)
 import GHC.LanguageExtensions.Type (Extension (NegativeLiterals, UnicodeSyntax))
 import GHC.Types.Name.Reader (RdrName (..))
@@ -85,6 +86,8 @@ import Tilia.Source
     SourceType,
     blankAt,
     directivePresentOnLine,
+    lineAt,
+    offsetOf,
     quoteEndingFrom,
     sourceLines,
   )
@@ -117,6 +120,9 @@ data RenderConfig = RenderConfig
     rcOwnModules :: Map Text (Set Text),
     -- | The names the module defines macros by, in whichever configuration.
     rcMacros :: Set Text,
+    -- | Where the argument lists of the module's uses of its function-like
+    -- macros were written, which cpp pastes into the macros as they are.
+    rcMacroArguments :: Set Span,
     -- | What the project sets.
     rcSettings :: Settings
   }
@@ -132,6 +138,7 @@ defaultRenderConfig =
       rcImportBounds = Nothing,
       rcOwnModules = Map.empty,
       rcMacros = Set.empty,
+      rcMacroArguments = Set.empty,
       rcSettings = defaultSettings
     }
 
@@ -164,7 +171,10 @@ data Ctx = Ctx
     -- | Where a type laid out on several lines puts its arrows.
     ctxArrowStyle :: ArrowStyle,
     -- | The names the module defines macros by, in whichever configuration.
-    ctxMacros :: Set Text
+    ctxMacros :: Set Text,
+    -- | Where the argument lists of the module's uses of its function-like
+    -- macros were written, which cpp pastes into the macros as they are.
+    ctxMacroArguments :: Set Span
   }
 
 -- | The backward edges of the rendering knot.
@@ -379,9 +389,20 @@ writtenBlank ctx n = blankAt n (sourceLines (ctxSource ctx))
 --
 -- This is the counterpart of every @L@ in the syntax tree: it records where
 -- the output came from, so that comments can be attached to it later, and
--- it settles the node's layout from the region it occupied.
+-- it settles the node's layout from the region it occupied. A node written
+-- as the argument list of a use of a function-like macro is printed as it
+-- was written, since cpp pastes that into the macro's body.
 at :: HasLoc l => Ctx -> GenLocated l a -> (a -> Doc) -> Doc
-at ctx l f = atSpan ctx (spanOf l) (f (GHC.unLoc l))
+at ctx l f = atSpan ctx s $ case s of
+  Just x
+    | not (Set.null pasted),
+      Set.member x pasted,
+      Just written <- writtenAt ctx x ->
+        txt written
+  _ -> f (GHC.unLoc l)
+  where
+    s = spanOf l
+    pasted = ctxMacroArguments ctx
 
 -- | 'at' with the arguments the other way round, for use in sections.
 at_ :: HasLoc l => Ctx -> (a -> Doc) -> GenLocated l a -> Doc
@@ -506,6 +527,13 @@ writtenOnOneLine ctx s = from (spanStartLine s)
     from n =
       n >= spanEndLine s
         || maybe False from (quoteEndingFrom n (ctxSource ctx))
+
+-- | What was written at a span within one line.
+writtenAt :: Ctx -> Span -> Maybe Text
+writtenAt ctx s = do
+  l <- lineAt (spanStartLine s) (sourceLines (ctxSource ctx))
+  let from = offsetOf l (spanStartColumn s)
+  pure (T.take (offsetOf l (spanEndColumn s) - from) (T.drop from l))
 
 -- | Does a comment that ends its line begin inside this span?
 holdsLineComment :: Ctx -> Span -> Bool

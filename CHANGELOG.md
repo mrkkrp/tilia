@@ -501,6 +501,10 @@
   the parentheses written around it, as in `(IS_MONAD_STRING Monad m) =>`,
   since the macro may stand for more constraints than one, as
   `#define IS_MONAD_STRING IsString e,` does.
+* The arguments of a use of a function-like macro the module defines come
+  out as written, as in `OIDS(name,text)`, rather than spaced as the items
+  of a tuple: cpp pastes them into the macro's body with their spaces,
+  which turned `TI.b` in the body into `TI. text`.
 
 ## Tilia 0.1.4.0
 
