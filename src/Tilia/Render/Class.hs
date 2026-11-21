@@ -76,7 +76,7 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
               <> classHead
               <> indent (funDeps ctx fdeps)
               <> includeUnless
-                (null members)
+                onlyDocs
                 (breakOrSpace <> keywordAt ctx whereSpan "where")
           )
 
@@ -103,8 +103,12 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
             hsq_explicit
 
     body =
-      includeUnless (null members) . indent $
-        breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
+      includeUnless (null members)
+        . layoutFrom ctx (wholeHeadSpan <> spansOf members)
+        . indent
+        $ breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
+
+    onlyDocs = null sigs && null binds && null families && null defaults
 
     members =
       inSourceOrder
