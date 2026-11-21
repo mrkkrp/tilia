@@ -136,7 +136,9 @@ disagreements declared m direct shown =
     inTypes = Map.filterWithKey (\(namespace, _) _ -> namespace == InTypes)
     members i =
       Map.filter (not . Set.null) $
-        Map.map (Set.filter (`Set.member` withFixities)) (interfaceMembers i)
+        Map.map
+          (Set.filter (`Set.member` withFixities) . Set.map snd)
+          (interfaceMembers i)
     withFixities = Set.map (OpName . fst) (offered declared m direct)
 
 -- | Every fixity a module offers, its own and those of what it reexports,

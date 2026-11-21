@@ -144,8 +144,7 @@ cachedEstablished cache package modName =
       untold <- traverse untoldEntry (fieldsOf "untold")
       names <- concat <$> traverse parseByNamespace (fieldsOf "names")
       certain <- traverse (memberEntry parseByNamespace) (fieldsOf "member")
-      members <-
-        traverse (memberEntry (Just . fmap OpName)) (fieldsOf "members")
+      members <- traverse (memberEntry parseNamespaced) (fieldsOf "members")
       let byParent = Map.fromListWith Set.union certain
       pure
         Established
@@ -154,9 +153,7 @@ cachedEstablished cache package modName =
             establishedUntold = Set.fromList untold,
             establishedCertain = Certain (Set.fromList names) byParent,
             establishedMembers =
-              Map.union
-                (Map.fromListWith Set.union members)
-                (Map.map (Set.map snd) byParent)
+              Map.union (Map.fromListWith Set.union members) byParent
           }
     unsettledEntry = \case
       token : fields
@@ -200,14 +197,13 @@ storeEstablished cache package modName established =
          ]
       -- The members of a name are mostly its certain members, which the
       -- lines above already say.
-      <> [ "members" : parent : [kid | OpName kid <- Set.toAscList kids]
+      <> [ "members" : parent : renderNamespaced kids
          | (OpName parent, kids) <- Map.toList (establishedMembers established),
-           Just kids /= Map.lookup (OpName parent) written
+           Just kids /= Map.lookup (OpName parent) (certainMembers certain)
          ]
   where
     fixities = establishedFixities established
     certain = establishedCertain established
-    written = Map.map (Set.map snd) (certainMembers certain)
 
 -- | What each configuration of one of the project's own modules says, if it
 -- was last read from what the stamp stands for.
@@ -271,8 +267,7 @@ renderSummaries = \case
         <> fmap offers (Map.toList (summaryListedMembers s))
         <> [["spliced"] | summarySpliced s]
     declares (OpName parent, kids) = "declares" : parent : renderNamespaced kids
-    offers (OpName parent, kids) =
-      "offers" : parent : [kid | OpName kid <- Set.toAscList kids]
+    offers (OpName parent, kids) = "offers" : parent : renderNamespaced kids
     renderExport = \case
       ExportName namespace qualifier op ->
         ["export", "name", renderNamespace namespace] <> under qualifier [op]
@@ -359,16 +354,19 @@ parseSummaries = \case
                   (summaryDeclaredMembers s)
             }
           rest
-      ("offers" : parent : kids) : rest ->
+      ("offers" : parent : kids) : rest -> do
+        namespaced <- parseNamespaced kids
         go
           s
             { summaryListedMembers =
-                Map.insert (OpName parent) (names kids) (summaryListedMembers s)
+                Map.insert
+                  (OpName parent)
+                  (Set.fromList namespaced)
+                  (summaryListedMembers s)
             }
           rest
       ["spliced"] : rest -> go s{summarySpliced = True} rest
       _ -> Nothing
-    names = Set.fromList . fmap OpName
     qualifier q = if q == "-" then Nothing else Just q
     exportItem = \case
       ["name", namespace, q, op] ->

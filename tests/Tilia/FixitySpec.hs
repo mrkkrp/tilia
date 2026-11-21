@@ -614,17 +614,27 @@ spec = do
 
     it "keeps to what an export list hands on" $
       listedMembersIn "module M (T (A)) where\ndata T = A | Int :| Int\n"
-        `shouldBe` [(OpName "T", [OpName "A"])]
+        `shouldBe` [(OpName "T", [(InTerms, OpName "A")])]
 
     it "hands on every member of a name exported with (..)" $
       listedMembersIn "module M (T (..)) where\ndata T = A | Int :| Int\n"
-        `shouldBe` [(OpName "T", [OpName ":|", OpName "A"])]
+        `shouldBe` [ ( OpName "T",
+                       [(InTerms, OpName ":|"), (InTerms, OpName "A")]
+                     )
+                   ]
 
     it "hands on every member of a name exported with (..) and the rest" $
       listedMembersIn
         "{-# LANGUAGE PatternSynonyms #-}\n\
         \module M (T (.., P)) where\ndata T = A | Int :| Int\npattern P = A\n"
-        `shouldBe` [(OpName "T", [OpName ":|", OpName "A", OpName "P"])]
+        `shouldBe` [ ( OpName "T",
+                       [ (InTypes, OpName "P"),
+                         (InTerms, OpName ":|"),
+                         (InTerms, OpName "A"),
+                         (InTerms, OpName "P")
+                       ]
+                     )
+                   ]
 
     it "says nothing of the members of a type it does not declare" $
       listedMembersIn "module M (T (..)) where\nimport Elsewhere\n"
@@ -1172,11 +1182,9 @@ declaredMembersIn =
   fmap (fmap Set.toList) . Map.toList . declaredMembers . pmModule . parsed
 
 -- | The same, as the module's export list hands them on.
-listedMembersIn :: Text -> [(OpName, [OpName])]
-listedMembersIn = settled . listedMembers . pmModule . parsed
-
-settled :: Map.Map OpName (Set.Set OpName) -> [(OpName, [OpName])]
-settled = fmap (fmap Set.toList) . Map.toList
+listedMembersIn :: Text -> [(OpName, [(Namespace, OpName)])]
+listedMembersIn =
+  fmap (fmap Set.toList) . Map.toList . listedMembers . pmModule . parsed
 
 -- | A scope over a world where Members exports @T@ with the member @:|@.
 --
@@ -1190,7 +1198,8 @@ scopeWithMembers source =
     (pure (pmModule (parsed ("module M where\n" <> source))))
   where
     membersIn = \case
-      "Members" -> Map.fromList [(OpName "T", Set.fromList [OpName ":|"])]
+      "Members" ->
+        Map.fromList [(OpName "T", Set.fromList [(InTerms, OpName ":|")])]
       _ -> Map.empty
 
 -- | An unqualified import of M with this list.
@@ -1204,9 +1213,9 @@ listing items =
     }
 
 -- | What @NonEmpty@ has under it, as an interface tells it.
-nonEmptyMembers :: Map.Map OpName (Set.Set OpName)
+nonEmptyMembers :: Map.Map OpName (Set.Set (Namespace, OpName))
 nonEmptyMembers =
-  Map.singleton (OpName "NonEmpty") (Set.singleton (OpName ":|"))
+  Map.singleton (OpName "NonEmpty") (Set.singleton (InTerms, OpName ":|"))
 
 -- | A scope over the two modules that spell @:>@ in different namespaces.
 scopeOfBoth :: Text -> Scope
@@ -1233,7 +1242,7 @@ scopeSuspecting members source =
   where
     membersIn m =
       Map.fromList
-        [ (OpName parent, Set.fromList (fmap OpName kids))
+        [ (OpName parent, Set.fromList (fmap ((InTerms,) . OpName) kids))
         | (parent, kids) <- Map.findWithDefault [] m (Map.fromList members)
         ]
 

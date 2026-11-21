@@ -1487,10 +1487,11 @@ fixitiesOf resolver modName =
       | settlesEverything established = Just (establishedFixities established)
       | otherwise = Nothing
 
--- | The members of each of a module's names.
+-- | The members of each of a module's names, whatever their namespaces.
 membersIn :: Resolver -> Text -> IO (Map.Map OpName (Set.Set OpName))
 membersIn resolver modName =
-  establishedMembers <$> askModule resolver Nothing modName
+  Map.map (Set.map snd) . establishedMembers
+    <$> askModule resolver Nothing modName
 
 -- | Every name a module certainly brings in.
 certainNamesOf :: Resolver -> Text -> IO (Set.Set (Namespace, OpName))
@@ -1541,7 +1542,7 @@ chasedModule source =
                   (Set.fromList [plus, doc])
                   (Map.singleton (OpName "Doc") (Set.singleton plus)),
               establishedMembers =
-                Map.singleton (OpName "Doc") (Set.singleton (OpName "<+>"))
+                Map.singleton (OpName "Doc") (Set.singleton plus)
             }
         "Prelude" -> mempty
         _ -> unreadable
@@ -1959,6 +1960,34 @@ withPlan plan = do
           ("src/Pong.hs", "module Pong (T (..)) where\nimport Ping\n")
         ]
       $ \rs -> membersIn rs "Ping" `shouldReturn` Map.empty
+
+    it "brings in an associated type with its class, not a term of its name"
+      $ withFakeProject
+        [ ( "src/A.hs",
+            T.unlines
+              [ "{-# LANGUAGE TypeFamilies #-}",
+                "module A where",
+                "import Data.Kind (Type)",
+                "infixl 8 **",
+                "class Tensor k where",
+                "  type (a :: k) ** (b :: k) :: k",
+                "class Pair (p :: Type -> Type) where",
+                "  (**) :: p a -> p b -> p (a, b)"
+              ]
+          ),
+          ("src/B.hs", "module B where\ninfixl 7 **\n(**) :: Int -> Int -> Int\n(**) = (+)\n")
+        ]
+      $ \rs -> do
+        let m =
+              parsed
+                "module M where\nimport A (Tensor (..))\nimport B ((**))\n\
+                \import Prelude hiding ((**))\n"
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "**")
+          `shouldBe` Resolved (Fixity LeftAssoc 7) (DeclaredIn "B")
+        disagreement scope InTerms Nothing (OpName "**") `shouldBe` Nothing
+        lookupFixity scope InTypes Nothing (OpName "**")
+          `shouldBe` Resolved (Fixity LeftAssoc 8) (DeclaredIn "A")
 
     it "keeps those of a configuration passed over for leaving a name unsettled"
       $ withFakeProject
