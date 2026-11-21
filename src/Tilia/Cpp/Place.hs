@@ -17,7 +17,7 @@ import Data.Foldable (traverse_)
 import Data.List (find, sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Ord (Down (..))
 import Data.Set (Set)
@@ -139,7 +139,6 @@ restoreUnprinted source macros found doc = do
   traverse_ (Left . quotedDirective) . find (quoted . dLine) $
     filter (not . inComment . dLine) (directives source)
   let groups = [gs | gs <- allGroups forest, not (inComment (fst (gsWhole gs)))]
-      scope = scopeIn (fmap gsConditional groups)
       notes =
         [ if any directiveAt [spanStartLine s + 1 .. spanEndLine s - 1]
             then transcendentComment written c
@@ -149,6 +148,11 @@ restoreUnprinted source macros found doc = do
         ]
   let shelled = foldl (restoreConditional written) (widened doc) groups
       marked = spacedApart written (realized (widened shelled))
+      partial = partiallyPrinted marked
+      writtenIn = scopeIn (fmap gsConditional groups)
+      scope s
+        | Set.member s partial = Nothing
+        | otherwise = Just (writtenIn s)
       noted = attachScopedComments margin scope notes marked
       margin =
         Margin
@@ -233,8 +237,12 @@ keptApart haddocks notes = snd . go Apart
         | onlySpacing d || printsNothing d -> (before, d)
         | otherwise -> (Apart, d)
 
--- | Widen every region to take in the conditionals printed inside it.
-widened :: Doc -> Doc
+-- | Widen every region to take in the choices printed inside it, each past
+-- the end of the last line it prints, after which comes its @#endif@.
+widened ::
+  -- | The document.
+  Doc ->
+  Doc
 widened = fst . go
   where
     go = \case
@@ -243,8 +251,13 @@ widened = fst . go
       DCppChoice cs bs e ->
         let bs' = [(g, go d) | (g, d) <- bs]
             (e', c) = go e
-         in ( DCppChoice cs [(g, d) | (g, (d, _)) <- bs'] e',
-              foldMap conditionalSpan cs <> foldMap (snd . snd) bs' <> c
+            choice = DCppChoice cs [(g, x) | (g, (x, _)) <- bs'] e'
+         in ( choice,
+              pastTheEnd
+                <$> foldMap conditionalSpan cs
+                  <> foldMap (snd . snd) bs'
+                  <> c
+                  <> regionOf choice
             )
       DCat a b ->
         let (a', ca) = go a
@@ -254,6 +267,29 @@ widened = fst . go
       d
         | Just (w, x) <- unwrap d -> let (x', c) = go x in (wrap w x', c)
         | otherwise -> (d, Nothing)
+
+-- | The regions a choice prints in some of its alternatives but not in
+-- all, written outside every branch of its conditionals.
+--
+-- Such a region is printed in fewer configurations than the part of the
+-- module it was written in holds, so no comment goes next to it: whichever
+-- alternatives it is missing from would lose the comment.
+partiallyPrinted ::
+  -- | The document.
+  Doc ->
+  Set Span
+partiallyPrinted = \case
+  DCppChoice cs bs e ->
+    let alternatives = fmap snd bs <> [e]
+        held = fmap (foldRegions outside) alternatives
+        outside s _ inside
+          | isJust (inBranch s) = Set.empty
+          | otherwise = Set.insert s inside
+        inBranch = scopeIn cs
+     in Set.unions held
+          `Set.difference` foldl' Set.intersection (Set.unions held) held
+          <> foldMap partiallyPrinted alternatives
+  d -> foldChildren partiallyPrinted d
 
 -- | The lines a conditional was written on, from its @#if@ to its @#endif@.
 conditionalSpan :: Conditional -> Maybe Span

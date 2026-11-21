@@ -515,6 +515,9 @@
   takes for the class's own, comes out without a `where`: behind one GHC
   read them only at the column of the class's members, which it had none
   of, and so dropped them.
+* A comment after code that the conditional above it has every branch
+  print a copy of comes out after each copy, rather than after the copy
+  in the first branch only, or after the `#endif`.
 
 ## Tilia 0.1.4.0
 
