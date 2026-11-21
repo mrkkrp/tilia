@@ -17,10 +17,11 @@ import Data.Choice (fromBool)
 import Data.Function (on)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (insert, sortOn)
+import Data.List (delete, insert, minimumBy, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing)
+import Data.Ord (comparing)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -33,7 +34,13 @@ import Tilia.Comments (Comment (..), commentPragma)
 import Tilia.Doc.Combinators
 import Tilia.Imports (normalizeImports)
 import Tilia.Parser (writtenInHeader)
-import Tilia.Pragma (Pragma (..), languageNames, lookupEdition, sameInForce)
+import Tilia.Pragma
+  ( Pragma (..),
+    commute,
+    languageNames,
+    lookupEdition,
+    switchedBy,
+  )
 import Tilia.Render.Context
 import Tilia.Render.Declaration (topLevelDecls)
 import Tilia.Render.Haddock
@@ -151,8 +158,9 @@ takeStackHeader prologue = \case
 -- one of them kept, since a flag such as @-fplugin-opt@ counts each time it
 -- is given.
 --
--- The pragmas between two directives are sorted unless that would leave other
--- extensions in force, in which case they keep the order they were written in.
+-- The pragmas between two directives are sorted, but a pragma stays ahead of
+-- a later one that sorts alike or that it does not commute with, so that the
+-- same extensions are left in force.
 pragmaBlock :: [HeaderPragma] -> Doc
 pragmaBlock =
   foldMap render
@@ -161,10 +169,24 @@ pragmaBlock =
     . NE.groupBy ((==) `on` hpRun)
     . concatMap split
   where
-    sorted run =
-      let candidate = sortOn order run
-       in if sameInForce (named candidate) (named run) then candidate else run
-    named = fmap (\p -> (hpName p, hpBody p))
+    sorted run
+      -- Where nothing turns an extension off, every two pragmas commute.
+      | all and switches = sortOn order run
+      | otherwise = arrange (zip run switches)
+      where
+        switches = fmap switched run
+    arrange = \case
+      [] -> []
+      ps ->
+        let free =
+              [ p
+              | (i, p) <- zip [0 ..] ps,
+                not (any (`ahead` p) (take i ps))
+              ]
+            next = minimumBy (comparing (order . fst)) free
+         in fst next : arrange (delete next ps)
+    ahead (a, sa) (b, sb) = order a == order b || not (commute sa sb)
+    switched p = switchedBy (hpName p) (hpBody p)
     order p = (orderOf p, extension p)
     extension p
       | orderOf p == Just LanguageOrder = hpBody p

@@ -16,7 +16,8 @@ module Tilia.Pragma
     flagSwitches,
     pragmaFlags,
     languageNames,
-    sameInForce,
+    switchedBy,
+    commute,
     headerPragmas,
   )
 where
@@ -175,16 +176,17 @@ effectiveExtensions defaults source =
           (editionExtensions (Just (last named)))
           (defaultsSwitches defaults)
 
--- | Do two orders of the same pragmas, each given by its name and body,
--- leave the same extensions on?
---
--- Where none of them turns an extension off, every order turns on the same.
-sameInForce :: [(Text, Text)] -> [(Text, Text)] -> Bool
-sameInForce a b = not (turnsOff a) || inForce a == inForce b
-  where
-    turnsOff = foldl' (switchWith (const id) (\_ _ -> True)) False . switches
-    inForce = foldl' switch Set.empty . switches
-    switches = concatMap (uncurry switchesOf)
+-- | Whether a pragma of this name and body, with what it implies, last
+-- turns each extension it switches on or off.
+switchedBy :: Text -> Text -> Map Extension Bool
+switchedBy name =
+  foldl' (switchWith (`Map.insert` True) (`Map.insert` False)) Map.empty
+    . switchesOf name
+
+-- | Do two pragmas, given by what they switch, put the same in force in
+-- either order?
+commute :: Map Extension Bool -> Map Extension Bool -> Bool
+commute a b = and (Map.intersectionWith (==) a b)
 
 -- | What a pragma of this name and body turns on and off.
 switchesOf :: Text -> Text -> [GHC.OnOff Extension]

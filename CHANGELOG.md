@@ -477,6 +477,11 @@
   followed by a documented part: Tilia read the macro as a type applied to
   that part, so the part's Haddock went above the macro, where GHC ignores
   it. [PR 539](https://github.com/mrkkrp/tilia/pull/539).
+* Where sorting the pragmas of a header would leave other extensions in
+  force, as with `NoMonoLocalBinds` written under `TypeFamilies`, only the
+  pragmas whose order matters keep the order they are written in, and the
+  rest are sorted around them, rather than all of them keeping it.
+  [PR 541](https://github.com/mrkkrp/tilia/pull/541).
 
 ## Tilia 0.1.4.0
 
