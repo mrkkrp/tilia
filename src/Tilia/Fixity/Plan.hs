@@ -556,7 +556,9 @@ fromSummaries reach modName = \case
 -- A configuration that leaves names unsettled is passed over where another
 -- settles every name, because almost every one of those is a branch meant
 -- for a different platform. Where none does, every configuration counts,
--- and a name any of them leaves unsettled stays unsettled.
+-- and a name any of them leaves unsettled stays unsettled. The members of a
+-- name are those any configuration gives it, passed over or not, as they
+-- bound what a @T(..)@ may bring in.
 agreeing :: NonEmpty Established -> Established
 agreeing answers =
   settledOnly
@@ -574,7 +576,7 @@ agreeing answers =
         establishedUntold = foldMap establishedUntold counted,
         establishedCertain = foldr1 inEvery (fmap establishedCertain counted),
         establishedMembers =
-          Map.unionsWith Set.union (fmap establishedMembers counted)
+          Map.unionsWith Set.union (fmap establishedMembers answers)
       }
   where
     counted =
