@@ -30,6 +30,7 @@ module Tilia.Render.Context
     commentPrintedBetween,
     lineCommentWrittenBetween,
     underComment,
+    remarkOnEachLine,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -360,6 +361,23 @@ underComment ::
 underComment ctx token part
   | lineCommentWrittenBetween ctx token part = indent
   | otherwise = id
+
+-- | Was a comment that ends its line written between the two spans, and
+-- another on the line the second begins, so that joining the two lines
+-- would take one of them off its line?
+remarkOnEachLine ::
+  -- | The context.
+  Ctx ->
+  -- | What comes first.
+  Maybe Span ->
+  -- | What comes next.
+  Maybe Span ->
+  Bool
+remarkOnEachLine ctx a b =
+  lineCommentWrittenBetween ctx a b
+    && lineCommentWrittenBetween ctx (startOf <$> b) (nextLine <$> b)
+  where
+    nextLine s = mkSpan (spanStartLine s + 1, 1) (spanStartLine s + 1, 1)
 
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no

@@ -593,6 +593,11 @@
   item, rather than before the comma, which was left on a line of its own
   and moved on the next pass. The same goes for a comment after a `->` that
   ends a line of a signature.
+* A comment after a `then` or an `else` that ends its line stays there
+  where a comment ends the next line too, as one after a `do` there does,
+  and what follows goes on that next line a step in, as under a guard,
+  rather than both comments going to the end of one line, where the second
+  came out on a line of its own and moved on the next pass.
 
 ## Tilia 0.1.4.0
 
