@@ -692,6 +692,7 @@ formatSingleConfig formatter reached text =
     (formatterParser formatter)
     (formatterPath formatter)
     (reachedLines reached)
+    (reachedLines reached)
     text of
     Left e -> Left (ConfigurationNotParsed (reachedAnswers reached) e)
     Right parsed ->

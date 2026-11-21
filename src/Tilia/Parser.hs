@@ -100,8 +100,9 @@ parseModule ::
   -- | The source.
   Text ->
   Either ParseError ParsedModule
-parseModule config path source =
-  parseConfiguration config path (linesOf (Written source)) source
+parseModule config path source = parseConfiguration config path ls ls source
+  where
+    ls = linesOf (Written source)
 
 -- | Parse one configuration of a module.
 parseConfiguration ::
@@ -112,10 +113,12 @@ parseConfiguration ::
   -- | The lines of the module as written, except for the lines that do not
   -- belong to this configuration.
   Lines ->
+  -- | The lines a Haddock's text is read from.
+  Lines ->
   -- | The configuration of it to parse.
   Text ->
   Either ParseError ParsedModule
-parseConfiguration config path written source =
+parseConfiguration config path written haddocks source =
   case GHC.unP entryPoint start of
     GHC.PFailed pstate -> Left (whyNot pstate)
     GHC.POk pstate (GHC.L _ hsModule)
@@ -125,7 +128,7 @@ parseConfiguration config path written source =
           Right
             ParsedModule
               { pmModule = hsModule,
-                pmSource = uncurry (sourceOf written) (lexed start),
+                pmSource = uncurry (sourceOf written haddocks) (lexed start),
                 pmGathered = gathered hsModule,
                 pmSourceType = sourceType,
                 pmPrologue = prologueOf (lineTexts written),
