@@ -144,6 +144,7 @@ vendoredExamples =
                   "cpp" </> "macro" </> "macro-before-a-leading-comma.hs",
                   "cpp" </> "expression" </> "branch-opening-a-bracket-it-does-not-close.hs",
                   "cpp" </> "expression" </> "string-lines-joined-by-cpp.hs",
+                  "cpp" </> "macro" </> "macro-for-a-context-before-a-haddock.hs",
                   "cpp" </> "directive" </> "line-marker-passed-on-by-cpp.hs",
                   "magic-comment" </> "magic-comment-inside-a-declaration.hs",
                   "cpp" </> "directive" </> "directive-left-as-written.hs"

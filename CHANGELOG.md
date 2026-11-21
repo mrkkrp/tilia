@@ -470,8 +470,13 @@
   changed it. [PR 536](https://github.com/mrkkrp/tilia/pull/536).
 * The exit codes run from 2 without gaps, in the order of the errors they
   stand for, so most of them change: formatting that changes the program
-  now exits with 25, and formatting that is not idempotent with 26.
+  now exits with 26, and formatting that is not idempotent with 27.
   [PR 536](https://github.com/mrkkrp/tilia/pull/536).
+* A module with CPP in force is declined, with exit code 13, where a macro
+  it defines as a context, as `#define HasCallStack_ HasCallStack =>`, is
+  followed by a documented part: Tilia read the macro as a type applied to
+  that part, so the part's Haddock went above the macro, where GHC ignores
+  it. [PR 539](https://github.com/mrkkrp/tilia/pull/539).
 
 ## Tilia 0.1.4.0
 
