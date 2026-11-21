@@ -625,6 +625,11 @@
 * `--check-ast` no longer reports a change where a line of a Haddock ends
   in a Unicode space, such as a no-break space, which formatting drops as
   it drops any space at the end of a line, and as Haddock reads it.
+* `--check-ast` no longer reports a change where a Haddock written over
+  several lines under ordinary comments, such as a `-- ^` under a field,
+  moves in front of what it documents, and the comments stay where they
+  were: the lines after its first were compared as ordinary comments, in
+  order.
 
 ## Tilia 0.1.4.0
 

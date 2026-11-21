@@ -32,10 +32,12 @@ import Data.Text.Encoding qualified as T
 import GHC.Data.EnumSet qualified as EnumSet
 import GHC.Data.FastString (mkFastString)
 import GHC.Data.StringBuffer qualified as GHC
+import GHC.Driver.Flags qualified as GHC
 import GHC.Hs (AnnsModule (..), EpAnn (anns), HsModule (..), XModulePs (..))
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (Cpp, ForeignFunctionInterface))
 import GHC.Parser qualified as GHC
+import GHC.Parser.Errors.Types (PsMessage (..))
 import GHC.Parser.Lexer qualified as GHC
 import GHC.Types.Error qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
@@ -86,7 +88,10 @@ data ParsedModule = ParsedModule
     -- top of the module would change its meaning.
     pmHeaderEnd :: Maybe Span,
     -- | The extensions it was read with.
-    pmExtensions :: Set Extension
+    pmExtensions :: Set Extension,
+    -- | Where each Haddock begins that GHC leaves out of the tree, as
+    -- @-Winvalid-haddock@ says.
+    pmLooseHaddocks :: Set (Int, Int)
   }
 
 -- | Was something that begins here written in the header, before what
@@ -139,7 +144,8 @@ parseConfiguration config path written haddocks source =
                 pmSourceType = sourceType,
                 pmPrologue = prologueOf (lineTexts written),
                 pmHeaderEnd = headerEndOf hsModule,
-                pmExtensions = extensions
+                pmExtensions = extensions,
+                pmLooseHaddocks = looseHaddocks pstate
               }
   where
     extensions = effectiveExtensions (pcDefaults config) source
@@ -361,11 +367,12 @@ parserOpts extensions safe =
     True -- let @LINE@ and @COLUMN@ pragmas move the source position
 
 -- | Diagnostics are not reported, so the settings only have to be
--- well-formed.
+-- well-formed, but for @-Winvalid-haddock@, which says where the Haddocks
+-- GHC leaves out of the tree are.
 quietDiagnostics :: GHC.DiagOpts
 quietDiagnostics =
   GHC.DiagOpts
-    { GHC.diag_warning_flags = EnumSet.empty,
+    { GHC.diag_warning_flags = EnumSet.fromList [GHC.Opt_WarnInvalidHaddock],
       GHC.diag_fatal_warning_flags = EnumSet.empty,
       GHC.diag_custom_warning_categories = emptyWarningCategorySet,
       GHC.diag_fatal_custom_warning_categories = emptyWarningCategorySet,
@@ -374,6 +381,25 @@ quietDiagnostics =
       GHC.diag_max_errors = Nothing,
       GHC.diag_ppr_ctx = GHC.defaultSDocContext
     }
+
+-- | Where each Haddock begins that GHC leaves out of the tree a parse
+-- produced.
+looseHaddocks ::
+  -- | The state the parse ended in.
+  GHC.PState ->
+  Set (Int, Int)
+looseHaddocks pstate =
+  Set.fromList
+    [ startPoint s
+    | m <- toList (GHC.getMessages (fst (GHC.getPsMessages pstate))),
+      loose (GHC.errMsgDiagnostic m),
+      Just s <- [spanOf (GHC.errMsgSpan m)]
+    ]
+  where
+    loose = \case
+      PsWarnHaddockInvalidPos -> True
+      PsWarnHaddockIgnoreMulti -> True
+      _ -> False
 
 -- | The @#!@ lines a file begins with, and the empty line after them.
 prologueOf :: [Text] -> [Text]

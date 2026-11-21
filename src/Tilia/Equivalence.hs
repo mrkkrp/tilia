@@ -14,6 +14,7 @@ where
 import Control.Applicative ((<|>))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.Char (isSpace)
 import Data.Choice (pattern Is)
 import Data.Data
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
@@ -58,11 +59,14 @@ import System.IO.Unsafe (unsafeDupablePerformIO, unsafePerformIO)
 
 import Tilia.Comments
   ( Comment (..),
+    CommentStyle (..),
     asOrdinary,
+    bracketed,
     carriedOnFrom,
     carriesOn,
     commentPragma,
     commentTrailing,
+    splitTrigger,
     triggerEscaped,
   )
 import Tilia.Imports (normalizeImports, travellingComments)
@@ -70,7 +74,7 @@ import Tilia.Parser (ParsedModule (..), writtenInHeader)
 import Tilia.Pragma (Pragma (..), languageNames, pragmaFlags)
 import Tilia.Pragma.Ghc (InForce (..), inForceAfter)
 import Tilia.Source (comments, sourceLines)
-import Tilia.Span (Span (..), covers)
+import Tilia.Span (Span (..), covers, startPoint)
 import Tilia.Span.Ghc (spanOf, spansOf)
 import Tilia.Utils (tshow)
 
@@ -550,12 +554,10 @@ commentDifference parsedBefore parsedAfter
   where
     moduleBefore = pmModule parsedBefore
     moduleAfter = pmModule parsedAfter
-    before = asRead parsedBefore
-    after = asRead parsedAfter
+    before = commentsAsRead parsedBefore
+    after = commentsAsRead parsedAfter
     (headerCommentsBefore, belowHeaderBefore) = byHeader parsedBefore before
     (headerCommentsAfter, belowHeaderAfter) = byHeader parsedAfter after
-    asRead m =
-      concatMap (asOrdinary (sourceLines (pmSource m))) (comments (pmSource m))
 
     byHeader m cs =
       ( filter inside common
@@ -592,7 +594,7 @@ commentDifference parsedBefore parsedAfter
     docsAfter = length (documentation after)
 
     documentation = filter isDocumentation
-    isDocumentation = triggerEscaped
+    isDocumentation c = commentStyle c == DocComment || triggerEscaped c
 
     ordinary =
       filter (\c -> not (isDocumentation c) && isNothing (commentPragma c))
@@ -625,6 +627,30 @@ commentDifference parsedBefore parsedAfter
       T.intercalate ", "
         . fmap (\(n, b) -> "{-# " <> n <> " " <> b <> " #-}")
         . Set.toList
+
+-- | A module's comments as they are compared, read as the printer reads
+-- them: a Haddock in the tree whole, wherever it moves, and every other
+-- comment as 'asOrdinary' reads it.
+--
+-- A Haddock written as @--@ lines that hold only spaces is printed as the
+-- comments the next pass reads, so it is read as them as well.
+commentsAsRead ::
+  -- | The module.
+  ParsedModule ->
+  [Comment]
+commentsAsRead m = concatMap readIn (comments (pmSource m))
+  where
+    readIn c
+      | commentStyle c == DocComment,
+        Set.notMember (startPoint (commentSpan c)) (pmLooseHaddocks m),
+        not (onlySpaces c) =
+          [c]
+      | otherwise = asOrdinary (sourceLines (pmSource m)) c
+    onlySpaces c = case commentBody c of
+      first :| rest ->
+        not (bracketed c)
+          && maybe False (T.all isSpace . snd) (splitTrigger first)
+          && all (T.all isSpace . T.drop 2 . T.stripStart) rest
 
 -- | The pragmas of a module's header, which are all the pragmas GHC reads,
 -- in the order they are written.
