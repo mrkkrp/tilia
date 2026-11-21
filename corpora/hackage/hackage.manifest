@@ -184,7 +184,7 @@ formatted       0c57d177f1f9  Agda-2.8.0/src/full/Agda/TypeChecking/CheckInterna
 formatted       6dc738ca1546  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause.hs
 formatted       1d3503de88a1  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Compile.hs
 formatted       375fdf7b66e6  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Compile.hs-boot
-formatted       1fe5a980ec20  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs
+formatted       0765edfa109e  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs
 formatted       ca4b9c8448bf  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs-boot
 formatted       4b7970c8b9e2  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs
 formatted       2e6872e4404d  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs-boot

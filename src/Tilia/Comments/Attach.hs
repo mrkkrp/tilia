@@ -275,7 +275,7 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   EndsTheLine -> space <> body <> DCloseLine <> gapBelow
   HeldBack spill ->
     foldMap (uncurry (heldBack spill)) (numbered c)
-      <> includeWhen (commentJoined c) (DHoldBack spill "")
+      <> includeWhen (commentJoined c || gapLeft) (DHoldBack spill "")
   OnItsOwnLines -> ownLines margin atTheEnd c
   where
     heldBack spill n x
@@ -284,6 +284,10 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
+    gapLeft =
+      not (commentTrailing c)
+        && commentGapBelow c
+        && all ((> spanEndLine (commentSpan c) + 1) . fst) (commentNextLine c)
 
 -- | A comment on lines of its own, with the empty lines its author left
 -- around it.
