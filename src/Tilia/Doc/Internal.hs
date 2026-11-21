@@ -487,8 +487,8 @@ go env = \case
   DDeclarationsStart -> id
 
 -- | Walk an alternative of a conditional, a step right of the line before
--- the conditional where its first line carries that line on and would not
--- begin right of it otherwise.
+-- the conditional where its first line carries that line on, would not
+-- begin right of it otherwise, and has no later line begin left of it.
 carryingOn ::
   -- | The indentation of the line before the conditional.
   Int ->
@@ -505,7 +505,8 @@ carryingOn before env d out = case firstLine walked of
     | lineContinues l,
       not (linePinned l),
       isNothing (commentOpening body),
-      lineIndent l <= before ->
+      lineIndent l <= before,
+      all (>= lineIndent l) (laterIndents walked) ->
         attached $
           go
             env
@@ -518,6 +519,14 @@ carryingOn before env d out = case firstLine walked of
     firstLine o = case unsnoc (init (outLines o)) of
       Just (_, l) -> (l, lineBody l)
       Nothing -> (outLine o, T.concat (reverse (outCurrent o)))
+    laterIndents o =
+      [lineIndent (outLine o) | started o]
+        <> [ lineIndent l
+           | l <- drop 1 (reverse (init (outLines o))),
+             not (T.null (lineBody l)),
+             isNothing (lineDirective l),
+             not (linePinned l)
+           ]
     attached o = o{outLines = init (outLines o) <> outLines out}
 
 -- | Does a frangible document break where it is about to be printed?
