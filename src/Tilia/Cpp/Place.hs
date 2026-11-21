@@ -13,7 +13,8 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.Char (isSpace)
-import Data.List (sortOn, unsnoc)
+import Data.Foldable (traverse_)
+import Data.List (find, sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
@@ -42,6 +43,7 @@ import Tilia.Cpp.Directives
     Guard (..),
     allGroups,
     dSpan,
+    directives,
     macroLines,
     opaqueDirectives,
     readConditionals,
@@ -52,11 +54,11 @@ import Tilia.Doc
     Nesting (..),
     conditionalRange,
     foldChildren,
+    foldRegions,
     mapChildren,
     onlySpacing,
     printsNothing,
     regionOf,
-    regionsIn,
     spine,
     unwrap,
     wrap,
@@ -133,6 +135,8 @@ restoreUnprinted ::
   Either CppError Doc
 restoreUnprinted source found doc = do
   forest <- readConditionals source
+  traverse_ (Left . quotedDirective) . find (quoted . dLine) $
+    filter (not . inComment . dLine) (directives source)
   let groups = [gs | gs <- allGroups forest, not (inComment (fst (gsWhole gs)))]
       scope = scopeIn (fmap gsConditional groups)
       notes =
@@ -157,7 +161,7 @@ restoreUnprinted source found doc = do
       (filter (not . inComment . dLine) (opaqueDirectives source))
   placed <-
     foldM
-      (putMacroLine written)
+      (putMacroLine written quoted)
       directed
       (filter (not . inComment . fst) macros)
   pure $
@@ -174,6 +178,8 @@ restoreUnprinted source found doc = do
       any
         (\s -> spanStartLine s < n && n < spanEndLine s)
         (summaryComments found)
+    quoted = quotedIn doc
+    quotedDirective d = DirectiveInQuotedText (dLine d) (dKeyword d)
 
 -- | What was printed last, as far as two comments running into each other
 -- goes.
@@ -384,7 +390,6 @@ restoreConditional written doc gs =
 -- | Put a directive back where it was written.
 putDirective :: Lines -> Doc -> Directive -> Either CppError Doc
 putDirective written doc d
-  | quotedAt doc (dLine d) = Left (DirectiveInQuotedText (dLine d) (dKeyword d))
   | dKeyword d == "include",
     commaUnder written (dLastLine d) =
       Left (BeforeLeadingComma (dLine d) ("#" <> dText d))
@@ -399,9 +404,18 @@ putDirective written doc d
 
 -- | Put a line using a macro back where it was written, at the indentation
 -- of the code around it, since what it stands for is code.
-putMacroLine :: Lines -> Doc -> (Int, Text) -> Either CppError Doc
-putMacroLine written doc (n, t)
-  | quotedAt doc n = Left (MacroInQuotedText n t)
+putMacroLine ::
+  -- | The module as written.
+  Lines ->
+  -- | Is a line inside something the document reproduces verbatim?
+  (Int -> Bool) ->
+  -- | The document.
+  Doc ->
+  -- | The line, and what is written on it.
+  (Int, Text) ->
+  Either CppError Doc
+putMacroLine written quoted doc (n, t)
+  | quoted n = Left (MacroInQuotedText n t)
   | commaUnder written n = Left (BeforeLeadingComma n t)
   | otherwise = Right (placeAt (const False) (Just written) n body indent doc)
   where
@@ -424,12 +438,22 @@ commaUnder written n = case dropWhile passed (lineTextsFrom (n + 1) written) of
     passed l =
       T.all isSpace l || isDirective l || T.isPrefixOf "--" (T.stripStart l)
 
--- | Is this line inside something the document reproduces verbatim, such
--- as a quasi-quotation, where a line cannot be put back?
-quotedAt :: Doc -> Int -> Bool
-quotedAt doc n = any inside (regionsIn doc)
+-- | Is a line inside something the document reproduces verbatim, such as
+-- a quasi-quotation, where a line cannot be put back?
+quotedIn ::
+  -- | The document.
+  Doc ->
+  -- | The line.
+  Int ->
+  Bool
+quotedIn doc = \n -> any (\(from, to) -> from < n && n <= to) ranges
   where
-    inside (s, x) = spanStartLine s < n && n <= spanEndLine s && reproduced x
+    ranges =
+      foldRegions
+        ( \s x inner ->
+            [(spanStartLine s, spanEndLine s) | reproduced x] <> inner
+        )
+        doc
 
     reproduced = \case
       DVerbatimBreak _ _ -> True

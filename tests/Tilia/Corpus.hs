@@ -140,6 +140,7 @@ vendoredExamples =
                   "pragma" </> "position" </> "position-pragma-after-a-string-gap.hs",
                   "cpp" </> "directive" </> "unbalanced.hs",
                   "cpp" </> "directive" </> "include-in-a-quasi-quotation.hs",
+                  "cpp" </> "directive" </> "conditional-in-a-quasi-quotation.hs",
                   "cpp" </> "macro" </> "macro-standing-for-a-bracket.hs",
                   "cpp" </> "macro" </> "macro-before-a-leading-comma.hs",
                   "cpp" </> "expression" </> "branch-opening-a-bracket-it-does-not-close.hs",
