@@ -72,8 +72,9 @@ data Comment = Comment
     commentStyle :: CommentStyle,
     -- | What was on the line above it.
     commentAbove :: Above,
-    -- | Where the nearest line above it that begins at or left of it
-    -- begins, with no empty line in between, if there is one.
+    -- | Where the nearest line above it that is not a directive and begins
+    -- at or left of it begins, with no empty line in between, if there is
+    -- one.
     commentBackTo :: Maybe (Int, Int),
     -- | Where the code before it on its opening line stops: the column one
     -- past the last character of that code, or 'Nothing' when the comment
@@ -209,7 +210,8 @@ commentAt cpp ls spn style raw =
               (written . snd)
               [ (n, l)
               | n <- [spanStartLine spn - 1, spanStartLine spn - 2 .. 1],
-                Just l <- [lineAt n ls]
+                Just l <- [lineAt n ls],
+                not (isDirective l)
               ],
           let column = contentColumn l,
           column <= spanStartColumn spn
