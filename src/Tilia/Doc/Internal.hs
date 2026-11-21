@@ -469,7 +469,11 @@ go env = \case
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
         guards = maybe (fmap fst branches) conditionalGuards (listToMaybe cs)
-        before = maybe 0 lineIndent (listToMaybe (outLines (closeLine 0 out)))
+        before
+          | endsWithOpener out = Nothing
+          | otherwise =
+              Just
+                (maybe 0 lineIndent (listToMaybe (outLines (closeLine 0 out))))
         alternative =
           carryingOn before env{envHeldFlat = False} . case envLayout env of
             Frangible -> DGroup Frangible
@@ -490,8 +494,9 @@ go env = \case
 -- the conditional where its first line carries that line on, would not
 -- begin right of it otherwise, and has no later line begin left of it.
 carryingOn ::
-  -- | The indentation of the line before the conditional.
-  Int ->
+  -- | The indentation of the line before the conditional, unless it ends
+  -- with an opener, after which nothing needs the step.
+  Maybe Int ->
   -- | What is in force where the alternative is.
   Env ->
   -- | The alternative.
@@ -505,12 +510,13 @@ carryingOn before env d out = case firstLine walked of
     | lineContinues l,
       not (linePinned l),
       isNothing (commentOpening body),
-      lineIndent l <= before,
+      Just b <- before,
+      lineIndent l <= b,
       all (>= lineIndent l) (laterIndents walked) ->
         attached $
           go
             env
-            (DNest (Columns (before - lineIndent l + step (envSettings env))) d)
+            (DNest (Columns (b - lineIndent l + step (envSettings env))) d)
             seeded
   _ -> attached walked
   where
