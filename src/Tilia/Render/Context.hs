@@ -116,7 +116,7 @@ data RenderConfig = RenderConfig
     rcImportBarriers :: [Int],
     -- | The lines the first and the last import of any configuration begin
     -- on, where the module has conditionals, so that every configuration
-    -- agrees on which comments are among the imports.
+    -- agrees on where the imports open and which comments are among them.
     rcImportBounds :: Maybe (Int, Int),
     -- | The modules the project's own packages declare, each with the names
     -- of those that declare it.
