@@ -41,6 +41,7 @@ module Tilia.Doc.Combinators
     nest,
     indent,
     align,
+    blockItem,
 
     -- * Combining
     sepBy,
@@ -264,6 +265,15 @@ indent = DNest (Steps 1)
 -- the line.
 align :: Doc -> Doc
 align = DAlign
+
+-- | An item of a layout block, such as a declaration, a statement or a case
+-- alternative, which a conditional inside it continues right of the column
+-- the item begins at.
+blockItem ::
+  -- | The item.
+  Doc ->
+  Doc
+blockItem = DBlockItem
 
 ----------------------------------------------------------------------------
 -- Combining

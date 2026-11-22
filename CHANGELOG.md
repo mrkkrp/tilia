@@ -444,11 +444,15 @@
   the extensions of the answer that rules it out, its record dot as
   composition.
   [PR 526](https://github.com/mrkkrp/tilia/pull/526).
-* Where every branch of a conditional begins with its own version of what
-  goes on with the line before the `#if`, as `$ round total` after
-  `print` does, each branch comes out a step right of that line, as it
-  did where some branch was empty, rather than at its column, where in a
-  `do` block it began a statement of its own and did not parse.
+* A branch of a conditional that goes on with a declaration, a statement,
+  a binding or a case alternative begun before the `#if` comes out a step
+  right of the column that one begins at wherever it would otherwise begin
+  at that column or left of it, where it began another one or ended the
+  block: `$ round total` after a `print` statement, and the body of an
+  equation whose first line a conditional varies, as with an argument
+  behind a conditional before `$ \x -> …`. A declaration or statement that
+  a branch begins itself stays at its column. A branch that is right of
+  that column already stays where it is.
   [PR 527](https://github.com/mrkkrp/tilia/pull/527).
 * A module with conditionals formats faster: its comments go to the
   placement without working out first which region each belongs to,

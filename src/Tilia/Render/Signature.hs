@@ -276,7 +276,9 @@ standaloneKindSig ctx (StandaloneKindSig _ n sigTy) =
 ruleDecls :: Ctx -> RuleDecls GhcPs -> Doc
 ruleDecls ctx (HsRules ((_, close), _) rules) =
   pragma "RULES" $
-    sepBy breakOrSpace (fmap (align . at_ ctx (ruleDecl ctx)) rules)
+    sepBy
+      breakOrSpace
+      (fmap (align . at_ ctx (blockItem . ruleDecl ctx)) rules)
       <> foldMap (emptyAnchor . startOf) (spanOf close)
 
 -- | One rule of a @RULES@ block.

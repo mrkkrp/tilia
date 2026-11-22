@@ -280,7 +280,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       (i : is) : runs ->
         foldMap anchor above
           <> includeWhen later hardBreak
-          <> at ctx i (importDecl ctx)
+          <> at ctx i (blockItem . importDecl ctx)
           <> foldMap anchor (IntMap.lookup start mcUnderImports)
           <> includeWhen (null is && null runs) (foldMap anchor mcBelowImports)
           <> hardBreak
