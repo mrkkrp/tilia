@@ -649,6 +649,16 @@
   so a module using it is declined rather than formatted as if it were
   `infixl 9`. path's `</>` was taken for `infixl 9`, as `Path.Posix` is
   written in `Include.hs`, which declares it `infixr 5`.
+* A comment written before the `via` of a `deriving` clause stays before
+  it, rather than going between the `via` and the type, and so does one
+  before a strategy such as `stock` or before the `instance` of a
+  standalone `deriving` declaration. A comment after one of these keywords
+  stays on the keyword's line.
+* A standalone `deriving` declaration whose strategy a conditional chooses,
+  or writes in one branch only, keeps its `instance` indented, rather than
+  at column 1, where it did not parse, and a `deriving` clause with its
+  strategy in each branch of a conditional no longer gets another empty
+  conditional on each formatting.
 
 ## Tilia 0.1.4.0
 

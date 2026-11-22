@@ -191,12 +191,12 @@ standaloneDerivDecl ::
   -- | The declaration.
   DerivDecl GhcPs ->
   Doc
-standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
+standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, (_, instTok)), ..} =
   txt "deriving" <> space <> strategy
   where
+    instanceWord = keywordAt (spanOf instTok) "instance"
     instanceHead =
-      txt "instance"
-        <> breakOrSpace
+      breakOrSpace
         <> indent
           ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
@@ -204,17 +204,24 @@ standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, _), ..} =
           )
 
     strategy = case deriv_strategy of
-      Nothing -> instanceHead
+      Nothing -> indent instanceWord <> instanceHead
       Just (L _ s) -> case s of
-        StockStrategy _ -> txt "stock " <> instanceHead
-        AnyclassStrategy _ -> txt "anyclass " <> instanceHead
-        NewtypeStrategy _ -> txt "newtype " <> instanceHead
-        ViaStrategy (XViaStrategyPs _ sigTy) ->
-          txt "via"
+        StockStrategy tok -> named tok "stock"
+        AnyclassStrategy tok -> named tok "anyclass"
+        NewtypeStrategy tok -> named tok "newtype"
+        ViaStrategy (XViaStrategyPs tok sigTy) ->
+          indent (keywordAt (spanOf tok) "via")
             <> breakOrSpace
             <> indent (hsSigType ctx sigTy)
             <> breakOrSpace
-            <> indent instanceHead
+            <> indent (instanceWord <> instanceHead)
+      where
+        named tok kw =
+          indent (keywordAt (spanOf tok) kw <> gap tok <> instanceWord)
+            <> instanceHead
+        gap tok
+          | remarkOnEachLine ctx (spanOf tok) (spanOf instTok) = hardBreak
+          | otherwise = space
 
 -- | A type family instance.
 tyFamInstDecl :: Ctx -> FamilyStyle -> TyFamInstDecl GhcPs -> Doc
