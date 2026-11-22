@@ -12,13 +12,13 @@ formatted       ed1248f72c24  Agda-2.8.0/src/full/Agda/Compiler/Backend.hs
 formatted       3913402b23db  Agda-2.8.0/src/full/Agda/Compiler/Backend/Base.hs
 formatted       b8be5cf3b8d8  Agda-2.8.0/src/full/Agda/Compiler/Builtin.hs
 formatted       b539677364d8  Agda-2.8.0/src/full/Agda/Compiler/CallCompiler.hs
-formatted       aa046f6d34fc  Agda-2.8.0/src/full/Agda/Compiler/Common.hs
+formatted       0e34c3c69a9b  Agda-2.8.0/src/full/Agda/Compiler/Common.hs
 formatted       ebfa9409c1f7  Agda-2.8.0/src/full/Agda/Compiler/JS/Compiler.hs
 formatted       47476910549c  Agda-2.8.0/src/full/Agda/Compiler/JS/Pretty.hs
 formatted       2bca51d0c7fb  Agda-2.8.0/src/full/Agda/Compiler/JS/Substitution.hs
 formatted       039ec43c5ce2  Agda-2.8.0/src/full/Agda/Compiler/JS/Syntax.hs
 formatted       fee03e2189f2  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Coerce.hs
-formatted       8d94fd9a98d4  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Compiler.hs
+formatted       24e49118c6e4  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Compiler.hs
 formatted       1ccb1c4b018e  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Encode.hs
 formatted       c4906415b96d  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/HaskellTypes.hs
 formatted       6eb39405d27b  Agda-2.8.0/src/full/Agda/Compiler/MAlonzo/Misc.hs
@@ -72,7 +72,7 @@ formatted       13a8ded1db0d  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/
 formatted       c7d3fc2d4e61  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Precise.hs
 formatted       dd7ad58a3050  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Range.hs
 formatted       272381635f9f  Agda-2.8.0/src/full/Agda/Interaction/Highlighting/Vim.hs
-formatted       97d3e58fc3c3  Agda-2.8.0/src/full/Agda/Interaction/Imports.hs
+formatted       984df99dac46  Agda-2.8.0/src/full/Agda/Interaction/Imports.hs
 formatted       35e9a0d21e62  Agda-2.8.0/src/full/Agda/Interaction/Imports.hs-boot
 formatted       fa5a220b0429  Agda-2.8.0/src/full/Agda/Interaction/InteractionTop.hs
 formatted       178e31185b1f  Agda-2.8.0/src/full/Agda/Interaction/JSON.hs
@@ -153,7 +153,7 @@ formatted       e35e2d6099af  Agda-2.8.0/src/full/Agda/Syntax/Parser/Literate.hs
 formatted       6412e84f0423  Agda-2.8.0/src/full/Agda/Syntax/Parser/LookAhead.hs
 formatted       8d09b17d0bd6  Agda-2.8.0/src/full/Agda/Syntax/Parser/Monad.hs
 formatted       08e6e9f4bff2  Agda-2.8.0/src/full/Agda/Syntax/Parser/StringLiterals.hs
-formatted       6062c515cc44  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
+formatted       8418b10d09d7  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
 formatted       593be98e1eba  Agda-2.8.0/src/full/Agda/Syntax/Position.hs
 formatted       d16539c2a462  Agda-2.8.0/src/full/Agda/Syntax/Position.hs-boot
 formatted       8b3b2b12fa20  Agda-2.8.0/src/full/Agda/Syntax/Reflected.hs
@@ -167,7 +167,7 @@ formatted       8bf7567be0f8  Agda-2.8.0/src/full/Agda/Syntax/Translation/Concre
 formatted       f8d387c19cd0  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       75eb53b02ca4  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
 formatted       b9a8330bae09  Agda-2.8.0/src/full/Agda/Syntax/Treeless.hs
-formatted       ab10718657e7  Agda-2.8.0/src/full/Agda/Termination/CallGraph.hs
+formatted       583f2d1ff2bc  Agda-2.8.0/src/full/Agda/Termination/CallGraph.hs
 formatted       df6c4a27e331  Agda-2.8.0/src/full/Agda/Termination/CallMatrix.hs
 formatted       ebc4ce14c917  Agda-2.8.0/src/full/Agda/Termination/CutOff.hs
 formatted       54c290552350  Agda-2.8.0/src/full/Agda/Termination/Monad.hs
@@ -175,7 +175,7 @@ formatted       fa73cde59f4a  Agda-2.8.0/src/full/Agda/Termination/Order.hs
 formatted       93ff045eaf2d  Agda-2.8.0/src/full/Agda/Termination/RecCheck.hs
 formatted       630184dac37b  Agda-2.8.0/src/full/Agda/Termination/Semiring.hs
 formatted       9a52f3ffdb7b  Agda-2.8.0/src/full/Agda/Termination/SparseMatrix.hs
-formatted       a1ee75fdee23  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
+formatted       36900089d97e  Agda-2.8.0/src/full/Agda/Termination/TermCheck.hs
 formatted       29fcc3f9ef83  Agda-2.8.0/src/full/Agda/Termination/Termination.hs
 formatted       9ce4d907acfa  Agda-2.8.0/src/full/Agda/TheTypeChecker.hs
 formatted       40368d0e2527  Agda-2.8.0/src/full/Agda/TypeChecking/Abstract.hs
@@ -188,10 +188,10 @@ formatted       0765edfa109e  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClau
 formatted       ca4b9c8448bf  Agda-2.8.0/src/full/Agda/TypeChecking/CompiledClause/Match.hs-boot
 formatted       4b7970c8b9e2  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs
 formatted       2e6872e4404d  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.hs-boot
-formatted       b97bceee2453  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
+formatted       06f64c978a9d  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
 formatted       ffb9e4d9ba07  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       24a333bdcca1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
-formatted       301e481fa658  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
+formatted       49bf3254bed2  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
 formatted       65540bbf9ac6  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Cubical.hs
 formatted       bf42ab8aecbd  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Match.hs
 formatted       25ad1190369c  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/SplitClause.hs
@@ -211,7 +211,7 @@ formatted       5264a31ef276  Agda-2.8.0/src/full/Agda/TypeChecking/Errors/Names
 formatted       9ffa08837a17  Agda-2.8.0/src/full/Agda/TypeChecking/EtaContract.hs
 formatted       0eecdffe3cc8  Agda-2.8.0/src/full/Agda/TypeChecking/Forcing.hs
 formatted       5cb2a86d4b5c  Agda-2.8.0/src/full/Agda/TypeChecking/Free.hs
-formatted       da4e85a5ee12  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Lazy.hs
+formatted       04f3c61246f7  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Lazy.hs
 formatted       b2e6b263ba28  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Precompute.hs
 formatted       5645764c6491  Agda-2.8.0/src/full/Agda/TypeChecking/Free/Reduce.hs
 formatted       592682fd16d0  Agda-2.8.0/src/full/Agda/TypeChecking/Functions.hs
@@ -227,7 +227,7 @@ formatted       f5e2359204d8  Agda-2.8.0/src/full/Agda/TypeChecking/Irrelevance.
 formatted       9838a29db1ef  Agda-2.8.0/src/full/Agda/TypeChecking/Level.hs
 formatted       ae9854316d38  Agda-2.8.0/src/full/Agda/TypeChecking/Level.hs-boot
 formatted       31b18960a11c  Agda-2.8.0/src/full/Agda/TypeChecking/Level/Solve.hs
-formatted       5f5446c0fb20  Agda-2.8.0/src/full/Agda/TypeChecking/LevelConstraints.hs
+formatted       dffb0ae8f09f  Agda-2.8.0/src/full/Agda/TypeChecking/LevelConstraints.hs
 formatted       cb225ecb671e  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs
 formatted       b172927a4ef0  Agda-2.8.0/src/full/Agda/TypeChecking/Lock.hs-boot
 formatted       cfef2d0e6d06  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars.hs
@@ -300,7 +300,7 @@ formatted       e749acff5966  Agda-2.8.0/src/full/Agda/TypeChecking/ReconstructP
 formatted       4260bd504170  Agda-2.8.0/src/full/Agda/TypeChecking/RecordPatterns.hs
 formatted       67d909b40003  Agda-2.8.0/src/full/Agda/TypeChecking/Records.hs
 formatted       7ad52225967c  Agda-2.8.0/src/full/Agda/TypeChecking/Records.hs-boot
-formatted       2c7219938480  Agda-2.8.0/src/full/Agda/TypeChecking/Reduce.hs
+formatted       9ed96003e618  Agda-2.8.0/src/full/Agda/TypeChecking/Reduce.hs
 formatted       82cb10489996  Agda-2.8.0/src/full/Agda/TypeChecking/Reduce.hs-boot
 formatted       cb01c7eca645  Agda-2.8.0/src/full/Agda/TypeChecking/Reduce/Fast.hs
 formatted       2158647025d5  Agda-2.8.0/src/full/Agda/TypeChecking/Reduce/Fast.hs-boot
@@ -316,14 +316,14 @@ formatted       dae947e8e153  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Applic
 formatted       afe74ae90e48  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Builtin.hs
 formatted       65ee4e8d5c6c  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Builtin/Coinduction.hs
 formatted       48f627566132  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Builtin/Coinduction.hs-boot
-formatted       71a39d5f1f76  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Data.hs
+formatted       59244311314e  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Data.hs
 formatted       89ea7a6db701  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Data.hs-boot
-formatted       ea665c2ed1aa  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Decl.hs
+formatted       c2be4e136819  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Decl.hs
 formatted       c3dda6e649e5  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Decl.hs-boot
 formatted       36ac03654722  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Def.hs
 formatted       8519e1acf9d4  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Def.hs-boot
 formatted       169a787cc624  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/Display.hs
-formatted       612b56e41ffe  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS.hs
+formatted       79197b22e0d4  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS.hs
 formatted       3e5a7366cf13  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Implicit.hs
 formatted       177bb5aa3612  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/Problem.hs
 formatted       a93e33810b5a  Agda-2.8.0/src/full/Agda/TypeChecking/Rules/LHS/ProblemRest.hs
@@ -344,13 +344,13 @@ formatted       225a5ea71cf1  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/In
 formatted       f14a88a7ba1e  Agda-2.8.0/src/full/Agda/TypeChecking/Serialise/Instances/Internal.hs
 formatted       0f09e2199265  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes.hs
 formatted       f9478ab74d7e  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Pretty.hs
-formatted       ad14eceffada  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Solve.hs
+formatted       fdec2be11bc0  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Solve.hs
 formatted       1189e3723b09  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Syntax.hs
 formatted       5e614cb16dfb  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/Utils.hs
-formatted       f600eac6f0a2  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/WarshallSolver.hs
+formatted       f94b828cf2a2  Agda-2.8.0/src/full/Agda/TypeChecking/SizedTypes/WarshallSolver.hs
 formatted       9039331a3711  Agda-2.8.0/src/full/Agda/TypeChecking/Sort.hs
-formatted       1c83214e69f6  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
-formatted       27eecbcdb043  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/Class.hs
+formatted       7de3d5d65220  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute.hs
+formatted       c0b948d8c61d  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/Class.hs
 formatted       121fac7e8df6  Agda-2.8.0/src/full/Agda/TypeChecking/Substitute/DeBruijn.hs
 formatted       7d6a2bef585a  Agda-2.8.0/src/full/Agda/TypeChecking/SyntacticEquality.hs
 formatted       07978cf780f8  Agda-2.8.0/src/full/Agda/TypeChecking/Telescope.hs
@@ -362,7 +362,7 @@ formatted       8934d9b17d77  Agda-2.8.0/src/full/Agda/TypeChecking/With.hs
 formatted       b02f16e6d20a  Agda-2.8.0/src/full/Agda/Utils/AffineHole.hs
 formatted       ef921ca366b9  Agda-2.8.0/src/full/Agda/Utils/Applicative.hs
 formatted       92fd78efd96b  Agda-2.8.0/src/full/Agda/Utils/AssocList.hs
-formatted       5a75b5abc20e  Agda-2.8.0/src/full/Agda/Utils/Bag.hs
+formatted       2a502515604a  Agda-2.8.0/src/full/Agda/Utils/Bag.hs
 formatted       fd4adcfe80bb  Agda-2.8.0/src/full/Agda/Utils/Benchmark.hs
 formatted       713bce3f2912  Agda-2.8.0/src/full/Agda/Utils/BiMap.hs
 formatted       1da3d682d7df  Agda-2.8.0/src/full/Agda/Utils/BoolSet.hs
@@ -615,7 +615,7 @@ formatted       ab6d851a6932  ansi-terminal-1.1.5/src/System/Console/ANSI.hs
 formatted       820497cc6023  ansi-terminal-1.1.5/unix/System/Console/ANSI/Internal.hs
 formatted       87be1bf1eb77  ansi-terminal-1.1.5/win/System/Console/ANSI/Internal.hs
 formatted       5c7ee824a40c  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Foreign.hs
-formatted       46fc8c9ffe26  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
+formatted       f8bc3ebdde0b  ansi-terminal-1.1.5/win/System/Console/ANSI/Windows/Win32/Types.hs
 formatted       9e25d9947df5  async-2.2.6/Control/Concurrent/Async.hs
 partly-checked  98f6a19558b4  async-2.2.6/Control/Concurrent/Async/Internal.hs
 formatted       4990c67a39a0  async-2.2.6/Control/Concurrent/Async/Warden.hs
@@ -1114,7 +1114,7 @@ formatted       0465690dd788  brittany-0.14.0.2/data/Test270.hs
 formatted       8da0ed8508b1  brittany-0.14.0.2/data/Test271.hs
 formatted       059cb60e3ffb  brittany-0.14.0.2/data/Test272.hs
 formatted       ce7c5a9f7346  brittany-0.14.0.2/data/Test273.hs
-formatted       cf3d3b9f17a4  brittany-0.14.0.2/data/Test274.hs
+formatted       8ba2a49439db  brittany-0.14.0.2/data/Test274.hs
 formatted       af0ca8a4b396  brittany-0.14.0.2/data/Test275.hs
 formatted       f54d68eb932d  brittany-0.14.0.2/data/Test276.hs
 formatted       5280a70aa08d  brittany-0.14.0.2/data/Test277.hs
@@ -1369,7 +1369,7 @@ formatted       30d139cbecdf  brittany-0.14.0.2/data/Test50.hs
 formatted       bb1de50ba61a  brittany-0.14.0.2/data/Test500.hs
 formatted       46987cddeeb1  brittany-0.14.0.2/data/Test501.hs
 formatted       a26bb5e5e289  brittany-0.14.0.2/data/Test502.hs
-formatted       608441a45ea2  brittany-0.14.0.2/data/Test503.hs
+formatted       8d17b9b8c118  brittany-0.14.0.2/data/Test503.hs
 formatted       2140e03bd530  brittany-0.14.0.2/data/Test504.hs
 formatted       b8d19bd75331  brittany-0.14.0.2/data/Test505.hs
 formatted       7aafe7248e10  brittany-0.14.0.2/data/Test506.hs
@@ -1472,7 +1472,7 @@ formatted       d651230faef8  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       5d4f696e1f73  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/LayouterBasics.hs
 formatted       8cf46848eb67  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/DataDecl.hs
 formatted       f46d325f9e4a  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Decl.hs
-formatted       955a1d73fb48  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Expr.hs
+formatted       ebbbae781240  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Expr.hs
 formatted       530227756f24  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Expr.hs-boot
 formatted       fa8581d2a7f7  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/IE.hs
 formatted       73258f6280cf  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Layouters/Import.hs
@@ -2453,7 +2453,7 @@ formatted       eeae7da4f236  hashable-1.5.1.0/src/Data/Hashable.hs
 partly-checked  086ff3b6757d  hashable-1.5.1.0/src/Data/Hashable/Class.hs
 formatted       f4cf832eaf00  hashable-1.5.1.0/src/Data/Hashable/FFI.hs
 formatted       d2be5b809f2a  hashable-1.5.1.0/src/Data/Hashable/Generic.hs
-formatted       f1bb051f4e9f  hashable-1.5.1.0/src/Data/Hashable/Generic/Instances.hs
+formatted       e302c4c2d87b  hashable-1.5.1.0/src/Data/Hashable/Generic/Instances.hs
 formatted       c9c87bb00bc0  hashable-1.5.1.0/src/Data/Hashable/Imports.hs
 formatted       e6b4c010a36d  hashable-1.5.1.0/src/Data/Hashable/Lifted.hs
 formatted       4d5aa76737e6  hashable-1.5.1.0/src/Data/Hashable/LowLevel.hs
@@ -2499,7 +2499,7 @@ formatted       4023d1e83cb0  haxl-2.5.1.1/tests/MemoizationTests.hs
 formatted       4b605650d87f  haxl-2.5.1.1/tests/MockTAO.hs
 formatted       2c815841dcd9  haxl-2.5.1.1/tests/MonadAsyncTest.hs
 formatted       1a8fdf3c9c16  haxl-2.5.1.1/tests/MonadBench.hs
-formatted       d7770bd18c8e  haxl-2.5.1.1/tests/OutgoneFetchesTests.hs
+formatted       30b6c3f59566  haxl-2.5.1.1/tests/OutgoneFetchesTests.hs
 formatted       866428effbdc  haxl-2.5.1.1/tests/ParallelTests.hs
 formatted       277338b1f9f6  haxl-2.5.1.1/tests/ProfileTests.hs
 formatted       542f6297a04e  haxl-2.5.1.1/tests/SleepDataSource.hs
@@ -2554,7 +2554,7 @@ formatted       0939a8681c27  hledger-1.52.1/Hledger/Cli/CliOptions.hs
 formatted       6b90cb5fb8ee  hledger-1.52.1/Hledger/Cli/Commands.hs
 formatted       1f1b2ec7d7a7  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       4ab3f5ebc9f8  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
-formatted       a825b6aead06  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
+formatted       ce65d81baeb3  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
 formatted       4f58e50c2d17  hledger-1.52.1/Hledger/Cli/Commands/Aregister.hs
 formatted       a1a12c42ad5b  hledger-1.52.1/Hledger/Cli/Commands/Balance.hs
 formatted       858605dd57a7  hledger-1.52.1/Hledger/Cli/Commands/Balancesheet.hs
@@ -2579,7 +2579,7 @@ formatted       448f2bb0faae  hledger-1.52.1/Hledger/Cli/Commands/Register.hs
 formatted       12affb13a42e  hledger-1.52.1/Hledger/Cli/Commands/Rewrite.hs
 formatted       7da7923c5a7b  hledger-1.52.1/Hledger/Cli/Commands/Roi.hs
 formatted       caa84b89044c  hledger-1.52.1/Hledger/Cli/Commands/Run.hs
-formatted       e2b6f3838746  hledger-1.52.1/Hledger/Cli/Commands/Setup.hs
+formatted       d0c9e50873c7  hledger-1.52.1/Hledger/Cli/Commands/Setup.hs
 formatted       8fa886bfe49e  hledger-1.52.1/Hledger/Cli/Commands/Stats.hs
 formatted       bece803d5f65  hledger-1.52.1/Hledger/Cli/Commands/Tags.hs
 formatted       4512367346b8  hledger-1.52.1/Hledger/Cli/CompoundBalanceCommand.hs
@@ -2625,7 +2625,7 @@ formatted       aad664e0176f  hlint-3.10/src/Hint/Bracket.hs
 formatted       52c31fc4c976  hlint-3.10/src/Hint/Comment.hs
 formatted       8a919cc76e40  hlint-3.10/src/Hint/Duplicate.hs
 formatted       855ec8f2a137  hlint-3.10/src/Hint/Export.hs
-formatted       25d5ddfd3559  hlint-3.10/src/Hint/Extensions.hs
+formatted       3fc2cdf2e4f3  hlint-3.10/src/Hint/Extensions.hs
 formatted       93a996020d77  hlint-3.10/src/Hint/Fixities.hs
 formatted       2fdcfb8cf665  hlint-3.10/src/Hint/Import.hs
 formatted       fe6f3e1521b7  hlint-3.10/src/Hint/Lambda.hs
@@ -2650,10 +2650,10 @@ formatted       e7fe9da0fe0b  hlint-3.10/src/Main.hs
 formatted       fcdf50a5835c  hlint-3.10/src/Parallel.hs
 formatted       651a34dc7ca2  hlint-3.10/src/Refact.hs
 formatted       f6ba1db6c81f  hlint-3.10/src/Report.hs
-formatted       e4ea27b70592  hlint-3.10/src/SARIF.hs
+formatted       7e0e9773d3fb  hlint-3.10/src/SARIF.hs
 formatted       872b44952082  hlint-3.10/src/Summary.hs
 formatted       b7fc4aa315c3  hlint-3.10/src/Test/All.hs
-formatted       49d23aa19a1e  hlint-3.10/src/Test/Annotations.hs
+formatted       745fcf673ca2  hlint-3.10/src/Test/Annotations.hs
 formatted       cbfa766f7762  hlint-3.10/src/Test/InputOutput.hs
 formatted       535224fe0b9e  hlint-3.10/src/Test/Util.hs
 formatted       16082bec6000  hlint-3.10/src/Timing.hs
@@ -3211,7 +3211,7 @@ formatted       30536e2da049  pandoc-3.10.2/src/Text/Pandoc/Asciify.hs
 formatted       3dc86cedc5bb  pandoc-3.10.2/src/Text/Pandoc/CSS.hs
 formatted       2abab0dd6823  pandoc-3.10.2/src/Text/Pandoc/CSV.hs
 formatted       425285a86e63  pandoc-3.10.2/src/Text/Pandoc/Char.hs
-formatted       f8d4ed293fff  pandoc-3.10.2/src/Text/Pandoc/Chunks.hs
+formatted       2fd92b3b7b5b  pandoc-3.10.2/src/Text/Pandoc/Chunks.hs
 formatted       d31d3033bdb9  pandoc-3.10.2/src/Text/Pandoc/Citeproc.hs
 formatted       d39ec3a426af  pandoc-3.10.2/src/Text/Pandoc/Citeproc/BibTeX.hs
 formatted       f4a7c604316e  pandoc-3.10.2/src/Text/Pandoc/Citeproc/CslJson.hs
@@ -3308,7 +3308,7 @@ formatted       4086a5a9923c  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT.hs
 formatted       03149d58a561  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Arrows/State.hs
 formatted       67ad23a00940  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Arrows/Utils.hs
 formatted       bf610e3c1650  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Base.hs
-formatted       77166c06778d  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/ContentReader.hs
+formatted       fc7e6d9c5c5c  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/ContentReader.hs
 formatted       ba3263449374  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/Fallible.hs
 formatted       3cb13f8a11b2  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/Namespaces.hs
 formatted       09ac925b181d  pandoc-3.10.2/src/Text/Pandoc/Readers/ODT/Generic/SetMap.hs
@@ -3731,7 +3731,7 @@ formatted       ebc3321c7605  profunctors-5.6.3/src/Data/Profunctor/Rep.hs
 formatted       0c8cd26cab7a  profunctors-5.6.3/src/Data/Profunctor/Sieve.hs
 formatted       341b612b883a  profunctors-5.6.3/src/Data/Profunctor/Strong.hs
 formatted       0e38b0649fd9  profunctors-5.6.3/src/Data/Profunctor/Traversing.hs
-formatted       13c3e48a3b13  profunctors-5.6.3/src/Data/Profunctor/Types.hs
+formatted       2c4d3f80d11f  profunctors-5.6.3/src/Data/Profunctor/Types.hs
 formatted       819be18bd390  profunctors-5.6.3/src/Data/Profunctor/Unsafe.hs
 formatted       457b9feab84e  profunctors-5.6.3/src/Data/Profunctor/Yoneda.hs
 formatted       f97b976f5a71  purescript-0.15.15/Setup.hs
@@ -4150,7 +4150,7 @@ formatted       fe607154f3af  scotty-0.30/Web/Scotty/Trans/Strict.hs
 formatted       38003d5f6722  scotty-0.30/Web/Scotty/Util.hs
 formatted       456de54c3589  scotty-0.30/bench/Main.hs
 formatted       ff18ebd00d97  scotty-0.30/doctest/Main.hs
-formatted       687cb009641e  scotty-0.30/examples/basic.hs
+formatted       fceb6bf9577b  scotty-0.30/examples/basic.hs
 formatted       ea6cdb12ab18  scotty-0.30/examples/bodyecho.hs
 formatted       639ac88486f8  scotty-0.30/examples/cookies.hs
 formatted       ab6183540498  scotty-0.30/examples/exceptions.hs
@@ -4407,7 +4407,7 @@ partly-checked  56fd25b5cf94  singletons-3.0.4/src/Data/Singletons.hs
 formatted       e72b85f67d12  singletons-3.0.4/src/Data/Singletons/Decide.hs
 formatted       2dd5a83397e7  singletons-3.0.4/src/Data/Singletons/ShowSing.hs
 formatted       829cd381298e  singletons-3.0.4/src/Data/Singletons/Sigma.hs
-formatted       ee710df3c370  singletons-3.0.4/tests/ByHand.hs
+formatted       e83341ad90e6  singletons-3.0.4/tests/ByHand.hs
 formatted       897f1c9e6199  singletons-3.0.4/tests/ByHand2.hs
 formatted       92855df34052  singletons-3.0.4/tests/SingletonsTestSuite.hs
 formatted       a7151db2ed5c  split-0.2.5/src/Data/List/Split.hs
