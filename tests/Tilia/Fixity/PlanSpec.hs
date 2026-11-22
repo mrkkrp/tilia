@@ -1432,6 +1432,13 @@ namedAlike = describe "a module another component names alike" $ do
       fixityFrom plan "Lib.hs" "Fn" "&"
         `shouldReturn` Just (Fixity LeftAssoc 1)
 
+  it "is the project's own, where the mixins give its module a name" $
+    withFakePlan renamingOwn $ \plan -> do
+      fixityFrom plan "Lib.hs" "Prelude" "&"
+        `shouldReturn` Just (Fixity RightAssoc 0)
+      fixityFrom plan ("tests" </> "Main.hs") "Fn" "&"
+        `shouldReturn` Just (Fixity RightAssoc 0)
+
   it "is not one only a branch the build leaves out declares" $
     withFakePlan branched $ \plan ->
       fixityFrom plan "Lib.hs" "Data.Function" "&"
@@ -1517,6 +1524,37 @@ namedAlike = describe "a module another component names alike" $ do
             ]
         ),
         ("Lib.hs", "module Lib () where\nimport Fn ()\n")
+      ]
+    renamingOwn =
+      [ ( "fake.cabal",
+          T.unlines
+            [ "cabal-version: 3.4",
+              "name: fake",
+              "version: 0.1.0.0",
+              "library pre",
+              "  exposed-modules: Pre",
+              "  hs-source-dirs: pre",
+              "  default-language: Haskell2010",
+              "library",
+              "  exposed-modules: Lib",
+              "  build-depends: base, fake:pre",
+              "  mixins: base hiding (Prelude), fake:pre (Pre as Prelude)",
+              "  default-language: Haskell2010",
+              "test-suite tests",
+              "  type: exitcode-stdio-1.0",
+              "  main-is: Main.hs",
+              "  build-depends: base, fake",
+              "  mixins: base, fake (Lib as Fn)",
+              "  hs-source-dirs: tests",
+              "  default-language: Haskell2010"
+            ]
+        ),
+        ("Lib.hs", "module Lib ((&)) where\nimport Prelude ((&))\n"),
+        ( "pre/Pre.hs",
+          "module Pre ((&)) where\ninfixr 0 &\n\
+          \(&) :: a -> (a -> b) -> b\nx & f = f x\n"
+        ),
+        ("tests/Main.hs", "module Main (main) where\nimport Fn ()\n")
       ]
     branched =
       [ ( "fake.cabal",
