@@ -94,9 +94,7 @@ exprBody ctx site here = \case
         ( atSpan
             ctx
             (spanOf at' <> spanOf (hswc_body a))
-            ( keywordAt (spanOf at') "@"
-                <> hsTypeBody ctx (spanOf (hswc_body a)) (unLoc (hswc_body a))
-            )
+            (keywordAt (spanOf at') "@" <> hsType ctx (hswc_body a))
         )
   OpApp _ x op y -> exprChain ctx site x op y
   NegApp minus e _ ->
