@@ -450,10 +450,11 @@ formatAllConfigs formatter r = do
       budget <- lift (gets fst)
       let pragma = readingPragma r
           least = max 1 (linesHeld (vaBaseline apart))
-          affordable =
+          linearly =
             linearCost (budget `div` least) forest * least <= budget
+              && all (reachedAsOne forest) pragma
       base <-
-        if isNothing pragma || affordable
+        if isNothing pragma || linearly
           then
             attempt (formatAllConfigs formatter baseline)
           else pure Nothing
@@ -462,7 +463,7 @@ formatAllConfigs formatter r = do
           join <$> attempt (inFragments formatter reached forest source b)
         _ -> pure Nothing
       linear <- case (fragmented, base) of
-        (Nothing, Just b) | affordable -> oneAtATime apart b
+        (Nothing, Just b) | linearly -> oneAtATime apart b
         _ -> pure Nothing
       case fragmented <|> linear of
         Just found -> pure found
@@ -479,6 +480,22 @@ formatAllConfigs formatter r = do
         (merged, found) <- varied
         d <- combine Broken (fst base) merged
         pure (d, found)
+
+-- | Do the configurations that vary every conditional asking a question as
+-- one, holding the others at their first branch, reach each of them?
+reachedAsOne ::
+  -- | The conditionals at the top level.
+  [GroupSpec] ->
+  -- | One asking the question.
+  GroupSpec ->
+  Bool
+reachedAsOne forest gs =
+  and
+    [ gsGuards g /= gsGuards gs
+    | o <- forest,
+      gsGuards o /= gsGuards gs,
+      g <- allGroups (concat (drop 1 (gsNested o)))
+    ]
 
 -- | How many configurations varying a module's conditionals one at a time
 -- goes through, counted as far as one past the given number.
