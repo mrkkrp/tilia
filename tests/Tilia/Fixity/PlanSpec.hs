@@ -94,6 +94,7 @@ spec = do
   reexports
   hscModules
   literateModules
+  includingModules
   generatedModuleSpec
   askedAtOnce
   givenInterfaces
@@ -775,6 +776,21 @@ literateModules = describe "a literate module" $ do
           "> (|+|) = (+)"
         ]
     plusPlus = Map.singleton (InTerms, OpName "|+|") (Fixity LeftAssoc 6)
+
+includingModules :: Spec
+includingModules = describe "a module that includes a file" $ do
+  it "may declare anything, where it is one of the project's own" $
+    withFakeProject [("src/Ops.hs", including)] $
+      \rs -> unsettledIn rs "Ops" `shouldReturn` [[]]
+
+  it "may declare anything, where it comes out of a tarball" $
+    withFakeArchive [("Ops.hs", including)] $
+      \rs -> unsettledIn rs "Ops" `shouldReturn` [[]]
+  where
+    including = "{-# LANGUAGE CPP #-}\n#include \"Body.hs\"\n"
+    unsettledIn rs modName =
+      (`unsettledThrough` (InTerms, OpName "|+|"))
+        <$> askModule rs Nothing (Nothing, modName)
 
 -- | Where a package fetched from a repository is looked for.
 repositories :: Spec

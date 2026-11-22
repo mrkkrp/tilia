@@ -644,6 +644,11 @@
   as it was written, rather than lining up with the conditional's
   directives, which moved it from one to the other, under the last
   declaration of a module on every formatting.
+* An operator that an imported module read from its source may declare in
+  a file it includes with `#include`, which is not read, is left unsettled,
+  so a module using it is declined rather than formatted as if it were
+  `infixl 9`. path's `</>` was taken for `infixl 9`, as `Path.Posix` is
+  written in `Include.hs`, which declares it `infixr 5`.
 
 ## Tilia 0.1.4.0
 
