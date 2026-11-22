@@ -96,6 +96,7 @@ genDoc withVariant withBreaks = go
           [ DCat <$> go half <*> go half,
             DNest . Steps <$> choose (0, 2) <*> go (n - 1),
             DAlign <$> go (n - 1),
+            DBlockItem <$> go (n - 1),
             DCppMarginNote <$> go (n - 1),
             DLocated <$> genSpan <*> go (n - 1),
             DFence <$> genSpan <*> go (n - 1)
@@ -134,6 +135,7 @@ shrinkDoc = \case
       <> [DCat a b' | b' <- shrinkDoc b]
   DNest n d -> [DEmpty, d] <> [DNest n d' | d' <- shrinkDoc d]
   DAlign d -> [DEmpty, d] <> [DAlign d' | d' <- shrinkDoc d]
+  DBlockItem d -> [DEmpty, d] <> [DBlockItem d' | d' <- shrinkDoc d]
   DCppMarginNote d -> [DEmpty, d] <> [DCppMarginNote d' | d' <- shrinkDoc d]
   DGroup l d -> [DEmpty, d] <> [DGroup l d' | d' <- shrinkDoc d]
   DVariant a b -> [DEmpty, a, b]
@@ -163,6 +165,7 @@ docTexts = \case
   DCat a b -> docTexts a <> docTexts b
   DNest _ d -> docTexts d
   DAlign d -> docTexts d
+  DBlockItem d -> docTexts d
   DCppMarginNote d -> docTexts d
   DGroup _ d -> docTexts d
   DVariant a _ -> docTexts a

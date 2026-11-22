@@ -13,5 +13,5 @@ tests =
 scriptTests :: Test
 scriptTests = testGroup "script" []
 #else
-      []
+    []
 #endif

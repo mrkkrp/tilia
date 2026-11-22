@@ -77,6 +77,12 @@ data Doc
   | -- | Indent the enclosed document to whatever column the line has
     -- reached, so that it lines up under itself when broken.
     DAlign !Doc
+  | -- | An item of a layout block, such as a declaration, a statement or a
+    -- case alternative. Once its first code is written, each alternative of
+    -- a conditional inside it begins right of the column the item began at,
+    -- where the layout would otherwise end the item, but for an item the
+    -- alternative begins itself.
+    DBlockItem !Doc
   | -- | Start the enclosed document's lines at the margin if they come out
     -- right above a preprocessor directive.
     DCppMarginNote !Doc
@@ -134,6 +140,7 @@ data Wrapper
   | WFence !Span
   | WNest !Nesting
   | WAlign
+  | WBlockItem
   | WCppMarginNote
   | WGroup !Layout
   deriving (Eq, Show)
@@ -148,6 +155,7 @@ unwrap = \case
   DFence s d -> Just (WFence s, d)
   DNest n d -> Just (WNest n, d)
   DAlign d -> Just (WAlign, d)
+  DBlockItem d -> Just (WBlockItem, d)
   DCppMarginNote d -> Just (WCppMarginNote, d)
   DGroup l d -> Just (WGroup l, d)
   _ -> Nothing
@@ -165,6 +173,7 @@ wrap = \case
   WFence s -> DFence s
   WNest n -> DNest n
   WAlign -> DAlign
+  WBlockItem -> DBlockItem
   WCppMarginNote -> DCppMarginNote
   WGroup l -> DGroup l
 
@@ -276,7 +285,24 @@ data Env = Env
     -- flat.
     envHeldFlat :: !Bool,
     -- | What the document is printed with.
-    envSettings :: !Settings
+    envSettings :: !Settings,
+    -- | The innermost item of a layout block being written.
+    envItem :: !(Maybe Item)
+  }
+
+-- | An item of a layout block being written.
+data Item = Item
+  { -- | The column it begins at.
+    itemColumn :: !Int,
+    -- | The lines finished above it.
+    itemAbove :: [Line],
+    -- | Whether it begins on a line something else began.
+    itemMidLine :: !Bool,
+    -- | Whether its first code is known to be written.
+    itemBegun :: !Bool,
+    -- | How far right of where it would come out the alternative of a
+    -- conditional being written was moved to continue the item.
+    itemMoved :: !Int
   }
 
 -- | Output built so far.
@@ -338,9 +364,6 @@ data Line = Line
     linePinned :: !Bool,
     -- | Whether a note is all it holds.
     lineNote :: !Bool,
-    -- | Whether it continues the line before it, as a space asked for before
-    -- anything was on it says.
-    lineContinues :: !Bool,
     -- | Its type if it is a preprocessor directive.
     lineDirective :: !(Maybe CppDirectiveType),
     -- | Where in its body a line comment held back for its end begins, where
@@ -367,7 +390,6 @@ newLine =
       lineBody = "",
       linePinned = False,
       lineNote = False,
-      lineContinues = False,
       lineDirective = Nothing,
       lineRemark = Nothing
     }
@@ -404,7 +426,8 @@ printDoc settings doc = finish (go env doc emptyOut)
           envLayout = Broken,
           envNote = False,
           envHeldFlat = False,
-          envSettings = settings
+          envSettings = settings,
+          envItem = Nothing
         }
 
 -- | Walk a document, accumulating output.
@@ -442,6 +465,23 @@ go env = \case
   DCat a b -> go env b . go env a
   DNest n d ->
     go env{envIndent = nestedBy (step (envSettings env)) n (envIndent env)} d
+  DBlockItem d -> \out ->
+    let indent = case envItem env of
+          Just i
+            | itemMoved i > 0,
+              not (started out),
+              envIndent env - itemMoved i <= itemColumn i ->
+                envIndent env - itemMoved i
+          _ -> envIndent env
+        item =
+          Item
+            { itemColumn = if started out then outColumn out else indent,
+              itemAbove = outLines out,
+              itemMidLine = started out,
+              itemBegun = False,
+              itemMoved = 0
+            }
+     in go env{envIndent = indent, envItem = Just item} d out
   DAlign d -> \out ->
     let column
           | linePinned (outLine out) = outColumn out
@@ -470,15 +510,12 @@ go env = \case
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
         guards = maybe (fmap fst branches) conditionalGuards (listToMaybe cs)
-        before
-          | endsWithOpener out = Nothing
-          | otherwise =
-              Just
-                (maybe 0 lineIndent (listToMaybe (outLines (closeLine 0 out))))
+        item = fmap (\i -> i{itemBegun = begun i out}) (envItem env)
         alternative =
-          carryingOn before env{envHeldFlat = False} . case envLayout env of
-            Frangible -> DGroup Frangible
-            _ -> id
+          carryingOn env{envHeldFlat = False, envItem = item}
+            . case envLayout env of
+              Frangible -> DGroup Frangible
+              _ -> id
         steps =
           [ [directive type' ("#" <> guard'), alternative taken]
           | (type', guard', (_, taken)) <- zip3 (CppDirectiveOpens : repeat CppDirectiveContinues) guards branches
@@ -491,13 +528,11 @@ go env = \case
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
 
--- | Walk an alternative of a conditional, a step right of the line before
--- the conditional where its first line carries that line on, would not
--- begin right of it otherwise, and has no later line begin left of it.
+-- | Walk an alternative of a conditional, a step right of the column of
+-- the item it continues where its first line of code would begin at or left
+-- of that column and so end the item, but for an item the alternative
+-- begins itself, which stays where it is.
 carryingOn ::
-  -- | The indentation of the line before the conditional, unless it ends
-  -- with an opener, after which nothing needs the step.
-  Maybe Int ->
   -- | What is in force where the alternative is.
   Env ->
   -- | The alternative.
@@ -506,35 +541,65 @@ carryingOn ::
   -- alternative.
   Out ->
   Out
-carryingOn before env d out = case firstLine walked of
-  (l, body)
-    | lineContinues l,
-      not (linePinned l),
-      isNothing (commentOpening body),
-      Just b <- before,
-      lineIndent l <= b,
-      all (>= lineIndent l) (laterIndents walked) ->
-        attached $
-          go
-            env
-            (DNest (Columns (b - lineIndent l + step (envSettings env))) d)
-            seeded
+carryingOn env d out = case (envItem env, firstCode walked) of
+  (Just i, Just indent)
+    | itemBegun i,
+      indent <= itemColumn i ->
+        let moved = itemColumn i - indent + step (envSettings env)
+         in attached $
+              go
+                env{envItem = Just (restarted i){itemMoved = moved}}
+                (DNest (Columns moved) d)
+                seeded
   _ -> attached walked
   where
     seeded = out{outLines = take 1 (outLines out)}
-    walked = go env d seeded
-    firstLine o = case unsnoc (init (outLines o)) of
-      Just (_, l) -> (l, lineBody l)
-      Nothing -> (outLine o, T.concat (reverse (outCurrent o)))
-    laterIndents o =
-      [lineIndent (outLine o) | started o]
-        <> [ lineIndent l
-           | l <- drop 1 (reverse (init (outLines o))),
-             not (T.null (lineBody l)),
-             isNothing (lineDirective l),
-             not (linePinned l)
-           ]
+    walked = go env{envItem = fmap restarted (envItem env)} d seeded
+    restarted i
+      | itemBegun i = i
+      | otherwise = i{itemAbove = outLines seeded, itemMidLine = False}
+    firstCode o =
+      listToMaybe
+        [ lineIndent l
+        | l <-
+            drop 1 (reverse (outLines o))
+              <> [ (outLine o){lineBody = T.concat (reverse (outCurrent o))}
+                 | started o
+                 ],
+          holdsCode l,
+          not (linePinned l)
+        ]
     attached o = o{outLines = init (outLines o) <> outLines out}
+
+-- | Has the first code of an item been written, code being what is not on
+-- a line a comment opens?
+begun ::
+  -- | The item.
+  Item ->
+  -- | The output so far.
+  Out ->
+  Bool
+begun i out =
+  itemBegun i || any holdsCode below || started out && current
+  where
+    below = take (length written - length (itemAbove i)) written
+    written = outLines out
+    current
+      | null below, itemMidLine i = outColumn out > itemColumn i
+      | otherwise =
+          maybe True (isNothing . commentOpening . snd) $
+            unsnoc (outCurrent out)
+
+-- | Does a finished line hold code: something a comment does not open and
+-- that is not a directive?
+holdsCode ::
+  -- | The line.
+  Line ->
+  Bool
+holdsCode l =
+  not (T.null (lineBody l))
+    && isNothing (lineDirective l)
+    && isNothing (commentOpening (lineBody l))
 
 -- | Does a frangible document break where it is about to be printed?
 fracturesFrom ::
@@ -704,10 +769,7 @@ putHeldBack indent spill t out
 -- | Append a space, unless the line has not started or already ends in one.
 putSpace :: Out -> Out
 putSpace out
-  | not (started out) =
-      if lineContinues (outLine out)
-        then out
-        else out{outLine = (outLine out){lineContinues = True}}
+  | not (started out) = out
   | endsWithSpace out = out
   | otherwise =
       out
@@ -729,7 +791,7 @@ breakLine ::
   Out ->
   Out
 breakLine indent out
-  | outClosed out = discontinued out{outClosed = False}
+  | outClosed out = out{outClosed = False}
   | not (hasContent out), repeatsBlank out || opensABlock indent out = fresh out
   | otherwise = completing TrimWhitespace out
 
@@ -746,13 +808,6 @@ closeLine ::
   Out
 closeLine indent out
   | hasContent out = (breakLine indent out){outClosed = True}
-  | otherwise = discontinued out
-
--- | Say that the current line does not continue the line before it.
-discontinued :: Out -> Out
-discontinued out
-  | lineContinues (outLine out) =
-      out{outLine = (outLine out){lineContinues = False}}
   | otherwise = out
 
 -- | Begin a new line, leaving the one being built unfinished.

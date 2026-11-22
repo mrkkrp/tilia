@@ -83,7 +83,7 @@ formatted       3bf0ba4c41ec  Agda-2.8.0/src/full/Agda/Interaction/Library/Parse
 formatted       d0420a6867f7  Agda-2.8.0/src/full/Agda/Interaction/MakeCase.hs
 formatted       668c82296788  Agda-2.8.0/src/full/Agda/Interaction/Monad.hs
 formatted       c831a742f557  Agda-2.8.0/src/full/Agda/Interaction/Options.hs
-formatted       bd220499abdc  Agda-2.8.0/src/full/Agda/Interaction/Options/Base.hs
+formatted       6e755e50e2ba  Agda-2.8.0/src/full/Agda/Interaction/Options/Base.hs
 formatted       48ff24ca28ef  Agda-2.8.0/src/full/Agda/Interaction/Options/Errors.hs
 formatted       b8c44d6ae242  Agda-2.8.0/src/full/Agda/Interaction/Options/HasOptions.hs
 formatted       9df1dd711623  Agda-2.8.0/src/full/Agda/Interaction/Options/Help.hs
@@ -388,7 +388,7 @@ formatted       f94a2c1fbc52  Agda-2.8.0/src/full/Agda/Utils/Graph/TopSort.hs
 formatted       5170f5f19eb9  Agda-2.8.0/src/full/Agda/Utils/Hash.hs
 formatted       77f500da778b  Agda-2.8.0/src/full/Agda/Utils/HashTable.hs
 formatted       019e9637b9b0  Agda-2.8.0/src/full/Agda/Utils/Haskell/Syntax.hs
-formatted       87679d394d3a  Agda-2.8.0/src/full/Agda/Utils/IArray.hs
+formatted       e861d8cbd7ce  Agda-2.8.0/src/full/Agda/Utils/IArray.hs
 formatted       8ace1742deec  Agda-2.8.0/src/full/Agda/Utils/IO.hs
 formatted       ddd200e851ab  Agda-2.8.0/src/full/Agda/Utils/IO/Binary.hs
 formatted       fadfe573819c  Agda-2.8.0/src/full/Agda/Utils/IO/Directory.hs
@@ -2555,7 +2555,7 @@ formatted       6b90cb5fb8ee  hledger-1.52.1/Hledger/Cli/Commands.hs
 formatted       1f1b2ec7d7a7  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       4ab3f5ebc9f8  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
 formatted       a825b6aead06  hledger-1.52.1/Hledger/Cli/Commands/Add.hs
-formatted       0ada89a43222  hledger-1.52.1/Hledger/Cli/Commands/Aregister.hs
+formatted       4f58e50c2d17  hledger-1.52.1/Hledger/Cli/Commands/Aregister.hs
 formatted       a1a12c42ad5b  hledger-1.52.1/Hledger/Cli/Commands/Balance.hs
 formatted       858605dd57a7  hledger-1.52.1/Hledger/Cli/Commands/Balancesheet.hs
 formatted       770fe1ca01d4  hledger-1.52.1/Hledger/Cli/Commands/Balancesheetequity.hs
@@ -2575,7 +2575,7 @@ formatted       3d1b9049f255  hledger-1.52.1/Hledger/Cli/Commands/Notes.hs
 formatted       bd262a3146d8  hledger-1.52.1/Hledger/Cli/Commands/Payees.hs
 formatted       9745b992adc8  hledger-1.52.1/Hledger/Cli/Commands/Prices.hs
 formatted       1c022e43963b  hledger-1.52.1/Hledger/Cli/Commands/Print.hs
-formatted       63b68920bda5  hledger-1.52.1/Hledger/Cli/Commands/Register.hs
+formatted       448f2bb0faae  hledger-1.52.1/Hledger/Cli/Commands/Register.hs
 formatted       12affb13a42e  hledger-1.52.1/Hledger/Cli/Commands/Rewrite.hs
 formatted       7da7923c5a7b  hledger-1.52.1/Hledger/Cli/Commands/Roi.hs
 formatted       caa84b89044c  hledger-1.52.1/Hledger/Cli/Commands/Run.hs
@@ -2916,7 +2916,7 @@ formatted       4e51b04458bf  intero-0.1.40/src/GhciTags.hs
 formatted       c6d5e5e5158b  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
 formatted       05c4ab5e8850  intero-0.1.40/src/Intero/Compat.hs
-partly-checked  d81b175ce234  intero-0.1.40/src/Main.hs
+partly-checked  ea796fc4986a  intero-0.1.40/src/Main.hs
 formatted       66b7288dc3fb  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs

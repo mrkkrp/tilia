@@ -304,7 +304,10 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             includeUnless (null given) $
               hardBreak
                 <> indent
-                  (sepBy hardBreak (fmap (at_ ctx (tyFamInstEqn ctx)) given))
+                  ( sepBy
+                      hardBreak
+                      (fmap (at_ ctx (blockItem . tyFamInstEqn ctx)) given)
+                  )
 
 -- | What the head of a family says of its result, a kind or a variable
 -- naming it, if anything.

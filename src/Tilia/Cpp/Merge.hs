@@ -280,14 +280,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
     varying within layout ss =
       let (opening, ss1) = leadingSeparatorIn (sharedStart layout ss)
        in fromMaybe
-            (carriedOn opening (disagreement ss1))
+            (mconcat opening <> disagreement ss1)
             (arrowAhead opening ss1)
       where
-        carriedOn opening d = case (unsnoc opening, spine d) of
-          (Just (front, DSpace), DCppChoice{} : _) ->
-            mconcat front <> onEdge First DSpace d
-          _ -> mconcat opening <> d
-
         disagreement ss1 =
           let (ss2, closing) = sharedEnd layout ss1
               (lead, ss3, trail) = hoisted layout ss2
@@ -1034,11 +1029,13 @@ printedLines layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
     (ps, _, cut) = partsOf layout Within xs
 
 -- | A line less the wrappers that make no difference to it: a group around
--- what does not depend on the layout, and a region around regions and
--- nothing else, which say where the line was written already.
+-- what does not depend on the layout, a region around regions and nothing
+-- else, which say where the line was written already, and an item of a
+-- layout block, which a line is only part of.
 plain :: Doc -> Doc
 plain = \case
   DGroup _ d | layoutFree d -> plain d
+  DBlockItem d -> plain d
   DLocated _ d | onlyRegions d -> plain d
   DFence _ d | onlyRegions d -> plain d
   d -> mapChildren plain d

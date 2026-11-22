@@ -113,7 +113,13 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
               breakOrSpace
                 <> items
                   (if null (drop 1 cons) then NoBrace else MayBrace)
-                  (fmap (at_ ctx (conDecl ctx (Isn't #singleRecCon))) cons)
+                  ( fmap
+                      ( at_
+                          ctx
+                          (blockItem . conDecl ctx (Isn't #singleRecCon))
+                      )
+                      cons
+                  )
         | otherwise ->
             layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons) . indent $
               beforeEquals

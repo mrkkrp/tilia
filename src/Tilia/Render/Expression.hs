@@ -141,7 +141,8 @@ exprBody ctx site here = \case
         (sepBy breakOrSpace (fmap alternative (NE.toList guards)))
     where
       alternative =
-        guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow
+        blockItem
+          . guardedRhs ctx Normal (siteBracing site) (ExprBody ctx) RightArrow
   HsLet tokens binds e ->
     letIn ctx (bodyIn (ExprBody ctx) (siteBracing site)) nested tokens binds e
     where
@@ -762,8 +763,8 @@ stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
         | (position, stmt) <- positioned xs
         ]
     item position stmt =
-      blockItem position NoBrace $ \bracing ->
-        at ctx stmt (stmtBody ctx (blockSite bracing) mkBody)
+      bracedByPosition position NoBrace $ \bracing ->
+        at ctx stmt (blockItem . stmtBody ctx (blockSite bracing) mkBody)
     blockSite bracing =
       plainSite{siteInBlock = True, siteBracing = bracing}
 
@@ -956,12 +957,15 @@ localBinds ctx bracing = \case
         ListBraces{} -> concatMap equations binds
         _ -> binds
       rendered position item =
-        blockItem position NoBrace $ \b ->
-          at ctx item (either (valDecl ctx b) (knotSig (ctxKnot ctx) ctx))
+        bracedByPosition position NoBrace $ \b ->
+          at ctx item $ \case
+            Left bind@FunBind{} -> valDecl ctx b bind
+            Left bind -> blockItem (valDecl ctx b bind)
+            Right sig -> blockItem (knotSig (ctxKnot ctx) ctx sig)
   HsValBinds _ _ -> error "Tilia: renamer-only local bindings"
   HsIPBinds ann (IPBinds _ xs) ->
     anchored ann . itemsOrBraces ann bracing (separatedByBlank ctx) $
-      [(spanOf x, at ctx x implicitBind) | x <- xs]
+      [(spanOf x, at ctx x (blockItem . implicitBind)) | x <- xs]
   EmptyLocalBinds _ -> mempty
   where
     implicitBind (IPBind _ n e) =
@@ -1164,7 +1168,13 @@ matchGroup ctx bracing mkBody style MG{..}
       | isCaseStyle style = (bracing, NoBrace)
       | otherwise = (NoBrace, bracing)
     rendered (position, m) =
-      blockItem position lastBracing (\b -> at ctx m (renderMatch b))
+      bracedByPosition
+        position
+        lastBracing
+        (at ctx m . (asItem .) . renderMatch)
+    asItem = case style of
+      LambdaStyle -> id
+      _ -> blockItem
     renderMatch b m@Match{..} =
       match
         ctx
@@ -1633,10 +1643,18 @@ itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
     maybe id located (bracketsSpan brackets) . braced blank
   _ -> items bracing . keepBlanks blank
 
--- | An item of a block: the last one keeps the block's bracing, and any
--- other may brace itself when the block is flat.
-blockItem :: Position -> Bracing -> (Bracing -> Doc) -> Doc
-blockItem position bracing render = case position of
+-- | Print an item of a block braced by its position: the last one keeps
+-- the block's bracing, and any other may brace itself when the block is
+-- flat.
+bracedByPosition ::
+  -- | Where the item is in the block.
+  Position ->
+  -- | The block's bracing.
+  Bracing ->
+  -- | How to print the item with a given bracing.
+  (Bracing -> Doc) ->
+  Doc
+bracedByPosition position bracing render = case position of
   Last -> render bracing
   Only -> render bracing
   _ -> mayBraceWhenFlat bracing render

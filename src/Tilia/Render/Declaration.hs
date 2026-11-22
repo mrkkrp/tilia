@@ -132,7 +132,11 @@ decls ctx style ds =
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
-    declaration d = at ctx d (hsDecl ctx style)
+    declaration d = at ctx d (asItem . hsDecl ctx style)
+      where
+        asItem = case unLoc d of
+          ValD _ FunBind{} -> id
+          _ -> blockItem
     groups =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds

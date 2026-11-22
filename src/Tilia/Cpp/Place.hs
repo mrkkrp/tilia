@@ -581,6 +581,7 @@ placeAt present written n body continuing = among []
     within ctx d = case d of
       DNest k x -> DNest k (within ctx x)
       DAlign x -> DAlign (within ctx x)
+      DBlockItem x -> DBlockItem (within ctx x)
       DGroup l x -> DGroup l (within ctx x)
       DVariant x y -> DVariant (within ctx x) (within ctx y)
       DLocated s x
