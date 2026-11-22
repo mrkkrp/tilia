@@ -676,12 +676,13 @@ agreeing answers =
 -- file comes before any library's, as GHC looks in a component's own
 -- source directories before the packages it depends on. Components whose
 -- directories are as near count together, and a name their @mixins@ give
--- a module of another package stands for that module. Each component is
--- taken as a build on this machine configures it, unless only a build
--- elsewhere compiles the file, which takes it with what every branch
--- declares. An import naming a package other than the project's own leaves
--- them all out.
+-- a library's module stands for that module, the project's own libraries
+-- included. Each component is taken as a build on this machine configures
+-- it, unless only a build elsewhere compiles the file, which takes it with
+-- what every branch declares. An import naming a package other than the
+-- project's own leaves them all out.
 localModules ::
+  -- | The build plan to use.
   BuildPlan ->
   IO (Maybe FilePath -> (Maybe Text, Text) -> Whereabouts)
 localModules plan = do
@@ -693,13 +694,23 @@ localModules plan = do
         Set.fromList
           [path | (_, _, modules) <- components, (_, Home _ path) <- modules]
       viewOf components =
-        ( [(kind, dirs, firstOf modules) | (kind, dirs, modules) <- components],
-          firstOf
-            [ held
-            | (Lib, _, modules) <- components,
-              held@(_, Home _ _) <- modules
-            ]
-        )
+        let libraries =
+              firstOf
+                [ held
+                | (Lib, _, modules) <- components,
+                  held@(_, Home _ _) <- modules
+                ]
+            renamed = \case
+              Elsewhere (Just package) original
+                | Set.member package own,
+                  Just found <- Map.lookup original libraries ->
+                    found
+              whereabouts -> whereabouts
+         in ( [ (kind, dirs, renamed <$> firstOf modules)
+              | (kind, dirs, modules) <- components
+              ],
+              libraries
+            )
       firstOf = Map.fromListWith (\_ first' -> first')
       ofBuild = viewOf built
       ofEvery = viewOf declared

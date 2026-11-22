@@ -469,9 +469,12 @@ modulesOf section =
   | (sub, name) <- sectionModules section
   ]
 
--- | The modules of other packages a component's @mixins@ give other names:
--- each such name, with the package and the module's name there.
-renamedModules :: BuildInfo -> [(Text, (Text, Text))]
+-- | The modules of libraries a component's @mixins@ give other names: each
+-- such name, with the library's package and the module's name there.
+renamedModules ::
+  -- | The component.
+  BuildInfo ->
+  [(Text, (Text, Text))]
 renamedModules bi =
   [ ( dotted new,
       (T.pack (unPackageName (mixinPackageName mixin)), dotted original)
