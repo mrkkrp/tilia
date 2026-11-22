@@ -871,11 +871,17 @@ lambda ctx site variant' mkBody mg = case keyword of
 -- | An @if@ expression or command.
 ifThenElse ::
   Body b =>
+  -- | The context.
   Ctx ->
+  -- | Each branch, as a body.
   (LocatedA body -> b) ->
+  -- | Where its keywords were written.
   AnnsIf ->
+  -- | The condition.
   LHsExpr GhcPs ->
+  -- | What @then@ leads to.
   LocatedA body ->
+  -- | What @else@ leads to.
   LocatedA body ->
   Doc
 ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
@@ -898,13 +904,22 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
         <> layoutFrom
           ctx
           (keywordSpan <> spanOf body)
-          (attach placement (printBody (bodyOf body)))
+          (attach placement (kept (printBody (bodyOf body))))
       where
         keywordSpan = spanOfSrcSpan written
+        hangs = bodyPlacement (bodyOf body)
+        commented = commentPrintedBetween ctx keywordSpan (spanOf body)
+        remarked = hangingMovesRemark ctx keywordSpan (spanOf body)
         placement
-          | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
-          | remarkOnEachLine ctx keywordSpan (spanOf body) = Normal
-          | otherwise = bodyPlacement (bodyOf body)
+          | commented || remarked = Normal
+          | otherwise = hangs
+        kept
+          | remarked,
+            not commented,
+            hangs == Hanging,
+            maybe False (writtenOnOneLine ctx) (spanOf body) =
+              infrangible
+          | otherwise = id
 
 -- | A @let@ expression or command, with @in@ ending its line where it is
 -- one of a chain written that way, and the next on the line under it.
@@ -1384,13 +1399,17 @@ blockPlacement bodyOf = \case
 -- | One alternative of an equation: its guards, and what they guard.
 guardedRhs ::
   (Body b, Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO) =>
+  -- | The context.
   Ctx ->
   -- | How the equation as a whole is placed.
   Placement ->
   -- | Bracing the body inherits.
   Bracing ->
+  -- | The body, as the equation hands it on.
   BodyOf body b ->
+  -- | What separates the guards from the body.
   GuardStyle ->
+  -- | The alternative.
   LGRHS GhcPs (LocatedA body) ->
   Doc
 guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guards of
@@ -1425,7 +1444,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
     placement
       | sameLine separatorSpan (spanOf body),
         not (commentPrintedBetween ctx (spansOf guards) separatorSpan),
-        not (remarkOnEachLine ctx (spansOf guards) separatorSpan) =
+        not (hangingMovesRemark ctx (spansOf guards) (spanOf body)) =
           bodyPlacement bound
       | otherwise = Normal
     separatorSpan = either spanOf spanOf ga_sep

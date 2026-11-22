@@ -649,6 +649,13 @@
   so a module using it is declined rather than formatted as if it were
   `infixl 9`. path's `</>` was taken for `infixl 9`, as `Path.Posix` is
   written in `Include.hs`, which declares it `infixr 5`.
+* A comment that ends the line of a guard, a `then` or an `else` stays at
+  the end of that line, after the guard's `=` or `->`, where a `do` block,
+  a `case` or a lambda written on one line follows on the next line, and
+  that goes on the next line, rather than onto the comment's line with the
+  comment moved past all of it. Under a `then` or an `else` it stays on one
+  line even past the column limit, since broken it would be hung on the
+  comment's line on the next formatting.
 
 ## Tilia 0.1.4.0
 

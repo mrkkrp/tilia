@@ -30,7 +30,7 @@ module Tilia.Render.Context
     commentPrintedBetween,
     lineCommentWrittenBetween,
     underComment,
-    remarkOnEachLine,
+    hangingMovesRemark,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -380,6 +380,21 @@ remarkOnEachLine ctx a b =
     && lineCommentWrittenBetween ctx (startOf <$> b) (nextLine <$> b)
   where
     nextLine s = mkSpan (spanStartLine s + 1, 1) (spanStartLine s + 1, 1)
+
+-- | Would hanging what comes next on the line of what comes first move a
+-- comment that ends that line past more than an opener: past all of what
+-- comes next, written on one line, or past another such comment?
+hangingMovesRemark ::
+  -- | The context.
+  Ctx ->
+  -- | What comes first.
+  Maybe Span ->
+  -- | What comes next.
+  Maybe Span ->
+  Bool
+hangingMovesRemark ctx a b =
+  lineCommentWrittenBetween ctx a b
+    && (maybe False (writtenOnOneLine ctx) b || remarkOnEachLine ctx a b)
 
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no

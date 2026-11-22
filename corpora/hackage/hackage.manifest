@@ -2798,7 +2798,7 @@ formatted       3dc493d48f0f  idris-1.3.4/src/IRTS/Bytecode.hs
 formatted       745b5acb1650  idris-1.3.4/src/IRTS/CodegenC.hs
 formatted       43b903a961ce  idris-1.3.4/src/IRTS/CodegenCommon.hs
 formatted       557dec02612d  idris-1.3.4/src/IRTS/CodegenJavaScript.hs
-formatted       d231802f34f0  idris-1.3.4/src/IRTS/Compiler.hs
+formatted       ad93dadb6905  idris-1.3.4/src/IRTS/Compiler.hs
 formatted       360b498da036  idris-1.3.4/src/IRTS/Defunctionalise.hs
 formatted       0b520ab30420  idris-1.3.4/src/IRTS/DumpBC.hs
 formatted       1c17c897aa95  idris-1.3.4/src/IRTS/Exports.hs
