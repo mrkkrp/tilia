@@ -68,6 +68,7 @@ import Tilia.Cpp.Directives
 import Tilia.Cpp.Expansion (Macro (..))
 import Tilia.Cpp.Fragment
   ( bodyOf,
+    fragmentLines,
     fragmentText,
     fragmentsOf,
     linesHeld,
@@ -76,6 +77,7 @@ import Tilia.Cpp.Fragment
 import Tilia.Cpp.Merge (Settled (..), combine, merge)
 import Tilia.Cpp.Place
   ( CommentSummary,
+    carriedBetween,
     readDifferently,
     restoreUnprinted,
     summarizeComments,
@@ -618,7 +620,14 @@ inFragments formatter reached forest source (baseDoc, baseFound) =
           traverse (formatAllConfigs formatter) readings
       pure $ do
         doc <- reassembled body (zip (fmap fst ps) (fmap fst formatted))
-        pure (doc, baseFound <> foldMap snd formatted)
+        pure
+          ( doc,
+            baseFound
+              <> mconcat
+                [ carriedBetween (fragmentLines body f) found
+                | ((f, _), (_, found)) <- zip ps formatted
+                ]
+          )
   where
     parts = do
       body <- bodyOf baseDoc

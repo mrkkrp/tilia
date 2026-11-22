@@ -6,6 +6,7 @@
 module Tilia.Cpp.Place
   ( CommentSummary,
     summarizeComments,
+    carriedBetween,
     readDifferently,
     restoreUnprinted,
   )
@@ -127,6 +128,20 @@ summarizeComments carried loose every =
       summaryComments = Set.fromList (fmap commentSpan every),
       summaryCarried = Set.fromList carried,
       summaryHaddocks = Set.fromList [commentSpan c | c <- every, holdsOff c]
+    }
+
+-- | What was found, with the Haddocks a tree carries kept only between the
+-- lines given.
+carriedBetween ::
+  -- | The last line before them and the first line after them.
+  (Int, Int) ->
+  -- | What was found.
+  CommentSummary ->
+  CommentSummary
+carriedBetween (low, high) found =
+  found
+    { summaryCarried =
+        Set.filter (\(l, _) -> low < l && l < high) (summaryCarried found)
     }
 
 -- | The line of the first Haddock that some configurations read and others
