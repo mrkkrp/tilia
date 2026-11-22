@@ -160,9 +160,9 @@ typeBody ctx documented here = \case
     align (hsType ctx t <> typeAscription ctx (spanOf t) (asSigType k))
   HsSpliceTy _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
-  HsExplicitListTy (tok, _, _) promoted xs ->
-    tick (spanOf tok) promoted
-      <> bracketWith
+  HsExplicitListTy (tok, open, close) promoted xs ->
+    ticked (spanOf tok) promoted (spanOf open <> spanOf close) $
+      bracketWith
         Outdented
         "["
         "]"
@@ -172,9 +172,9 @@ typeBody ctx documented here = \case
                 <> commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs)
             )
         )
-  HsExplicitTupleTy (tok, _, _) promoted xs ->
-    tick (spanOf tok) promoted
-      <> parens
+  HsExplicitTupleTy (tok, open, close) promoted xs ->
+    ticked (spanOf tok) promoted (spanOf open <> spanOf close) $
+      parens
         ( insideBrackets
             here
             ( quoteGap promoted xs
@@ -277,16 +277,22 @@ tupleBrackets commas = \case
   HsUnboxedTuple -> spacedBracket Outdented "(#" "#)" . hangingCommas commas
   HsBoxedOrConstraintTuple -> parens
 
--- | The tick in front of a promoted list or tuple.
-tick ::
+-- | A list or tuple behind the tick that promotes it, if any, its brackets
+-- then a region apart from the tick, so that a comment after the opening
+-- one stays inside them.
+ticked ::
   -- | Where the tick was written.
   Maybe Span ->
   -- | Whether there is one.
   PromotionFlag ->
+  -- | Where the brackets were written.
+  Maybe Span ->
+  -- | The brackets and what they hold.
+  Doc ->
   Doc
-tick here = \case
-  IsPromoted -> keywordAt here "'"
-  NotPromoted -> mempty
+ticked here promoted brackets d = case promoted of
+  IsPromoted -> keywordAt here "'" <> maybe id located brackets d
+  NotPromoted -> d
 
 -- | The tick on a promoted name, held off it where the name's second
 -- character is a tick too, as @'B'@ would read as a character literal.
