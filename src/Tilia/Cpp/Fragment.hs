@@ -8,6 +8,7 @@ module Tilia.Cpp.Fragment
     Fragment,
     fragmentsOf,
     fragmentText,
+    fragmentLines,
     reassembled,
     linesHeld,
   )
@@ -238,10 +239,7 @@ reassembled body formatted = do
         Nothing -> Just (length indexed)
         Just r -> listToMaybe [i | (i, x) <- indexed, within r x]
       let new = [x | (i, x) <- indexed, start < i, i < end]
-          low
-            | fragmentAbove f = 0
-            | otherwise = maybe (bodyHeadEnd body) runTo (fragmentBefore f)
-          high = maybe maxBound runFrom (fragmentAfter f)
+          (low, high) = fragmentLines body f
       guard (start < end)
       guard (all (maybe True (\(s, e) -> low < s && e < high) . extent) new)
       pure
@@ -252,6 +250,21 @@ reassembled body formatted = do
             new
           )
         )
+
+-- | The lines a fragment puts in place, as the last line before them and
+-- the first line after them.
+fragmentLines ::
+  -- | The module's body.
+  Body ->
+  -- | The fragment.
+  Fragment ->
+  (Int, Int)
+fragmentLines body f =
+  ( if fragmentAbove f
+      then 0
+      else maybe (bodyHeadEnd body) runTo (fragmentBefore f),
+    maybe maxBound runFrom (fragmentAfter f)
+  )
 
 -- | Blank what a line holds of a span, keeping the columns of the rest.
 blankOut ::
