@@ -179,8 +179,12 @@ walk margin = go
               before' =
                 (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
               after' =
-                [(q, c) | (q, c) <- mine, q /= Before, q /= Under ByTheRegion]
-              under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
+                [(q, c) | (q, c) <- mine, q /= Before, not (linedUpWithIt q)]
+              under' = [(q, c) | (q, c) <- mine, linedUpWithIt q]
+              linedUpWithIt = \case
+                Under ByTheRegion -> True
+                Under ByTheIndentation -> alignsItself d
+                _ -> False
               withUnder
                 | null under' = id
                 | otherwise = \x -> DAlign (x <> write under')
@@ -200,6 +204,18 @@ walk margin = go
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
+
+-- | Does a document line its lines up under the column it begins at?
+alignsItself ::
+  -- | The document.
+  Doc ->
+  Bool
+alignsItself = \case
+  DAlign _ -> True
+  DLocated _ d -> alignsItself d
+  DFence _ d -> alignsItself d
+  DGroup _ d -> alignsItself d
+  _ -> False
 
 -- | Is this a separator hung left of the item it leads, alone or after the
 -- place the line may break before it?

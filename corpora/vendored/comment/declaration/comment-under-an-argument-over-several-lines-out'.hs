@@ -11,5 +11,5 @@ catchWith
          -> (e -> Proxy a b m r)
          -> Proxy a b m r
        )
-    -- what comes of it
+       -- what comes of it
 catchWith c p0 f = go p0
