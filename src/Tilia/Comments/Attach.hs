@@ -171,21 +171,22 @@ walk margin = go
         let (a', p') = go p a
             (b', p'') = go p' b
          in (DCat a' b', p'')
-      DLocated s d ->
-        let (mine, p') = claimPlaced s p
-            (d', p'') = go p' d
-            write = foldMap (uncurry (writtenAs margin (zeroWidth s)))
-            before' =
-              (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
-            after' =
-              [(q, c) | (q, c) <- mine, q /= Before, q /= Under ByTheRegion]
-            under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
-            withUnder
-              | null under' = id
-              | otherwise = \x -> DAlign (x <> write under')
-         in ( write before' <> withUnder (DLocated s d' <> write after'),
-              p''
-            )
+      DLocated s d -> case claimPlaced s p of
+        ([], p') -> first (DLocated s) (go p' d)
+        (mine, p') ->
+          let (d', p'') = go p' d
+              write = foldMap (uncurry (writtenAs margin (zeroWidth s)))
+              before' =
+                (Before,) <$> heldOffFrom d [c | (Before, c) <- mine]
+              after' =
+                [(q, c) | (q, c) <- mine, q /= Before, q /= Under ByTheRegion]
+              under' = [(q, c) | (q, c) <- mine, q == Under ByTheRegion]
+              withUnder
+                | null under' = id
+                | otherwise = \x -> DAlign (x <> write under')
+           in ( write before' <> withUnder (DLocated s d' <> write after'),
+                p''
+              )
       DCppChoice cs bs e ->
         let bs' = [(c, go p d) | (c, d) <- bs]
             (e', pe) = go p e
