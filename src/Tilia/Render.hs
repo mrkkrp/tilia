@@ -12,6 +12,7 @@ import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.Generics.Schemes (listify)
 import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -110,8 +111,12 @@ renderConfiguration render parsed =
     (pragmas, uncovered) =
       takeHeaderPragmas (pmSource parsed) (pmHeaderEnd parsed) rest
     held = heldOffModuleDoc hsMod haddocks pragmas uncovered
-    (mctx, loose) = moduleCtx render parsed held
-    carryingOn = carriedOnFrom loose
+    (mctx, kept) = moduleCtx render parsed held
+    loose = fmap (carryingOnSorted sorted carryingOn) kept
+    carryingOn = carriedOnFrom kept
+    sorted =
+      IntSet.fromList . fmap spanEndLine $
+        fmap hpSpan pragmas <> mapMaybe spanOf (hsmodImports hsMod)
     ctx =
       Ctx
         { ctxExtensions = rcExtensions render,
@@ -360,6 +365,25 @@ belowOpening opening c
   | Just l <- opening,
     spanStartLine (commentSpan c) == l + 1 =
       c{commentGapAbove = False}
+  | otherwise = c
+
+-- | Leave the empty line under a comment that carries on the remark of a
+-- header pragma or an import to the lines sorting puts in order, which keep
+-- none of their own, rather than carry it along when sorting moves the line.
+carryingOnSorted ::
+  -- | The last line of every header pragma and every import.
+  IntSet ->
+  -- | The line whose remark a comment carries on, and the column that
+  -- remark begins at.
+  (Comment -> Maybe (Int, Int)) ->
+  -- | The comment.
+  Comment ->
+  Comment
+carryingOnSorted sorted carryingOn c
+  | Just (line, remark) <- carryingOn c,
+    IntSet.member line sorted,
+    remark <= spanStartColumn (commentSpan c) =
+      c{commentGapBelow = False}
   | otherwise = c
 
 -- | Does a block of comments head the imports under it: is it written at
