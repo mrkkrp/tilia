@@ -63,7 +63,8 @@ classDecl ::
   [LDocDecl GhcPs] ->
   Doc
 classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaults docs =
-  txt "class" <> layoutFrom ctx wholeHeadSpan head' <> body
+  layoutFrom ctx (wholeHeadSpan <> spansOf members) $
+    txt "class" <> layoutFrom ctx wholeHeadSpan head' <> body
   where
     headSpan = spanOf tyCon <> spansOf hsq_explicit
     whereSpan = spanOf (acd_where anns)
@@ -103,10 +104,8 @@ classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaul
             hsq_explicit
 
     body =
-      includeUnless (null members)
-        . layoutFrom ctx (wholeHeadSpan <> spansOf members)
-        . indent
-        $ breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
+      includeUnless (null members) . indent $
+        breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
     onlyDocs = null sigs && null binds && null families && null defaults
 
