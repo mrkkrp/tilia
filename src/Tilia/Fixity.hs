@@ -1154,7 +1154,8 @@ data ModuleSummary = ModuleSummary
     summaryDeclaredMembers :: Map OpName (Set (Namespace, OpName)),
     -- | The members its export list offers with each name.
     summaryListedMembers :: Map OpName (Set (Namespace, OpName)),
-    -- | Whether a declaration splice at its top level may declare more.
+    -- | Whether a declaration splice at its top level, or a file it
+    -- includes that was not read, may declare more.
     summarySpliced :: Bool
   }
   deriving (Eq, Show, Generic)

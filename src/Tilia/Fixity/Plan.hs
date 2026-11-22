@@ -63,8 +63,10 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives
-  ( branchLeaves,
+  ( Directive (..),
+    branchLeaves,
     coveringLeaves,
+    directives,
     withoutRuledOut,
   )
 import Tilia.Cpp.Macros (Macros (..))
@@ -1134,7 +1136,8 @@ inhabited names
 --
 -- Where one of the few that 'coveringLeaves' gives is not Haskell, it is
 -- one configuration per branch instead, so that only the branch at fault
--- goes unread.
+-- goes unread. Where it includes a file, each may declare more than it
+-- shows.
 configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
@@ -1153,8 +1156,11 @@ configurationsOf macros extensions modName text =
     each = whatParsed (branchLeaves settled)
     settled = withoutRuledOut macros text
     parsed leaf =
-      summarize (hasImplicitPrelude extensions leaf) . pmModule
+      including . summarize (hasImplicitPrelude extensions leaf) . pmModule
         <$> whatParsed (parseModule (ParserConfig extensions) named leaf)
+    including summary =
+      summary{summarySpliced = summarySpliced summary || unread}
+    unread = any ((== "include") . dKeyword) (directives settled)
     whatParsed = either (const Nothing) Just
     named = T.unpack modName
 
