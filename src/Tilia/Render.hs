@@ -16,7 +16,7 @@ import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, isNothing, mapMaybe)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -165,7 +165,7 @@ moduleCtx render parsed held =
   where
     hsMod = pmModule parsed
     ls = sourceLines (pmSource parsed)
-    opening = importsOpening ls held (fst <$> bounds Nothing)
+    opening = importsOpening ls held (fst <$> bounds (listToMaybe starts))
     imports = mapMaybe spanOf (hsmodImports hsMod)
     among c = amongImports (bounds (Just (line c))) imports c
     final = snd <$> (bounds . Just . NE.last =<< NE.nonEmpty starts)
@@ -333,8 +333,8 @@ importsOpening ::
   Lines ->
   -- | Its comments.
   [Comment] ->
-  -- | The line the first import of any configuration begins on, where the
-  -- module has imports.
+  -- | The line the first import begins on in the configurations that have
+  -- the line of this one's first import, or in any where it has none.
   Maybe Int ->
   Maybe Int
 importsOpening ls cs first = climb . pred =<< first
