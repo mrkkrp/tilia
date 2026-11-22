@@ -12,6 +12,7 @@ module Tilia.Render.Data
   )
 where
 
+import Control.Monad (mfilter)
 import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
@@ -168,7 +169,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
                 ( maybe
                     id
                     located
-                    (barAfter previous <> spanOf c)
+                    (barBelow previous <> spanOf c)
                     (constructor c)
                 )
           constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
@@ -197,13 +198,14 @@ argumentsDocumented ctx = \case
       (mapMaybe (fieldDoc . unLoc) (unLoc l))
   InfixCon{} -> False
 
--- | Where the bar after a constructor was written.
-barAfter ::
+-- | Where the bar after a constructor was written, if on a line below it.
+barBelow ::
   -- | The constructor.
   LConDecl GhcPs ->
   Maybe Span
-barAfter (L l _) =
-  listToMaybe [s | AddVbarAnn t <- lann_trailing (anns l), Just s <- [spanOf t]]
+barBelow c@(L l _) =
+  mfilter (not . sameLine (spanOf c) . Just) . listToMaybe $
+    [s | AddVbarAnn t <- lann_trailing (anns l), Just s <- [spanOf t]]
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
