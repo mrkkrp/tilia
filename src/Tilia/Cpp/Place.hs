@@ -19,7 +19,7 @@ import Data.Foldable (traverse_)
 import Data.List (find, sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Ord (Down (..))
 import Data.Set (Set)
@@ -184,7 +184,7 @@ restoreUnprinted source macros found doc = do
         ]
   let shelled = foldl (restoreConditional written) (widened doc) groups
       marked = spacedApart written (realized (widened shelled))
-      partial = partiallyPrinted marked
+      partial = partiallyPrinted writtenIn marked
       writtenIn = scopeIn (fmap gsConditional groups)
       scope s
         | Set.member s partial = Nothing
@@ -305,27 +305,36 @@ widened = fst . go
         | otherwise -> (d, Nothing)
 
 -- | The regions a choice prints in some of its alternatives but not in
--- all, written outside every branch of its conditionals.
+-- all, written in a part of the module that holds one of its conditionals.
 --
 -- Such a region is printed in fewer configurations than the part of the
 -- module it was written in holds, so no comment goes next to it: whichever
 -- alternatives it is missing from would lose the comment.
 partiallyPrinted ::
+  -- | The part of the module a region was written in.
+  (Span -> Maybe (Int, Int)) ->
   -- | The document.
   Doc ->
   Set Span
-partiallyPrinted = \case
-  DCppChoice cs bs e ->
-    let alternatives = fmap snd bs <> [e]
-        held = fmap (foldRegions outside) alternatives
-        outside s _ inside
-          | isJust (inBranch s) = Set.empty
-          | otherwise = Set.insert s inside
-        inBranch = scopeIn cs
-     in Set.unions held
-          `Set.difference` foldl' Set.intersection (Set.unions held) held
-          <> foldMap partiallyPrinted alternatives
-  d -> foldChildren partiallyPrinted d
+partiallyPrinted writtenIn = go
+  where
+    go = \case
+      DCppChoice cs bs e ->
+        let alternatives = fmap snd bs <> [e]
+            held = fmap (foldRegions outside) alternatives
+            outside s _ inside
+              | holdsOne (writtenIn s) = Set.insert s inside
+              | otherwise = Set.empty
+            holdsOne = \case
+              Nothing -> True
+              Just (from, to) ->
+                any
+                  (\(a, b) -> from < a && b < to)
+                  (mapMaybe conditionalRange cs)
+         in Set.unions held
+              `Set.difference` foldl' Set.intersection (Set.unions held) held
+              <> foldMap go alternatives
+      d -> foldChildren go d
 
 -- | The lines a conditional was written on, from its @#if@ to its @#endif@,
 -- beginning left of the first column: a directive stays at the margin
