@@ -659,6 +659,10 @@
   at column 1, where it did not parse, and a `deriving` clause with its
   strategy in each branch of a conditional no longer gets another empty
   conditional on each formatting.
+* A comment lined up with a line inside a list or a comprehension that
+  follows an operator, as in `++ [ x`, comes out lined up with the
+  brackets, rather than under the operator, where the next formatting
+  took it for a comment on the whole expression and moved it again.
 
 ## Tilia 0.1.4.0
 

@@ -51,7 +51,8 @@ data Position
 data Alignment
   = -- | The column the region begins at.
     ByTheRegion
-  | -- | The indentation in force after the region.
+  | -- | The indentation in force after the region, or the column it begins
+    -- at where it lines its lines up under that column.
     ByTheIndentation
   deriving (Eq, Show)
 
