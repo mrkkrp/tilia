@@ -212,7 +212,7 @@ placeComments regions leads fences comments =
         under
           | Just (top, bottom) <- IntMap.lookup (spanStartLine here) runs,
             not (commentGapAbove top),
-            all (beginsUnder (commentNextLine bottom)) next =
+            all (beginsUnder (nextCode bottom)) next =
               lineOfCode top
           | otherwise = Nothing
 
@@ -283,6 +283,11 @@ placeComments regions leads fences comments =
     runs =
       commentRuns
         (filter (\c -> not (commentTrailing c || commentFollowed c)) comments)
+
+    nextCode c = case commentNextLine c of
+      Just (line, _)
+        | Just (_, bottom) <- IntMap.lookup line runs -> nextCode bottom
+      below -> below
 
     enclosingRegions = enclosures regions (fmap commentSpan comments)
     enclosingFences = enclosures fences (fmap commentSpan comments)

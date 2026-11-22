@@ -663,6 +663,10 @@
   follows an operator, as in `++ [ x`, comes out lined up with the
   brackets, rather than under the operator, where the next formatting
   took it for a comment on the whole expression and moved it again.
+* A comment lined up with the last line of a construct, such as under the
+  last member of a class or the last binding of a `where` clause, stays
+  under that line where a comment heads what follows the construct, as it
+  does where code follows, rather than going with what follows.
 
 ## Tilia 0.1.4.0
 
