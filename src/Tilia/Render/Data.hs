@@ -414,7 +414,12 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
       InfixCon x y -> spansOf (fmap cdf_type [x, y])
 
 -- | One @deriving@ clause, with the strategy it was written with.
-derivingClause :: Ctx -> HsDerivingClause GhcPs -> Doc
+derivingClause ::
+  -- | The context.
+  Ctx ->
+  -- | The clause.
+  HsDerivingClause GhcPs ->
+  Doc
 derivingClause ctx HsDerivingClause{..} =
   brokenForDocs $ txt "deriving" <> space <> strategy
   where
@@ -434,20 +439,25 @@ derivingClause ctx HsDerivingClause{..} =
     strategy = case deriv_clause_strategy of
       Nothing -> breakOrSpace <> indent what
       Just (L _ s) -> case s of
-        StockStrategy _ -> named "stock"
-        AnyclassStrategy _ -> named "anyclass"
-        NewtypeStrategy _ -> named "newtype"
-        ViaStrategy (XViaStrategyPs _ sigTy) ->
+        StockStrategy tok -> named tok "stock"
+        AnyclassStrategy tok -> named tok "anyclass"
+        NewtypeStrategy tok -> named tok "newtype"
+        ViaStrategy (XViaStrategyPs tok sigTy) ->
           breakOrSpace
             <> indent
               ( what
                   <> breakOrSpace
-                  <> txt "via"
-                  <> space
+                  <> keywordAt (spanOf tok) "via"
+                  <> gap
                   <> hsSigType ctx sigTy
               )
+          where
+            gap
+              | remarkOnEachLine ctx (spanOf tok) (spanOf sigTy) = hardBreak
+              | otherwise = space
       where
-        named kw = txt kw <> breakOrSpace <> indent what
+        named tok kw =
+          indent (keywordAt (spanOf tok) kw) <> breakOrSpace <> indent what
 
 -- | @type T a = …@.
 synDecl ::
