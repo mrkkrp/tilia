@@ -410,7 +410,7 @@ formatted       6daea1c24f1f  Agda-2.8.0/src/full/Agda/Utils/Map1.hs
 formatted       46bbb7a13c78  Agda-2.8.0/src/full/Agda/Utils/Maybe.hs
 formatted       f38193e24da5  Agda-2.8.0/src/full/Agda/Utils/Maybe/Strict.hs
 formatted       707bd8857a00  Agda-2.8.0/src/full/Agda/Utils/Memo.hs
-formatted       9eeabe1f3b1e  Agda-2.8.0/src/full/Agda/Utils/Monad.hs
+formatted       e0897c87278d  Agda-2.8.0/src/full/Agda/Utils/Monad.hs
 formatted       4f8109a5fa85  Agda-2.8.0/src/full/Agda/Utils/Monoid.hs
 formatted       81fa9c31b89a  Agda-2.8.0/src/full/Agda/Utils/Null.hs
 formatted       b149ff1d78c8  Agda-2.8.0/src/full/Agda/Utils/POMonoid.hs
@@ -4024,7 +4024,7 @@ formatted       05597560fc73  raaz-0.3.11/indef/buffer/Context.hs
 formatted       63aafeda3917  raaz-0.3.11/indef/buffer/Implementation.hsig
 formatted       18c78a393d68  raaz-0.3.11/indef/chacha20/Implementation.hsig
 formatted       e0867ce467d1  raaz-0.3.11/indef/chacha20/XChaCha20/Implementation.hs
-formatted       077067d8de9a  raaz-0.3.11/indef/keyed/hash/Implementation.hsig
+formatted       06f65f137e33  raaz-0.3.11/indef/keyed/hash/Implementation.hsig
 formatted       d9b10ed09e89  raaz-0.3.11/indef/keyed/hash/Mac/Implementation.hs
 formatted       fd3b4278ccc5  raaz-0.3.11/libverse/Raaz/Verse/Blake2b/C/Portable.hs
 formatted       44b600e76f74  raaz-0.3.11/libverse/Raaz/Verse/ChaCha20/C/Portable.hs

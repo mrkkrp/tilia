@@ -188,6 +188,7 @@ moduleCtx render parsed held =
             )
       guard $
         headsImports
+          (rcImportBarriers render)
           ls
           imports
           (spanStartColumn (commentSpan c))
@@ -386,8 +387,11 @@ carryingOnSorted sorted carryingOn c
   | otherwise = c
 
 -- | Does a block of comments head the imports under it: is it written at
--- their indentation, with empty lines right above and right under it?
+-- their indentation, with empty lines right above and right under it, and
+-- no line they must not be sorted across between it and the first of them?
 headsImports ::
+  -- | The lines the imports are not sorted across.
+  [Int] ->
   -- | The module as written.
   Lines ->
   -- | Where the imports are.
@@ -397,11 +401,13 @@ headsImports ::
   -- | The lines right above and right under the block.
   (Int, Int) ->
   Bool
-headsImports ls imports column (above, under) =
+headsImports barriers ls imports column (above, under) =
   blankAt above ls
     && blankAt under ls
     && case dropWhile ((< under) . spanStartLine) imports of
-      next : _ -> spanStartColumn next == column
+      next : _ ->
+        spanStartColumn next == column
+          && not (any (\b -> under < b && b < spanStartLine next) barriers)
       [] -> False
 
 -- | Is a comment written between imports rather than inside one?
