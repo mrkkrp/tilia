@@ -649,6 +649,13 @@
   so a module using it is declined rather than formatted as if it were
   `infixl 9`. path's `</>` was taken for `infixl 9`, as `Path.Posix` is
   written in `Include.hs`, which declares it `infixr 5`.
+* A name an import list names on its own is taken to come from that
+  import, which would not compile otherwise, also where reading the module
+  imported does not tell that it exports the name, as for a module written
+  for `hsc2hs` or one exporting the name in some configurations only. A
+  module using `unionFileModes` from unix-compat's
+  `System.PosixCompat.Files` so was declined where another import could not
+  be read.
 * A comment written before the `via` of a `deriving` clause stays before
   it, rather than going between the `via` and the type, and so does one
   before a strategy such as `stock` or before the `instance` of a

@@ -31,6 +31,7 @@ module Tilia.Fixity
     maySupply,
     certainlyBrings,
     decides,
+    certainlyExports,
     Namespace (..),
     typeOperatorNamespace,
     Fixities,
@@ -575,12 +576,40 @@ decides ::
   Established ->
   -- | The name, and the namespace it is in.
   (Namespace, OpName) ->
+  -- | The import.
   Import ->
   Bool
 decides established name i =
-  Set.member name (certainNames (establishedCertain established))
+  certainlyExports established name i
     && certainlyBrings (establishedMembers established) name i
     && null (unsettledThrough established name)
+
+-- | Does the module an import names certainly export the name, as far as
+-- reading it and the import's list tell?
+--
+-- A name the list shows on its own is exported, or the import would not
+-- compile.
+certainlyExports ::
+  -- | What reading the module established.
+  Established ->
+  -- | The name, and the namespace it is in.
+  (Namespace, OpName) ->
+  -- | The import.
+  Import ->
+  Bool
+certainlyExports established name i =
+  Set.member name (certainNames (establishedCertain established))
+    || name `elem` shownAlone i
+
+-- | The names an import list shows on their own, in the namespaces it
+-- writes them in.
+shownAlone ::
+  -- | The import.
+  Import ->
+  [(Namespace, OpName)]
+shownAlone i = case importNames i of
+  Just (False, shown) -> [(namespace, n) | ImportedName namespace n <- shown]
+  _ -> []
 
 -- | Which of Haskell's two namespaces an operator is written in.
 data Namespace = InTypes | InTerms
@@ -726,7 +755,8 @@ resolveScope implicitPrelude known configurations =
                    | (i, established) <- answered,
                      name@(n, op) <-
                        Set.toList
-                         (certainNames (establishedCertain established)),
+                         (certainNames (establishedCertain established))
+                         <> shownAlone i,
                      n == namespace,
                      decides established name i,
                      qualifier <-
