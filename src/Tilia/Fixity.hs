@@ -351,20 +351,23 @@ qualifierOf = \case
   Qual m _ -> Just (T.pack (moduleNameString m))
   _ -> Nothing
 
--- | The members of each type or class a module declares, and of each data
--- family it gives instances of.
-declaredMembers :: HsModule GhcPs -> Map OpName (Set (Namespace, OpName))
+-- | The members of each type or class a module declares but a data family,
+-- and of each data family it gives instances of.
+declaredMembers ::
+  -- | The module.
+  HsModule GhcPs ->
+  Map OpName (Set (Namespace, OpName))
 declaredMembers =
   Map.fromListWith Set.union . concatMap (fromDecl . unLoc) . hsmodDecls
   where
     fromDecl = \case
-      TyClD _ d@DataDecl{tcdLName} -> [entry tcdLName d]
-      TyClD _ d@ClassDecl{tcdLName} -> [entry tcdLName d]
+      TyClD _ (FamDecl _ FamilyDecl{fdInfo = DataFamily}) -> []
+      TyClD _ d ->
+        [(opName (unLoc (tyClDeclLName d)), Set.fromList (membersOf d))]
       d ->
         [ (family, Set.fromList (fmap (InTerms,) (constructorsOf defn)))
         | (family, defn) <- dataInstances d
         ]
-    entry name d = (opName (unLoc name), Set.fromList (membersOf d))
 
 -- | The members a module's export list offers with each name, in both
 -- namespaces where the list names one the module does not declare.

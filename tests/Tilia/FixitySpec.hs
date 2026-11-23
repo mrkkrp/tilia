@@ -609,8 +609,19 @@ spec = do
                      )
                    ]
 
-    it "has nothing to say about a type synonym" $
-      declaredMembersIn "module M where\ntype T = Int\n" `shouldBe` []
+    it "takes a type synonym to have none" $
+      declaredMembersIn "module M where\ntype T = Int\n"
+        `shouldBe` [(OpName "T", [])]
+
+    it "takes a type family to have none" $
+      declaredMembersIn
+        "{-# LANGUAGE TypeFamilies #-}\nmodule M where\ntype family F a\n"
+        `shouldBe` [(OpName "F", [])]
+
+    it "has nothing to say about a data family without its instances" $
+      declaredMembersIn
+        "{-# LANGUAGE TypeFamilies #-}\nmodule M where\ndata family F a\n"
+        `shouldBe` []
 
     it "keeps to what an export list hands on" $
       listedMembersIn "module M (T (A)) where\ndata T = A | Int :| Int\n"
