@@ -951,9 +951,9 @@ withReexports reach modName summary =
     unseen answers qualifier name@(_, op) =
       not (local qualifier op)
         && and
-          [ Set.notMember name (certainNames (establishedCertain established))
+          [ not (certainlyExports established name i)
               && null (unsettledThrough established name)
-          | (_, established) <- candidates answers qualifier name
+          | (i, established) <- candidates answers qualifier name
           ]
     untoldIf b = mempty{establishedUntold = Set.fromList [[] | b]}
 

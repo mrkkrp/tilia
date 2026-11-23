@@ -739,6 +739,15 @@ reexports = describe "an operator a module passes on" $ do
       server <- askModule rs Nothing (Nothing, "Server")
       unsettledThrough server (InTypes, OpName ".++") `shouldBe` []
 
+  it "is settled where an import list names it from a module that does not tell it exports it"
+    $ withFakeProject
+      [ ("src/Cursed.hsc", cursed),
+        ("src/Signals.hs", "module Signals (interrupt) where\nimport Cursed (interrupt)\n")
+      ]
+    $ \rs -> do
+      signals <- askModule rs Nothing (Nothing, "Signals")
+      settlesEverything signals `shouldBe` True
+
 -- | What a module written for @hsc2hs@ amounts to, by either route to one.
 --
 -- The fixture is what @hsc2hs@ takes and no compiler does, and it writes a
@@ -2484,6 +2493,38 @@ withPlan plan = do
                 "module C (w) where\nimport A\nimport B\nw :: Int\nw = 1 `clampTo` 2\n"
         scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
         lookupFixity scope InTerms Nothing (OpName "clampTo")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
+    it "settles a name an import list shows, though reading its module does not tell that it exports it"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ("src/Cursed.hsc", cursed),
+          ( "src/B.hs",
+            T.unlines
+              [ "{-# LANGUAGE CPP #-}",
+                "module B",
+                "  ( g,",
+                "#ifdef A",
+                "    clampTo,",
+                "#endif",
+                "  )",
+                "where",
+                "clampTo :: Int -> Int -> Int",
+                "clampTo = min",
+                "g :: Int",
+                "g = 2"
+              ]
+          )
+        ]
+      $ \rs -> do
+        let m =
+              parsed
+                "module C (w) where\nimport A\nimport B (clampTo)\n\
+                \import Cursed (interrupt)\nw = 1 `clampTo` 2 `interrupt` 3\n"
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "clampTo")
+          `shouldBe` Resolved defaultFixity ReportDefault
+        lookupFixity scope InTerms Nothing (OpName "interrupt")
           `shouldBe` Resolved defaultFixity ReportDefault
 
     it "does not take a type it brings in for a constructor spelled the same way"
