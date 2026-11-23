@@ -116,7 +116,7 @@ placeComments ::
   -- | The innermost region each region prints first, where that one was
   -- written above it.
   Map Span Span ->
-  -- | The boundaries a comment printed in place may not be carried across.
+  -- | The constructs a comment printed in place may not be carried out of.
   [Span] ->
   -- | The comments to place.
   [Comment] ->
@@ -223,7 +223,7 @@ placeComments regions leads fences comments =
 
         lineOfCode top = do
           r <- nearest (Down . startPoint) (filter linedUp onThatLine)
-          guard (any (larger r) onThatLine && codeEnds)
+          guard (any (larger r) (onThatLine <> fences) && codeEnds)
           pure (r, Under (alignedBy r))
           where
             line = spanStartLine (commentSpan top) - 1

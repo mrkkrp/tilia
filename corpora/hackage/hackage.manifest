@@ -153,7 +153,7 @@ formatted       e35e2d6099af  Agda-2.8.0/src/full/Agda/Syntax/Parser/Literate.hs
 formatted       6412e84f0423  Agda-2.8.0/src/full/Agda/Syntax/Parser/LookAhead.hs
 formatted       8d09b17d0bd6  Agda-2.8.0/src/full/Agda/Syntax/Parser/Monad.hs
 formatted       08e6e9f4bff2  Agda-2.8.0/src/full/Agda/Syntax/Parser/StringLiterals.hs
-formatted       8418b10d09d7  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
+formatted       c64e4c95bed5  Agda-2.8.0/src/full/Agda/Syntax/Parser/Tokens.hs
 formatted       593be98e1eba  Agda-2.8.0/src/full/Agda/Syntax/Position.hs
 formatted       d16539c2a462  Agda-2.8.0/src/full/Agda/Syntax/Position.hs-boot
 formatted       8b3b2b12fa20  Agda-2.8.0/src/full/Agda/Syntax/Reflected.hs
@@ -166,7 +166,7 @@ formatted       5bbb32478297  Agda-2.8.0/src/full/Agda/Syntax/Translation/Abstra
 formatted       8bf7567be0f8  Agda-2.8.0/src/full/Agda/Syntax/Translation/ConcreteToAbstract.hs
 formatted       f8d387c19cd0  Agda-2.8.0/src/full/Agda/Syntax/Translation/InternalToAbstract.hs
 formatted       75eb53b02ca4  Agda-2.8.0/src/full/Agda/Syntax/Translation/ReflectedToAbstract.hs
-formatted       b9a8330bae09  Agda-2.8.0/src/full/Agda/Syntax/Treeless.hs
+formatted       2dca160cdc2f  Agda-2.8.0/src/full/Agda/Syntax/Treeless.hs
 formatted       583f2d1ff2bc  Agda-2.8.0/src/full/Agda/Termination/CallGraph.hs
 formatted       df6c4a27e331  Agda-2.8.0/src/full/Agda/Termination/CallMatrix.hs
 formatted       ebc4ce14c917  Agda-2.8.0/src/full/Agda/Termination/CutOff.hs
@@ -1463,7 +1463,7 @@ formatted       52caf5793d73  brittany-0.14.0.2/data/Test99.hs
 formatted       7a5d0ee67b99  brittany-0.14.0.2/source/executable/Main.hs
 formatted       f006bb65ddb6  brittany-0.14.0.2/source/library/Language/Haskell/Brittany.hs
 formatted       6f231aa8936b  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal.hs
-formatted       8b0004495454  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Backend.hs
+formatted       3f45e1b343d4  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Backend.hs
 formatted       1047eb2ad179  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/BackendUtils.hs
 formatted       060724da4a46  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config.hs
 formatted       cf5fbc65dc70  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Config/Types.hs
@@ -1490,7 +1490,7 @@ formatted       533774d6a2e6  brittany-0.14.0.2/source/library/Language/Haskell/
 formatted       c61b5e2d6a72  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Floating.hs
 formatted       02dca655c839  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Indent.hs
 formatted       f6a84d0ce013  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Transformations/Par.hs
-formatted       5e28784b7609  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Types.hs
+formatted       eac1dd650950  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Types.hs
 formatted       a0d34cf4d44c  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Internal/Utils.hs
 formatted       9e32548ffa37  brittany-0.14.0.2/source/library/Language/Haskell/Brittany/Main.hs
 formatted       3838cff98834  brittany-0.14.0.2/source/test-suite/Main.hs
@@ -2832,7 +2832,7 @@ formatted       480f03ea0c7a  idris-1.3.4/src/Idris/Core/Evaluate.hs
 formatted       c40163fdebb7  idris-1.3.4/src/Idris/Core/Execute.hs
 formatted       e32c5463cdd7  idris-1.3.4/src/Idris/Core/ProofState.hs
 formatted       b76c9b2dfb27  idris-1.3.4/src/Idris/Core/ProofTerm.hs
-formatted       d711130800ff  idris-1.3.4/src/Idris/Core/TT.hs
+formatted       00ed16ef7c33  idris-1.3.4/src/Idris/Core/TT.hs
 formatted       59ec68b8fb3b  idris-1.3.4/src/Idris/Core/Typecheck.hs
 formatted       59c53219535d  idris-1.3.4/src/Idris/Core/Unify.hs
 formatted       6c96b2dd85f4  idris-1.3.4/src/Idris/Core/WHNF.hs

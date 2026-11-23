@@ -681,6 +681,13 @@
   last member of a class or the last binding of a `where` clause, stays
   under that line where a comment heads what follows the construct, as it
   does where code follows, rather than going with what follows.
+* A comment lined up with the first constructor of a data declaration
+  stays under it, as one under a later constructor does, rather than going
+  after the bar of the next one, and one lined up with the last or the only
+  constructor stays under it, rather than going to the column of a
+  `deriving` clause after it, whether the bars begin or end their lines. So
+  does one lined up with the body of an equation written on the line of its
+  `=`, rather than going to the column of a `where` after it.
 
 ## Tilia 0.1.4.0
 
