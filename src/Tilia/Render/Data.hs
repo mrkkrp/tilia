@@ -12,7 +12,6 @@ module Tilia.Render.Data
   )
 where
 
-import Control.Monad (mfilter)
 import Data.Choice (Choice, fromBool, isTrue, pattern Do, pattern Isn't)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe)
@@ -126,7 +125,7 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
               beforeEquals
                 <> txt "="
                 <> space
-                <> fence (fmap endOf equalsSpan <> spansOf cons) alternatives
+                <> alternatives
         where
           singleRecCon = case cons of
             [L _ ConDeclH98{con_args = RecCon{}}] -> True
@@ -161,17 +160,18 @@ dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders
             ConDeclGADT{} -> False
 
           alternatives =
-            keepTogether (constructor firstCon)
+            fence
+              (fmap endOf equalsSpan <> spanOf firstCon)
+              (keepTogether (constructor firstCon))
               <> mconcat (zipWith alternative cons (drop 1 cons))
           alternative previous c =
             separator
               <> keepTogether
-                ( maybe
-                    id
-                    located
-                    (barBelow previous <> spanOf c)
-                    (constructor c)
-                )
+                (fromItsBar (barAfter previous <> spanOf c) (constructor c))
+            where
+              fromItsBar
+                | sameLine (spanOf previous) (barAfter previous) = fence
+                | otherwise = maybe id located
           constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
     derivings =
       includeUnless (null dd_derivs) beforeDerivings
@@ -198,14 +198,13 @@ argumentsDocumented ctx = \case
       (mapMaybe (fieldDoc . unLoc) (unLoc l))
   InfixCon{} -> False
 
--- | Where the bar after a constructor was written, if on a line below it.
-barBelow ::
+-- | Where the bar after a constructor was written.
+barAfter ::
   -- | The constructor.
   LConDecl GhcPs ->
   Maybe Span
-barBelow c@(L l _) =
-  mfilter (not . sameLine (spanOf c) . Just) . listToMaybe $
-    [s | AddVbarAnn t <- lann_trailing (anns l), Just s <- [spanOf t]]
+barAfter (L l _) =
+  listToMaybe [s | AddVbarAnn t <- lann_trailing (anns l), Just s <- [spanOf t]]
 
 -- | Is this a GADT constructor?
 isGadtCon :: ConDecl GhcPs -> Bool
