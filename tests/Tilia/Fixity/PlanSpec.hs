@@ -2527,6 +2527,22 @@ withPlan plan = do
         lookupFixity scope InTerms Nothing (OpName "interrupt")
           `shouldBe` Resolved defaultFixity ReportDefault
 
+    it "settles a name an import brings in that hides a type synonym with (..), despite an unreadable import"
+      $ withFakeProject
+        [ ("src/A.hs", "module A where\ny = = 1\n"),
+          ( "src/Output.hs",
+            "module Output where\ntype Type = Int\n(\\/) :: Bool -> Bool -> Bool\n(\\/) = (||)\n"
+          )
+        ]
+      $ \rs -> do
+        let m =
+              parsed
+                "module C (w) where\nimport A\nimport Output hiding (Type (..))\n\
+                \w = True \\/ False\n"
+        scope <- scopeFor rs Nothing (Is #implicitPrelude) (pure (pmModule m))
+        lookupFixity scope InTerms Nothing (OpName "\\/")
+          `shouldBe` Resolved defaultFixity ReportDefault
+
     it "does not take a type it brings in for a constructor spelled the same way"
       $ withFakeProject
         [ ("src/A.hs", "module A where\ny = = 1\n"),

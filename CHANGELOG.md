@@ -656,6 +656,13 @@
   module using `unionFileModes` from unix-compat's
   `System.PosixCompat.Files` so was declined where another import could not
   be read.
+* A type synonym or a type family of a module read from its source has no
+  members, as one read from an interface has none, so a `T (..)` naming
+  one in an import list brings in or hides `T` alone, rather than possibly
+  any name the module exports. Hiding agda2train's `Type (..)` had a module
+  declined where another import could not be read, and importing a
+  `T (..)` so had an operator that module declares taken to clash with
+  another import's.
 * A comment written before the `via` of a `deriving` clause stays before
   it, rather than going between the `via` and the type, and so does one
   before a strategy such as `stock` or before the `instance` of a
