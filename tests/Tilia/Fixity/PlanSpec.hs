@@ -788,6 +788,14 @@ literateModules = describe "a literate module" $ do
 
 includingModules :: Spec
 includingModules = describe "a module that includes a file" $ do
+  it "declares what the file does, where it is one of the project's own" $
+    withFakeProject [("src/Ops.hs", including), ("src/Body.hs", body)] $
+      \rs -> fixitiesOf rs "Ops" `shouldReturn` Just plusPlus
+
+  it "declares what the file does, where it comes out of a tarball" $
+    withFakeArchive [("Ops.hs", including), ("Body.hs", body)] $
+      \rs -> fixitiesOf rs "Ops" `shouldReturn` Just plusPlus
+
   it "may declare anything, where it is one of the project's own" $
     withFakeProject [("src/Ops.hs", including)] $
       \rs -> unsettledIn rs "Ops" `shouldReturn` [[]]
@@ -795,8 +803,31 @@ includingModules = describe "a module that includes a file" $ do
   it "may declare anything, where it comes out of a tarball" $
     withFakeArchive [("Ops.hs", including)] $
       \rs -> unsettledIn rs "Ops" `shouldReturn` [[]]
+
+  it "may declare anything, where the file is not Haskell"
+    $ withFakeProject
+      [ ("src/Ops.hs", "{-# LANGUAGE CPP #-}\n#include \"Body.inc\"\n"),
+        ("src/Body.inc", body)
+      ]
+    $ \rs -> unsettledIn rs "Ops" `shouldReturn` [[]]
+
+  it "declares what it shows, where the plan rules out the branch that includes it"
+    $ withFakeProject
+      [ ( "src/Ops.hs",
+          "{-# LANGUAGE CPP #-}\nmodule Ops where\n#if 0\n#include \"Body.h\"\n#endif\n"
+        )
+      ]
+    $ \rs -> unsettledIn rs "Ops" `shouldReturn` []
   where
     including = "{-# LANGUAGE CPP #-}\n#include \"Body.hs\"\n"
+    body =
+      T.unlines
+        [ "module Ops ((|+|)) where",
+          "infixr 5 |+|",
+          "(|+|) :: Int -> Int -> Int",
+          "(|+|) = (+)"
+        ]
+    plusPlus = Map.singleton (InTerms, OpName "|+|") (Fixity RightAssoc 5)
     unsettledIn rs modName =
       (`unsettledThrough` (InTerms, OpName "|+|"))
         <$> askModule rs Nothing (Nothing, modName)

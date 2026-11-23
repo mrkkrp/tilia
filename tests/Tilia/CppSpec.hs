@@ -4,7 +4,10 @@
 -- | Whether documents printed from different configurations line up.
 module Tilia.CppSpec (spec) where
 
+import Data.Bifunctor (second)
+import Data.Choice (isTrue)
 import Data.Either (isLeft, isRight)
+import Data.Functor.Identity (Identity (..))
 import Data.List (sort)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -13,10 +16,17 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.LanguageExtensions.Type (Extension (Cpp))
+import System.FilePath (takeDirectory, (</>))
 import Test.Hspec
 
 import Tilia.Cpp
-import Tilia.Cpp.Directives (configurations, coveringLeaves, guardOf, implied)
+import Tilia.Cpp.Directives
+  ( configurations,
+    coveringLeaves,
+    guardOf,
+    implied,
+    withIncluded,
+  )
 import Tilia.Doc (Doc, regionsIn)
 import Tilia.Equivalence (syntaxDifference)
 import Tilia.Format (AstCheck (..), rewritten)
@@ -370,6 +380,34 @@ spec = do
       formatCpp settings ruledOut
         `shouldBe` Left
           "the branch at line 6 is ruled out by a conditional around it that asks the same question"
+
+  describe "putting in place what a module includes" $ do
+    it "puts in a Haskell file named in quotes next to the file" $
+      includedIn
+        [("src/Body.hs", "f = 1\n")]
+        "src/M.hs"
+        "x\n#include \"Body.hs\"\ny\n"
+        `shouldBe` ("x\nf = 1\ny\n", False)
+
+    it "looks for what a file it puts in includes next to that file" $
+      includedIn
+        [("src/sub/A.hs", "#include \"B.hs\"\n"), ("src/sub/B.hs", "f = 1\n")]
+        "src/M.hs"
+        "#include \"sub/A.hs\"\n"
+        `shouldBe` ("f = 1\n", False)
+
+    it "leaves a file it cannot find, a header, and one in angle brackets" $
+      fmap
+        (snd . includedIn [("src/B.h", "f = 1\n"), ("src/B.hs", "")] "src/M.hs")
+        ["#include \"C.hs\"\n", "#include \"B.h\"\n", "#include <B.hs>\n"]
+        `shouldBe` [True, True, True]
+
+    it "leaves a file that includes itself where it does" $
+      includedIn
+        [("src/A.hs", "f = 1\n#include \"A.hs\"\n")]
+        "src/M.hs"
+        "#include \"A.hs\"\n"
+        `shouldBe` ("f = 1\n#include \"A.hs\"\n", True)
 
   describe "telling a directive line from code" $ do
     it "reads the keyword and everything after the hash" $
@@ -1133,6 +1171,17 @@ sameBranch (Just input, Just output) = sameProgram input output
       Left _ -> Left ("did not parse:\n" <> text)
       Right parsed -> Right (pmModule parsed)
 sameBranch _ = Left "preprocessing changed between succeeding and failing"
+
+-- | A module with what it includes in place, where it is at the path
+-- given and the files given are all there are, and whether it includes
+-- another file.
+includedIn :: [(FilePath, Text)] -> FilePath -> Text -> (Text, Bool)
+includedIn files path =
+  second isTrue . runIdentity . withIncluded nextTo path
+  where
+    nextTo including name =
+      let file = takeDirectory including </> name
+       in Identity ((file,) <$> lookup file files)
 
 -- | How many modules parsing every branch of a module comes to.
 branchesParsed :: Text -> Maybe Int

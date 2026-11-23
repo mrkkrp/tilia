@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -21,6 +22,8 @@ import Control.DeepSeq (NFData, force)
 import Control.Exception (evaluate)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Choice (Choice)
+import Data.Functor.Identity (Identity (..))
 import Data.List (isSuffixOf)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text (Text)
@@ -31,6 +34,7 @@ import GHC.Generics (Generic)
 import System.FilePath.Posix qualified as Posix
 
 import Tilia.Cabal.Package (packageSourceDirs)
+import Tilia.Cpp.Directives (withIncluded)
 import Tilia.Fixity.Cabal (entryPosixPath, ownCabalFile)
 import Tilia.Utils (quietly)
 
@@ -74,15 +78,38 @@ moduleIn modName archive = listToMaybe (mapMaybe pick moduleEndings)
   where
     dirs = maybe [] packageSourceDirs (archiveCabal archive)
     pick ending =
-      inArchive ending . T.decodeUtf8Lenient
-        <$> listToMaybe
-          [ content
-          | d <- dirs,
-            let file =
-                  Posix.normalise (d <> "/" <> pathOfModule modName <> ending),
-            (path, content) <- archiveFiles archive,
-            drop 1 (dropWhile (/= '/') path) == file
-          ]
+      listToMaybe
+        [ inArchive ending file (T.decodeUtf8Lenient content)
+        | d <- dirs,
+          let file =
+                Posix.normalise (d <> "/" <> pathOfModule modName <> ending),
+          Just content <- [held file]
+        ]
+    inArchive ending file text
+      | writtenForHsc ending = ForHsc
+      | otherwise =
+          uncurry Haskell . runIdentity $
+            withIncluded nextTo file (haskellIn ending text)
+    nextTo including name =
+      let file = collapsed (Posix.takeDirectory including Posix.</> name)
+       in Identity ((file,) . T.decodeUtf8Lenient <$> held file)
+    held file =
+      listToMaybe
+        [ content
+        | (path, content) <- archiveFiles archive,
+          drop 1 (dropWhile (/= '/') path) == file
+        ]
+
+-- | A path with each @..@ in it taking off the directory before it.
+collapsed ::
+  -- | The path.
+  FilePath ->
+  FilePath
+collapsed = Posix.joinPath . reverse . foldl' up [] . Posix.splitDirectories
+  where
+    up (d : ds) ".." | d /= ".." = ds
+    up ds "." = ds
+    up ds d = d : ds
 
 -- | Where a module's file is under the directory that holds it, without an
 -- extension.
@@ -96,17 +123,13 @@ moduleEndings = [".hs", ".lhs", ".hsc"]
 
 -- | What an archive holds for a module.
 data InArchive
-  = -- | Haskell, as the package wrote it.
-    Haskell Text
+  = -- | Haskell, as the package wrote it, with what each Haskell file it
+    -- includes that the tarball holds in place, and whether it includes
+    -- another file.
+    Haskell Text (Choice "includesUnread")
   | -- | A module written for @hsc2hs@. Its text is not kept: there is
     -- nothing to be done with it, and it is taken to declare nothing.
     ForHsc
-
--- | What was found under one ending amounts to.
-inArchive :: String -> Text -> InArchive
-inArchive ending text
-  | writtenForHsc ending = ForHsc
-  | otherwise = Haskell (haskellIn ending text)
 
 -- | Is this a module @hsc2hs@ writes rather than one anybody compiles?
 writtenForHsc :: FilePath -> Bool
