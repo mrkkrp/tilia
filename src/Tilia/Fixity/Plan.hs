@@ -25,7 +25,7 @@ import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Control.DeepSeq (force)
 import Control.Exception (bracket_, evaluate)
 import Control.Monad (filterM, guard, join, mfilter)
-import Data.Choice (Choice, fromBool, pattern Do)
+import Data.Choice (Choice, fromBool, isTrue, pattern Do)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (asum, toList)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -42,7 +42,7 @@ import GHC.Hs (HsModule)
 import GHC.Hs.Extension (GhcPs)
 import GHC.LanguageExtensions.Type (Extension (ImplicitPrelude))
 import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath ((</>))
+import System.FilePath (takeDirectory, (</>))
 
 import Tilia.Cabal.Package
   ( BranchSections (..),
@@ -63,10 +63,10 @@ import Tilia.Cabal.Package
 import Tilia.Cabal.Plan
 import Tilia.Cabal.Project (cabalFilesIn)
 import Tilia.Cpp.Directives
-  ( Directive (..),
-    branchLeaves,
+  ( branchLeaves,
     coveringLeaves,
-    directives,
+    includes,
+    withIncluded,
     withoutRuledOut,
   )
 import Tilia.Cpp.Macros (Macros (..))
@@ -231,12 +231,14 @@ newResolverWith routes cache installed tarballs packageReader plan = do
           | otherwise ->
               readUtf8File path >>= \case
                 Nothing -> pure unreadable
-                Just source ->
-                  fromSummaries (reach visiting (importable (Just path))) modName
-                    =<< summariesOf
-                      (Left path)
-                      modName
+                Just source -> do
+                  (text, unread) <-
+                    withIncluded
+                      nextTo
+                      path
                       (haskellIn path (snd (byteOrderMark source)))
+                  fromSummaries (reach visiting (importable (Just path))) modName
+                    =<< summariesOf (Left path) modName unread text
         Elsewhere package modName
           | Just original <- heldBy package modName reexported,
             isNothing (heldBy package modName interfaces) ->
@@ -292,13 +294,18 @@ newResolverWith routes cache installed tarballs packageReader plan = do
               recalled
                 (cachedEstablished cache key modName)
                 (storeEstablished cache key modName)
-      summariesOf found modName text =
+      summariesOf found modName unread text =
         extensionsOf found modName >>= \case
           Nothing -> pure Nothing
           Just extensions -> do
             let summarized =
                   evaluate . force $
-                    configurationsOf (macrosOf plan) extensions modName text
+                    configurationsOf
+                      (macrosOf plan)
+                      extensions
+                      modName
+                      unread
+                      text
                 stamp =
                   digestOf . T.intercalate "\n" $
                     [tshow extensions, macrosRead, text]
@@ -334,6 +341,21 @@ newResolverWith routes cache installed tarballs packageReader plan = do
       moduleInArchive tarball modName =
         (moduleIn modName =<<) <$> archiveOf tarball
   pure Resolver{askModule = reach Set.empty . importable}
+
+-- | The file a name stands for next to the file given, by its canonical
+-- path, and what it holds, where there is one.
+nextTo ::
+  -- | The file.
+  FilePath ->
+  -- | The name.
+  FilePath ->
+  IO (Maybe (FilePath, Text))
+nextTo including name =
+  readUtf8File file >>= \case
+    Nothing -> pure Nothing
+    Just text -> Just . (,text) <$> canonicalizePath file
+  where
+    file = takeDirectory including </> name
 
 -- | A module's interface, read once, with the primops' fixities standing
 -- in for that of @GHC.Prim@, which has no file.
@@ -565,8 +587,13 @@ verified p tarball = case sourceHashOf p of
 fromSource ::
   -- | What a tarball holds for a module.
   (FilePath -> Text -> IO (Maybe InArchive)) ->
-  -- | What each configuration of a module says, given its text.
-  (Text -> Text -> IO (Maybe (NonEmpty ModuleSummary))) ->
+  -- | What each configuration of a module says, given its name, whether
+  -- it includes a file that was not read, and its text.
+  ( Text ->
+    Choice "includesUnread" ->
+    Text ->
+    IO (Maybe (NonEmpty ModuleSummary))
+  ) ->
   -- | How to reach another module, given as 'importedFrom' gives it, for
   -- chasing re-exports. This is the resolver tied back on itself, with the
   -- visiting set already extended.
@@ -586,8 +613,8 @@ fromSource moduleInArchive summariesOf reach tarball modName =
         moduleInArchive tarball modName >>= \case
           Nothing -> pure unreadable
           Just ForHsc -> pure mempty
-          Just (Haskell source) ->
-            fromSummaries reach modName =<< summariesOf modName source
+          Just (Haskell source unread) ->
+            fromSummaries reach modName =<< summariesOf modName unread source
 
 -- | What a module exports, out of what each of its configurations says.
 fromSummaries ::
@@ -1136,8 +1163,8 @@ inhabited names
 --
 -- Where one of the few that 'coveringLeaves' gives is not Haskell, it is
 -- one configuration per branch instead, so that only the branch at fault
--- goes unread. Where it includes a file, each may declare more than it
--- shows.
+-- goes unread. Where a branch the plan does not rule out includes a file
+-- that was not read, each may declare more than it shows.
 configurationsOf ::
   -- | What the plan settles about the questions its conditionals ask.
   Macros ->
@@ -1145,10 +1172,12 @@ configurationsOf ::
   Defaults ->
   -- | The module's name, for the parser to put in its errors.
   Text ->
+  -- | Whether it includes a file that was not read, in any branch.
+  Choice "includesUnread" ->
   -- | Its text.
   Text ->
   Maybe (NonEmpty ModuleSummary)
-configurationsOf macros extensions modName text =
+configurationsOf macros extensions modName unread text =
   NE.nonEmpty
     =<< (traverse parsed =<< covering) <|> (mapMaybe parsed <$> each)
   where
@@ -1159,8 +1188,8 @@ configurationsOf macros extensions modName text =
       including . summarize (hasImplicitPrelude extensions leaf) . pmModule
         <$> whatParsed (parseModule (ParserConfig extensions) named leaf)
     including summary =
-      summary{summarySpliced = summarySpliced summary || unread}
-    unread = any ((== "include") . dKeyword) (directives settled)
+      summary{summarySpliced = summarySpliced summary || unreadTaken}
+    unreadTaken = isTrue unread && not (null (includes settled))
     whatParsed = either (const Nothing) Just
     named = T.unpack modName
 

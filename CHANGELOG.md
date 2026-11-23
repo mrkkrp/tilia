@@ -644,11 +644,13 @@
   as it was written, rather than lining up with the conditional's
   directives, which moved it from one to the other, under the last
   declaration of a module on every formatting.
-* An operator that an imported module read from its source may declare in
-  a file it includes with `#include`, which is not read, is left unsettled,
-  so a module using it is declined rather than formatted as if it were
-  `infixl 9`. path's `</>` was taken for `infixl 9`, as `Path.Posix` is
-  written in `Include.hs`, which declares it `infixr 5`.
+* A Haskell file that a module includes with `#include`, found next to the
+  module, is read along with it for the operators it declares, as cpp puts
+  it in the module, so path's `</>`, declared `infixr 5` in the
+  `Include.hs` that `Path.Posix` includes, is no longer taken for
+  `infixl 9`. An operator that any other file a module includes may
+  declare is left unsettled, so a module using it is declined rather than
+  formatted as if it were `infixl 9`.
 * A name an import list names on its own is taken to come from that
   import, which would not compile otherwise, also where reading the module
   imported does not tell that it exports the name, as for a module written

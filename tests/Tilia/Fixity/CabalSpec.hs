@@ -234,6 +234,15 @@ spec = do
         ]
         `shouldBe` Just "\n\nmodule Parser where\n\n  code too\n\n\n\n"
 
+    it "holds what a Haskell file it includes holds, in the tarball's paths" $
+      textOf
+        "src"
+        "Parser.Posix"
+        [ ("t-0/src/Parser/Posix.hs", "#define OS Posix\n#include \"../A.hs\"\n"),
+          ("t-0/src/A.hs", "module Parser.OS where\n")
+        ]
+        `shouldBe` Just "#define OS Posix\nmodule Parser.OS where\n"
+
   describe "what the package puts in force" $ do
     it "reads an extension the .cabal turns on" $
       extensions "library\n  default-extensions: LambdaCase\n"
@@ -354,7 +363,7 @@ extensions = (`effectiveExtensions` "") . (`moduleExtensions` "M") . described
 textOf :: FilePath -> Text -> [(FilePath, BS.ByteString)] -> Maybe Text
 textOf dir modName files =
   case moduleIn modName (Archive (Just cabal) files) of
-    Just (Haskell text) -> Just text
+    Just (Haskell text _) -> Just text
     _ -> Nothing
   where
     cabal =

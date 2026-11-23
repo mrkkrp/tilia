@@ -7,6 +7,8 @@ module Tilia.Cpp.Directives
   ( -- * Reading a module
     usesCpp,
     blankCpp,
+    withIncluded,
+    includes,
     withoutRuledOut,
     withoutOpaque,
     CppError (..),
@@ -56,8 +58,8 @@ module Tilia.Cpp.Directives
   )
 where
 
-import Data.Choice (Choice, fromBool)
-import Data.List (sortOn, tails)
+import Data.Choice (Choice, fromBool, isTrue)
+import Data.List (isSuffixOf, sortOn, tails)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe, maybeToList)
@@ -117,6 +119,60 @@ usesCpp extensions source =
 blankCpp :: Text -> Text
 blankCpp source =
   withoutDirectives (directives source) (macroLines source) source
+
+-- | A module with each @#include@ of a Haskell file that cpp finds next to
+-- the file including it replaced by what that file holds, and whether it
+-- leaves any other @#include@ as it is written.
+--
+-- Only a name ending in @.hs@ is taken for Haskell: a header may hold C
+-- comments, which cpp takes out and the parser does not.
+withIncluded ::
+  Monad m =>
+  -- | The file a name stands for next to the file given, as a path that is
+  -- one for each file, and what it holds, where there is one.
+  (FilePath -> FilePath -> m (Maybe (FilePath, Text))) ->
+  -- | Where the module is, as the first argument takes it.
+  FilePath ->
+  -- | The module.
+  Text ->
+  m (Text, Choice "includesUnread")
+withIncluded nextTo = go []
+  where
+    go above path text =
+      case includes text of
+        [] -> pure (text, fromBool False)
+        ds -> do
+          found <- traverse (included (path : above) path) ds
+          pure
+            ( case [(d, t) | (d, Just (t, _)) <- zip ds found] of
+                [] -> text
+                files -> T.unlines (foldr place (T.lines text) files),
+              fromBool (any (maybe True (isTrue . snd)) found)
+            )
+    included above path d = case quotedName d of
+      Just name
+        | ".hs" `isSuffixOf` name ->
+            nextTo path name >>= \case
+              Just (file, t)
+                | file `notElem` above -> Just <$> go above file t
+              _ -> pure Nothing
+      _ -> pure Nothing
+    quotedName d = do
+      rest <-
+        T.stripPrefix "\"" . T.stripStart
+          =<< T.stripPrefix "include" (dText d)
+      case T.breakOn "\"" rest of
+        (name, closing) | not (T.null closing) -> Just (T.unpack name)
+        _ -> Nothing
+    place (d, t) ls =
+      take (dLine d - 1) ls <> T.lines t <> drop (dLastLine d) ls
+
+-- | Every @#include@ in a module.
+includes ::
+  -- | The module.
+  Text ->
+  [Directive]
+includes text = [d | d <- directives text, dKeyword d == "include"]
 
 -- | Blank out every branch the macros rule out, and the conditionals that
 -- ask about them.
