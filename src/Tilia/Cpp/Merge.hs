@@ -1001,7 +1001,11 @@ choiceAt written edge = go Flat False
               DCppChoice ws bs e -> Just (before, ws, bs, e, after)
               _ -> do
                 (w, y) <- unwrap x
-                guard (w /= WAlign || begins && firstOnItsLine y)
+                guard
+                  ( w /= WAlign
+                      || beginsWithChoice y
+                      || begins && firstOnItsLine y
+                  )
                 around (wrap w) (alternatives w)
                   <$> go (layoutInside layout w) begins y
       _ -> Nothing
