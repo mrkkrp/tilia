@@ -14,6 +14,8 @@ module Tilia.Span
   )
 where
 
+import Data.Hashable (Hashable (..))
+
 -- | A region of the input.
 data Span = Span
   { spanStartLine :: !Int,
@@ -22,6 +24,10 @@ data Span = Span
     spanEndColumn :: !Int
   }
   deriving (Eq, Ord, Show)
+
+instance Hashable Span where
+  hashWithSalt salt (Span a b c d) =
+    salt `hashWithSalt` a `hashWithSalt` b `hashWithSalt` c `hashWithSalt` d
 
 -- | Build a 'Span' from start and end positions, each a line and a column.
 mkSpan :: (Int, Int) -> (Int, Int) -> Span

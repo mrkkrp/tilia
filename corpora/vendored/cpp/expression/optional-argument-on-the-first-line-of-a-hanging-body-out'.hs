@@ -48,8 +48,7 @@ rollout board = do
                 "suggested"
             $ \moves -> pick board moves
 #else
-            $
-                Strategy $
-                    \moves -> pick board moves
+            $ Strategy $
+                \moves -> pick board moves
 #endif
     pure suggested

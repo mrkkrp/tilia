@@ -17,7 +17,7 @@ tighterOperatorAtLineEnd =
 headOf
     ( x -- the one we want
         :| _
-        ) = x
+    ) = x
 
 -- The same, for a pattern synonym.
 pattern x -- the head

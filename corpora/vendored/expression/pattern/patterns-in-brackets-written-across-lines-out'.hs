@@ -4,7 +4,7 @@ resolve :: Request -> Either String Handler
 resolve request =
     checked $ case (methodOf request, pathOf request) of
         ( Get
-            , ["orders", orderId]
+          , ["orders", orderId]
             ) -> Right (showOrder orderId)
         (Post, ["orders"]) -> Right createOrder
         _ -> Left "no route"
@@ -12,7 +12,7 @@ resolve request =
 prefix :: [Segment] -> Maybe Segment
 prefix segments = case segments of
     [ first
-        , second
+      , second
         ] -> Just (first <> second)
     [only] -> Just only
     _ -> Nothing

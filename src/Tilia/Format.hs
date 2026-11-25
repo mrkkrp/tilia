@@ -422,44 +422,51 @@ newSession ::
   -- with 'fixityNotesOf'.
   Choice "debugFixity" ->
   IO (Either FormatError Session)
-newSession project planSource caching downloading checkAst checkIdempotence debugFixity = runExceptT $ do
-  let root = prPath project
-  (settings, packages, ownModules) <- fromProject project
-  (plan, routes) <- case planSource of
-    PlanFromCabal components -> do
-      plan <-
-        orElse (NoBuildPlan root)
-          =<< liftIO (loadPlan caching downloading components root)
-      pure (plan, [FromInterface, FromSource])
-    GivenPlan path -> do
-      plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
-      routes <-
-        if isTrue downloading
-          then
-            [FromInterface, FromSource]
-              <$ liftIO (fetchUninstalled caching root plan)
-          else pure [FromInterface]
-      pure (plan, routes)
-  packageReader <-
-    liftIO
-      (newPackageReader (plannedCompiler plan) (plannedFlags plan) packages)
-  resolver <- liftIO (newResolverVia caching routes packageReader root plan)
-  notes <-
-    if isTrue debugFixity
-      then Just <$> liftIO (newIORef Map.empty)
-      else pure Nothing
-  pure
-    Session
-      { sessionRoot = project,
-        sessionOwnModules = ownModules,
-        sessionSettings = settings,
-        sessionResolver = resolver,
-        sessionMacros = macrosOf plan,
-        sessionPackage = packageReader,
-        sessionCheckAst = astCheckFor checkAst,
-        sessionCheckIdempotence = checkIdempotence,
-        sessionFixityNotes = notes
-      }
+newSession
+  project
+  planSource
+  caching
+  downloading
+  checkAst
+  checkIdempotence
+  debugFixity = runExceptT $ do
+    let root = prPath project
+    (settings, packages, ownModules) <- fromProject project
+    (plan, routes) <- case planSource of
+      PlanFromCabal components -> do
+        plan <-
+          orElse (NoBuildPlan root)
+            =<< liftIO (loadPlan caching downloading components root)
+        pure (plan, [FromInterface, FromSource])
+      GivenPlan path -> do
+        plan <- orElse (NoBuildPlan root) =<< liftIO (readGivenPlan root path)
+        routes <-
+          if isTrue downloading
+            then
+              [FromInterface, FromSource]
+                <$ liftIO (fetchUninstalled caching root plan)
+            else pure [FromInterface]
+        pure (plan, routes)
+    packageReader <-
+      liftIO
+        (newPackageReader (plannedCompiler plan) (plannedFlags plan) packages)
+    resolver <- liftIO (newResolverVia caching routes packageReader root plan)
+    notes <-
+      if isTrue debugFixity
+        then Just <$> liftIO (newIORef Map.empty)
+        else pure Nothing
+    pure
+      Session
+        { sessionRoot = project,
+          sessionOwnModules = ownModules,
+          sessionSettings = settings,
+          sessionResolver = resolver,
+          sessionMacros = macrosOf plan,
+          sessionPackage = packageReader,
+          sessionCheckAst = astCheckFor checkAst,
+          sessionCheckIdempotence = checkIdempotence,
+          sessionFixityNotes = notes
+        }
 
 -- | What compiling a file's component establishes, which a session
 -- otherwise works out with Cabal, the package database, and the sources of

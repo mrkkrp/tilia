@@ -38,4 +38,4 @@ type family Apply f x y where
         (x :: Type)
         (y :: Type)
      . Apply f x y =
-            f x y
+        f x y

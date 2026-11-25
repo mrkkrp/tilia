@@ -29,7 +29,6 @@ module Tilia.Render.Context
     -- * What lies between two spans
     commentPrintedBetween,
     lineCommentWrittenBetween,
-    underComment,
     remarkOnEachLine,
     commentRightUnder,
     remarkUnder,
@@ -245,19 +244,17 @@ leftmost ::
   Site
 leftmost site = plainSite{siteInBlock = siteInBlock site}
 
--- | Indent a hanging body, one step further where a line a step in follows.
+-- | How far right of the keyword that opens it a block goes: a step, or two
+-- where a line a step in follows.
 underSite ::
-  -- | The site of the node the body hangs off.
+  -- | The site of the node the block belongs to.
   Site ->
-  -- | The body.
-  Doc ->
-  Doc
-underSite site =
-  nest (if siteFollowed site then 2 else 1)
+  Int
+underSite site = if siteFollowed site then 2 else 1
 
--- | Where a bracket opened here has to close.
-closingFor :: Site -> ClosingIndent
-closingFor site = if siteInBlock site then Indented else Outdented
+-- | How many steps in from its opening a bracket opened here closes.
+closingFor :: Site -> Int
+closingFor site = if siteInBlock site then 1 else 0
 
 ----------------------------------------------------------------------------
 -- Extensions
@@ -346,23 +343,6 @@ lineCommentWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
 lineCommentWrittenBetween ctx (Just a) (Just b) =
   holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
 lineCommentWrittenBetween _ _ _ = False
-
--- | What follows a token on its line, a step in where a comment written
--- between the two ends the line, so that it does not begin the next line at
--- the indentation in force, where a layout block would take it for an item.
-underComment ::
-  -- | The context.
-  Ctx ->
-  -- | The token.
-  Maybe Span ->
-  -- | What follows it.
-  Maybe Span ->
-  -- | What follows it, printed.
-  Doc ->
-  Doc
-underComment ctx token part
-  | lineCommentWrittenBetween ctx token part = indent
-  | otherwise = id
 
 -- | Was a comment that ends its line written between the two spans, and
 -- another on the line the second begins, so that joining the two lines
@@ -514,16 +494,19 @@ layoutWithin ctx whole contents d
 layoutAcross :: HasLoc l => Ctx -> [GenLocated l a] -> Doc -> Doc
 layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
--- | 'attach' an operator and its operand, leaving the operator's region at
--- the end of the line when it was written there, so that the comments
--- written around it stay on that line, giving the indentation of the
--- operand's line a region, so that those above the operand come before it,
--- and putting the operand on the next line where a remark ends both lines.
+-- | 'attach' an operator and its operand, placed on their line as told,
+-- leaving the operator's region at the end of the line when it was written
+-- there, so that the comments written around it stay on that line, giving
+-- the indentation of the operand's line a region, so that those above the
+-- operand come before it, and putting the operand on the next line where a
+-- remark ends both lines.
 attachOperator ::
   -- | The context.
   Ctx ->
   -- | How the operator and its operand attach to what they follow.
   Placement ->
+  -- | How their line is placed.
+  (Doc -> Doc) ->
   -- | What the operator follows.
   Maybe Span ->
   -- | The operator.
@@ -535,16 +518,23 @@ attachOperator ::
   -- | Its operand, printed.
   Doc ->
   Doc
-attachOperator ctx placement before here after op operand = case here of
-  Just s
-    | placement == Normal,
-      sameLine before here,
-      not (sameLine here after) ->
-        indent (located s mempty)
-          <> attach
-            Normal
-            (foldMap indentation after <> unclaimed op <> space <> operand)
-  _ -> attach placement (op <> gap <> operand)
+attachOperator ctx placement placing before here after op operand =
+  case here of
+    Just s
+      | placement == Normal,
+        sameLine before here,
+        not (sameLine here after) ->
+          located s mempty
+            <> attach
+              Normal
+              ( placing
+                  ( foldMap indentation after
+                      <> unclaimed op
+                      <> space
+                      <> operand
+                  )
+              )
+    _ -> attach placement (placing (op <> gap <> operand))
   where
     gap
       | remarkOnEachLine ctx here after = hardBreak

@@ -690,6 +690,17 @@
   `deriving` clause after it, whether the bars begin or end their lines. So
   does one lined up with the body of an equation written on the line of its
   `=`, rather than going to the column of a `where` after it.
+* The body of a lambda whose patterns are written over several lines goes
+  a step in from the line of the `\`, rather than two, and so do the guards
+  and the body of an alternative whose pattern is written over several
+  lines in brackets, a step in from the line the pattern begins.
+* Where an operator such as `$` begins a branch of a conditional, its
+  operand stays on the operator's line, rather than leaving the operator
+  alone on a line above it.
+* Where each branch of a conditional writes the operator of an infix head
+  and the operand after it over several lines, the `=` ending the operand
+  stays at the end of its line in each branch, with the body under it,
+  rather than standing alone on a line after the `#endif`.
 
 ## Tilia 0.1.4.0
 

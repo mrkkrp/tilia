@@ -6,7 +6,7 @@ predecessor :: Int -> Int
 predecessor
     ( n
         + 1
-        ) = n
+    ) = n
 
 lastStep :: Int
 (lastStep + 1) = 10

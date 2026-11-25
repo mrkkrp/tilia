@@ -13,6 +13,6 @@ lastSlot = ready
     (#
       | | ready
       #) =
-        (#
-          | | False
-        #)
+      (#
+        | | False
+      #)

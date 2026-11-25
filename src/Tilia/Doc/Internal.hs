@@ -5,27 +5,33 @@
 module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
+    Spill (..),
+    LineStart (..),
+    TrailingWhitespace (..),
+    Layout (..),
+    Conditional (..),
+    conditionalRange,
+    printsNothing,
+    namesOnly,
+    referentIn,
     Wrapper (..),
     unwrap,
     wrap,
     layoutInside,
-    Nesting (..),
-    Spill (..),
-    printsNothing,
-    Conditional (..),
-    conditionalRange,
-    Layout (..),
-    LineStart (..),
-    TrailingWhitespace (..),
 
     -- * Rendering
     printDoc,
+    printExcerpt,
   )
 where
 
+import Control.Applicative ((<|>))
 import Data.Char (isSpace)
+import Data.Foldable (asum)
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
 import Data.List (unsnoc)
-import Data.Maybe (isJust, isNothing, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -72,17 +78,18 @@ data Doc
     DVerbatimBreak !LineStart !TrailingWhitespace
   | -- | Concatenation. See the 'Semigroup' instance.
     DCat !Doc !Doc
-  | -- | Indent the enclosed document relative to the current indentation.
-    DNest !Nesting !Doc
-  | -- | Indent the enclosed document to whatever column the line has
-    -- reached, so that it lines up under itself when broken.
-    DAlign !Doc
-  | -- | An item of a layout block, such as a declaration, a statement or a
-    -- case alternative. Once its first code is written, each alternative of
-    -- a conditional inside it begins right of the column the item began at,
-    -- where the layout would otherwise end the item, but for an item the
-    -- alternative begins itself.
-    DBlockItem !Doc
+  | -- | A referent identifies an element which provides the reference
+    -- indentation level for relative indentation encoded by 'DIndented'.
+    DReferent !(Maybe Span) !Doc
+  | -- | Print the left 'Doc', then the right one indented by so many steps
+    -- relative to the first referent found in the left 'Doc'. Steps entered
+    -- on one line with no line begun between them count once: the same
+    -- principle as with consecutive newlines and spaces.
+    DIndented !Int !Doc !Doc
+  | -- | Print the 'Doc' with its lines so many columns right of the column
+    -- it begins at. This interrupts collapsing of consecutive indentation
+    -- steps.
+    DAligned !Int !Doc
   | -- | Start the enclosed document's lines at the margin if they come out
     -- right above a preprocessor directive.
     DCppMarginNote !Doc
@@ -122,6 +129,66 @@ data Doc
     DDeclarationsStart
   deriving (Eq, Show)
 
+-- | Where text held back for the end of a line goes when something was held
+-- back for it first.
+data Spill
+  = -- | On a line of its own, at the indentation of the line it was held
+    -- back for.
+    SpillAtIndentation
+  | -- | On a line of its own, lined up with what was held back before it.
+    SpillUnderPrevious
+  | -- | On a line of its own at the margin, leaving what is held back after
+    -- it to line up as if it were not there.
+    SpillAtMargin
+  deriving (Eq, Show)
+
+-- | Where the line after a 'DVerbatimBreak' begins.
+data LineStart
+  = -- | At the indentation in force, as any other break would.
+    AtIndent
+  | -- | At column zero, whatever the indentation.
+    AtMargin
+  deriving (Eq, Show)
+
+-- | What to do with the whitespace a finished line ends in.
+data TrailingWhitespace
+  = -- | Trim it.
+    TrimWhitespace
+  | -- | Keep it.
+    KeepWhitespace
+  deriving (Eq, Show)
+
+-- | Whether a group is laid out on one line or across several.
+data Layout
+  = -- | On one line, every break printed as a space or as nothing.
+    Flat
+  | -- | Across lines, every break printed as a line break.
+    Broken
+  | -- | Flat where it fits within the column limit, broken where it does
+    -- not.
+    Frangible
+  deriving (Eq, Show)
+
+-- | A conditional as its author wrote it.
+data Conditional = Conditional
+  { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
+    conditionalLines :: [Int],
+    -- | What follows the hash of its @#if@ and of each @#elif@.
+    conditionalGuards :: [Text],
+    -- | What follows the keyword of its @#else@.
+    conditionalElse :: Text,
+    -- | What follows the keyword of its @#endif@.
+    conditionalEndif :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+-- | The lines of a conditional's @#if@ and @#endif@.
+conditionalRange :: Conditional -> Maybe (Int, Int)
+conditionalRange c =
+  (,) <$> listToMaybe ls <*> fmap snd (unsnoc ls)
+  where
+    ls = conditionalLines c
+
 -- | Does this document put nothing at all on the page?
 printsNothing ::
   -- | The document.
@@ -131,16 +198,51 @@ printsNothing = \case
   DEmpty -> True
   DDeclarationsStart -> True
   DCat a b -> printsNothing a && printsNothing b
+  DIndented _ a b -> printsNothing a && printsNothing b
   DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
   d -> maybe False (printsNothing . snd) (unwrap d)
+
+-- | Is this document nothing but pointers to parts printed elsewhere?
+namesOnly ::
+  -- | The document.
+  Doc ->
+  Bool
+namesOnly = \case
+  DEmpty -> True
+  DReferent _ DEmpty -> True
+  DCat a b -> namesOnly a && namesOnly b
+  _ -> False
+
+-- | The name of the first referent a document holds, if it holds one.
+referentIn ::
+  -- | The document.
+  Doc ->
+  Maybe (Maybe Span)
+referentIn = \case
+  DReferent k _ -> Just k
+  DCat a b -> referentIn a <|> referentIn b
+  DIndented _ a b -> referentIn a <|> referentIn b
+  DVariant flatD brokenD -> referentIn flatD <|> referentIn brokenD
+  DCppChoice _ bs e -> asum (fmap (referentIn . snd) bs) <|> referentIn e
+  d -> referentIn . snd =<< unwrap d
+
+-- | The names of the referents a document holds side by side.
+referentsIn ::
+  -- | The document.
+  Doc ->
+  [Maybe Span]
+referentsIn = \case
+  DReferent k _ -> [k]
+  DCat a b -> referentsIn a <> referentsIn b
+  _ -> []
 
 -- | A node holding exactly one document, less the document.
 data Wrapper
   = WLocated !Span
   | WFence !Span
-  | WNest !Nesting
-  | WAlign
-  | WBlockItem
+  | WReferent !(Maybe Span)
+  | WIndented !Int !Doc
+  | WAligned !Int
   | WCppMarginNote
   | WGroup !Layout
   deriving (Eq, Show)
@@ -153,9 +255,9 @@ unwrap ::
 unwrap = \case
   DLocated s d -> Just (WLocated s, d)
   DFence s d -> Just (WFence s, d)
-  DNest n d -> Just (WNest n, d)
-  DAlign d -> Just (WAlign, d)
-  DBlockItem d -> Just (WBlockItem, d)
+  DReferent k d -> Just (WReferent k, d)
+  DIndented n a d | namesOnly a -> Just (WIndented n a, d)
+  DAligned n d -> Just (WAligned n, d)
   DCppMarginNote d -> Just (WCppMarginNote, d)
   DGroup l d -> Just (WGroup l, d)
   _ -> Nothing
@@ -171,9 +273,9 @@ wrap ::
 wrap = \case
   WLocated s -> DLocated s
   WFence s -> DFence s
-  WNest n -> DNest n
-  WAlign -> DAlign
-  WBlockItem -> DBlockItem
+  WReferent k -> DReferent k
+  WIndented n a -> DIndented n a
+  WAligned n -> DAligned n
   WCppMarginNote -> DCppMarginNote
   WGroup l -> DGroup l
 
@@ -196,53 +298,6 @@ instance Semigroup Doc where
 instance Monoid Doc where
   mempty = DEmpty
 
--- | A conditional as its author wrote it.
-data Conditional = Conditional
-  { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
-    conditionalLines :: [Int],
-    -- | What follows the hash of its @#if@ and of each @#elif@.
-    conditionalGuards :: [Text],
-    -- | What follows the keyword of its @#else@.
-    conditionalElse :: Text,
-    -- | What follows the keyword of its @#endif@.
-    conditionalEndif :: Text
-  }
-  deriving (Eq, Ord, Show)
-
--- | The lines of a conditional's @#if@ and @#endif@.
-conditionalRange :: Conditional -> Maybe (Int, Int)
-conditionalRange c =
-  (,) <$> listToMaybe ls <*> fmap snd (unsnoc ls)
-  where
-    ls = conditionalLines c
-
--- | Whether a group is laid out on one line or across several.
-data Layout
-  = -- | On one line, every break printed as a space or as nothing.
-    Flat
-  | -- | Across lines, every break printed as a line break.
-    Broken
-  | -- | Flat where it fits within the column limit, broken where it does
-    -- not.
-    Frangible
-  deriving (Eq, Show)
-
--- | Where the line after a 'DVerbatimBreak' begins.
-data LineStart
-  = -- | At the indentation in force, as any other break would.
-    AtIndent
-  | -- | At column zero, whatever the indentation.
-    AtMargin
-  deriving (Eq, Show)
-
--- | What to do with the whitespace a finished line ends in.
-data TrailingWhitespace
-  = -- | Trim it.
-    TrimWhitespace
-  | -- | Keep it.
-    KeepWhitespace
-  deriving (Eq, Show)
-
 ----------------------------------------------------------------------------
 -- Rendering
 
@@ -253,27 +308,30 @@ step ::
   Int
 step = indentationColumns . settingsIndentation
 
--- | The indentation a nesting leads to from another, where a step wider
--- than two columns is taken from the nearest multiple of itself at or left
--- of it, as Fourmolu does.
+-- | The indentation so many steps in from another, where a step wider than
+-- two columns is taken from the nearest multiple of itself at or left of
+-- it, as Fourmolu does.
 nestedBy ::
   -- | Columns per indentation step.
   Int ->
-  -- | The nesting.
-  Nesting ->
+  -- | The steps.
+  Int ->
   -- | The indentation to step in from.
   Int ->
   Int
-nestedBy columns nesting indent = case nesting of
-  Steps n
-    | columns > 2, n > 0 -> indent `div` columns * columns + n * columns
-    | otherwise -> indent + n * columns
-  Columns n -> indent + n
+nestedBy columns steps indent
+  | columns > 2, steps > 0 = indent `div` columns * columns + steps * columns
+  | otherwise = indent + steps * columns
 
 -- | What the engine carries while walking a document.
 data Env = Env
   { -- | The column a new line starts at.
     envIndent :: !Int,
+    -- | The indentation without the steps of the innermost 'DIndented'.
+    envBase :: !Int,
+    -- | The line, counted by 'outBegun', the innermost 'DIndented' was
+    -- entered on, unless a 'DAligned' was entered inside it.
+    envWithin :: !Int,
     -- | The layout of the innermost group as it settled, 'Frangible' where
     -- a frangible group settled flat.
     envLayout :: !Layout,
@@ -286,23 +344,9 @@ data Env = Env
     envHeldFlat :: !Bool,
     -- | What the document is printed with.
     envSettings :: !Settings,
-    -- | The innermost item of a layout block being written.
-    envItem :: !(Maybe Item)
-  }
-
--- | An item of a layout block being written.
-data Item = Item
-  { -- | The column it begins at.
-    itemColumn :: !Int,
-    -- | The lines finished above it.
-    itemAbove :: [Line],
-    -- | Whether it begins on a line something else began.
-    itemMidLine :: !Bool,
-    -- | Whether its first code is known to be written.
-    itemBegun :: !Bool,
-    -- | How far right of where it would come out the alternative of a
-    -- conditional being written was moved to continue the item.
-    itemMoved :: !Int
+    -- | Whether the document is an excerpt, whose pointers may name parts
+    -- outside it.
+    envExcerpt :: !Bool
   }
 
 -- | Output built so far.
@@ -329,29 +373,21 @@ data Out = Out
     -- | Whether the line was closed by something that already knew it was
     -- ending it, so that a break arriving now would add an empty line
     -- rather than end anything.
-    outClosed :: !Bool
+    outClosed :: !Bool,
+    -- | The base of each referent written so far, by its region: its
+    -- indentation without the steps entered on the line it begins on,
+    -- which steps from it count from.
+    outReferents :: !(HashMap (Maybe Span) Int),
+    -- | The referents being written that no text was written in yet, each
+    -- with the line, counted by 'outBegun', it was entered on, if that had
+    -- begun, and the indentation it was entered at.
+    outUnwritten :: [(Maybe Span, Int, Int)],
+    -- | The referents left with no text written in them, which a later part
+    -- of theirs places again.
+    outBlank :: [Maybe Span],
+    -- | How many lines were begun.
+    outBegun :: !Int
   }
-
--- | How far 'DNest' moves the indentation.
-data Nesting
-  = -- | So many indentation steps, as many columns each as the project asks.
-    Steps !Int
-  | -- | So many columns, whatever the indentation step.
-    Columns !Int
-  deriving (Eq, Show)
-
--- | Where text held back for the end of a line goes when something was held
--- back for it first.
-data Spill
-  = -- | On a line of its own, at the indentation of the line it was held
-    -- back for.
-    SpillAtIndentation
-  | -- | On a line of its own, lined up with what was held back before it.
-    SpillUnderPrevious
-  | -- | On a line of its own at the margin, leaving what is held back after
-    -- it to line up as if it were not there.
-    SpillAtMargin
-  deriving (Eq, Show)
 
 -- | A line, and what the engine knew about it as it wrote it.
 data Line = Line
@@ -408,7 +444,11 @@ emptyOut =
       outCurrent = [],
       outColumn = 0,
       outHeldBack = [],
-      outClosed = False
+      outClosed = False,
+      outReferents = HashMap.empty,
+      outUnwritten = [],
+      outBlank = [],
+      outBegun = 0
     }
 
 -- | Turn a document into text.
@@ -418,16 +458,39 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc settings doc = finish (go env doc emptyOut)
+printDoc = printing False
+
+-- | Turn an excerpt of a document into text, a pointer in it to a part
+-- outside it measuring from the indentation in force.
+printExcerpt ::
+  -- | What to print it with.
+  Settings ->
+  -- | The excerpt.
+  Doc ->
+  Text
+printExcerpt = printing True
+
+-- | Turn a document into text, or an excerpt of one.
+printing ::
+  -- | Whether it is an excerpt.
+  Bool ->
+  -- | What to print it with.
+  Settings ->
+  -- | The document.
+  Doc ->
+  Text
+printing excerpt settings doc = finish (go env doc emptyOut)
   where
     env =
       Env
         { envIndent = 0,
+          envBase = 0,
+          envWithin = -1,
           envLayout = Broken,
           envNote = False,
           envHeldFlat = False,
           envSettings = settings,
-          envItem = Nothing
+          envExcerpt = excerpt
         }
 
 -- | Walk a document, accumulating output.
@@ -443,7 +506,8 @@ go env = \case
   DEmpty -> id
   DText t
     | T.null t -> id
-    | otherwise -> putText (envIndent env) t . noting (envNote env)
+    | otherwise ->
+        placed . putText (envIndent env) t . noting (envNote env)
   DSpace -> putSpace
   DBreak -> case envLayout env of
     Broken -> breakLine (envIndent env)
@@ -451,7 +515,8 @@ go env = \case
   DSoftBreak -> case envLayout env of
     Broken -> breakLine (envIndent env)
     _ -> id
-  DHoldBack spill t -> putHeldBack (envIndent env) spill t . noting False
+  DHoldBack spill t ->
+    placed . putHeldBack (envIndent env) spill t . noting False
   DCloseLine -> closeLine (envIndent env)
   DCloseLineUnlessAfterOpener gap -> \out ->
     if endsWithOpener out
@@ -463,30 +528,51 @@ go env = \case
   DVerbatimBreak lineStart trailing ->
     verbatimBreakLine (envNote env) lineStart trailing
   DCat a b -> go env b . go env a
-  DNest n d ->
-    go env{envIndent = nestedBy (step (envSettings env)) n (envIndent env)} d
-  DBlockItem d -> \out ->
-    let indent = case envItem env of
-          Just i
-            | itemMoved i > 0,
-              not (started out),
-              envIndent env - itemMoved i <= itemColumn i ->
-                envIndent env - itemMoved i
-          _ -> envIndent env
-        item =
-          Item
-            { itemColumn = if started out then outColumn out else indent,
-              itemAbove = outLines out,
-              itemMidLine = started out,
-              itemBegun = False,
-              itemMoved = 0
-            }
-     in go env{envIndent = indent, envItem = Just item} d out
-  DAlign d -> \out ->
-    let column
-          | linePinned (outLine out) = outColumn out
-          | otherwise = max (envIndent env) (outColumn out)
-     in go env{envIndent = column} d out
+  DReferent k d -> \out ->
+    let naming = isJust k || printsNothing d
+        recorded =
+          HashMap.member k (outReferents out) && k `notElem` outBlank out
+     in if naming && recorded
+          then go env d out
+          else
+            unplaced k $
+              go
+                env
+                d
+                out
+                  { outReferents =
+                      HashMap.insert k (baseAt env out) (outReferents out),
+                    outUnwritten =
+                      (k, current out, envIndent env) : outUnwritten out,
+                    outBlank = filter (/= k) (outBlank out)
+                  }
+  DIndented n a d -> \out ->
+    let names = referentsIn a
+        pointer = namesOnly a && not (null names)
+        printed = if pointer then out else go env (unnamed a) out
+        base
+          | pointer =
+              fromMaybe dangling . asum $
+                fmap (`HashMap.lookup` outReferents out) names
+          | otherwise = baseAt env out
+        dangling
+          | envExcerpt env = baseAt env out
+          | otherwise = error "Tilia: dangling pointer"
+        aliased = case names of
+          _ : _ : _ ->
+            printed
+              { outReferents =
+                  foldr (`HashMap.insert` base) (outReferents printed) names
+              }
+          _ -> printed
+        column = nestedBy (step (envSettings env)) n base
+     in go
+          env{envIndent = column, envBase = base, envWithin = current printed}
+          d
+          aliased
+  DAligned n d -> \out ->
+    let column = columnAt env out + n
+     in go env{envIndent = column, envBase = column, envWithin = -1} d out
   DCppMarginNote d -> \out ->
     go env{envNote = not (hasContent out)} d out
   DGroup l d -> \out ->
@@ -510,12 +596,31 @@ go env = \case
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
         guards = maybe (fmap fst branches) conditionalGuards (listToMaybe cs)
-        item = fmap (\i -> i{itemBegun = begun i out}) (envItem env)
-        alternative =
-          carryingOn env{envHeldFlat = False, envItem = item}
-            . case envLayout env of
-              Frangible -> DGroup Frangible
-              _ -> id
+        alternative d o =
+          let o' =
+                go
+                  env{envHeldFlat = False}
+                  ( case envLayout env of
+                      Frangible -> DGroup Frangible d
+                      _ -> d
+                  )
+                  o
+                    { outReferents = outReferents out,
+                      outUnwritten = outUnwritten out,
+                      outBlank = outBlank out
+                    }
+              placedIn x =
+                HashMap.differenceWith
+                  (\new old -> if new == old then Nothing else Just new)
+                  (outReferents x)
+                  (outReferents out)
+           in o'
+                { outReferents =
+                    HashMap.unions [placedIn o, placedIn o', outReferents out],
+                  outUnwritten =
+                    filter (`elem` outUnwritten o') (outUnwritten o),
+                  outBlank = filter (`elem` outBlank o') (outBlank o)
+                }
         steps =
           [ [directive type' ("#" <> guard'), alternative taken]
           | (type', guard', (_, taken)) <- zip3 (CppDirectiveOpens : repeat CppDirectiveContinues) guards branches
@@ -528,78 +633,79 @@ go env = \case
   DCppDirective _ t -> directive CppDirectiveOpaque ("#" <> t)
   DDeclarationsStart -> id
 
--- | Walk an alternative of a conditional, a step right of the column of
--- the item it continues where its first line of code would begin at or left
--- of that column and so end the item, but for an item the alternative
--- begins itself, which stays where it is.
-carryingOn ::
-  -- | What is in force where the alternative is.
+-- | Where a step from a part entered here counts from: 'envBase' on the
+-- line the innermost relation was entered on, the indentation elsewhere.
+baseAt ::
+  -- | What is in force.
   Env ->
-  -- | The alternative.
-  Doc ->
-  -- | The output so far, its last line the directive above the
-  -- alternative.
-  Out ->
-  Out
-carryingOn env d out = case (envItem env, firstCode walked) of
-  (Just i, Just indent)
-    | itemBegun i,
-      indent <= itemColumn i ->
-        let moved = itemColumn i - indent + step (envSettings env)
-         in attached $
-              go
-                env{envItem = Just (restarted i){itemMoved = moved}}
-                (DNest (Columns moved) d)
-                seeded
-  _ -> attached walked
-  where
-    seeded = out{outLines = take 1 (outLines out)}
-    walked = go env{envItem = fmap restarted (envItem env)} d seeded
-    restarted i
-      | itemBegun i = i
-      | otherwise = i{itemAbove = outLines seeded, itemMidLine = False}
-    firstCode o =
-      listToMaybe
-        [ lineIndent l
-        | l <-
-            drop 1 (reverse (outLines o))
-              <> [ (outLine o){lineBody = T.concat (reverse (outCurrent o))}
-                 | started o
-                 ],
-          holdsCode l,
-          not (linePinned l)
-        ]
-    attached o = o{outLines = init (outLines o) <> outLines out}
-
--- | Has the first code of an item been written, code being what is not on
--- a line a comment opens?
-begun ::
-  -- | The item.
-  Item ->
   -- | The output so far.
   Out ->
-  Bool
-begun i out =
-  itemBegun i || any holdsCode below || started out && current
-  where
-    below = take (length written - length (itemAbove i)) written
-    written = outLines out
-    current
-      | null below, itemMidLine i = outColumn out > itemColumn i
-      | otherwise =
-          maybe True (isNothing . commentOpening . snd) $
-            unsnoc (outCurrent out)
+  Int
+baseAt env out
+  | started out, outBegun out == envWithin env = envBase env
+  | otherwise = envIndent env
 
--- | Does a finished line hold code: something a comment does not open and
--- that is not a directive?
-holdsCode ::
-  -- | The line.
-  Line ->
-  Bool
-holdsCode l =
-  not (T.null (lineBody l))
-    && isNothing (lineDirective l)
-    && isNothing (commentOpening (lineBody l))
+-- | A part with the mark that makes it a referent taken off it.
+unnamed ::
+  -- | The part.
+  Doc ->
+  Doc
+unnamed = \case
+  DReferent _ d -> d
+  d -> d
+
+-- | Leave the referent with this region begun where it was entered if
+-- nothing was written in it, until a later part of it is.
+unplaced ::
+  -- | The region.
+  Maybe Span ->
+  -- | The output so far.
+  Out ->
+  Out
+unplaced k out
+  | any (\(k', _, _) -> k' == k) (outUnwritten out) =
+      out
+        { outUnwritten = filter (\(k', _, _) -> k' /= k) (outUnwritten out),
+          outBlank = k : outBlank out
+        }
+  | otherwise = out
+
+-- | Note that text was written in each referent being written, the base
+-- of one that begins a later line than it was entered on becoming the
+-- indentation it was entered at.
+placed ::
+  -- | The output so far.
+  Out ->
+  Out
+placed out = case outUnwritten out of
+  [] -> out
+  ks ->
+    out
+      { outReferents = foldr place (outReferents out) ks,
+        outUnwritten = []
+      }
+  where
+    place (k, entered, indent)
+      | entered == outBegun out = id
+      | otherwise = HashMap.adjust (const indent) k
+
+-- | The column what is written next begins at.
+columnAt ::
+  -- | What is in force.
+  Env ->
+  -- | The output so far.
+  Out ->
+  Int
+columnAt env out
+  | linePinned (outLine out) || started out = outColumn out
+  | otherwise = envIndent env
+
+-- | The line being written, counted by 'outBegun', if it has begun.
+current ::
+  -- | The output so far.
+  Out ->
+  Int
+current out = if started out then outBegun out else -1
 
 -- | Does a frangible document break where it is about to be printed?
 fracturesFrom ::
@@ -677,6 +783,11 @@ columnReached limit bound = walk
               Broken -> (column, spaceDue, True)
               _ -> walk column spaceDue rest
             DCat a b ->
+              walk
+                column
+                spaceDue
+                ((layout, held, a) : (layout, held, b) : rest)
+            DIndented _ a b ->
               walk
                 column
                 spaceDue
@@ -814,7 +925,8 @@ closeLine indent out
 fresh :: Out -> Out
 fresh out =
   out
-    { outLine = newLine,
+    { outBegun = outBegun out + 1,
+      outLine = newLine,
       outCurrent = [],
       outColumn = 0,
       outHeldBack = []

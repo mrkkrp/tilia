@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Merging the documents the configurations of a module printed to.
 module Tilia.Cpp.Merge
@@ -20,18 +21,26 @@ import Data.List
     isPrefixOf,
     maximumBy,
     minimumBy,
+    nub,
     sortOn,
     stripPrefix,
     transpose,
     unsnoc,
   )
-import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe
+  ( fromMaybe,
+    isJust,
+    listToMaybe,
+    mapMaybe,
+    maybeToList,
+  )
 import Data.Monoid (All (..), Any (..))
 import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Utils.Lexeme (okConSymOcc, okVarSymOcc)
 
 import Tilia.Cpp.Directives (Guard, Varied (..), guardText, untouched)
 import Tilia.Doc
@@ -44,20 +53,22 @@ import Tilia.Doc
     foldChildren,
     foldRegions,
     layoutInside,
-    leadingComma,
-    leadingSemicolon,
+    leadingSeparator,
     mapChildren,
+    namesOnly,
     onlyBreaks,
     onlySpacing,
-    printDoc,
+    printExcerpt,
     printedFrom,
     printsNothing,
     printsOnOneLine,
+    referentIn,
     regionOf,
     spine,
     spineAt,
     unwrap,
     wrap,
+    pattern Cat,
   )
 import Tilia.Doc.Combinators qualified as Doc
 import Tilia.Settings (Settings)
@@ -100,7 +111,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
     go layout ds@(d : _)
       | s : others <- spines,
         all (agreeAll varied layout s) others =
-          d
+          foldl aliased d (drop 1 ds)
       | Just xs <- traverse sole spines = alongside layout xs
       | otherwise = factored middle layout spines
       where
@@ -171,31 +182,40 @@ merge settings written conditionals guards varied settledOthers = go Broken
       openedAgainst inside layout =<< listToMaybe (drop inside xs)
       where
         openedAgainst inside l d = case unwrap d of
-          Just (WNest _, _) -> Nothing
-          Just (w, x) -> wrap w <$> openedAgainst inside (layoutInside l w) x
+          Just (w, x)
+            | indenting w -> Nothing
+            | otherwise -> wrap w <$> openedAgainst inside (layoutInside l w) x
           Nothing -> case spineAt l d of
             parts@(_ : _ : _)
-              | accepted parts ->
+              | let opened = tucked inside l parts,
+                accepted opened ->
                   Just . factored middle l $
-                    [ if k == inside then tucked inside l parts else [e]
+                    [ if k == inside then opened else [e]
                     | (k, e) <- zip [0 ..] xs
                     ]
             _ -> Nothing
 
         tucked inside l parts = case unsnoc parts of
-          Just (front, DNest _ y)
-            | e : _ <-
-                [ e
-                | e <- xs,
-                  regionOf e == regionOf y,
-                  fmap spanStartColumn (regionOf e) == column,
-                  printDoc settings (DGroup l y)
-                    == printDoc settings e
-                ] ->
-                front <> [e]
+          Just (front, x) | Just tucked' <- under l x -> front <> tucked'
           _ -> parts
           where
             column = spanStartColumn <$> listToMaybe (drop inside spans)
+            under l' x = do
+              (w, y) <- unwrap x
+              guard (indenting w)
+              let l'' = layoutInside l' w
+                  (spacing, code) = span onlySpacing (spineAt l'' y)
+              case [ e
+                   | e <- xs,
+                     regionOf e == regionOf y,
+                     fmap spanStartColumn (regionOf e) == column,
+                     printExcerpt settings (DGroup l' (mconcat code))
+                       == printExcerpt settings e
+                   ] of
+                e : _ -> Just (spacing <> [e])
+                [] -> do
+                  (front, z) <- unsnoc code
+                  (wrap w (mconcat (spacing <> front)) :) <$> under l'' z
 
     factored within layout ss =
       let same (x, _) (y, _) = agree varied layout x y
@@ -318,12 +338,13 @@ merge settings written conditionals guards varied settledOthers = go Broken
     sharedStart layout ss
       | Just (h : hs) <- traverse listToMaybe ss,
         all (agree varied layout h) hs =
-          let (c, ss') = sharedStart layout (fmap (drop 1) ss) in (h : c, ss')
+          let (c, ss') = sharedStart layout (fmap (drop 1) ss)
+           in (h : c, ss')
       | otherwise = ([], ss)
 
     leadingSeparatorIn (opening, ss) = case reverse opening of
       x : DSoftBreak : rest
-        | x `elem` [leadingComma, leadingSemicolon] ->
+        | isJust (leadingSeparator x) ->
             (reverse rest, fmap ([DSoftBreak, x] <>) ss)
       DSpace : DText "|" : rest ->
         (reverse rest, fmap ([DText "|", DSpace] <>) ss)
@@ -344,9 +365,9 @@ merge settings written conditionals guards varied settledOthers = go Broken
       | Just xs <- traverse sole ss = go layout xs
       | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
       | Just (fronts, c) <- commaTrailed layout ss = middle layout fronts <> c
-      | Just tails <- traverse (stripPrefix [leadingComma]) ss,
+      | Just (c, tails) <- leadingCommaOf ss,
         not (any (all onlySpacing) tails) =
-          onEdge First leadingComma (middle layout tails)
+          onEdge First c (middle layout tails)
       | Just tails <- traverse (stripPrefix [DText "|", DSpace]) ss,
         let merged = middle layout tails,
         not (onlyChoice merged) =
@@ -395,7 +416,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
       x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
       xs -> case reverse xs of
         x : DSoftBreak : rest
-          | x == leadingComma -> reverse (gluedTo [Doc.comma] rest)
+          | leadsWithComma x -> reverse (gluedTo [Doc.comma] rest)
         x : rest
           | leadingArrow x,
             (_ : _, rest') <- span blank rest ->
@@ -455,7 +476,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
       Just ([f | (_, f, _) <- views], c)
 
     trailedBy layout s = case reverse s of
-      x : DSoftBreak : r | x == leadingComma -> movedIn [Doc.comma] r
+      x : DSoftBreak : r | leadsWithComma x -> movedIn [Doc.comma] r
       x : r | x == Doc.comma -> movedIn [Doc.comma] r
       c : r -> movedIn [] (c : r) <|> Just (c, reverse r, False)
       _ -> Nothing
@@ -476,8 +497,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
         trailed after l a
           | printsNothing a = Just a
           | otherwise =
-              mconcat . reverse . gluedTo after . reverse
-                <$> stripPrefix [leadingComma] (spineAt l a)
+              mconcat . reverse . gluedTo after . reverse . concat . snd
+                <$> leadingCommaOf [spineAt l a]
         commaAfter = reverse . gluedTo [Doc.comma]
 
     alongsideHeads layout ss = do
@@ -505,7 +526,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
         lineEnding h hs
           | all ((== printed h) . printed) hs = layout
           | otherwise = Flat
-        printed = printDoc settings
+        printed = printExcerpt settings
 
     onEdge edge t d = fromMaybe (beside d) (inAlternatives d)
       where
@@ -521,7 +542,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
                       [(g, onEdge edge t b) | (g, b) <- bs]
                       (onEdge edge t e)
                   )
-          DCat a b -> case edge of
+          Cat a b -> case edge of
             First
               | printsNothing a -> (a <>) <$> inAlternatives b
               | otherwise -> (<> b) <$> inAlternatives a
@@ -555,7 +576,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
             between = gap <> gap'
         _ -> before <> apart
 
-    sameKind x y = case (unwrap x, unwrap y) of
+    sameKind x y = case (unwrap (unreferred x), unwrap (unreferred y)) of
       (Just (w, t), Just (v, u)) -> kin w v && t /= DEmpty && u /= DEmpty
       _ -> False
 
@@ -585,14 +606,17 @@ merge settings written conditionals guards varied settledOthers = go Broken
 
     breaking = \case
       DDeclarationsStart -> True
-      DCat a b -> breaking a && breaking b
-      DNest _ d -> not (printsNothing d) && breaking d
+      Cat a b -> breaking a && breaking b
       DGroup _ d -> not (printsNothing d) && breaking d
-      d -> onlyBreaks d
+      d
+        | Just (w, x) <- unwrap d,
+          indenting w ->
+            not (printsNothing x) && breaking x
+        | otherwise -> onlyBreaks d
 
     choice ds
       | (d : _) <- mapMaybe (settledChoice ds) settledOthers = d
-    choice ds = case unsnoc ds of
+    choice ds = case unsnoc (fmap joinedToOperator ds) of
       Just (branches, fallback) ->
         Doc.cppChoice
           (filter (evidenced ds) conditionals)
@@ -609,7 +633,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
         ]
       where
         fits open' k d = printed k open' == printed k d
-        printed k = printDoc settings . maybe id taking k
+        printed k = printExcerpt settings . maybe id taking k
         holds = \case
           DCppChoice cs _ _ | settled cs -> True
           d -> getAny (foldChildren (Any . holds) d)
@@ -638,12 +662,14 @@ sole = \case
 
 -- | Would these two documents print the same, laid out like this?
 agree :: Varied -> Layout -> Doc -> Doc -> Bool
-agree varied layout a b
+agree varied layout a0 b0
   | lone a, lone b = agreeOn varied layout a b
   | otherwise = agreeAll varied layout (spineAt layout a) (spineAt layout b)
   where
+    a = unreferred a0
+    b = unreferred b0
     lone = \case
-      DCat{} -> False
+      Cat _ _ -> False
       DVariant{} -> False
       d -> not (onlySpacing d)
 
@@ -670,10 +696,13 @@ agreeOn ::
   -- | The second.
   Doc ->
   Bool
-agreeOn varied layout x y = case (x, y) of
+agreeOn varied layout x0 y0 = case (x, y) of
   (DLocated s x', DLocated t y') ->
     s == t
-      && (untouchedRegion varied x && untouchedRegion varied y || inside x' y')
+      && ( untouchedRegion varied x
+             && untouchedRegion varied y
+             || inside x' y'
+         )
   (DCppChoice ws bs x', DCppChoice ws' cs y') ->
     ws == ws'
       && length bs == length cs
@@ -682,10 +711,38 @@ agreeOn varied layout x y = case (x, y) of
   (DFence s x', DFence t y') -> meets s t && inside x' y'
   _ -> case (unwrap x, unwrap y) of
     (Just (w, x'), Just (v, y')) ->
-      w == v && agree varied (layoutInside layout w) x' y'
+      samePlacing w v && agree varied (layoutInside layout w) x' y'
     _ -> x == y
   where
     inside = agree varied layout
+    x = unreferred x0
+    y = unreferred y0
+
+-- | A part two configurations agree on, as the first prints it, also
+-- named as the second names it and each relation around it also naming
+-- the referents the second's names.
+aliased ::
+  -- | The first.
+  Doc ->
+  -- | The second.
+  Doc ->
+  Doc
+aliased x y = case (unwrap x, unwrap y) of
+  (Just (w@WIndented{}, x'), Just (v, y'))
+    | Just j <- joint [w, v] -> wrap j (aliased x' y')
+  (_, Just (WReferent k, y'))
+    | referentIn x /= Just k -> DReferent k (aliased x y')
+  _ -> x
+
+-- | A document less the marks that make it a referent, which print it as
+-- it is.
+unreferred ::
+  -- | The document.
+  Doc ->
+  Doc
+unreferred = \case
+  DReferent _ d -> unreferred d
+  d -> d
 
 -- | Is this a region printed from lines the conditional left alone?
 untouchedRegion ::
@@ -877,8 +934,8 @@ inWrittenOrder bs = concatMap reorder . groupBy ((==) `on` gap)
       ls -> Just (minimum (fmap fst ls))
 
 -- | The wrapper standing for several, if each is of a kind with the first:
--- the smallest span covering theirs for a region, and for a group broken if
--- any is.
+-- the smallest span covering theirs for a region, for a group broken if any
+-- is, and for a relation one to the referents of all of them.
 joint :: [Wrapper] -> Maybe Wrapper
 joint = \case
   w : ws | all (kin w) ws -> Just $ case w of
@@ -888,6 +945,7 @@ joint = \case
       | WGroup Broken `elem` (w : ws) -> WGroup Broken
       | WGroup Frangible `elem` (w : ws) -> WGroup Frangible
       | otherwise -> WGroup Flat
+    WIndented n _ -> WIndented n (mconcat (nub [s | WIndented _ s <- w : ws]))
     _ -> w
   _ -> Nothing
 
@@ -897,6 +955,19 @@ kin a b = case (a, b) of
   (WLocated s, WLocated t) -> meets s t
   (WFence s, WFence t) -> meets s t
   (WGroup _, WGroup _) -> True
+  _ -> samePlacing a b
+
+-- | Do two wrappers place what they hold alike, the referents they name
+-- aside, which each configuration names by where it wrote them?
+samePlacing ::
+  -- | The first.
+  Wrapper ->
+  -- | The second.
+  Wrapper ->
+  Bool
+samePlacing a b = case (a, b) of
+  (WReferent _, WReferent _) -> True
+  (WIndented n _, WIndented m _) -> n == m
   _ -> a == b
 
 -- | A stretch of the baseline, and what one document put there instead.
@@ -1001,7 +1072,11 @@ choiceAt written edge = go Flat False
               DCppChoice ws bs e -> Just (before, ws, bs, e, after)
               _ -> do
                 (w, y) <- unwrap x
-                guard (w /= WAlign || begins && firstOnItsLine y)
+                guard
+                  ( not (aligning w)
+                      || beginsWithChoice y
+                      || begins && firstOnItsLine y
+                  )
                 around (wrap w) (alternatives w)
                   <$> go (layoutInside layout w) begins y
       _ -> Nothing
@@ -1029,13 +1104,11 @@ printedLines layout xs = (plain . mconcat <$> filter (not . null) ps, cut)
     (ps, _, cut) = partsOf layout Within xs
 
 -- | A line less the wrappers that make no difference to it: a group around
--- what does not depend on the layout, a region around regions and nothing
--- else, which say where the line was written already, and an item of a
--- layout block, which a line is only part of.
+-- what does not depend on the layout, and a region around regions and
+-- nothing else, which say where the line was written already.
 plain :: Doc -> Doc
 plain = \case
   DGroup _ d | layoutFree d -> plain d
-  DBlockItem d -> plain d
   DLocated _ d | onlyRegions d -> plain d
   DFence _ d | onlyRegions d -> plain d
   d -> mapChildren plain d
@@ -1084,12 +1157,12 @@ partsOf layout = walk [[]] False
       [] -> (reverse ls, place, cut)
       x : xs
         | Just (w, y) <- unwrap x,
-          w /= WAlign || place == Between,
+          not (aligning w) || place == Between,
           let inside = layoutInside layout w,
           (ps, place', cut') <- partsOf inside place (spineAt inside y),
           length (filter (not . null) ps) > 1 ->
             walk
-              (onto (if w == WAlign then ps else wrapped w ps) ls)
+              (onto (if aligning w then ps else wrapped w ps) ls)
               (cut || cut' || length (filter (not . all blank) ps) > 1)
               place'
               xs
@@ -1181,7 +1254,7 @@ opensWithSpace layout d = case spineAt layout d of
   [] -> False
 
 -- | What a document puts on the line it continues, and the rest of it, cut
--- through the nests around it before the first break, a frangible group
+-- through the wrappers around it before the first break, a frangible group
 -- that opens with one laid out broken, and a group that hangs a body after
 -- a space broken and indented before it.
 lineOf ::
@@ -1191,7 +1264,10 @@ lineOf ::
   Doc ->
   (Doc, Doc)
 lineOf layout d = case spineAt layout d of
-  [DNest n x] -> bimap (DNest n) (DNest n) (lineOf layout x)
+  [x]
+    | Just (w, y) <- unwrap x,
+      indenting w ->
+        bimap (wrap w) (wrap w) (lineOf layout y)
   xs -> case break (opensWithBreak layout . broken) xs of
     (line, x : rest) -> (mconcat line, mconcat (broken x : rest))
     (line, []) -> (mconcat line, mempty)
@@ -1200,6 +1276,84 @@ lineOf layout d = case spineAt layout d of
       DGroup _ (DCat DSpace x) -> DGroup Broken (Doc.attach Doc.Normal x)
       DGroup Frangible x -> DGroup Broken x
       x -> x
+
+-- | An alternative of a conditional with what an operator beginning it,
+-- inside whatever wraps its start, hangs after a break put on the
+-- operator's line: a configuration breaks there only to end a line with
+-- the operator, which the conditional moved to the start of the next.
+joinedToOperator ::
+  -- | The alternative.
+  Doc ->
+  Doc
+joinedToOperator d = case span onlySpacing (spine d) of
+  (spacing, op : DIndented r a x : rest)
+    | operatorToken op,
+      referentIn a == Just (referentOf op),
+      DBreak : after <- spine x ->
+        mconcat
+          (spacing <> (op : DIndented r a (DSpace <> mconcat after) : rest))
+  (spacing, x : rest)
+    | Just (w, y) <- unwrap x ->
+        mconcat (spacing <> (wrap w (joinedToOperator y) : rest))
+  _ -> d
+  where
+    referentOf = \case
+      DReferent k _ -> k
+      x -> regionOf x
+
+-- | Is this an operator, in symbols or as a name in backticks?
+operatorToken ::
+  -- | The document.
+  Doc ->
+  Bool
+operatorToken d = case T.unpack (T.concat (textsOf d)) of
+  '`' : _ -> True
+  s -> okVarSymOcc s || okConSymOcc s
+  where
+    textsOf = \case
+      DText x -> [x]
+      x -> foldChildren textsOf x
+
+-- | Is this a comma leading the item after it?
+leadsWithComma ::
+  -- | The document.
+  Doc ->
+  Bool
+leadsWithComma d = leadingSeparator d == Just ", "
+
+-- | The comma leading the item after it that each of these spines begins
+-- with, as the first prints it where they are all placed alike, and what
+-- follows it in each.
+leadingCommaOf ::
+  -- | The spines.
+  [[Doc]] ->
+  Maybe (Doc, [[Doc]])
+leadingCommaOf ss = do
+  (cs, tails) <- unzip <$> traverse ledByComma ss
+  w <- joint . fmap fst =<< traverse unwrap cs
+  Just (wrap w (DText ", "), tails)
+  where
+    ledByComma = \case
+      c : rest | leadsWithComma c -> Just (c, rest)
+      _ -> Nothing
+
+-- | Does a wrapper indent what it holds?
+indenting ::
+  -- | The wrapper.
+  Wrapper ->
+  Bool
+indenting = \case
+  WIndented{} -> True
+  _ -> False
+
+-- | Does a wrapper line what it holds up with the column it begins at?
+aligning ::
+  -- | The wrapper.
+  Wrapper ->
+  Bool
+aligning = \case
+  WAligned{} -> True
+  _ -> False
 
 -- | Does this document print one token, spaces aside?
 printsOneToken :: Layout -> Doc -> Bool
@@ -1218,7 +1372,7 @@ weigh :: Layout -> Doc -> Int
 weigh layout = go
   where
     go = \case
-      DCat a b -> go a + go b
+      Cat a b -> go a + go b
       DVariant flatD brokenD ->
         go (case layout of Broken -> brokenD; _ -> flatD)
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
@@ -1271,20 +1425,22 @@ anchoring ::
 anchoring = \case
   DText "," -> False
   DText "|" -> False
-  d | d `elem` [leadingComma, leadingSemicolon] -> False
+  d | isJust (leadingSeparator d) -> False
   d | leadingArrow d -> False
   DDeclarationsStart -> False
-  DNest _ d -> located d || not (blank d)
-  DAlign d -> located d || not (printsNothing d)
+  DIndented _ a d | namesOnly a -> located d || not (blank d)
+  DAligned _ d -> located d || not (blank d)
+  DReferent _ d -> located d || not (blank d)
   DGroup _ d -> located d || not (blank d)
   d -> not (onlySpacing d)
   where
     located = \case
       DLocated{} -> True
       DFence{} -> True
-      DCat a b -> located a || located b
-      DNest _ d -> located d
-      DAlign d -> located d
+      Cat a b -> located a || located b
+      DIndented _ _ d -> located d
+      DAligned _ d -> located d
+      DReferent _ d -> located d
       DGroup _ d -> located d
       _ -> False
 

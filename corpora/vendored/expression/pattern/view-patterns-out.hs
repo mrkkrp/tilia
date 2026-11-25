@@ -16,4 +16,4 @@ oversized
       Box
         width
         height
-    ) = width * height > 100
+  ) = width * height > 100

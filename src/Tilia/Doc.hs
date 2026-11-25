@@ -1,20 +1,24 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Documents: what they hold, and turning them into source text.
 module Tilia.Doc
   ( Doc (..),
-    Nesting (..),
     Spill (..),
-    Conditional (..),
-    conditionalRange,
     LineStart (..),
     TrailingWhitespace (..),
     Layout (..),
+    Conditional (..),
+    conditionalRange,
     printDoc,
-    leadingComma,
-    leadingSemicolon,
+    printExcerpt,
+    leadingSeparator,
     printsNothing,
+    namesOnly,
+    referentIn,
+    pattern Cat,
     printsOnOneLine,
     choosing,
     foldChildren,
@@ -36,33 +40,36 @@ where
 
 import Data.Maybe (mapMaybe)
 import Data.Monoid (Any (..))
+import Data.Text (Text)
 
 import Tilia.Doc.Internal
   ( Conditional (..),
     Doc (..),
     Layout (..),
     LineStart (..),
-    Nesting (..),
     Spill (..),
     TrailingWhitespace (..),
     Wrapper (..),
     conditionalRange,
     layoutInside,
+    namesOnly,
     printDoc,
+    printExcerpt,
     printsNothing,
+    referentIn,
     unwrap,
     wrap,
   )
 import Tilia.Span (Span, spanEndLine, spanStartLine)
 
--- | A comma leading the item after it, hung two columns left of the item.
-leadingComma :: Doc
-leadingComma = DNest (Columns (-2)) (DText ", ")
-
--- | A semicolon leading the item after it, hung two columns left of the
--- item.
-leadingSemicolon :: Doc
-leadingSemicolon = DNest (Columns (-2)) (DText "; ")
+-- | The separator a document is, if it leads the item after it.
+leadingSeparator ::
+  -- | The document.
+  Doc ->
+  Maybe Text
+leadingSeparator = \case
+  DAligned _ (DText t) | t == ", " || t == "; " -> Just t
+  _ -> Nothing
 
 -- | Does this document print on one line, holding neither a line break nor
 -- a choice?
@@ -72,17 +79,18 @@ printsOnOneLine ::
   -- | The document.
   Doc ->
   Bool
-printsOnOneLine layout = all single . spineAt layout
-  where
-    single x = case unwrap x of
-      Just (w, y) -> printsOnOneLine (layoutInside layout w) y
-      Nothing -> case x of
-        DHardBreak -> False
-        DBreak -> layout /= Broken
-        DSoftBreak -> layout /= Broken
-        DVerbatimBreak{} -> False
-        DCppChoice{} -> False
-        _ -> True
+printsOnOneLine layout = \case
+  DCat a b -> printsOnOneLine layout a && printsOnOneLine layout b
+  DIndented _ a b -> printsOnOneLine layout a && printsOnOneLine layout b
+  DVariant flatD brokenD ->
+    printsOnOneLine layout (case layout of Broken -> brokenD; _ -> flatD)
+  DHardBreak -> False
+  DBreak -> layout /= Broken
+  DSoftBreak -> layout /= Broken
+  DVerbatimBreak{} -> False
+  DCppChoice{} -> False
+  x ->
+    maybe True (\(w, y) -> printsOnOneLine (layoutInside layout w) y) (unwrap x)
 
 -- | Is there a choice anywhere in this document?
 choosing ::
@@ -106,9 +114,11 @@ foldChildren ::
   m
 foldChildren f = \case
   DCat a b -> f a <> f b
+  DIndented _ a b | not (namesOnly a) -> f a <> f b
   DVariant _ d -> f d
   DCppChoice _ bs e -> foldr ((<>) . f . snd) (f e) bs
   d -> maybe mempty (f . snd) (unwrap d)
+{-# INLINE foldChildren #-}
 
 -- | Rewrite the documents directly inside this one, both layouts of a
 -- variant included.
@@ -120,9 +130,11 @@ mapChildren ::
   Doc
 mapChildren f = \case
   DCat a b -> f a <> f b
+  DIndented n a b | not (namesOnly a) -> DIndented n (f a) (f b)
   DVariant a b -> DVariant (f a) (f b)
   DCppChoice cs bs e -> DCppChoice cs [(g, f d) | (g, d) <- bs] (f e)
   d -> maybe d (\(w, x) -> wrap w (f x)) (unwrap d)
+{-# INLINE mapChildren #-}
 
 -- | Every region a document records, and what it holds.
 regionsIn ::
@@ -158,6 +170,25 @@ regionOf = \case
   DFence s _ -> Just s
   d -> foldChildren regionOf d
 
+-- | A document that prints one document and then another: a
+-- concatenation, or a relation printing the part it measures from, as that
+-- part and the relation left with only the name of its referent.
+pattern Cat :: Doc -> Doc -> Doc
+pattern Cat a b <- (halves -> Just (a, b))
+
+-- | The two documents a document prints one after the other, if it does.
+halves ::
+  -- | The document.
+  Doc ->
+  Maybe (Doc, Doc)
+halves = \case
+  DCat a b -> Just (a, b)
+  DIndented n a b
+    | not (namesOnly a) ->
+        Just
+          (a, DIndented n (maybe mempty (`DReferent` mempty) (referentIn a)) b)
+  _ -> Nothing
+
 -- | A document as the sequence of things it concatenates.
 spine ::
   -- | The document.
@@ -165,7 +196,7 @@ spine ::
   [Doc]
 spine = \case
   DEmpty -> []
-  DCat a b -> spine a <> spine b
+  Cat a b -> spine a <> spine b
   d -> [d]
 
 -- | 'spine', with the variants resolved the way this layout will print them.
@@ -177,7 +208,7 @@ spineAt ::
   [Doc]
 spineAt layout = \case
   DEmpty -> []
-  DCat a b -> spineAt layout a <> spineAt layout b
+  Cat a b -> spineAt layout a <> spineAt layout b
   DVariant flatD brokenD ->
     spineAt layout (case layout of Broken -> brokenD; _ -> flatD)
   d -> [d]

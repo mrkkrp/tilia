@@ -18,7 +18,6 @@ where
 
 import Data.Choice (Choice, isTrue, pattern Without)
 
-import Tilia.Doc (leadingSemicolon)
 import Tilia.Doc.Combinators
 import Tilia.Span
 
@@ -67,11 +66,14 @@ braced blank = \case
   x : xs ->
     txt "{"
       <> space
-      <> align (mconcat (keepBlanks blank (x : fmap (fmap led) xs)))
+      <> align
+        ( mconcat
+            (keepBlanks blank (x : fmap led xs))
+        )
       <> breakOrSpace
       <> txt "}"
   where
-    led = ((breakOrNothing <> leadingSemicolon) <>)
+    led (here, d) = (here, separatingSemicolon <> d)
 
 -- | Put back the empty lines the author left between items.
 keepBlanks ::

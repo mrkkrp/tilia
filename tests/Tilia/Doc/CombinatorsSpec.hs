@@ -58,8 +58,13 @@ spec = withEachSettings $ \settings -> do
     it "handles a single element" $
       out (broken (commaSep LeadingCommas [txt "a"])) `shouldBe` "a\n"
     it "puts a separating comma before what follows" $
-      out (broken (txt "a" <> separatingComma LeadingCommas <> txt "b"))
-        `shouldBe` "a\n, b\n"
+      out
+        ( broken
+            ( txt "  "
+                <> align (txt "a" <> separatingComma LeadingCommas <> txt "b")
+            )
+        )
+        `shouldBe` "  a\n, b\n"
     it "lines items up after a lead-in" $ do
       let items = [txt "a", txt "b"]
       out (broken (commaSepAfter TrailingCommas "|" items))
@@ -78,42 +83,58 @@ spec = withEachSettings $ \settings -> do
         `shouldBe` "( a,\n  b\n)\n"
     it "lines the body up under itself" $ do
       let items = [txt "a", txt "b", txt "c"]
-      out (broken (bracketWith Outdented "[" "]" (commaSep TrailingCommas items)))
+      out (broken (bracketWith 0 "[" "]" (commaSep TrailingCommas items)))
         `shouldBe` "[ a,\n  b,\n  c\n]\n"
     it "keeps the closing bracket in when asked" $ do
       let items = [txt "a", txt "b"]
-      out (broken (bracketWith Indented "(" ")" (commaSep TrailingCommas items)))
+      out (broken (bracketWith 1 "(" ")" (commaSep TrailingCommas items)))
         `shouldBe` "( a,\n  b\n" <> step 1 <> ")\n"
     it "puts leading commas under the opening bracket" $
-      out (broken (ledByCommas Outdented [txt "a", txt "b", txt "c"]))
+      out (broken (ledByCommas 0 [txt "a", txt "b", txt "c"]))
         `shouldBe` "[ a\n, b\n, c\n]\n"
-    it "puts leading commas a step in with the closing bracket" $
-      out (broken (ledByCommas Indented [txt "a", txt "b"]))
-        `shouldBe` "[ a\n" <> step 1 <> ", b\n" <> step 1 <> "]\n"
+    it "puts leading commas under the first item where the closing bracket goes a step in" $
+      out (broken (ledByCommas 1 [txt "a", txt "b"]))
+        `shouldBe` "[ a\n  , b\n" <> step 1 <> "]\n"
     it "adds nothing to leading commas when flat" $
-      out (flat (ledByCommas Outdented [txt "a", txt "b"]))
+      out (flat (ledByCommas 0 [txt "a", txt "b"]))
         `shouldBe` "[a, b]\n"
     it "renders an empty bracket pair flat" $
-      out (flat (bracketWith Outdented "[" "]" mempty)) `shouldBe` "[]\n"
+      out (flat (bracketWith 0 "[" "]" mempty)) `shouldBe` "[]\n"
     it "spaces the unboxed pair" $
-      out (flat (spacedBracket Outdented "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (flat (spacedBracket 0 0 "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(# a, b #)\n"
     it "gives a spaced pair its own lines when broken" $
-      out (broken (spacedBracket Outdented "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (broken (spacedBracket 0 0 "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(#\n" <> step 1 <> "a,\n" <> step 1 <> "b\n#)\n"
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
 
   describe "attach" $ do
     it "hands over the line when hanging" $
-      out (broken (txt "=" <> attach Hanging (txt "do" <> indent (hardBreak <> txt "s"))))
+      out (broken (txt "=" <> attach Hanging (txt "do" >+> hardBreak <> txt "s")))
         `shouldBe` "= do\n" <> step 1 <> "s\n"
-    it "breaks and indents when normal" $
-      out (broken (txt "=" <> attach Normal (txt "f" <> space <> txt "x")))
+    it "breaks when normal" $
+      out (broken (txt "=" >+> attach Normal (txt "f" <> space <> txt "x")))
         `shouldBe` "=\n" <> step 1 <> "f x\n"
     it "stays on one line when flat, either way" $ do
       out (flat (txt "=" <> attach Normal (txt "x"))) `shouldBe` "= x\n"
       out (flat (txt "=" <> attach Hanging (txt "x"))) `shouldBe` "= x\n"
+
+  describe "relations" $ do
+    it "begins a line a step right of the line the part before begins on" $
+      out (broken (txt "f" <> space <> (txt "g" >+> hardBreak <> txt "x")))
+        `shouldBe` "f g\n" <> step 1 <> "x\n"
+    it "takes a step from the line the part before begins" $
+      out (broken (txt "f" >+> hardBreak <> (txt "g" >+> hardBreak <> txt "x")))
+        `shouldBe` "f\n" <> step 1 <> "g\n" <> step 2 <> "x\n"
+    it "lines up what takes no step there" $
+      out
+        ( broken
+            ( txt "|"
+                <> DAligned 3 (txt "   " <> (txt "g" >+> hardBreak <> txt "x"))
+            )
+        )
+        `shouldBe` "|   g\n    " <> step 1 <> "x\n"
 
   describe "inclusion" $ do
     it "includes when the condition holds" $
@@ -125,7 +146,15 @@ spec = withEachSettings $ \settings -> do
     it "inverts with includeUnless" $
       out (flat (includeUnless True (txt "a"))) `shouldBe` ""
 
--- | Items in square brackets, with leading commas.
-ledByCommas :: ClosingIndent -> [Doc] -> Doc
+-- | Items in square brackets, with leading commas, each written on a line
+-- of its own.
+ledByCommas ::
+  -- | Where the closing bracket goes.
+  Int ->
+  -- | The items.
+  [Doc] ->
+  Doc
 ledByCommas closing =
-  commaBracketWith LeadingCommas closing "[" "]" . commaSep LeadingCommas
+  commaBracketWith LeadingCommas closing "[" "]"
+    . commaSep LeadingCommas
+    . zipWith (\l -> located (mkSpan (l, 3) (l, 4))) [1 ..]

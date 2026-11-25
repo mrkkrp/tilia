@@ -57,9 +57,9 @@ sigDecl ctx = \case
   SpecInstSig (_, src) sigType ->
     pragma
       (spelledAsWritten "SPECIALIZE" "SPECIALISE" src <> " instance")
-      (indent (hsSigType ctx sigType))
+      (hsSigType ctx sigType)
   MinimalSig _ formula ->
-    at ctx formula (pragma "MINIMAL" . indent . booleanFormula ctx)
+    at ctx formula (pragma "MINIMAL" . booleanFormula ctx)
   CompleteMatchSig _ names ty -> completeSig ctx names ty
   SCCFunSig _ n literal -> sccSig ctx n literal
 
@@ -86,10 +86,10 @@ patSynSig :: Ctx -> [LocatedN RdrName] -> LHsSigType GhcPs -> Doc
 patSynSig ctx names sigType
   | length names > 1 =
       txt "pattern"
-        <> layoutAcross
+        >+> layoutAcross
           ctx
           names
-          (variant (space <> body) (breakOrSpace <> indent body))
+          (variant (space <> body) (breakOrSpace <> body))
   | otherwise = txt "pattern" <> space <> body
   where
     body = typeSig ctx (Don't #indentTail) names sigType
@@ -101,7 +101,7 @@ fixitySig ctx written (FixitySig namespace names (Fixity prec direction)) =
     <> space
     <> foldMap (const (outputable prec <> space)) written
     <> namespaceSpec namespace
-    <> align (commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names))
+    <> align (commaSepUnderFirst (ctxCommaStyle ctx) 0 (fmap (name ctx) names))
   where
     keyword = case direction of
       InfixL -> "infixl"
@@ -134,28 +134,28 @@ specialiseSig ::
   Doc
 specialiseSig ctx binders target types InlinePragma{..} =
   pragmaBrackets $
-    txt (spelledAsWritten "SPECIALIZE" "SPECIALISE" inl_src)
-      <> space
-      <> inlineSpec inl_inline
-      <> space
-      <> phase
-      <> indent
-        ( space
-            <> foldMap (\bs -> ruleBinders ctx bs <> space) binders
-            <> hsExpr ctx target
-            <> includeUnless
-              (null types)
-              ( joinedByArrow
-                  ctx
-                  breakOrSpace
-                  (spanOf target)
-                  (spansOf types)
-                  (reserved ctx "::")
-                  <> commaSepUnderFirst
-                    (ctxCommaStyle ctx)
-                    (fmap (hsSigType ctx) types)
-              )
-        )
+    ( txt (spelledAsWritten "SPECIALIZE" "SPECIALISE" inl_src)
+        <> space
+        <> inlineSpec inl_inline
+        <> space
+        <> phase
+    )
+      >+> space
+        <> foldMap (\bs -> ruleBinders ctx bs <> space) binders
+        <> hsExpr ctx target
+        <> includeUnless
+          (null types)
+          ( joinedByArrow
+              ctx
+              breakOrSpace
+              (spanOf target)
+              (spansOf types)
+              (reserved ctx "::")
+              <> commaSepUnderFirst
+                (ctxCommaStyle ctx)
+                0
+                (fmap (hsSigType ctx) types)
+          )
   where
     -- A @NOINLINE@ written without a phase reads as never active, so that
     -- phase is left off rather than printed as @[~]@.
@@ -208,6 +208,7 @@ booleanFormula ctx = \case
     align
       ( commaSepUnderFirst
           (ctxCommaStyle ctx)
+          0
           (fmap (at_ ctx (booleanFormula ctx)) xs)
       )
   Or xs ->
@@ -232,40 +233,39 @@ completeSig ::
   Maybe (LocatedN RdrName) ->
   Doc
 completeSig ctx names ty =
-  layoutAcross ctx names . pragma "COMPLETE" . indent $
-    commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
-      <> foldMap
-        ( \t ->
-            variant
-              (ascription t)
-              (layoutFrom ctx (spanOf (last names) <> spanOf t) (ascription t))
-        )
-        ty
+  layoutAcross ctx names . pragma "COMPLETE" $ case ty of
+    Nothing -> listed
+    Just t ->
+      listed
+        >+> variant
+          (ascription t)
+          (layoutFrom ctx (spanOf (last names) <> spanOf t) (ascription t))
   where
+    listed = commaSepUnderFirst (ctxCommaStyle ctx) 0 (fmap (name ctx) names)
     ascription t =
-      indent
-        ( joinedByArrow
-            ctx
-            breakOrSpace
-            (spansOf names)
-            (spanOf t)
-            (reserved ctx "::")
-            <> name ctx t
-        )
+      joinedByArrow
+        ctx
+        breakOrSpace
+        (spansOf names)
+        (spanOf t)
+        (reserved ctx "::")
+        <> name ctx t
 
 -- | An @SCC@ pragma.
 sccSig :: Ctx -> LocatedN RdrName -> Maybe (XRec GhcPs StringLiteral) -> Doc
 sccSig ctx n literal =
-  pragma "SCC" . indent $
+  pragma "SCC" $
     name ctx n
       <> foldMap (\l -> breakOrSpace <> writtenString (unLoc l)) literal
 
 -- | @type T :: k@.
 standaloneKindSig :: Ctx -> StandaloneKindSig GhcPs -> Doc
-standaloneKindSig ctx (StandaloneKindSig _ n sigTy) =
-  txt "type"
-    <> indent (space <> name ctx n)
-    <> typeAscription ctx (spanOf n) sigTy
+standaloneKindSig ctx (StandaloneKindSig (typeToken, _) n sigTy) =
+  keyword
+    <> indent 1 (ptr keyword) (space <> name ctx n)
+    <> indent 1 (ptr keyword) (typeAscription ctx (spanOf n) sigTy)
+  where
+    keyword = refAt (spanOf typeToken) (txt "type")
 
 -- | A @RULES@ block.
 --
@@ -275,10 +275,12 @@ standaloneKindSig ctx (StandaloneKindSig _ n sigTy) =
 -- the braces it would read as a remark on whatever follows the block.
 ruleDecls :: Ctx -> RuleDecls GhcPs -> Doc
 ruleDecls ctx (HsRules ((_, close), _) rules) =
-  pragma "RULES" $
-    sepBy
-      breakOrSpace
-      (fmap (align . at_ ctx (blockItem . ruleDecl ctx)) rules)
+  pragmaBrackets $
+    txt "RULES"
+      <> breakOrSpace
+      <> sepBy
+        breakOrSpace
+        (fmap (align . at_ ctx (ruleDecl ctx)) rules)
       <> foldMap (emptyAnchor . startOf) (spanOf close)
 
 -- | One rule of a @RULES@ block.
@@ -290,20 +292,19 @@ ruleDecl ::
   Doc
 ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
   at ctx ruleName (\n -> writtenString (StringLiteral written n Nothing))
-    <> space
-    <> activation phase
-    <> space
-    <> ruleBinders ctx binders
-    <> breakOrSpace
-    <> indent
-      ( hsExpr ctx lhs
-          <> space
-          <> txt "="
-          <> layoutFrom
-            ctx
-            (fmap endOf (spanOf lhs) <> spanOf rhs)
-            (indent (breakOrSpace <> hsExpr ctx rhs))
-      )
+    >+> space
+      <> activation phase
+      <> space
+      <> ruleBinders ctx binders
+      <> breakOrSpace
+      <> ( hsExpr ctx lhs
+             >+> space
+               <> txt "="
+               <> layoutFrom
+                 ctx
+                 (fmap endOf (spanOf lhs) <> spanOf rhs)
+                 (breakOrSpace <> hsExpr ctx rhs)
+         )
 
 -- | The @forall@s a rule or a @SPECIALIZE@ pragma binds.
 ruleBinders :: Ctx -> RuleBndrs GhcPs -> Doc
@@ -320,4 +321,4 @@ ruleBinder :: Ctx -> RuleBndr GhcPs -> Doc
 ruleBinder ctx = \case
   RuleBndr _ n -> name ctx n
   RuleBndrSig _ n HsPS{..} ->
-    parens (name ctx n <> typeAscription ctx (spanOf n) (asSigType hsps_body))
+    parens (name ctx n >+> typeAscription ctx (spanOf n) (asSigType hsps_body))

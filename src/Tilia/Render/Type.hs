@@ -103,13 +103,14 @@ typeBody ctx documented here = \case
     let (func, args) = gatherAppArgs f [x]
      in layoutFrom ctx (spanOf f <> spansOf args) . align $
           hsType ctx func
-            <> breakOrSpace
-            <> indent (sepBy breakOrSpace (fmap (hsType ctx) args))
+            >+> breakOrSpace
+              <> sepBy breakOrSpace (fmap (hsType ctx) args)
   HsAppKindTy tok ty kd ->
     align
       ( hsType ctx ty
-          <> breakOrSpace
-          <> indent (keywordAt (spanOf tok) "@" <> hsType ctx kd)
+          >+> breakOrSpace
+            <> keywordAt (spanOf tok) "@"
+            <> hsType ctx kd
       )
   HsFunTy _ multAnn x y ->
     signaturePart ctx (hsType ctx) x
@@ -130,7 +131,7 @@ typeBody ctx documented here = \case
         LeadingArrows -> id
   HsListTy _ t ->
     layoutWithin ctx here (spanOf t) $
-      bracketWith Outdented "[" "]" (insideBrackets here (hsType ctx t))
+      bracketWith 0 "[" "]" (insideBrackets here (hsType ctx t))
   HsTupleTy _ sort xs ->
     layoutWithin ctx here (spansOf xs) $
       tupleBrackets
@@ -142,7 +143,8 @@ typeBody ctx documented here = \case
         )
   HsSumTy _ xs ->
     spacedBracket
-      Outdented
+      0
+      0
       "(#"
       "#)"
       (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
@@ -154,16 +156,16 @@ typeBody ctx documented here = \case
       (spanOf t)
       (parens (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
-    align (at ctx n outputable <> typeAscription ctx (spanOf n) (asSigType t))
+    align (at ctx n outputable >+> typeAscription ctx (spanOf n) (asSigType t))
   HsStarTy _ _ -> txt (reserved ctx "*")
   HsKindSig _ t k ->
-    align (hsType ctx t <> typeAscription ctx (spanOf t) (asSigType k))
+    align (hsType ctx t >+> typeAscription ctx (spanOf t) (asSigType k))
   HsSpliceTy _ splice -> knotSplice (ctxKnot ctx) ctx DollarSplice splice
   HsDocTy _ t str -> haddockInline ctx Pipe str <> hsType ctx t
   HsExplicitListTy (tok, open, close) promoted xs ->
     ticked (spanOf tok) promoted (spanOf open <> spanOf close) $
       bracketWith
-        Outdented
+        0
         "["
         "]"
         ( insideBrackets
@@ -243,12 +245,17 @@ renderChain ctx = \case
   Operand t -> hsType ctx t
   chain@(Chain operands@(firstOne :| _) operators) ->
     layoutFrom ctx (chainSpan spanOf chain) $
-      renderChain ctx firstOne <> foldMap piece (links operands operators)
+      let first' = renderChain ctx firstOne
+       in ref first'
+            <> foldMap
+              (piece (indent 1 (ptr first')))
+              (links operands operators)
   where
-    piece (previous, op, operand, _) =
+    piece placing (previous, op, operand, _) =
       attachOperator
         ctx
         Normal
+        placing
         (chainSpan spanOf previous)
         (spanOf op)
         (chainSpan spanOf operand)
@@ -274,7 +281,7 @@ tupleBrackets ::
   Doc ->
   Doc
 tupleBrackets commas = \case
-  HsUnboxedTuple -> spacedBracket Outdented "(#" "#)" . hangingCommas commas
+  HsUnboxedTuple -> spacedBracket (commaWidth commas) 0 "(#" "#)"
   HsBoxedOrConstraintTuple -> parens
 
 -- | A list or tuple behind the tick that promotes it, if any, its brackets
@@ -467,17 +474,21 @@ instance TyVarBndrFlag (HsBndrVis GhcPs) where
 
 -- | One type variable binder.
 tyVarBndr :: TyVarBndrFlag flag => Ctx -> HsTyVarBndr flag GhcPs -> Doc
-tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed (binder <> kind)
+tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed kinded
   where
     (binder, binderSpan) = case tvb_var of
       HsBndrVar _ x -> (name ctx x, spanOf x)
       HsBndrWildCard _ -> (txt "_", Nothing)
-    (kind, kinded) = case tvb_kind of
-      HsBndrNoKind _ -> (mempty, False)
-      HsBndrKind _ k -> (typeAscription ctx binderSpan (asSigType k), True)
+    kinded = case tvb_kind of
+      HsBndrNoKind _ -> binder
+      HsBndrKind _ k ->
+        binder >+> typeAscription ctx binderSpan (asSigType k)
+    hasKind = case tvb_kind of
+      HsBndrNoKind _ -> False
+      HsBndrKind _ _ -> True
     enclosed
-      | flagIsInferred tvb_flag = bracketWith Outdented "{" "}"
-      | kinded = parens
+      | flagIsInferred tvb_flag = bracketWith 0 "{" "}"
+      | hasKind = parens
       | otherwise = id
 
 -- | Whether a @forall@ binds visibly.
@@ -519,11 +530,9 @@ forallOver ctx _ [] close = txt (reserved ctx "forall") <> close
 forallOver ctx render bndrs close =
   layoutAcross ctx bndrs $
     txt (reserved ctx "forall")
-      <> breakOrSpace
-      <> indent
-        ( align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs))
-            <> close
-        )
+      >+> breakOrSpace
+        <> align (sepBy breakOrSpace (fmap (align . at_ ctx render) bndrs))
+        <> close
 
 -- | The punctuation that closes a @forall@ on the line of its variables.
 forallClose ::
@@ -644,7 +653,7 @@ sigTypeWith ctx body HsSig{..} =
   where
     documented = typeIsDocumented (unLoc sig_body)
 
--- | The @:: t@ that follows a name.
+-- | The @:: t@ that follows a name, to be placed relative to it.
 typeAscription ::
   -- | The context.
   Ctx ->
@@ -654,10 +663,8 @@ typeAscription ::
   LHsSigType GhcPs ->
   Doc
 typeAscription ctx before sigType =
-  indent
-    ( joinedByArrow ctx separator before (spanOf sigType) (reserved ctx "::")
-        <> at ctx sigType (sigTypeWith ctx (signaturePart ctx (hsType ctx)))
-    )
+  joinedByArrow ctx separator before (spanOf sigType) (reserved ctx "::")
+    <> at ctx sigType (sigTypeWith ctx (signaturePart ctx (hsType ctx)))
   where
     separator = typeBreak (typeIsDocumented (unLoc (sig_body (unLoc sigType))))
 
@@ -677,25 +684,18 @@ ascribedNames ::
   Doc ->
   Doc
 ascribedNames ctx indentTail names@(n :| ns) typeSpan ascription
-  | null ns = name ctx n <> ascription
+  | null ns = name ctx n >+> ascription
   | otherwise =
       layoutAcross ctx (n : ns) $
         variant
-          (commaSep commas (fmap (name ctx) (n : ns)) <> laidOut)
-          ( name ctx n
-              <> nest
-                (if isTrue indentTail then 1 else 0)
-                ( hangingCommas
-                    commas
-                    ( separatingComma commas
-                        <> commaSep commas (fmap (name ctx) ns)
-                    )
-                    <> laidOut
-                )
+          (commaSep commas (fmap (name ctx) (n : ns)) >+> laidOut)
+          ( commaSepUnderFirst commas tailSteps (fmap (name ctx) (n : ns))
+              <> indent (tailSteps + 1) (ptr (name ctx n)) laidOut
           )
   where
     commas = ctxCommaStyle ctx
     laidOut = layoutFrom ctx (spanOf (NE.last names) <> typeSpan) ascription
+    tailSteps = if isTrue indentTail then 1 else 0
 
 -- | Give a plain type the shape of a signature type.
 asSigType :: LHsType GhcPs -> LHsSigType GhcPs
@@ -717,7 +717,7 @@ recordFields ::
   Doc
 recordFields ctx enclosing xs =
   brokenForDocs
-    . bracketWith Outdented "{" "}"
+    . bracketWith 0 "{" "}"
     . insideBrackets enclosing
     $ commaSep commas (fmap field xs)
   where
@@ -758,19 +758,18 @@ recordField ctx HsConDeclRecField{..} =
   align
     ( commaSepUnderFirst
         (ctxCommaStyle ctx)
+        0
         (fmap (at_ ctx (name ctx . foLabel)) cdrf_names)
     )
-    <> space
-    <> multiplicity (hsType ctx) (cdf_multiplicity cdrf_spec)
-    <> indent
-      ( joinedByArrow
-          ctx
-          breakOrSpace
-          (spansOf cdrf_names)
-          (spanOf (cdf_type cdrf_spec))
-          (reserved ctx "::")
-          <> conDeclField ctx cdrf_spec
-      )
+    >+> space
+      <> multiplicity (hsType ctx) (cdf_multiplicity cdrf_spec)
+      <> joinedByArrow
+        ctx
+        breakOrSpace
+        (spansOf cdrf_names)
+        (spanOf (cdf_type cdrf_spec))
+        (reserved ctx "::")
+      <> conDeclField ctx cdrf_spec
 
 -- | A constructor field, without its documentation or its multiplicity.
 conDeclField ::

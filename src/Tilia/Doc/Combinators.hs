@@ -38,17 +38,18 @@ module Tilia.Doc.Combinators
     attach,
 
     -- * Indentation
-    nest,
+    ref,
+    refAt,
     indent,
+    (>+>),
+    ptr,
     align,
-    blockItem,
 
     -- * Combining
     sepBy,
     joinedBy,
 
     -- * Wrapping
-    ClosingIndent (..),
     parens,
     bracketWith,
     commaBracketWith,
@@ -59,8 +60,9 @@ module Tilia.Doc.Combinators
     CommaStyle (..),
     comma,
     separatingComma,
+    separatingSemicolon,
     commaSep,
-    hangingCommas,
+    commaWidth,
     commaSepUnderFirst,
     commaSepAfter,
 
@@ -79,14 +81,13 @@ import Tilia.Doc
     Doc (..),
     Layout (..),
     LineStart (..),
-    Nesting (..),
     TrailingWhitespace (..),
-    leadingComma,
     mapChildren,
     printsNothing,
+    regionOf,
   )
 import Tilia.Settings (CommaStyle (..))
-import Tilia.Span (Span, endOf)
+import Tilia.Span (Span, endOf, startOf)
 
 ----------------------------------------------------------------------------
 -- Atoms
@@ -176,7 +177,7 @@ infrangible ::
   Doc ->
   Doc
 infrangible = \case
-  DGroup Frangible d -> DGroup Flat d
+  DGroup Frangible d -> DGroup Flat (infrangible d)
   d -> mapChildren infrangible d
 
 -- | Choose according to the layout the enclosing group settled on.
@@ -238,42 +239,81 @@ cppChoice conditionals branches fallback
 
 -- | Whether a construct absorbs its own line break.
 data Placement
-  = -- | The preceding construct breaks and indents.
+  = -- | The construct begins a line of its own where the layout breaks.
     Normal
   | -- | The construct is handed the rest of the line and breaks itself.
     Hanging
   deriving (Eq, Show)
 
--- | Join a body to whatever precedes it, according to its 'Placement'.
-attach :: Placement -> Doc -> Doc
+-- | A body after the part it is placed relative to, joined to it according
+-- to its 'Placement'.
+attach ::
+  -- | How the body is joined.
+  Placement ->
+  -- | The body.
+  Doc ->
+  Doc
 attach Hanging body = space <> body
-attach Normal body = breakOrSpace <> indent body
+attach Normal body = breakOrSpace <> body
 
 ----------------------------------------------------------------------------
 -- Indentation
 
--- | Indent by the given number of steps, relative to the current level.
-nest :: Int -> Doc -> Doc
-nest = DNest . Steps
+-- | A referent that 'indent' measures from, identified by the regions it
+-- holds.
+ref :: Doc -> Doc
+ref = \case
+  a@DReferent{} -> a
+  a -> DReferent (referentOf a) a
 
--- | Indent by one step.
-indent :: Doc -> Doc
-indent = DNest (Steps 1)
+-- | 'ref' for a part holding no region, such as a keyword the comments
+-- around it do not attach to, identified by where it was written.
+refAt :: Maybe Span -> Doc -> Doc
+refAt = DReferent
+
+-- | A referent that prints nothing but shares an identity with a part that
+-- is printed elsewhere.
+ptr :: Doc -> Doc
+ptr a = DReferent (referentOf a) mempty
+
+-- | What a part is named by as a 'ref': the regions it holds.
+referentOf :: Doc -> Maybe Span
+referentOf = \case
+  DReferent k _ -> k
+  a -> regionOf a
+
+-- | Print the first part, then the second indented by this many steps in
+-- relation to the referent in the first part.
+indent ::
+  -- | The steps.
+  Int ->
+  -- | The first part.
+  Doc ->
+  -- | The second part.
+  Doc ->
+  Doc
+indent n a = \case
+  DEmpty
+    | printsNothing a -> DEmpty
+    | otherwise -> ref a
+  b -> DIndented n (ref a) b
+
+infixr 5 >+>
+
+-- | 'indent' by one step.
+(>+>) ::
+  -- | The first part.
+  Doc ->
+  -- | The second part.
+  Doc ->
+  Doc
+(>+>) = indent 1
 
 -- | Indent to the column the line has already reached, so that a broken
 -- construct lines up under its own beginning rather than under the start of
 -- the line.
 align :: Doc -> Doc
-align = DAlign
-
--- | An item of a layout block, such as a declaration, a statement or a case
--- alternative, which a conditional inside it continues right of the column
--- the item begins at.
-blockItem ::
-  -- | The item.
-  Doc ->
-  Doc
-blockItem = DBlockItem
+align = DAligned 0
 
 ----------------------------------------------------------------------------
 -- Combining
@@ -290,18 +330,10 @@ joinedBy t = space <> txt t <> breakOrSpace
 ----------------------------------------------------------------------------
 -- Wrapping
 
--- | Where the closing bracket of a broken bracket pair goes.
-data ClosingIndent
-  = -- | Back out to the level the opening bracket is on.
-    Outdented
-  | -- | Kept one step in.
-    Indented
-  deriving (Eq, Show)
-
 -- | Surround with a bracket pair that opens up when broken.
 bracketWith ::
-  -- | Where the closing bracket goes.
-  ClosingIndent ->
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -312,14 +344,14 @@ bracketWith ::
 bracketWith = commaBracketWith TrailingCommas
 
 -- | A bracket pair around items separated by 'commaSep' in the given style,
--- lined up after the opening bracket, or with leading commas a step in where
--- the closing bracket is, since there no line may begin at the bracket's
--- column.
+-- lined up after the opening bracket, or with leading commas under the first
+-- item where the closing bracket goes a step in, since there no line may
+-- begin at the bracket's column.
 commaBracketWith ::
   -- | Where the commas go.
   CommaStyle ->
-  -- | Where the closing bracket goes.
-  ClosingIndent ->
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -329,13 +361,14 @@ commaBracketWith ::
   Doc
 commaBracketWith commas closing open close body =
   align $
-    txt open
+    opener
       <> variant body (space <> linedUp body <> hardBreak)
-      <> nest (closingSteps closing) (txt close)
+      <> indent closing (ptr opener) (txt close)
   where
-    linedUp = case (commas, closing) of
-      (LeadingCommas, Indented) -> indent . hangingCommas commas
-      _ -> align
+    opener = openerOf body open
+    linedUp = DAligned $ case commas of
+      LeadingCommas | closing > 0 -> commaWidth commas
+      _ -> 0
 
 -- | Surround with a bracket pair whose brackets are held off the body.
 --
@@ -344,8 +377,11 @@ commaBracketWith commas closing open close body =
 -- an operator beginning with @#@ would lex as part of the bracket. Broken,
 -- the body goes on its own indented lines.
 spacedBracket ::
-  -- | Where the closing bracket goes.
-  ClosingIndent ->
+  -- | How many columns past a step a broken body goes, for the commas
+  -- leading its lines.
+  Int ->
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -353,23 +389,34 @@ spacedBracket ::
   -- | Body.
   Doc ->
   Doc
-spacedBracket closing open close body =
+spacedBracket columns closing open close body =
   align $
-    txt open
-      <> variant (space <> body <> space) (hardBreak <> indent body <> hardBreak)
-      <> nest (closingSteps closing) (txt close)
+    opener
+      <> variant
+        (space <> body <> space)
+        ( hardBreak
+            <> indent 1 (ptr opener) (DAligned columns body)
+            <> hardBreak
+        )
+      <> indent closing (ptr opener) (txt close)
+  where
+    opener = openerOf body open
 
-closingSteps :: ClosingIndent -> Int
-closingSteps = \case
-  Outdented -> 0
-  Indented -> 1
+-- | An opening bracket, a 'ref' named by the start of what it holds.
+openerOf ::
+  -- | What it holds.
+  Doc ->
+  -- | The bracket.
+  Text ->
+  Doc
+openerOf body = refAt (startOf <$> regionOf body) . txt
 
 -- | @(@ and @)@.
 parens ::
   -- | Body.
   Doc ->
   Doc
-parens = bracketWith Outdented "(" ")"
+parens = bracketWith 0 "(" ")"
 
 -- | Surround with backticks.
 backticks :: Doc -> Doc
@@ -383,39 +430,58 @@ comma :: Doc
 comma = txt ","
 
 -- | A comma between two items, with the place the line may break: after
--- it, or, with 'LeadingCommas', before it, at the indentation in force.
+-- it, or, with 'LeadingCommas', before it, hung left of the indentation by
+-- its width.
 separatingComma ::
   -- | Where the commas go.
   CommaStyle ->
   Doc
 separatingComma = \case
   TrailingCommas -> comma <> breakOrSpace
-  LeadingCommas -> breakOrNothing <> leadingComma
+  LeadingCommas -> breakOrNothing <> hung ", "
 
--- | Move items separated by 'commaSep' right by the width of a leading
--- comma, so that the commas, not the items, come where the items would
--- with trailing commas.
-hangingCommas ::
+-- | A semicolon leading the item after it, with the place the line may
+-- break before it, hung left of the indentation by its width.
+separatingSemicolon :: Doc
+separatingSemicolon = breakOrNothing <> hung "; "
+
+-- | A separator leading the item after it, its lines its width left of the
+-- column it begins at.
+hung ::
+  -- | The separator.
+  Text ->
+  Doc
+hung t = DAligned (negate (T.length t)) (txt t)
+
+-- | How many columns a comma takes where it leads the item after it.
+commaWidth ::
   -- | Where the commas go.
   CommaStyle ->
-  -- | The items, separated.
-  Doc ->
-  Doc
-hangingCommas = \case
-  TrailingCommas -> id
-  LeadingCommas -> DNest (Columns 2)
+  Int
+commaWidth = \case
+  TrailingCommas -> 0
+  LeadingCommas -> 2
 
--- | Separate by 'separatingComma', with leading commas under the first
--- item rather than to the left of it.
+-- | Separate by 'separatingComma', with the leading commas of the items
+-- after the first so many steps in from it and those items past them.
 commaSepUnderFirst ::
   -- | Where the commas go.
   CommaStyle ->
+  -- | How many steps in from the first item the others go.
+  Int ->
   -- | The items.
   [Doc] ->
   Doc
-commaSepUnderFirst commas = \case
+commaSepUnderFirst commas steps = \case
   [] -> mempty
-  x : xs -> x <> hangingCommas commas (foldMap (separatingComma commas <>) xs)
+  [x] -> x
+  x : xs -> ref x <> indent steps (ptr x) rest
+    where
+      rest = case commas of
+        TrailingCommas -> separatingComma commas <> commaSep commas xs
+        LeadingCommas ->
+          breakOrNothing
+            <> DAligned (commaWidth commas) (hung ", " <> commaSep commas xs)
 
 -- | Separate by 'separatingComma'.
 commaSep ::

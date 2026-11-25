@@ -280,7 +280,7 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       (i : is) : runs ->
         foldMap anchor above
           <> includeWhen later hardBreak
-          <> at ctx i (blockItem . importDecl ctx)
+          <> at ctx i (importDecl ctx)
           <> foldMap anchor (IntMap.lookup start mcUnderImports)
           <> includeWhen (null is && null runs) (foldMap anchor mcBelowImports)
           <> hardBreak
@@ -304,18 +304,22 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
       Nothing -> mempty
       Just modName ->
         documentation
-          <> at ctx modName (moduleHeadName ctx)
+          <> ref (at ctx modName (moduleHeadName ctx))
           <> headerLayout
             ( breakOrSpace
-                <> foldMap warning hsmodDeprecMessage
-                <> foldMap exports' hsmodExports
+                <> foldMap (warning modName) hsmodDeprecMessage
+                <> foldMap (exports' modName) hsmodExports
             )
           <> keywordAt (spanOf (am_where (anns hsmodAnn))) "where"
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
-    warning w = at ctx w (indent . warningTxt ctx) <> breakOrSpace
-    exports' l =
-      at ctx l (\xs -> indent (exportList ctx (spanOf l) xs)) <> breakOrSpace
+    warning modName w =
+      at ctx w (indent 1 (ptr (headName modName)) . warningTxt ctx)
+        <> breakOrSpace
+    exports' modName l =
+      at ctx l (indent 1 (ptr (headName modName)) . exportList ctx (spanOf l))
+        <> breakOrSpace
+    headName modName = at ctx modName (moduleHeadName ctx)
 
 -- | The parenthesised list after a module name.
 exportList :: Ctx -> Maybe Span -> [LIE GhcPs] -> Doc
@@ -345,12 +349,13 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
       sepBy breakOrSpace (zipWith (item broken') previous (positioned xs))
     item broken' before (position, x) =
       gapAbove before x <> entry (comma' broken' position) x
-    commaLed before afterAnItem x
-      | Nothing <- before = entry False x
-      | afterAnItem,
-        not (isDocEntry (unLoc x)) =
-          separatingComma LeadingCommas <> entry False x
-      | otherwise = breakOrSpace <> gapAbove before x <> entry False x
+    commaLed before afterAnItem x = case before of
+      Nothing -> entry False x
+      Just _
+        | afterAnItem,
+          not (isDocEntry (unLoc x)) ->
+            separatingComma LeadingCommas <> entry False x
+      _ -> breakOrSpace <> gapAbove before x <> entry False x
     entry withComma x@(L _ ie) =
       align . atSpan ctx (spanOf (widenToDoc x)) $
         ieItem ctx (spanOf x) ie
@@ -414,14 +419,13 @@ ieItem ctx here = \case
   IEThingWith (warning, (open, dots, _, close)) n wildcard members _ ->
     region . align $
       ( exportWarning warning
-          <> at ctx n (wrappedName ctx)
-          <> layoutWithin
-            ctx
-            here
-            (spanOf open <> spanOf close <|> here)
-            ( breakOrSpace
-                <> indent (parens (insideBrackets here listed))
-            )
+          <> ( at ctx n (wrappedName ctx)
+                 >+> layoutWithin
+                   ctx
+                   here
+                   (spanOf open <> spanOf close <|> here)
+                   (breakOrSpace <> parens (insideBrackets here listed))
+             )
       )
     where
       listed = commaSep (ctxCommaStyle ctx) (align <$> withWildcard)
@@ -469,8 +473,10 @@ isDocEntry = \case
 -- and its import list, each a node of its own past the keyword's column.
 importDecl :: Ctx -> ImportDecl GhcPs -> Doc
 importDecl ctx ImportDecl{..} =
-  keywordAt (spanOf (importDeclAnnImport annotation)) "import"
+  ref keyword
     <> indent
+      1
+      (ptr keyword)
       ( space
           <> includeWhen (ideclSource == IsBoot) (txt "{-# SOURCE #-}")
           <> space
@@ -490,6 +496,8 @@ importDecl ctx ImportDecl{..} =
     <> foldMap
       ( \a ->
           indent
+            1
+            (ptr keyword)
             ( space
                 <> keywordAt (spanOf =<< importDeclAnnAs annotation) "as"
                 <> space
@@ -497,8 +505,9 @@ importDecl ctx ImportDecl{..} =
             )
       )
       ideclAs
-    <> foldMap (indent . (space <>)) importList
+    <> foldMap (indent 1 (ptr keyword) . (space <>)) importList
   where
+    keyword = keywordAt (spanOf (importDeclAnnImport annotation)) "import"
     annotation = anns (ideclAnn ideclExt)
     qualified =
       keywordAt (spanOf =<< importDeclAnnQualified annotation) "qualified"

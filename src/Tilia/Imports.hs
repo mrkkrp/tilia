@@ -400,10 +400,12 @@ wider written (L ann kept) (L other folded) =
       (NoIEWildcard, NoIEWildcard) -> NoIEWildcard
       _ -> IEWildcard 0
 
-    parensAcross (warning, (open, dots, comma, close)) (_, (open', _, _, close'))
-      | onOneLine open close && not (onOneLine open' close') =
-          (warning, (open', dots, comma, close'))
-      | otherwise = (warning, (open, dots, comma, close))
+    parensAcross
+      (warning, (open, dots, comma, close))
+      (_, (open', _, _, close'))
+        | onOneLine open close && not (onOneLine open' close') =
+            (warning, (open', dots, comma, close'))
+        | otherwise = (warning, (open, dots, comma, close))
     onOneLine open close = all isSingleLine (spanOf open <> spanOf close)
 
 -- | An entry with the names in its own brackets sorted and deduplicated.

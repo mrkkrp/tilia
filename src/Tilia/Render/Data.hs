@@ -57,129 +57,150 @@ dataDecl ::
   -- | The rest of the declaration.
   HsDataDefn GhcPs ->
   Doc
-dataDecl ctx instanceWord tyCon tyVars tyVarSpan renderTyVar fixity outerBinders HsDataDefn{..} =
-  txt (keyword <> if isTrue instanceWord then " instance" else "")
-    <> header
-    <> constructors
-    <> derivings
-  where
-    keyword = case dd_cons of
-      NewTypeCon _ -> "newtype"
-      DataTypeCons False _ -> "data"
-      DataTypeCons True _ -> "type data"
+dataDecl
+  ctx
+  instanceWord
+  tyCon
+  tyVars
+  tyVarSpan
+  renderTyVar
+  fixity
+  outerBinders
+  HsDataDefn{..} =
+    keywords <> header <> constructors <> derivings
+    where
+      keywords =
+        refAt
+          ( spanOf (andd_type dd_ext)
+              <> spanOf (andd_newtype dd_ext)
+              <> spanOf (andd_data dd_ext)
+              <> spanOf (andd_instance dd_ext)
+          )
+          (txt (keyword <> if isTrue instanceWord then " instance" else ""))
+      keyword = case dd_cons of
+        NewTypeCon _ -> "newtype"
+        DataTypeCons False _ -> "data"
+        DataTypeCons True _ -> "type data"
 
-    headSpan = spanOf tyCon <> foldMap tyVarSpan tyVars
-    wholeHeadSpan =
-      headSpan
-        <> foldMap spanOf dd_kindSig
-        <> foldMap spanOf dd_ctxt
-        <> foldMap spanOf dd_cType
+      headSpan = spanOf tyCon <> foldMap tyVarSpan tyVars
+      wholeHeadSpan =
+        headSpan
+          <> foldMap spanOf dd_kindSig
+          <> foldMap spanOf dd_ctxt
+          <> foldMap spanOf dd_cType
 
-    header =
-      layoutFrom ctx wholeHeadSpan . indent $
-        foreignType
-          <> breakOrSpace
-          <> outerBinders
-          <> foldMap (leftContext ctx headSpan) dd_ctxt
-          <> typeHead ctx Outdented fixity tyCon tyVarSpan renderTyVar tyVars
-          <> foldMap kindSignature dd_kindSig
-          <> includeWhen
-            (isGadt && not (null cons))
-            (breakOrSpace <> txt "where")
+      header =
+        layoutFrom ctx wholeHeadSpan . indent 1 (ptr keywords) $
+          foreignType
+            <> breakOrSpace
+            <> outerBinders
+            <> foldMap (leftContext ctx headSpan) dd_ctxt
+            <> kinded
+              (typeHead ctx 0 fixity tyCon tyVarSpan renderTyVar tyVars)
+            <> includeWhen
+              (isGadt && not (null cons))
+              (breakOrSpace <> txt "where")
 
-    kindSignature k = typeAscription ctx headSpan (asSigType k)
+      kinded h = case dd_kindSig of
+        Just k -> h >+> typeAscription ctx headSpan (asSigType k)
+        Nothing -> h
 
-    foreignType = case unLoc <$> dd_cType of
-      Nothing -> mempty
-      Just (CType _ header' (type_, _)) ->
-        breakOrSpace
-          <> txt "{-# CTYPE"
-          <> foldMap (\(Header h _) -> space <> sourceText h) header'
-          <> space
-          <> sourceText type_
-          <> txt " #-}"
+      foreignType = case unLoc <$> dd_cType of
+        Nothing -> mempty
+        Just (CType _ header' (type_, _)) ->
+          breakOrSpace
+            <> txt "{-# CTYPE"
+            <> foldMap (\(Header h _) -> space <> sourceText h) header'
+            <> space
+            <> sourceText type_
+            <> txt " #-}"
 
-    cons = case dd_cons of
-      NewTypeCon c -> [c]
-      DataTypeCons _ cs -> cs
+      cons = case dd_cons of
+        NewTypeCon c -> [c]
+        DataTypeCons _ cs -> cs
 
-    isGadt = isJust dd_kindSig || any (isGadtCon . unLoc) cons
+      isGadt = isJust dd_kindSig || any (isGadtCon . unLoc) cons
 
-    constructors = case cons of
-      [] -> mempty
-      (firstCon : _)
-        | isGadt ->
-            indent $
-              breakOrSpace
-                <> items
-                  (if null (drop 1 cons) then NoBrace else MayBrace)
-                  ( fmap
-                      ( at_
-                          ctx
-                          (blockItem . conDecl ctx (Isn't #singleRecCon))
-                      )
-                      cons
-                  )
-        | otherwise ->
-            layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons) . indent $
-              beforeEquals
-                <> txt "="
-                <> space
-                <> alternatives
-        where
-          singleRecCon = case cons of
-            [L _ ConDeclH98{con_args = RecCon{}}] -> True
-            _ -> False
-          compactAroundEquals =
-            sameLine (fmap endOf wholeHeadSpan) (fmap startOf (spanOf firstCon))
+      constructors = case cons of
+        [] -> mempty
+        (firstCon : _)
+          | isGadt ->
+              indent 1 (ptr keywords) $
+                breakOrSpace
+                  <> items
+                    (if null (drop 1 cons) then NoBrace else MayBrace)
+                    ( fmap
+                        ( at_
+                            ctx
+                            (conDecl ctx (Isn't #singleRecCon))
+                        )
+                        cons
+                    )
+          | otherwise ->
+              layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons)
+                . indent 1 (ptr keywords)
+                $ beforeEquals
+                  <> txt "="
+                  <> space
+                  <> alternatives
+          where
+            singleRecCon = case cons of
+              [L _ ConDeclH98{con_args = RecCon{}}] -> True
+              _ -> False
+            compactAroundEquals =
+              sameLine
+                (fmap endOf wholeHeadSpan)
+                (fmap startOf (spanOf firstCon))
 
-          equalsSpan = spanOf (andd_equal dd_ext)
+            equalsSpan = spanOf (andd_equal dd_ext)
 
-          lineHaddocks = any (endsALine . unLoc) cons
-          endsALine = \case
-            ConDeclH98{..} ->
-              isJust con_doc
-                || not singleRecCon && argumentsDocumented ctx con_args
-            ConDeclGADT{} -> False
+            lineHaddocks = any (endsALine . unLoc) cons
+            endsALine = \case
+              ConDeclH98{..} ->
+                isJust con_doc
+                  || not singleRecCon && argumentsDocumented ctx con_args
+              ConDeclGADT{} -> False
 
-          beforeEquals
-            | lineHaddocks = hardBreak
-            | singleRecCon && compactAroundEquals = space
-            | otherwise = breakOrSpace
+            beforeEquals
+              | lineHaddocks = hardBreak
+              | singleRecCon && compactAroundEquals = space
+              | otherwise = breakOrSpace
 
-          separator
-            | lineHaddocks = hardBreak <> txt "|" <> space
-            | otherwise = breakOrSpace <> txt "|" <> space
-
-          keepTogether
-            | lineHaddocks || not singleRecCon = align
-            | existential && not compactAroundEquals = align
-            | otherwise = id
-          existential = case unLoc firstCon of
-            ConDeclH98{..} -> con_forall || isJust con_mb_cxt
-            ConDeclGADT{} -> False
-
-          alternatives =
-            fence
-              (fmap endOf equalsSpan <> spanOf firstCon)
-              (keepTogether (constructor firstCon))
-              <> mconcat (zipWith alternative cons (drop 1 cons))
-          alternative previous c =
             separator
-              <> keepTogether
-                (fromItsBar (barAfter previous <> spanOf c) (constructor c))
-            where
-              fromItsBar
-                | sameLine (spanOf previous) (barAfter previous) = fence
-                | otherwise = maybe id located
-          constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
-    derivings =
-      includeUnless (null dd_derivs) beforeDerivings
-        <> indent
-          (sepBy hardBreak (fmap (at_ ctx (derivingClause ctx)) dd_derivs))
-    beforeDerivings
-      | length dd_derivs > 1 = hardBreak
-      | otherwise = breakOrSpace
+              | lineHaddocks = hardBreak <> txt "|" <> space
+              | otherwise = breakOrSpace <> txt "|" <> space
+
+            keepTogether
+              | lineHaddocks || not singleRecCon = align
+              | existential && not compactAroundEquals = align
+              | otherwise = id
+            existential = case unLoc firstCon of
+              ConDeclH98{..} -> con_forall || isJust con_mb_cxt
+              ConDeclGADT{} -> False
+
+            alternatives =
+              fence
+                (fmap endOf equalsSpan <> spanOf firstCon)
+                (keepTogether (constructor firstCon))
+                <> mconcat (zipWith alternative cons (drop 1 cons))
+            alternative previous c =
+              separator
+                <> keepTogether
+                  (fromItsBar (barAfter previous <> spanOf c) (constructor c))
+              where
+                fromItsBar
+                  | sameLine (spanOf previous) (barAfter previous) = fence
+                  | otherwise = maybe id located
+            constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
+      derivings =
+        includeUnless (null dd_derivs) beforeDerivings
+          <> indent
+            1
+            (ptr keywords)
+            (sepBy hardBreak (fmap (at_ ctx (derivingClause ctx)) dd_derivs))
+      beforeDerivings
+        | length dd_derivs > 1 = hardBreak
+        | otherwise = breakOrSpace
 
 -- | Do the Haddocks of a constructor's arguments or fields take whole
 -- lines?
@@ -236,18 +257,16 @@ conDecl ctx _ ConDeclGADT{..} =
 
     body =
       ascribedNames ctx (Do #indentTail) con_names sigSpan . brokenForDocs $
-        indent
-          ( joinedByArrow
-              ctx
-              breakOrSpace
-              (spansOf (NE.toList con_names))
-              sigSpan
-              (reserved ctx "::")
-              <> layoutFrom
-                ctx
-                sigSpan
-                (brokenForDocs signature)
-          )
+        joinedByArrow
+          ctx
+          breakOrSpace
+          (spansOf (NE.toList con_names))
+          sigSpan
+          (reserved ctx "::")
+          <> layoutFrom
+            ctx
+            sigSpan
+            (brokenForDocs signature)
 
     signature =
       outerBndrs ctx breakOrSpace afterOuter (unLoc con_outer_bndrs)
@@ -321,36 +340,33 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
     ownDoc
       <> existentials
         ( brokenForDocs $
-            name ctx con_name
-              <> includeUnless (null xs) breakOrSpace
-              <> indent
-                ( align
-                    ( sepBy
-                        breakOrSpace
-                        (fmap (align . documentedConDeclField ctx) xs)
-                    )
-                )
+            if null xs
+              then name ctx con_name
+              else
+                name ctx con_name
+                  >+> breakOrSpace
+                    <> align
+                      ( sepBy
+                          breakOrSpace
+                          (fmap (align . documentedConDeclField ctx) xs)
+                      )
         )
   RecCon l ->
     ownDoc
       <> existentials
         ( brokenForDocs $
-            name ctx con_name
-              <> breakOrNothing
-              <> nest
-                (if isTrue singleRecCon then 0 else 1)
-                (recordFieldsAt ctx l)
+            if isTrue singleRecCon
+              then name ctx con_name <> breakOrNothing <> recordFieldsAt ctx l
+              else name ctx con_name >+> breakOrNothing <> recordFieldsAt ctx l
         )
   InfixCon l r ->
     includeWhen docOnTop ownDoc
       <> existentials
         ( leftArgument l
-            <> indent
-              ( includeUnless docOnTop ownDoc
-                  <> name ctx con_name
-                  <> rightDoc r
-                  <> conDeclField ctx r
-              )
+            >+> includeUnless docOnTop ownDoc
+              <> name ctx con_name
+              <> rightDoc r
+              <> conDeclField ctx r
         )
     where
       docOnTop = isNothing (cdf_doc l) && isNothing (cdf_doc r)
@@ -420,7 +436,7 @@ derivingClause ::
   HsDerivingClause GhcPs ->
   Doc
 derivingClause ctx HsDerivingClause{..} =
-  brokenForDocs $ txt "deriving" <> space <> strategy
+  brokenForDocs $ keyword <> space <> strategy
   where
     brokenForDocs = if documented then broken else id
     documented = printsWholeLineDocs ctx (Isn't #under) deriv_clause_tys
@@ -435,8 +451,9 @@ derivingClause ctx HsDerivingClause{..} =
                 (ctxCommaStyle ctx)
                 (fmap (align . hsSigType ctx) sigTys)
 
+    keyword = refAt (spanOf deriv_clause_ext) (txt "deriving")
     strategy = case deriv_clause_strategy of
-      Nothing -> breakOrSpace <> indent what
+      Nothing -> breakOrSpace <> indent 1 (ptr keyword) what
       Just (L _ s) -> case s of
         StockStrategy tok -> named tok "stock"
         AnyclassStrategy tok -> named tok "anyclass"
@@ -444,6 +461,8 @@ derivingClause ctx HsDerivingClause{..} =
         ViaStrategy (XViaStrategyPs tok sigTy) ->
           breakOrSpace
             <> indent
+              1
+              (ptr keyword)
               ( what
                   <> breakOrSpace
                   <> keywordAt (spanOf tok) "via"
@@ -456,12 +475,16 @@ derivingClause ctx HsDerivingClause{..} =
               | otherwise = space
       where
         named tok kw =
-          indent (keywordAt (spanOf tok) kw) <> breakOrSpace <> indent what
+          indent 1 (ptr keyword) (keywordAt (spanOf tok) kw)
+            <> breakOrSpace
+            <> indent 1 (ptr keyword) what
 
 -- | @type T a = …@.
 synDecl ::
   -- | The context.
   Ctx ->
+  -- | Where its keyword was.
+  EpToken "type" ->
   -- | The synonym's name.
   LocatedN RdrName ->
   -- | Was its head written infix?
@@ -471,22 +494,25 @@ synDecl ::
   -- | What it stands for.
   LHsType GhcPs ->
   Doc
-synDecl ctx tyCon fixity HsQTvs{..} rhs =
-  txt "type"
+synDecl ctx typeToken tyCon fixity HsQTvs{..} rhs =
+  keyword
     <> indent
+      1
+      (ptr keyword)
       ( space
           <> layoutFrom
             ctx
             headSpan
             ( defHead
-                Outdented
+                0
                 (fromBool (fixity == Infix))
-                (Isn't #indentArgs)
                 (name ctx tyCon)
                 (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
             )
       )
     <> indent
+      1
+      (ptr keyword)
       ( space
           <> txt "="
           <> layoutFrom
@@ -495,5 +521,6 @@ synDecl ctx tyCon fixity HsQTvs{..} rhs =
             (separator <> hsType ctx rhs)
       )
   where
+    keyword = refAt (spanOf typeToken) (txt "type")
     headSpan = spanOf tyCon <> spansOf hsq_explicit
     separator = typeBreak (typeIsDocumented (unLoc rhs))
