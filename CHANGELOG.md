@@ -2,305 +2,128 @@
 
 ### Settings
 
-A project can change how Tilia formats it in a `tilia.toml` file in its
-root: the directory holding its `cabal.project`, or its `.cabal` file where
-it has no `cabal.project`. The file holds lines of `key = value`. A setting
-Tilia does not know, one set twice, or a value Tilia does not take is an
-error, with exit code 5, and a byte order mark at the start of the file is
-read past.
-
-A construct written on one line that runs past the column limit is broken
-over several lines where possible. The limit is 80 unless `column-limit`
-sets another, as in `column-limit = 100`. What is written over several
-lines stays over several lines, as before.
-
-With `indentation = 4`, each level of nesting is indented by four columns
-rather than two, and 2 and 4 are the only values it takes. As in Fourmolu,
-a level is counted from the nearest multiple of four at or left of where
-the code it nests in begins, the body of a guard goes one level past its
-`|`, and the operators after a `do` block written on one line stay at the
-indentation of their chain, the block taking braces where they would
-otherwise begin statements of their own.
-
-With `leading-commas = true`, a list, a tuple, a record, an import or
-export list, a context, a `deriving` clause, a guard and every other
-construct that separates its parts with commas puts each comma at the
-start of a line when broken. A record field's Haddock then goes under it
-as `-- ^`, and the section headings and the Haddocks among the items of an
-export list line up with the items.
-
-With `leading-arrows = true`, a type broken over several lines puts each
-`::`, `=>` and `->` in it, and the `.` of a `forall`, at the start of a
-line, and an argument's Haddock goes under it as `-- ^`.
-
-Issues and pull requests: [Issue 309], [Issue 346], [Issue 353],
-[Issue 380], [PR 398], [PR 425].
+* A project can change how Tilia formats it in a `tilia.toml` file in its
+  root. [Issue 346], [PR 425].
+* A construct written on one line that runs past the column limit is broken
+  over several lines where possible. The limit is 80 unless `column-limit`
+  sets another, as in `column-limit = 100`. [Issue 309], [issue 346].
+* With `indentation = 4`, each level of nesting is indented by 4 columns
+  rather than two, and 2 and 4 are the only values it takes. [PR 398].
+* With `leading-commas = true` every construct that separates its parts with
+  commas puts each comma at the start of a line when broken. A record
+  field's Haddock then goes under it as `-- ^`, and the section headings and
+  the Haddocks among the items of an export list line up with the items.
+  [Issue 353].
+* With `leading-arrows = true`, a type broken over several lines puts each
+  `::`, `=>` and `->` in it, and the `.` of a `forall`, at the start of a
+  line, and an argument's Haddock goes under it as `-- ^`. [Issue 380].
 
 ### Turning formatting off
 
-The lines from a `{- TILIA_OFF -}` to the next `{- TILIA_ON -}` are left
-exactly as written, and so is everything below a `{- TILIA_OFF -}` with no
-`{- TILIA_ON -}` after it. These magic comments go on lines of their own
-between top-level declarations, and one above all of a module's code leaves
-the whole module as written. A module with a magic comment anywhere else,
-or with a directive among the lines left as written, is declined.
-
-Issues and pull requests: [Issue 310].
+* Formatting can be turned off by placing `{- TILIA_OFF -}` and `{-
+  TILIA_ON -}` around code regions that should not be formatted.
+  [Issue 310].
 
 ### Layout
 
-Top-level declarations of one kind written one after another, each on one
-line and with no Haddock, stay together rather than getting an empty line
-between each two: a run of fixity declarations, of bindings, of type
-synonyms, of instances without a body. Pragmas written one after another
-stay together too, and a pragma stays next to what it names, be it a
-function, a type, a class, a family, a pattern synonym, a foreign import or
-a constructor, field or method of a type. A pragma or an equation right
-under the declarations it belongs with stays under them, and a signature
-stays with the binding under it across a directive. Declarations of
-different kinds, a declaration over several lines or with a Haddock, and
-other declarations a directive stands between still get an empty line
-between them, and an empty line the author left stays.
-
-Where `UnicodeSyntax` is in force, through a module's own pragmas or its
-component's `default-extensions`, the symbols that have Unicode forms come
-out in them throughout the module, such as `∷`, `⇒`, `→`, `←`, `∀` and `★`,
-and in ASCII elsewhere, as before. A context of one constraint written on
-one line comes out without parentheses around it, as in `Eq a => a`, where
-the constraint can do without them. A block written between braces, such as
-the alternatives of a `case`, the statements of a `do` or the bindings of a
-`let`, keeps them, empty or not, and one written on one line without them
-gets none.
-
-More of what is written beside an `=`, a `<-` or a keyword stays there: the
-right-hand side of a type synonym, a rule or a type family equation, the
-only constructor of a data declaration with a `forall` or a context of its
-own, what a pattern synonym stands for, the class of a named default, the
-type after the names of GADT constructors or of a `COMPLETE` pragma, and a
-`do` block, a `case` or a lambda bound to an implicit parameter. A `then`
-qualifier of a comprehension stays on one line where it fits, the
-alternatives of a `MINIMAL` pragma written across lines come out one under
-another, an instance head broken after `instance` puts its `where` on a
-line of its own as a class head does, and the `DEPRECATED` and `WARNING`
-pragmas of export items and standalone `deriving` declarations line up with
-what they are on. In arrow notation, a chain of commands is laid out as a
-chain of expressions is, and the `->` of a `proc` ends the last line of its
-pattern. The body of a lambda whose patterns are written over several lines
-goes a step in from the line of the `\`, and so do the guards and the body
-of an alternative whose pattern is. The flags of an options pragma come out
-one space apart, the keyword of a `CTYPE` pragma in capitals, and the
-pragmas of a header sorted around those whose order decides which
-extensions are in force.
-
-Layouts that did not parse, or that GHC read as another program, are no
-longer printed: a minus on a line of its own after a block, a statement
-whose brackets over several lines go on with a signature or a field, the
-scrutinee of a `case` or the condition of an `if` under a comment ending
-their line, a `let` ending the qualifiers of a guard, which now comes out
-between braces, a promoted list whose first item begins with a promoted
-type, and the head of a type synonym on the line after `type`. A class
-without a body whose type variables carry Haddocks comes out without a
-`where`, behind which GHC dropped them.
-
-Issues and pull requests: [Issue 284], [Issue 347], [Issue 350],
-[PR 390], [PR 393], [Issue 415], [Issue 417], [PR 422], [PR 428],
-[Issue 431], [Issue 434], [Issue 447], [Issue 453], [PR 460], [PR 464],
-[PR 465], [PR 469], [PR 470], [PR 474], [PR 476], [PR 493], [PR 494],
-[PR 495], [PR 497], [PR 501], [PR 502], [PR 520], [PR 522], [PR 524],
-[PR 541], [PR 548], [PR 549], [PR 575].
+* One-line top-level declarations of one kind written together stay
+  together, and so do pragmas written together. [Issue 284], [issue 347].
+* A pragma stays next to the declaration it names, and a signature next to
+  its binding across a directive. [PR 390], [PR 393], [PR 476], [PR 501].
+* Where `UnicodeSyntax` is in force, symbols that have Unicode forms come
+  out in them. [Issue 350].
+* A context of one constraint written on one line loses the parentheses it
+  does not need. [PR 493].
+* A block written between braces keeps them, and one written without them
+  gets none. [Issue 447], [PR 494], [PR 502], [PR 520], [PR 524].
+* More of what is written beside an `=`, a `<-` or a keyword stays there, in
+  type synonyms, rules, type family equations, data declarations, pattern
+  synonyms, GADT signatures and implicit parameter bindings. [PR 428],
+  [PR 460], [PR 464], [PR 465], [PR 470], [PR 474], [PR 495], [PR 497].
+* Pragmas come out more evenly: `DEPRECATED` and `WARNING` line up with what
+  they are on, `MINIMAL` alternatives one under another, `CTYPE` in
+  capitals, options one space apart, and header pragmas sorted where their
+  order does not matter. [Issue 415], [issue 417], [PR 428], [issue 431],
+  [issue 434], [issue 453], [PR 541].
+* In arrow notation, a chain of commands is laid out as a chain of
+  expressions is. [PR 422], [PR 428].
+* The body of a lambda or an alternative whose patterns span several lines
+  goes one step in from where they begin, and an instance head broken after
+  `instance` puts its `where` on a line of its own. [PR 469], [PR 575].
+* Several layouts that did not parse, or that GHC read as another program,
+  are no longer printed. [PR 428], [PR 522], [PR 548], [PR 549].
 
 ### Imports
 
-Imports of a project's own modules, those its packages declare, come after
-the imports of its dependencies' modules, in a sorted group of their own.
-`import safe` parses wherever a Safe Haskell mode is in force, as GHC reads
-it, rather than only where `ForeignFunctionInterface` is.
-
-Issues and pull requests: [Issue 349], [PR 556].
+* Imports of a project's own modules come after the others, as a group of
+  their own. [Issue 349].
+* `import safe` parses wherever a Safe Haskell mode is in force. [PR 556].
 
 ### Comments
 
-Comments stay with the code they were written beside in more places: inside
-`()` and `(# #)`, before the closing parenthesis of a context, before the
-`via` or the strategy of a `deriving` clause and the `instance` of a
-standalone one, after an item's comma or a `->` that ends a line of a
-signature, after a `then`, an `else` or an operator that ends its line,
-under the type of a strict field and above its `UNPACK` pragma, under a
-constructor however its bars are written, under the body of an equation
-written on the line of its `=`, under a list that follows an operator,
-under the last part of a construct where a comment follows it, on the line
-of an implicit parameter's binding, and right under the last declaration of
-a module. A block comment lined up under a trailing comment stays under it,
-as a line comment does, and an empty line written under a comment that
-carries a trailing comment on stays.
-
-A data declaration or a record written on one line with Haddocks on its
-constructors or fields is broken around them in one pass rather than two.
-A Haddock holding nothing but spaces comes out in one pass as the comment
-GHC reads it as, a block Haddock written with no space after its trigger
-keeps its other lines where they were, the Haddock of the left argument of
-an infix constructor comes out as a block comment where a comment follows
-the argument, and a `-- ^` written apart under another Haddock stays apart
-from it, rather than becoming part of it.
-
-Issues and pull requests: [PR 364], [PR 386], [Issue 407], [PR 424],
-[Issue 443], [PR 461], [PR 462], [PR 499], [PR 548], [PR 550], [PR 552],
-[PR 555], [PR 567], [PR 568], [PR 573].
+* Comments stay where they were written in many more places: inside `()`,
+  around a context's parentheses and a `deriving` clause, after commas and
+  operators that end a line, under constructors and fields, and under the
+  last declaration of a module. [PR 364], [PR 386], [Issue 443], [PR 462],
+  [PR 499], [PR 550], [PR 552], [PR 555], [PR 567], [PR 568], [PR 573].
+* Haddocks on constructors, fields and arguments come out right in one pass,
+  and a Haddock no longer runs into the one above it. [Issue 407],
+  [PR 424], [PR 461], [PR 548].
 
 ### Conditional compilation
 
-Where the branches of a conditional each write their own version of a part
-of a construct, each branch keeps what it needs to parse: the `<-`, `=`,
-`->` or `=>` after that part ends each branch, as does the `=` or `->`
-after a head whose operator a conditional chooses, the bar of a constructor
-stays in its branch, an as-pattern, a bang pattern or a type application
-that each branch begins stays whole in each, an operator beginning a branch
-keeps its operand, and the arguments every configuration has stay out of a
-conditional that gives others Haddocks. A branch that goes on with a
-declaration, a statement, a binding or a case alternative begun before the
-`#if` goes a step right of where that began, rather than beginning another
-one. A class or an instance whose members are all behind a conditional
-keeps its head and its `where` outside it, and a `deriving` strategy behind
-one keeps the declaration parsing.
-
-A conditional that switches an extension no longer changes the program in
-its other configurations, where `r.field` became `r . field`, `::` became
-`∷`, or `qualified` moved after the module's name, and code under a
-conditional that one around a `LANGUAGE` pragma settles is read only with
-the extensions of the configurations that take it. Conditionals asking one
-question in different spellings, and ones asking about the operating system
-or the architecture GHC compiles for, no longer have a module declined over
-a configuration no compilation produces. A `#define`, an `#include` or a
-conditional inside a conditional around a `LANGUAGE` or options pragma goes
-above the module's Haddock with the pragma.
-
-More of a module is read as cpp acts on it. A line using a macro that a
-`#define` between declarations defines comes out once, as written, as do the
-arguments of a function-like macro, and a context of one constraint headed
-by a macro keeps its parentheses. The empty line under a comment ending in a
-backslash stays, a line of a block comment that begins like a directive
-stays off the margin, and a line beginning with `#` under one ending in a
-backslash is not taken for a directive.
-
-Comments and empty lines around conditionals stay where they were written
-more often: a comment opening a branch no longer indents it, a comment
-above, inside or after a conditional no longer moves on the next pass, a
-comment after code that every branch copies comes out after each copy, an
-empty line under an `#endif` stays, and one between two conditionals among
-fields, list items, constructors or guards goes, as it does without them.
-
-A module is declined, rather than formatted wrong, where cpp joins a line of
-code to one ending in a backslash, where a macro standing for a context
-comes before a documented part, where a conditional sits inside a
-quasi-quotation or a multi-line string, and where some configurations read a
-Haddock that others ignore. A module with many conditionals in one
-construct, such as an export list with a name behind each of a few hundred,
-or a list ending with several items behind conditionals of their own, is no
-longer refused as having too many configurations.
-
-Issues and pull requests: [PR 388], [PR 436], [PR 463], [PR 467],
-[PR 468], [PR 472], [PR 475], [PR 477], [PR 498], [PR 505], [PR 506],
-[PR 507], [PR 508], [PR 521], [PR 523], [PR 525], [PR 526], [PR 527],
-[PR 531], [PR 536], [PR 539], [PR 546], [PR 547], [PR 548], [PR 550],
-[PR 554], [PR 556], [PR 557], [PR 567], [PR 575].
+* Where the branches of a conditional each write their own version of part
+  of a construct, each branch keeps what it needs to parse. [PR 388],
+  [PR 463], [PR 472], [PR 505], [PR 523], [PR 525], [PR 527], [PR 554],
+  [PR 567], [PR 575].
+* A class or an instance whose members are all behind a conditional keeps
+  its head and its `where` outside it. [PR 506], [PR 508].
+* A conditional that switches an extension no longer changes the program in
+  its other configurations. [PR 436], [PR 468], [PR 498], [PR 526].
+* Conditionals asking one question in different spellings, or about the
+  operating system or the architecture, no longer have a module declined.
+  [PR 467], [PR 556].
+* Macros, lines joined with a backslash and lines of comments that look
+  like directives are read as cpp reads them. [PR 521], [PR 531], [PR 547].
+* Comments and empty lines around conditionals stay where they were
+  written, and a conditional around a pragma stays whole. [PR 436],
+  [PR 475], [PR 507], [PR 546], [PR 548], [PR 550], [PR 557].
+* A module that CPP would read otherwise than Tilia does is declined.
+  [PR 536], [PR 539], [PR 546], [PR 548].
+* A module with many conditionals in one construct is no longer refused as
+  having too many configurations. [PR 436], [PR 477].
 
 ### Operators and fixities
 
-Tilia finds the fixity of an operator in more places, and declines rather
-than guesses where it cannot. It reads a literate module, a Haskell file a
-module includes with `#include`, a module under the name a component's
-`mixins` give it, and a package-qualified import from the package it names.
-A `T (..)` in an import list brings in the members of `T` in their own
-namespaces and in any configuration of the module, a type synonym's `(..)`
-nothing but itself, and a name an import list names on its own is taken to
-come from that import. A dependency's module is read with the extensions of
-the components listing it, a module only a branch of a `.cabal` file the
-build leaves out declares no longer stands in for another, a module that
-exports another's operator under a qualified name hands on that operator's
-fixity, and `~` among types is `infix 4` where nothing declares it. An
-operator that a Template Haskell splice may declare, that an export list
-names though nothing defines it, that a file a module includes may declare,
-or that the branches of a module give different fixities is left unsettled
-or ambiguous, so a module using it is declined rather than formatted as if
-it were `infixl 9`.
-
-Issues and pull requests: [PR 423], [PR 551], [PR 572], [PR 574].
+* Fixities are read from literate modules, from Haskell files a module
+  includes, under the names `mixins` give, and from the package a
+  package-qualified import names. [PR 551], [PR 574].
+* Import lists are read as GHC reads them: a `T (..)` by namespace, a type
+  synonym's `(..)` as naming the synonym alone, and a name listed on its own
+  as coming from that import. [PR 551], [PR 572].
+* An operator whose fixity cannot be settled for certain has the module
+  declined, rather than being formatted as `infixl 9`. [PR 423], [PR 574].
 
 ### Projects and tools
 
-Tilia reads a project more as Cabal builds it. The extensions behind a flag
-are settled with the value the build plan gives the flag, a package that
-`cabal.project.local` adds is part of the project, a build plan solved for
-another compiler or naming a directory that no longer holds a `.cabal` file
-is solved again, and what `ghc-pkg` reports is remembered once for each
-compiler. A `.tiliaignore` that cannot be read counts as absent in every
-command, `for-editor` stops in a project whose `cabal.project` names no
-package that exists, as `check` does, rather than having `cabal` solve it,
-and a string gap that ends right before the closing quote ends the string,
-so a `{-# LINE #-}` after it has the module declined.
-
-`--check-ast` reads a module that uses CPP as cpp hands it to GHC, so it
-catches a change only cpp's reading shows, and no longer reports a Haddock
-line ending in a Unicode space, or a Haddock over several lines moved past
-comments, as a change.
-
-Each kind of failure exits with a code of its own, the codes running from 2
-without gaps, so every code but 2 and 3 differs from 0.1.4.0. A run with
-several kinds of failure exits with the code of a failure of formatting
-itself, 27, 28 or 29, where there is one, and with the lowest code of the
-rest otherwise.
-
-| Code | Failure                                                          |
-| ---- | ---------------------------------------------------------------- |
-| 2    | No `cabal.project` or `.cabal` file above the file               |
-| 3    | No build plan                                                    |
-| 4    | The project's own modules cannot be told                         |
-| 5    | `tilia.toml` cannot be used                                      |
-| 6    | No `.cabal` file at or above the module                          |
-| 7    | The `.cabal` file cannot be read                                 |
-| 8    | The `.cabal` file does not parse                                 |
-| 9    | No component of the `.cabal` file holds the module               |
-| 10   | The module does not parse                                        |
-| 11   | `LINE` or `COLUMN` pragmas, or lines GHC's lexer reads past      |
-| 12   | cpp joins code to a line ending in a backslash                   |
-| 13   | A macro standing for a context comes before a documented part    |
-| 14   | A conditional that does not make sense                           |
-| 15   | Too many configurations                                          |
-| 16   | A configuration that does not parse                              |
-| 17   | A directive inside a quasi-quotation or a multi-line string      |
-| 18   | A macro used inside a quasi-quotation or a multi-line string     |
-| 19   | A macro or an `#include` before a leading comma                  |
-| 20   | A branch that a conditional around it rules out                  |
-| 21   | An alternative aborting with `#error` that cannot be formatted   |
-| 22   | A Haddock some configurations read and others ignore             |
-| 23   | A magic comment where it cannot be honoured                      |
-| 24   | An operator whose fixity cannot be established                   |
-| 25   | The file cannot be read                                          |
-| 26   | The file cannot be written back                                  |
-| 27   | Formatting changed the program                                   |
-| 28   | Formatting is not idempotent                                     |
-| 29   | Formatting threw an exception                                    |
-
-Issues and pull requests: [PR 372], [PR 391], [PR 392], [PR 423],
-[PR 425], [PR 459], [PR 531], [PR 536], [PR 556].
+* A flag takes the value the build plan gives it, and the packages
+  `cabal.project.local` adds belong to the project. [PR 391], [PR 392].
+* A build plan solved for another compiler, or naming a package that has
+  moved, is solved again. [PR 423].
+* `--check-ast` reads a module that uses CPP as cpp hands it to GHC, and no
+  longer reports two harmless changes to Haddocks. [PR 531], [PR 556].
+* Each kind of failure exits with a code of its own, so every code but 2
+  and 3 has changed since 0.1.4.0. A program that formatting changed now
+  exits with 27, formatting that is not idempotent with 28, and an
+  exception with 29. [PR 372], [PR 425], [PR 536].
 
 ### Performance
 
-A module with many Haddocks, and one with a long chain of operators, takes
-time linear in its length to format rather than quadratic: 16,000 Haddocks
-over 48,000 lines take 0.7 seconds rather than 4.2, and a chain of 16,000
-operands 0.65 seconds rather than 6.1. A module with conditionals formats
-faster: the parts of it formatted on their own no longer each format its
-export list and imports, each configuration is formatted once however many
-ways lead to it, and its comments are placed without first working out
-which region each belongs to. A dependency's module full of conditionals is
-parsed a few times rather than once for every branch, which takes reading
-every module of `lens` out of its tarball 40% fewer instructions, and
-`--check-ast` takes 30% less time on a module of 8,000 lines on a machine
-with several cores.
-
-Issues and pull requests: [PR 421], [PR 422], [PR 423], [PR 436],
-[PR 457], [PR 477], [PR 530].
+* Modules with many Haddocks or long chains of operators format in time
+  linear in their length. [PR 421], [PR 422].
+* Modules with conditionals format faster. [PR 436], [PR 477], [PR 530].
+* Dependencies full of conditionals are read faster, and `--check-ast` uses
+  several cores. [PR 423], [PR 457].
 
 [Issue 284]: https://github.com/mrkkrp/tilia/issues/284
 [Issue 309]: https://github.com/mrkkrp/tilia/issues/309
@@ -336,7 +159,6 @@ Issues and pull requests: [PR 421], [PR 422], [PR 423], [PR 436],
 [Issue 447]: https://github.com/mrkkrp/tilia/issues/447
 [Issue 453]: https://github.com/mrkkrp/tilia/issues/453
 [PR 457]: https://github.com/mrkkrp/tilia/pull/457
-[PR 459]: https://github.com/mrkkrp/tilia/pull/459
 [PR 460]: https://github.com/mrkkrp/tilia/pull/460
 [PR 461]: https://github.com/mrkkrp/tilia/pull/461
 [PR 462]: https://github.com/mrkkrp/tilia/pull/462
