@@ -16,6 +16,7 @@
   [Issue 310](https://github.com/mrkkrp/tilia/issues/310).
 * A comment written right under the last declaration of a module stays
   right under it, rather than getting an empty line above it.
+  [PR 364](https://github.com/mrkkrp/tilia/pull/364).
 * Top-level declarations of one kind written one after another, each on
   one line and with no Haddock, stay together rather than getting an empty
   line between each two: a run of fixity declarations, of bindings, of type
@@ -43,6 +44,7 @@
   which a construct is broken over several lines, 80 unless set, as in
   `column-limit = 100`. A setting Tilia does not know, one set twice, or a
   value Tilia does not take is an error, with exit code 5.
+  [Issue 346](https://github.com/mrkkrp/tilia/issues/346).
 * With `leading-commas = true` in `tilia.toml`, a list, a tuple, a record,
   an import or export list, a context, a `deriving` clause, a guard and
   every other construct that separates its parts with commas puts each
@@ -52,6 +54,7 @@
   353](https://github.com/mrkkrp/tilia/issues/353).
 * A comment written before the closing parenthesis of a context stays
   inside the parentheses, rather than going after the `=>`.
+  [PR 386](https://github.com/mrkkrp/tilia/pull/386).
 * Where every branch of a conditional writes its own version of what comes
   before the `<-` of a bind statement, the `=` of an equation, the `->` of
   a case alternative or of a function type, or the `=>` of a context, that
@@ -59,6 +62,7 @@
   standing alone on a line after the `#endif`. For a case alternative this
   also stops its `->` from beginning the line where the next alternative
   would, which did not parse.
+  [PR 388](https://github.com/mrkkrp/tilia/pull/388).
 * With `leading-arrows = true` in `tilia.toml`, a type broken over several
   lines puts each `::`, `=>` and `->` in it, and the `.` of a `forall`, at
   the start of a line, and an argument's Haddock goes under it as `-- ^`.
@@ -71,25 +75,30 @@
   line stay at the indentation of their chain. Where that chain is itself a
   statement, and its operators would begin statements of their own there,
   the `do` block they follow is written with braces instead.
+  [PR 398](https://github.com/mrkkrp/tilia/pull/398).
 * The extensions and the language a component puts in force behind a flag
   are settled with the value the build plan gives the flag, as
   `cabal.project` sets it or Cabal's solver picks it, rather than with the
   flag's default.
+  [PR 391](https://github.com/mrkkrp/tilia/pull/391).
 * A package that the `packages` or `optional-packages` field of a
   `cabal.project.local` names is part of the project, as it is for `cabal`,
   whether the file sits beside a `cabal.project` or beside a package with
   none: it is formatted, it can be named as a target, and its modules
   count as the project's own.
+  [PR 392](https://github.com/mrkkrp/tilia/pull/392).
 * A pragma or an equation written right under declarations it belongs with,
   as an `INLINE` under the equations of a run of signatures, stays right
   under them, rather than getting an empty line above it where it shared a
   name with neither the first of them nor the one right above it.
+  [PR 393](https://github.com/mrkkrp/tilia/pull/393).
 * A pragma such as `DEPRECATED`, `WARNING`, `ANN` or `INLINE` written
   next to the type synonym, class, type family, standalone kind signature,
   pattern synonym or foreign import it names stays next to it, as it already
   did next to a function or a data declaration, rather than getting an
   empty line between them. So does a pragma naming one of a type's
   constructors, fields or methods, next to that type.
+  [PR 390](https://github.com/mrkkrp/tilia/pull/390).
 * A module with many Haddocks takes time linear in its length to format
   rather than quadratic: one with 16,000 Haddocks over 48,000 lines took 4.2
   seconds to format, and takes 0.7.
@@ -149,6 +158,7 @@
   than 17, formatting that is not idempotent with 21 rather than 18, an
   exception with 22 rather than 19, and a file that cannot be written back
   with 23 rather than 20.
+  [PR 372](https://github.com/mrkkrp/tilia/pull/372).
 * A run with several kinds of failure exits with 20, 21 or 22, for a
   program that formatting changed, formatting that is not idempotent or an
   exception, where one of them happened, and with the lowest code of the
@@ -493,157 +503,192 @@
   has a Haddock, and goes above the Haddock with the pragma, rather than
   staying under the Haddock outside the conditional, where the definitions
   of every branch were in force, or leaving an empty copy of itself there.
+  [PR 546](https://github.com/mrkkrp/tilia/pull/546).
 * A module with a conditional inside a quasi-quotation or a multi-line
   string is declined, with exit code 17, as one with an `#include` there
   is, rather than formatted with the declaration in each branch.
+  [PR 546](https://github.com/mrkkrp/tilia/pull/546).
 * In a module with conditionals, a line using a macro that a `#define`
   between two declarations defines comes out once, as written, rather than
   formatted as code with a copy of the line inside it.
+  [PR 547](https://github.com/mrkkrp/tilia/pull/547).
 * In a module with CPP in force, the empty line under a comment that ends
   in a backslash stays, as between two guards, two items of a list or a
   Haddock and its declaration, rather than going and letting cpp join the
   code under it to the comment.
+  [PR 547](https://github.com/mrkkrp/tilia/pull/547).
 * A context of one constraint headed by a macro the module defines keeps
   the parentheses written around it, as in `(IS_MONAD_STRING Monad m) =>`,
   since the macro may stand for more constraints than one, as
   `#define IS_MONAD_STRING IsString e,` does.
+  [PR 547](https://github.com/mrkkrp/tilia/pull/547).
 * The arguments of a use of a function-like macro the module defines come
   out as written, as in `OIDS(name,text)`, rather than spaced as the items
   of a tuple: cpp pastes them into the macro's body with their spaces,
   which turned `TI.b` in the body into `TI. text`.
+  [PR 547](https://github.com/mrkkrp/tilia/pull/547).
 * A Haddock documenting what precedes it, written apart under another
   Haddock, as a `-- ^` under a named chunk `-- $x`, stays apart from it,
   rather than coming right under it, where GHC read it as more of that
   Haddock.
+  [PR 548](https://github.com/mrkkrp/tilia/pull/548).
 * A class without a body whose type variables carry Haddocks, which GHC
   takes for the class's own, comes out without a `where`: behind one GHC
   read them only at the column of the class's members, which it had none
   of, and so dropped them.
+  [PR 548](https://github.com/mrkkrp/tilia/pull/548).
 * A comment after code that the conditional above it has every branch
   print a copy of comes out after each copy, rather than after the copy
   in the first branch only, or after the `#endif`.
+  [PR 548](https://github.com/mrkkrp/tilia/pull/548).
 * A module with CPP in force is declined, with exit code 22, where some
   of its configurations read a Haddock that others ignore, as one above a
   conditional whose branches begin with an import in one and a declaration
   in another: it came out twice in the configurations that read it, as a
   Haddock and escaped as `-- \|`.
+  [PR 548](https://github.com/mrkkrp/tilia/pull/548).
 * Where a minus goes on a line of its own after an operand that ends with
   a `case`, a `do` or another layout block, the block's items go a step
   further in, as they do before an argument, rather than at the column of
   the minus, where it began another alternative or statement and negated
   it.
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * A promoted list or tuple whose first item begins with a promoted type
   under an operator, a kind signature or a kind application, as in
   `'[ 'True ': '[]]`, keeps the space after its opening, rather than
   beginning with a character literal, which did not parse.
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * A statement that opens with brackets written over several lines, and
   goes on after them with a type signature, a type application, a record
   update or a field, closes them a step in, rather than at the column of
   the statement, where the closing bracket did not parse.
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * The scrutinee of a `case`, and what a minus negates, goes a step in on
   the line under a comment written between them and the `case` or the
   minus, rather than at their column, where in a `do` block it began a
   statement of its own and did not parse.
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * A guard whose last qualifier is a `let` written with the `=` or `->`
   after its last binding, before a right-hand side that opens braces on the
   next line, no longer makes Tilia throw "a module that parses cannot fail
   to lex".
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * A `let` that ends the qualifiers of a guard comes out between braces, as
   in `| let { y = x } = y`, rather than with the `=` or `->` of the guard
   after its last binding, where only a parse error ended its bindings and
   where one ending with a type signature read the `=` as part of a pattern
   binding, which did not parse. A `let` that another qualifier follows
   comes out as written.
+  [PR 549](https://github.com/mrkkrp/tilia/pull/549).
 * A comment at the end of a branch of a conditional, above code after the
   `#endif` that every branch prints a copy of, comes out at the column of
   that code, as one under a guard or under an operator ending a line does
   without the conditional, rather than further left, where the next pass
   moved it.
+  [PR 550](https://github.com/mrkkrp/tilia/pull/550).
 * An empty line written under a comment that carries a trailing comment
   on stays, as one under any other comment does, also between two guards,
   two case alternatives or two constructors, rather than going, which for
   a comment first lined up under a right-hand side it did on the next
   pass.
+  [PR 550](https://github.com/mrkkrp/tilia/pull/550).
 * A `T (..)` in an import list brings in what `T` holds in any
   configuration of the module imported, one passed over for leaving names
   unsettled included, rather than any operator that module exports, so
   importing `Function (..)` from `Test.QuickCheck` beside `.&.` from
   `Data.Bits` no longer has a module declined.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * A `T (..)` in an import list brings in the members of `T` in their own
   namespaces, so an associated type operator of a class imported so no
   longer brings in a term operator of the same name and has a module that
   imports that term from elsewhere declined.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * A module of a project that only a branch of its `.cabal` file the build
   leaves out declares, as citeproc's `Prelude` under `if impl(ghc < 8.8)`,
   no longer stands in for the module of that name for the files the build
   compiles, which had every module of citeproc declined.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * An import that names a package, as in `import "fin" Data.Fin`, is read
   from a module of that package, rather than from whichever module of its
   name comes first, which was the importing module itself where the two
   share a name, as in ansi-wl-pprint's `Text.PrettyPrint.ANSI.Leijen`, and
   had every module using it declined.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * A module that a component's `mixins` give another name, as in `mixins:
   base (Prelude as BasePrelude)` or `relude (Relude as Prelude)`, is read
   under that name. A module importing such a name was declined, and one
   whose `Prelude` a mixin renames was formatted with the fixities of
   base's, so an operator only the renamed one exports, as relude's `&`,
   was laid out as `infixl 9`.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * A literate module, in an `.lhs` file, is read for the operators it
   declares and passes on, its code written with bird tracks or between
   `\begin{code}` and `\end{code}`, rather than taken for one that could
   not be read, which had every module importing it declined.
+  [PR 551](https://github.com/mrkkrp/tilia/pull/551).
 * A comment written on a line of its own after an item's comma, lined up
   under the item's last line, comes out after the comma, above the next
   item, rather than before the comma, which was left on a line of its own
   and moved on the next pass. The same goes for a comment after a `->` that
   ends a line of a signature.
+  [PR 552](https://github.com/mrkkrp/tilia/pull/552).
 * A comment after a `then` or an `else` that ends its line stays there
   where a comment ends the next line too, as one after a `do` there does,
   and what follows goes on that next line a step in, as under a guard,
   rather than both comments going to the end of one line, where the second
   came out on a line of its own and moved on the next pass.
+  [PR 552](https://github.com/mrkkrp/tilia/pull/552).
 * Where a comment ends the line of an operator and another the line of its
   operand, the operand goes on the next line rather than onto the
   operator's line, so that each comment stays on the line it was written
   on: before, the second came out on a line of its own, at a column the
   next formatting moved where the operand was more than one line long.
+  [PR 552](https://github.com/mrkkrp/tilia/pull/552).
 * An as-pattern, a bang pattern or a type application that each branch of
   a conditional begins and that goes on past the `#endif` stays whole in
   each branch, rather than its `@` or `!` coming out after the conditional,
   apart from what GHC reads it with, which changed or broke the program.
+  [PR 554](https://github.com/mrkkrp/tilia/pull/554).
 * A comment lined up with the type of a constructor's field after its `!`
   or `~` stays lined up with the type, rather than coming out under the
   `!` and moving left on the next formatting, and a comment written above
   a field's `{-# UNPACK #-}` stays above the pragma, rather than coming
   out between the pragma and the field.
+  [PR 555](https://github.com/mrkkrp/tilia/pull/555).
 * A comment lined up with the last line of a constructor that another
   follows, as one under its last argument, stays under that constructor,
   rather than going after the bar of the next one. With the next
   constructor's Haddock between them, it stayed at first and moved on the
   next formatting.
+  [PR 555](https://github.com/mrkkrp/tilia/pull/555).
 * `import safe` parses wherever a Safe Haskell mode is in force, through
   `Safe`, `Trustworthy` or `Unsafe` in a module's pragmas or in its
   component's `default-extensions`, as GHC reads it, rather than only where
   `ForeignFunctionInterface` is, as under `Haskell2010`: under `Haskell98`
   such a module could not be parsed.
+  [PR 556](https://github.com/mrkkrp/tilia/pull/556).
 * `--check-ast` no longer reports a change where a line of a Haddock ends
   in a Unicode space, such as a no-break space, which formatting drops as
   it drops any space at the end of a line, and as Haddock reads it.
+  [PR 556](https://github.com/mrkkrp/tilia/pull/556).
 * `--check-ast` no longer reports a change where a Haddock written over
   several lines under ordinary comments, such as a `-- ^` under a field,
   moves in front of what it documents, and the comments stay where they
   were: the lines after its first were compared as ordinary comments, in
   order.
+  [PR 556](https://github.com/mrkkrp/tilia/pull/556).
 * A module with conditionals asking about the macro GHC defines for the
   operating system or the architecture it compiles for, such as
   `linux_HOST_OS` or `x86_64_HOST_ARCH`, is no longer declined over a
   configuration taking two of one kind at once, which no compilation
   produces.
+  [PR 556](https://github.com/mrkkrp/tilia/pull/556).
 * A comment under the code a conditional holds, or under the code its
   `#endif` leads on to, stays at the margin or at the code's indentation,
   as it was written, rather than lining up with the conditional's
   directives, which moved it from one to the other, under the last
   declaration of a module on every formatting.
+  [PR 557](https://github.com/mrkkrp/tilia/pull/557).
 * A Haskell file that a module includes with `#include`, found next to the
   module, is read along with it for the operators it declares, as cpp puts
   it in the module, so path's `</>`, declared `infixr 5` in the
@@ -651,6 +696,7 @@
   `infixl 9`. An operator that any other file a module includes may
   declare is left unsettled, so a module using it is declined rather than
   formatted as if it were `infixl 9`.
+  [PR 574](https://github.com/mrkkrp/tilia/pull/574).
 * A name an import list names on its own is taken to come from that
   import, which would not compile otherwise, also where reading the module
   imported does not tell that it exports the name, as for a module written
@@ -658,6 +704,7 @@
   module using `unionFileModes` from unix-compat's
   `System.PosixCompat.Files` so was declined where another import could not
   be read.
+  [PR 572](https://github.com/mrkkrp/tilia/pull/572).
 * A type synonym or a type family of a module read from its source has no
   members, as one read from an interface has none, so a `T (..)` naming
   one in an import list brings in or hides `T` alone, rather than possibly
@@ -665,24 +712,29 @@
   declined where another import could not be read, and importing a
   `T (..)` so had an operator that module declares taken to clash with
   another import's.
+  [PR 572](https://github.com/mrkkrp/tilia/pull/572).
 * A comment written before the `via` of a `deriving` clause stays before
   it, rather than going between the `via` and the type, and so does one
   before a strategy such as `stock` or before the `instance` of a
   standalone `deriving` declaration. A comment after one of these keywords
   stays on the keyword's line.
+  [PR 567](https://github.com/mrkkrp/tilia/pull/567).
 * A standalone `deriving` declaration whose strategy a conditional chooses,
   or writes in one branch only, keeps its `instance` indented, rather than
   at column 1, where it did not parse, and a `deriving` clause with its
   strategy in each branch of a conditional no longer gets another empty
   conditional on each formatting.
+  [PR 567](https://github.com/mrkkrp/tilia/pull/567).
 * A comment lined up with a line inside a list or a comprehension that
   follows an operator, as in `++ [ x`, comes out lined up with the
   brackets, rather than under the operator, where the next formatting
   took it for a comment on the whole expression and moved it again.
+  [PR 568](https://github.com/mrkkrp/tilia/pull/568).
 * A comment lined up with the last line of a construct, such as under the
   last member of a class or the last binding of a `where` clause, stays
   under that line where a comment heads what follows the construct, as it
   does where code follows, rather than going with what follows.
+  [PR 568](https://github.com/mrkkrp/tilia/pull/568).
 * A comment lined up with the first constructor of a data declaration
   stays under it, as one under a later constructor does, rather than going
   after the bar of the next one, and one lined up with the last or the only
@@ -690,17 +742,21 @@
   `deriving` clause after it, whether the bars begin or end their lines. So
   does one lined up with the body of an equation written on the line of its
   `=`, rather than going to the column of a `where` after it.
+  [PR 573](https://github.com/mrkkrp/tilia/pull/573).
 * The body of a lambda whose patterns are written over several lines goes
   a step in from the line of the `\`, rather than two, and so do the guards
   and the body of an alternative whose pattern is written over several
   lines in brackets, a step in from the line the pattern begins.
+  [PR 575](https://github.com/mrkkrp/tilia/pull/575).
 * Where an operator such as `$` begins a branch of a conditional, its
   operand stays on the operator's line, rather than leaving the operator
   alone on a line above it.
+  [PR 575](https://github.com/mrkkrp/tilia/pull/575).
 * Where each branch of a conditional writes the operator of an infix head
   and the operand after it over several lines, the `=` ending the operand
   stays at the end of its line in each branch, with the body under it,
   rather than standing alone on a line after the `#endif`.
+  [PR 575](https://github.com/mrkkrp/tilia/pull/575).
 
 ## Tilia 0.1.4.0
 
