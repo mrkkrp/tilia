@@ -54,28 +54,28 @@ spec = withEachSettings $ \settings -> do
 
   describe "indentation" $ do
     it "indents by one step" $
-      out (broken (txt "a" <> indent (breakOrSpace <> txt "b")))
+      out (broken (txt "a" >+> breakOrSpace <> txt "b"))
         `shouldBe` "a\n" <> step 1 <> "b\n"
     it "nests relative to the enclosing level" $
-      out (broken (txt "a" <> indent (breakOrSpace <> txt "b" <> indent (breakOrSpace <> txt "c"))))
+      out (broken (txt "a" >+> breakOrSpace <> (txt "b" >+> breakOrSpace <> txt "c")))
         `shouldBe` "a\n" <> step 1 <> "b\n" <> step 2 <> "c\n"
     it "aligns to the current column" $
       out (broken (txt "ab" <> space <> align (txt "c" <> breakOrSpace <> txt "d")))
         `shouldBe` "ab c\n   d\n"
     it "leaves no trailing whitespace on an empty line" $
-      out (broken (indent (txt "a" <> hardBreak <> hardBreak <> txt "b")))
+      out (broken (stepIn (txt "a" <> hardBreak <> hardBreak <> txt "b")))
         `shouldBe` step 1 <> "a\n\n" <> step 1 <> "b\n"
     it "does not indent a line with nothing on it" $
-      out (broken (indent (txt "a" <> hardBreak)))
+      out (broken (stepIn (txt "a" <> hardBreak)))
         `shouldBe` step 1 <> "a\n"
     it "puts held-back text that spills onto lines of its own at the line's indentation" $
-      out (indent (txt "  a" <> held "-- x" <> held "-- y" <> hardBreak))
+      out (stepIn (txt "  a" <> held "-- x" <> held "-- y" <> hardBreak))
         `shouldBe` step 1 <> "  a -- x\n" <> step 1 <> "-- y\n"
     it "lines spilled held-back text up with what was held back before it" $
-      out (indent (txt "  a" <> held "-- x" <> underPrevious "-- y" <> hardBreak))
+      out (stepIn (txt "  a" <> held "-- x" <> underPrevious "-- y" <> hardBreak))
         `shouldBe` step 1 <> "  a -- x\n" <> step 1 <> "    -- y\n"
     it "lines it up with what was held back before it where that spilled too" $
-      out (indent (txt "  a" <> held "-- x" <> held "-- y" <> underPrevious "-- z" <> hardBreak))
+      out (stepIn (txt "  a" <> held "-- x" <> held "-- y" <> underPrevious "-- z" <> hardBreak))
         `shouldBe` step 1
           <> "  a -- x\n"
           <> step 1
@@ -83,25 +83,38 @@ spec = withEachSettings $ \settings -> do
           <> step 1
           <> "-- z\n"
 
+  describe "alignments" $ do
+    it "begin their lines at the column they begin at" $
+      out (txt "ab" <> space <> DAligned 0 (txt "c" <> hardBreak <> txt "d"))
+        `shouldBe` "ab c\n   d\n"
+    it "begin their lines so many columns right of that" $
+      out (txt "ab" <> space <> DAligned 1 (txt "c" <> hardBreak <> txt "d"))
+        `shouldBe` "ab c\n    d\n"
+
   describe "margin notes" $ do
     it "go to the margin right above a directive" $
-      out (indent (txt "a" <> hardBreak <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
+      out (stepIn (txt "a" <> hardBreak <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
         `shouldBe` step 1 <> "a\n-- x\n#if X\n"
     it "go to the margin together when several are right above a directive" $
-      out (indent (DCppMarginNote (txt "-- x") <> hardBreak <> DCppMarginNote (txt "-- y") <> hardBreak <> directive))
+      out (stepIn (DCppMarginNote (txt "-- x") <> hardBreak <> DCppMarginNote (txt "-- y") <> hardBreak <> directive))
         `shouldBe` "-- x\n-- y\n#if X\n"
     it "stay indented when a blank line is between them and a directive" $
-      out (indent (DCppMarginNote (txt "-- x") <> blankLine <> directive))
+      out (stepIn (DCppMarginNote (txt "-- x") <> blankLine <> directive))
         `shouldBe` step 1 <> "-- x\n\n#if X\n"
     it "stay indented with no directive under them" $
-      out (indent (DCppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
+      out (stepIn (DCppMarginNote (txt "-- x") <> hardBreak <> txt "a"))
         `shouldBe` step 1 <> "-- x\n" <> step 1 <> "a\n"
     it "stay where they are on a line something else began" $
-      out (indent (txt "a" <> space <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
+      out (stepIn (txt "a" <> space <> DCppMarginNote (txt "-- x") <> hardBreak <> directive))
         `shouldBe` step 1 <> "a -- x\n#if X\n"
     it "stay indented when something else follows them on their line" $
-      out (indent (DCppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
+      out (stepIn (DCppMarginNote (txt "{- x -}") <> space <> txt "a" <> hardBreak <> directive))
         `shouldBe` step 1 <> "{- x -} a\n#if X\n"
+
+-- | A step in from an empty part placed right before it, so from the
+-- indentation in force.
+stepIn :: Doc -> Doc
+stepIn d = ref mempty <> indent 1 (ptr mempty) d
 
 held, underPrevious :: Text -> Doc
 held = DHoldBack SpillAtIndentation

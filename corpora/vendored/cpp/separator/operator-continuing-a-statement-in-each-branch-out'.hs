@@ -6,11 +6,9 @@ report :: Double -> IO ()
 report total = do
     print
 #ifdef ROUNDED
-        $
-            round total
+        $ round total
 #else
-        $
-            truncate total
+        $ truncate total
 #endif
     hFlush stdout
 
@@ -22,5 +20,5 @@ flush items = do
 #else
         $ \item -> putStrLn item $ do
 #endif
-        hFlush stdout
+            hFlush stdout
     pure ()

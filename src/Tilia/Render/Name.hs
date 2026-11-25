@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -17,11 +18,12 @@ module Tilia.Render.Name
     joinedByFunctionArrow,
     multiplicity,
     defHead,
+    headArguments,
     typeHead,
   )
 where
 
-import Data.Choice (Choice, fromBool, isTrue, pattern Do)
+import Data.Choice (Choice, fromBool, isTrue)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Hs hiding (UnicodeSyntax)
@@ -191,41 +193,64 @@ multiplicity render = \case
 -- Written infix, the first two arguments straddle the name and any further
 -- ones force the whole of that into parentheses, which is the only way the
 -- source could have been written. Written prefix, the arguments simply
--- follow. The indentation flag is for the callers whose body is going to be
--- indented anyway, so that the arguments do not end up two steps in.
+-- follow. The 'headArguments' are a 'ref' for what follows the head.
 defHead ::
-  -- | Where the closing parenthesis goes, where there is one.
-  ClosingIndent ->
+  -- | How many steps in from the opening parenthesis the closing one goes,
+  -- where there is one.
+  Int ->
   -- | Written infix?
   Choice "writtenInfix" ->
-  -- | Indent the arguments?
-  Choice "indentArgs" ->
   -- | The name.
   Doc ->
   -- | The arguments.
   [Doc] ->
   Doc
-defHead closing writtenInfix indentArgs nameDoc (a0 : a1 : rest)
-  | isTrue writtenInfix =
-      wrap (a0 <> breakOrSpace <> indent (align (nameDoc <> space <> a1)))
-        <> includeUnless
-          (null rest)
-          (nest (steps indentArgs) (breakOrSpace <> spread rest))
+defHead closing writtenInfix nameDoc args = case args of
+  a0 : a1 : rest
+    | isTrue writtenInfix ->
+        let infixHead = a0 >+> breakOrSpace <> align (nameDoc <> space <> a1)
+         in if
+              | null rest -> a0 >+> breakOrSpace <> arguments
+              | otherwise ->
+                  bracketWith closing "(" ")" infixHead
+                    >+> breakOrSpace
+                      <> arguments
+  [] -> nameDoc
+  _ -> nameDoc >+> breakOrSpace <> arguments
   where
-    wrap = if null rest then id else bracketWith closing "(" ")"
-defHead _ _ indentArgs nameDoc args =
-  nameDoc
-    <> includeUnless
-      (null args)
-      (nest (steps indentArgs) (breakOrSpace <> spread args))
+    arguments = ref (headArguments writtenInfix nameDoc args)
+
+-- | The part of a definition's head that what follows the head is placed
+-- relative to, before it is lined up: the arguments, or, written infix,
+-- the name and the argument after it, where no more follow.
+headArguments ::
+  -- | Written infix?
+  Choice "writtenInfix" ->
+  -- | The name.
+  Doc ->
+  -- | The arguments.
+  [Doc] ->
+  Doc
+headArguments writtenInfix nameDoc = \case
+  [_, a1] | isTrue writtenInfix -> align (nameDoc <> space <> a1)
+  _ : _ : rest | isTrue writtenInfix -> spread rest
+  args -> spread args
+
+-- | Arguments, each aligned under itself, one per line when broken.
+spread ::
+  -- | The arguments.
+  [Doc] ->
+  Doc
+spread = align . sepBy breakOrSpace . fmap align
 
 -- | The head of a type-level declaration: a type constructor and what it is
 -- applied to, laid out from where they were written.
 typeHead ::
   -- | The context.
   Ctx ->
-  -- | Where the closing parenthesis goes, where there is one.
-  ClosingIndent ->
+  -- | How many steps in from the opening parenthesis the closing one goes,
+  -- where there is one.
+  Int ->
   -- | Was it written infix?
   LexicalFixity ->
   -- | The type constructor.
@@ -242,13 +267,5 @@ typeHead ctx closing fixity tyCon argSpan arg args =
     defHead
       closing
       (fromBool (fixity == Infix))
-      (Do #indentArgs)
       (name ctx tyCon)
       (fmap arg args)
-
--- | Arguments, each aligned under itself, one per line when broken.
-spread :: [Doc] -> Doc
-spread = align . sepBy breakOrSpace . fmap align
-
-steps :: Choice "indentArgs" -> Int
-steps indentArgs = if isTrue indentArgs then 1 else 0

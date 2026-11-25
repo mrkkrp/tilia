@@ -9,4 +9,4 @@ lines' orders =
        { orderId = number,
          orderTotal = total
        } ->
-        Line number total
+      Line number total

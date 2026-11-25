@@ -7,7 +7,7 @@ blend = proc (left, right) -> average -< (left, right)
 pan =
     proc
         ( level
-            , position
+          , position
             ) ->
         mix -< (level * position, level * (1 - position))
 

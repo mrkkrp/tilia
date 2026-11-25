@@ -27,20 +27,36 @@ import GHC.Types.SourceText
 import GHC.Types.SrcLoc (unLoc)
 import GHC.Unit.Module.Warnings
 
+import Tilia.Doc (regionOf)
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Literal (stringLiteral, writtenString)
 import Tilia.Render.Name
+import Tilia.Span.Ghc (spanOf)
 
--- | Wrap a body in pragma braces.
+-- | Wrap a body in pragma braces, the opening one a 'ref' named by the
+-- whole region of the body.
 pragmaBrackets :: Doc -> Doc
 pragmaBrackets body =
-  align (txt "{-#" <> space <> body <> breakOrSpace <> indent (txt "#-}"))
+  align
+    ( opener
+        <> space
+        <> body
+        <> breakOrSpace
+        <> indent 1 (ptr opener) (txt "#-}")
+    )
+  where
+    opener = refAt (regionOf body) (txt "{-#")
 
--- | A named pragma with a body.
-pragma :: Text -> Doc -> Doc
+-- | A named pragma with a body placed relative to its name.
+pragma ::
+  -- | The name.
+  Text ->
+  -- | The body.
+  Doc ->
+  Doc
 pragma pragmaName body =
-  pragmaBrackets (txt pragmaName <> breakOrSpace <> body)
+  pragmaBrackets (txt pragmaName >+> breakOrSpace <> body)
 
 -- | The phase control of an @INLINE@ or @RULES@ pragma.
 activation :: Activation -> Doc
@@ -93,7 +109,6 @@ warnDecls ::
 warnDecls ctx (Warnings (_, opening) warnings) =
   layoutAcross ctx warnings
     . pragma keyword
-    . indent
     $ sepBy (txt ";" <> breakOrSpace) (fmap (at_ ctx (warned ctx)) warnings)
   where
     keyword = spelledAsWritten "WARNING" "DEPRECATED" opening
@@ -103,7 +118,7 @@ warned :: Ctx -> WarnDecl GhcPs -> Doc
 warned ctx (Warning (namespace, _) names wtxt) =
   category
     <> namespaceSpec namespace
-    <> commaSepUnderFirst (ctxCommaStyle ctx) (fmap (name ctx) names)
+    <> commaSepUnderFirst (ctxCommaStyle ctx) 0 (fmap (name ctx) names)
     <> breakOrSpace
     <> literalList (ctxCommaStyle ctx) literals
   where
@@ -117,7 +132,7 @@ warningTxt ::
   WarningTxt GhcPs ->
   Doc
 warningTxt ctx wtxt =
-  pragma keyword (indent (category <> literalList (ctxCommaStyle ctx) literals))
+  pragma keyword (category <> literalList (ctxCommaStyle ctx) literals)
   where
     (keyword, category, literals) = warningParts wtxt
 
@@ -149,5 +164,7 @@ literalList ::
 literalList commas = \case
   [l] -> writtenString (unLoc l)
   ls ->
-    bracketWith Outdented "[" "]" $
-      commaSep commas (fmap (writtenString . unLoc) ls)
+    bracketWith 0 "[" "]" $
+      commaSep
+        commas
+        [maybe id located (spanOf l) (writtenString (unLoc l)) | l <- ls]

@@ -18,6 +18,6 @@ hdlTemplate args
 fromArguments :: IO [Maybe Int] -> IO Int
 fromArguments getArgs = do
     [ Just a
-        , Just b
+      , Just b
         ] <- getArgs
     pure (a + b)

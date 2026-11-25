@@ -6,14 +6,12 @@ main :: IO ()
 main = do
   when (verbosity >= 4)
 #if MIN_VERSION_base(4,10,0)
-    $
-      let dump = putStrLn . render
+    $ let dump = putStrLn . render
             where
               render = show
        in liftIO $ dump settings
 #elif MIN_VERSION_base(4,9,0)
-    $
-      let dump = print
+    $ let dump = print
        in liftIO $ dump settings
 #else
     $ liftIO

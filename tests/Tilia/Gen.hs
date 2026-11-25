@@ -11,6 +11,7 @@ module Tilia.Gen
   )
 where
 
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Test.QuickCheck
@@ -94,9 +95,14 @@ genDoc withVariant withBreaks = go
         half = n `div` 2
         branches =
           [ DCat <$> go half <*> go half,
-            DNest . Steps <$> choose (0, 2) <*> go (n - 1),
-            DAlign <$> go (n - 1),
-            DBlockItem <$> go (n - 1),
+            DAligned 0 <$> go (n - 1),
+            ( \s steps a b ->
+                DIndented steps (DReferent s a) b
+            )
+              <$> liftArbitrary genSpan
+              <*> choose (0, 2)
+              <*> go half `suchThat` (/= DEmpty)
+              <*> go half,
             DCppMarginNote <$> go (n - 1),
             DLocated <$> genSpan <*> go (n - 1),
             DFence <$> genSpan <*> go (n - 1)
@@ -117,7 +123,11 @@ genDoc withVariant withBreaks = go
         ]
           <> (if withBreaks then [pure DHardBreak] else [])
 
-shrinkDoc :: Doc -> [Doc]
+-- | Smaller documents, none with a relation measuring from a pointer.
+shrinkDoc ::
+  -- | The document.
+  Doc ->
+  [Doc]
 shrinkDoc = \case
   DEmpty -> []
   DText t -> DText <$> filter (not . T.null) (T.inits t)
@@ -133,9 +143,12 @@ shrinkDoc = \case
     [DEmpty, a, b]
       <> [DCat a' b | a' <- shrinkDoc a]
       <> [DCat a b' | b' <- shrinkDoc b]
-  DNest n d -> [DEmpty, d] <> [DNest n d' | d' <- shrinkDoc d]
-  DAlign d -> [DEmpty, d] <> [DAlign d' | d' <- shrinkDoc d]
-  DBlockItem d -> [DEmpty, d] <> [DBlockItem d' | d' <- shrinkDoc d]
+  DReferent k d -> [DEmpty, d] <> [DReferent k d' | d' <- shrinkDoc d]
+  DIndented n a d ->
+    [DEmpty, a, d]
+      <> [DIndented n a' d | a' <- shrinkDoc a, not (pointer a')]
+      <> [DIndented n a d' | d' <- shrinkDoc d]
+  DAligned n d -> [DEmpty, d] <> [DAligned n d' | d' <- shrinkDoc d]
   DCppMarginNote d -> [DEmpty, d] <> [DCppMarginNote d' | d' <- shrinkDoc d]
   DGroup l d -> [DEmpty, d] <> [DGroup l d' | d' <- shrinkDoc d]
   DVariant a b -> [DEmpty, a, b]
@@ -144,6 +157,8 @@ shrinkDoc = \case
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
   DDeclarationsStart -> [DEmpty]
+  where
+    pointer a = namesOnly a && isJust (referentIn a)
 
 -- | Every fragment of literal text the document contains, in order.
 --
@@ -163,9 +178,9 @@ docTexts = \case
   DCloseLineUnlessAfterOpener _ -> []
   DHoldBack _ t -> [t]
   DCat a b -> docTexts a <> docTexts b
-  DNest _ d -> docTexts d
-  DAlign d -> docTexts d
-  DBlockItem d -> docTexts d
+  DReferent _ d -> docTexts d
+  DIndented _ a d -> docTexts a <> docTexts d
+  DAligned _ d -> docTexts d
   DCppMarginNote d -> docTexts d
   DGroup _ d -> docTexts d
   DVariant a _ -> docTexts a

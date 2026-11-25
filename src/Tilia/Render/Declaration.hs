@@ -132,11 +132,7 @@ decls ctx style ds =
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
-    declaration d = at ctx d (asItem . hsDecl ctx style)
-      where
-        asItem = case unLoc d of
-          ValD _ FunBind{} -> id
-          _ -> blockItem
+    declaration d = at ctx d (hsDecl ctx style)
     groups =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds
@@ -445,7 +441,8 @@ hsDecl ctx style = \case
 tyClDecl :: Ctx -> FamilyStyle -> TyClDecl GhcPs -> Doc
 tyClDecl ctx style = \case
   FamDecl _ x -> famDecl ctx style x
-  SynDecl{..} -> synDecl ctx tcdLName tcdFixity tcdTyVars tcdRhs
+  SynDecl{..} ->
+    synDecl ctx (asd_type tcdSExt) tcdLName tcdFixity tcdTyVars tcdRhs
   DataDecl{..} ->
     dataDecl
       ctx
@@ -487,18 +484,14 @@ defaultDecl ::
   DefaultDecl GhcPs ->
   Doc
 defaultDecl ctx (DefaultDecl _ className types) =
-  txt "default"
-    <> foldMap (\c -> space <> name ctx c) className
-    <> breakOrSpace
-    <> indent
-      ( parens $
-          commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types)
-      )
+  (txt "default" <> foldMap (\c -> space <> name ctx c) className)
+    >+> breakOrSpace
+      <> parens (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types))
 
 -- | An @ANN@ pragma.
 annDecl :: Ctx -> AnnDecl GhcPs -> Doc
 annDecl ctx (HsAnnotation _ provenance e) =
-  pragma "ANN" . indent $
+  pragma "ANN" $
     subject <> breakOrSpace <> hsExpr ctx e
   where
     subject = case provenance of
@@ -509,28 +502,32 @@ annDecl ctx (HsAnnotation _ provenance e) =
 -- | A foreign import or export.
 foreignDecl :: Ctx -> ForeignDecl GhcPs -> Doc
 foreignDecl ctx = \case
-  fd@ForeignImport{fd_fi} -> foreignImport ctx fd_fi <> foreignSig ctx fd
-  fd@ForeignExport{fd_fe} -> foreignExport ctx fd_fe <> foreignSig ctx fd
+  fd@ForeignImport{fd_fi} -> foreignImport ctx fd_fi >+> foreignSig ctx fd
+  fd@ForeignExport{fd_fe} -> foreignExport ctx fd_fe >+> foreignSig ctx fd
 
 -- | The name and type that end a foreign declaration.
 foreignSig :: Ctx -> ForeignDecl GhcPs -> Doc
 foreignSig ctx fd =
   breakOrSpace
-    <> indent
-      ( layoutFrom ctx (spanOf (fd_name fd) <> spanOf (fd_sig_ty fd)) $
-          name ctx (fd_name fd)
-            <> typeAscription ctx (spanOf (fd_name fd)) (fd_sig_ty fd)
+    <> layoutFrom
+      ctx
+      (spanOf (fd_name fd) <> spanOf (fd_sig_ty fd))
+      ( name ctx (fd_name fd)
+          >+> typeAscription ctx (spanOf (fd_name fd)) (fd_sig_ty fd)
       )
 
 -- | The head of a foreign import.
 foreignImport :: Ctx -> ForeignImport GhcPs -> Doc
 foreignImport ctx (CImport src callConv safety _ _) =
-  txt "foreign import"
-    <> space
-    <> at ctx callConv outputable
-    <> includeWhen (isGoodSrcSpan (getLocA safety)) (space <> outputable safety)
-    <> indent
-      ( at ctx src $ \case
+  ( txt "foreign import"
+      <> space
+      <> at ctx callConv outputable
+      <> includeWhen (isGoodSrcSpan (getLocA safety)) (space <> outputable safety)
+  )
+    >+> at
+      ctx
+      src
+      ( \case
           NoSourceText -> mempty
           SourceText lit -> breakOrSpace <> stringLiteral lit
       )

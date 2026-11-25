@@ -182,7 +182,7 @@ spec = do
           d =
             located
               (mkSpan (2, 1) (4, 4))
-              (txt "x =" <> indent (hardBreak <> inner))
+              (txt "x =" >+> hardBreak <> inner)
        in render (attachComments [c] d)
             `shouldBe` "x =\n" <> step 1 <> "-- note\n" <> step 1 <> "1\n"
 

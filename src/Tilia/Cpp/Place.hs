@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Placing elements that the configurations of a module do not print (CPP
 -- conditionals, directives, and comments).
@@ -19,7 +20,7 @@ import Data.Foldable (traverse_)
 import Data.List (find, sortOn, unsnoc)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Ord (Down (..))
 import Data.Set (Set)
@@ -52,19 +53,21 @@ import Tilia.Cpp.Directives
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),
-    Nesting (..),
     conditionalRange,
     foldChildren,
     foldRegions,
     mapChildren,
+    namesOnly,
     onlySpacing,
     printsNothing,
+    referentIn,
     regionOf,
     spine,
     unwrap,
     wrap,
+    pattern Cat,
   )
-import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen, indent)
+import Tilia.Doc.Combinators (blankLine, hardBreak, includeWhen)
 import Tilia.Source
   ( Lines,
     Written (..),
@@ -262,7 +265,7 @@ keptApart haddocks notes = snd . go Apart
           not (opensSectionHeading t),
           before == ANote ->
             (Apart, blankLine <> DText t)
-      DCat a b ->
+      Cat a b ->
         let (between, a') = go before a
             (after, b') = go between b
          in (after, DCat a' b')
@@ -295,7 +298,7 @@ widened = fst . go
                   <> c
                   <> regionOf choice
             )
-      DCat a b ->
+      Cat a b ->
         let (a', ca) = go a
             (b', cb) = go b
          in (DCat a' b', ca <> cb)
@@ -416,7 +419,7 @@ spacedApart ::
 spacedApart written = go
   where
     go = \case
-      d@(DCat _ _) -> mconcat (apart (fmap go (spine d)))
+      d@(Cat _ _) -> mconcat (apart (fmap go (spine d)))
       d -> mapChildren go d
     apart = \case
       x : rest
@@ -452,7 +455,7 @@ anchoredIn cs k d = foldl' anchor d (filter (here . fst) (concatMap anchors cs))
   where
     anchor x (n, s) =
       fromMaybe
-        (placeAt (const False) Nothing n (DLocated s mempty) id x)
+        (placeAt (const False) Nothing n (DLocated s mempty) (const id) x)
         (beforeWrittenAfter (startPoint s) (DLocated s mempty) x)
     here n = case alternativeAt n cs of
       Everywhere -> True
@@ -484,7 +487,7 @@ beforeWrittenAfter point body = go
       d@(DLocated s x)
         | startPoint s > point -> Just (body <> d)
         | otherwise -> DLocated s <$> go x
-      DCat a b -> (`DCat` b) <$> go a <|> DCat a <$> go b
+      Cat a b -> (`DCat` b) <$> go a <|> DCat a <$> go b
       DVariant a b -> DVariant (fromMaybe (a <> body) (go a)) <$> go b
       d -> unwrap d >>= \(w, x) -> wrap w <$> go x
 
@@ -497,7 +500,7 @@ farRight = maxBound `div` 2
 -- written if the merge left it out.
 restoreConditional :: Lines -> Doc -> GroupSpec -> Doc
 restoreConditional written doc gs =
-  placeAt realized' (Just written) opening shell id doc
+  placeAt realized' (Just written) opening shell (const id) doc
   where
     realized' ctx = any (all (`elem` ctx)) (realizations c doc)
     c = gsConditional gs
@@ -514,7 +517,7 @@ putDirective written doc d
     commaUnder written (dLastLine d) =
       Left (BeforeLeadingComma (dLine d) ("#" <> dText d))
   | otherwise =
-      Right (placeAt (const False) (Just written) (dLine d) body id doc)
+      Right (placeAt (const False) (Just written) (dLine d) body (const id) doc)
   where
     body =
       DCppDirective (dSpan d) (dText d)
@@ -537,7 +540,8 @@ putMacroLine ::
 putMacroLine written quoted doc (n, t)
   | quoted n = Left (MacroInQuotedText n t)
   | commaUnder written n = Left (BeforeLeadingComma n t)
-  | otherwise = Right (placeAt (const False) (Just written) n body indent doc)
+  | otherwise =
+      Right (placeAt (const False) (Just written) n body nestedLike doc)
   where
     body =
       DLocated (mkSpan (n, 1) (n, 1)) (DCloseLine <> DText t <> DCloseLine)
@@ -595,17 +599,17 @@ placeAt ::
   Int ->
   -- | What to put there.
   Doc ->
-  -- | How to put it before code printed further in, which carries on a line
-  -- above.
-  (Doc -> Doc) ->
+  -- | How to put it before the given code printed further in, which
+  -- carries on a line above.
+  (Doc -> Doc -> Doc) ->
   Doc ->
   Doc
 placeAt present written n body continuing = among []
   where
     within ctx d = case d of
-      DNest k x -> DNest k (within ctx x)
-      DAlign x -> DAlign (within ctx x)
-      DBlockItem x -> DBlockItem (within ctx x)
+      DReferent k x -> DReferent k (within ctx x)
+      DIndented m a x | namesOnly a -> DIndented m a (within ctx x)
+      DAligned m x -> DAligned m (within ctx x)
       DGroup l x -> DGroup l (within ctx x)
       DVariant x y -> DVariant (within ctx x) (within ctx y)
       DLocated s x
@@ -671,7 +675,7 @@ placeAt present written n body continuing = among []
 
     putBefore following =
       if maybe False (> 0) (firstNesting (mconcat following))
-        then continuing body
+        then continuing (mconcat following) body
         else body
 
     writtenLast ds =
@@ -749,15 +753,30 @@ alternativeAt n cs = case branches of
 firstNesting :: Doc -> Maybe Int
 firstNesting = \case
   DText _ -> Just 0
-  DCat a b -> firstNesting a <|> firstNesting b
-  DNest k x -> (+ depth k) <$> firstNesting x
+  Cat a b -> firstNesting a <|> firstNesting b
+  DIndented n a x | isJust (referentIn a) -> (+ 2 * n) <$> firstNesting x
+  DAligned n x -> (+ n) <$> firstNesting x
   DVariant _ x -> firstNesting x
   DCppChoice _ bs e -> foldr ((<|>) . firstNesting . snd) (firstNesting e) bs
   d -> firstNesting . snd =<< unwrap d
-  where
-    depth = \case
-      Steps n -> 2 * n
-      Columns n -> n
+
+-- | A document in the relations the first text of another is printed in.
+nestedLike ::
+  -- | The other document.
+  Doc ->
+  -- | The document.
+  Doc ->
+  Doc
+nestedLike = \case
+  Cat a b
+    | isJust (firstNesting a) -> nestedLike a
+    | otherwise -> nestedLike b
+  DIndented n a x | isJust (referentIn a) -> DIndented n a . nestedLike x
+  DAligned n x -> DAligned n . nestedLike x
+  DVariant _ x -> nestedLike x
+  DCppChoice _ bs e ->
+    nestedLike (fromMaybe e (find (isJust . firstNesting) (fmap snd bs)))
+  d -> maybe id (nestedLike . snd) (unwrap d)
 
 -- | The lines a document was printed from, first and last.
 boundsOf :: Doc -> Maybe (Int, Int)
@@ -770,7 +789,7 @@ boundsOf = \case
       ( mapMaybe conditionalRange cs
           <> [b | Just b <- boundsOf e : fmap (boundsOf . snd) bs]
       )
-  DCat a b -> case (boundsOf a, boundsOf b) of
+  Cat a b -> case (boundsOf a, boundsOf b) of
     (Just (from, _), Just (_, to)) -> Just (from, to)
     (found, Nothing) -> found
     (Nothing, found) -> found

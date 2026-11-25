@@ -62,61 +62,78 @@ classDecl ::
   -- | The Haddocks among its members.
   [LDocDecl GhcPs] ->
   Doc
-classDecl ctx anns ctxt tyCon HsQTvs{..} fixity fdeps sigs binds families defaults docs =
-  layoutFrom ctx (wholeHeadSpan <> spansOf members) $
-    txt "class" <> layoutFrom ctx wholeHeadSpan head' <> body
-  where
-    headSpan = spanOf tyCon <> spansOf hsq_explicit
-    whereSpan = spanOf (acd_where anns)
-    wholeHeadSpan = foldMap spanOf ctxt <> headSpan <> spansOf fdeps
+classDecl
+  ctx
+  anns
+  ctxt
+  tyCon
+  HsQTvs{..}
+  fixity
+  fdeps
+  sigs
+  binds
+  families
+  defaults
+  docs =
+    layoutFrom ctx (wholeHeadSpan <> spansOf members) $
+      keyword <> layoutFrom ctx wholeHeadSpan head' <> body
+    where
+      keyword = refAt (spanOf (acd_class anns)) (txt "class")
+      headSpan = spanOf tyCon <> spansOf hsq_explicit
+      whereSpan = spanOf (acd_where anns)
+      wholeHeadSpan = foldMap spanOf ctxt <> headSpan <> spansOf fdeps
 
-    head' =
-      breakOrSpace
-        <> indent
-          ( foldMap (leftContext ctx headSpan) ctxt
-              <> classHead
-              <> indent (funDeps ctx fdeps)
-              <> includeUnless
-                onlyDocs
-                (breakOrSpace <> keywordAt whereSpan "where")
-          )
+      head' =
+        breakOrSpace
+          <> indent
+            1
+            (ptr keyword)
+            ( foldMap (leftContext ctx headSpan) ctxt
+                <> ( if null fdeps
+                       then classHead
+                       else classHead >+> funDeps ctx fdeps
+                   )
+                <> includeUnless
+                  onlyDocs
+                  (breakOrSpace <> keywordAt whereSpan "where")
+            )
 
-    classHead
-      | isCTuple (unLoc tyCon) (length hsq_explicit) =
-          layoutFrom ctx headSpan
-            . layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit)
-            $ parens
-              ( insideBrackets
-                  (spanOf tyCon)
-                  ( commaSep
-                      (ctxCommaStyle ctx)
-                      (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit)
-                  )
-              )
-      | otherwise =
-          typeHead
-            ctx
-            Outdented
-            fixity
-            tyCon
-            spanOf
-            (at_ ctx (tyVarBndr ctx))
-            hsq_explicit
+      classHead
+        | isCTuple (unLoc tyCon) (length hsq_explicit) =
+            layoutFrom ctx headSpan
+              . layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit)
+              $ parens
+                ( insideBrackets
+                    (spanOf tyCon)
+                    ( commaSep
+                        (ctxCommaStyle ctx)
+                        (fmap (align . at_ ctx (tyVarBndr ctx)) hsq_explicit)
+                    )
+                )
+        | otherwise =
+            typeHead
+              ctx
+              0
+              fixity
+              tyCon
+              spanOf
+              (at_ ctx (tyVarBndr ctx))
+              hsq_explicit
 
-    body =
-      includeUnless (null members) . indent $
-        breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
+      body =
+        includeUnless (null members) . indent 1 (ptr keyword) $
+          breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
-    onlyDocs = null sigs && null binds && null families && null defaults
+      onlyDocs = null sigs && null binds && null families && null defaults
 
-    members =
-      inSourceOrder
-        [ fmap (fmap (SigD NoExtField)) sigs,
-          fmap (fmap (ValD NoExtField)) binds,
-          fmap (fmap (TyClD NoExtField . FamDecl NoExtField)) families,
-          fmap (fmap (InstD NoExtField . TyFamInstD NoExtField)) defaults,
-          fmap (fmap (DocD NoExtField)) docs
-        ]
+      members =
+        inSourceOrder
+          [ fmap (fmap (SigD NoExtField)) sigs,
+            fmap (fmap (ValD NoExtField)) binds,
+            fmap (fmap (TyClD NoExtField . FamDecl NoExtField)) families,
+            fmap (fmap (InstD NoExtField . TyFamInstD NoExtField)) defaults,
+            fmap (fmap (DocD NoExtField)) docs
+          ]
 
 -- | Is this the constraint tuple of the given arity?
 isCTuple :: RdrName -> Int -> Bool
@@ -150,8 +167,9 @@ clsInstDecl ::
   ClsInstDecl GhcPs ->
   Doc
 clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
-  txt "instance" <> layoutFrom ctx headSpan head' <> body
+  keyword <> layoutFrom ctx headSpan head' <> body
   where
+    keyword = refAt (spanOf (acid_instance anns)) (txt "instance")
     headSpan = foldMap spanOf warning <> typeSpan
     typeSpan = spanOf cid_poly_ty
     whereSpan = spanOf (acid_where anns)
@@ -162,6 +180,8 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     head' =
       breakOrSpace
         <> indent
+          1
+          (ptr keyword)
           ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
               <> ( maybe id located typeRegion $
@@ -173,7 +193,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
           )
 
     body =
-      includeUnless (null members) . indent $
+      includeUnless (null members) . indent 1 (ptr keyword) $
         breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
     members =
@@ -191,42 +211,50 @@ standaloneDerivDecl ::
   -- | The declaration.
   DerivDecl GhcPs ->
   Doc
-standaloneDerivDecl ctx DerivDecl{deriv_ext = (warning, (_, instTok)), ..} =
-  txt "deriving" <> space <> strategy
-  where
-    instanceWord = keywordAt (spanOf instTok) "instance"
-    instanceHead =
-      breakOrSpace
-        <> indent
-          ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
-              <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
-              <> hsSigType ctx (hswc_body deriv_type)
-          )
+standaloneDerivDecl
+  ctx
+  DerivDecl{deriv_ext = (warning, (derivTok, instTok)), ..} =
+    keyword <> space <> strategy
+    where
+      keyword = refAt (spanOf derivTok) (txt "deriving")
+      instanceWord = keywordAt (spanOf instTok) "instance"
+      instanceHead from =
+        breakOrSpace
+          <> indent
+            1
+            (ptr from)
+            ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
+                <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
+                <> hsSigType ctx (hswc_body deriv_type)
+            )
 
-    strategy = case deriv_strategy of
-      Nothing -> indent instanceWord <> instanceHead
-      Just (L _ s) -> case s of
-        StockStrategy tok -> named tok "stock"
-        AnyclassStrategy tok -> named tok "anyclass"
-        NewtypeStrategy tok -> named tok "newtype"
-        ViaStrategy (XViaStrategyPs tok sigTy) ->
-          indent (keywordAt (spanOf tok) "via")
-            <> breakOrSpace
-            <> indent (hsSigType ctx sigTy)
-            <> breakOrSpace
-            <> indent (instanceWord <> instanceHead)
-      where
-        named tok kw =
-          indent (keywordAt (spanOf tok) kw <> gap tok <> instanceWord)
-            <> instanceHead
-        gap tok
-          | remarkOnEachLine ctx (spanOf tok) (spanOf instTok) = hardBreak
-          | otherwise = space
+      strategy = case deriv_strategy of
+        Nothing -> indent 1 (ptr keyword) instanceWord <> instanceHead keyword
+        Just (L _ s) -> case s of
+          StockStrategy tok -> named tok "stock"
+          AnyclassStrategy tok -> named tok "anyclass"
+          NewtypeStrategy tok -> named tok "newtype"
+          ViaStrategy (XViaStrategyPs tok sigTy) ->
+            indent 1 (ptr keyword) (keywordAt (spanOf tok) "via")
+              <> breakOrSpace
+              <> indent 1 (ptr keyword) (hsSigType ctx sigTy)
+              <> breakOrSpace
+              <> indent
+                1
+                (ptr keyword)
+                (ref instanceWord <> instanceHead instanceWord)
+        where
+          named tok kw =
+            indent 1 (ptr keyword) (keywordAt (spanOf tok) kw <> gap tok <> instanceWord)
+              <> instanceHead keyword
+          gap tok
+            | remarkOnEachLine ctx (spanOf tok) (spanOf instTok) = hardBreak
+            | otherwise = space
 
 -- | A type family instance.
 tyFamInstDecl :: Ctx -> FamilyStyle -> TyFamInstDecl GhcPs -> Doc
 tyFamInstDecl ctx style TyFamInstDecl{..} =
-  txt keyword <> breakOrSpace <> indent (tyFamInstEqn ctx tfid_eqn)
+  txt keyword >+> breakOrSpace <> tyFamInstEqn ctx tfid_eqn
   where
     keyword = case style of
       Associated -> "type"
@@ -265,8 +293,15 @@ famDecl ::
   FamilyDecl GhcPs ->
   Doc
 famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
-  txt keyword <> txt familyWord <> head' <> equations
+  keywords <> head' <> equations
   where
+    keywords =
+      refAt
+        ( spanOf (afd_type fdExt)
+            <> spanOf (afd_data fdExt)
+            <> spanOf (afd_family fdExt)
+        )
+        (txt (keyword <> familyWord))
     (keyword, closedEqns) = case fdInfo of
       DataFamily -> ("data", Nothing)
       OpenTypeFamily -> ("type", Nothing)
@@ -279,26 +314,29 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
     headAndSigSpan = spanOf fdResultSig <> headSpan
 
     head' =
-      indent . layoutFrom ctx headAndSigSpan $
+      indent 1 (ptr keywords) . layoutFrom ctx headAndSigSpan $
         breakOrSpace
-          <> typeHead
-            ctx
-            Outdented
-            fdFixity
-            fdLName
-            spanOf
-            (at_ ctx (tyVarBndr ctx))
-            hsq_explicit
-          <> includeUnless
-            (isNothing resultSig && isNothing fdInjectivityAnn)
-            space
-          <> indent
-            ( fold resultSig
-                <> foldMap
-                  ((space <>) . at_ ctx (injectivityAnn ctx))
-                  fdInjectivityAnn
-            )
+          <> ( if isNothing resultSig && isNothing fdInjectivityAnn
+                 then familyHead
+                 else
+                   familyHead
+                     >+> space
+                       <> fold resultSig
+                       <> foldMap
+                         ((space <>) . at_ ctx (injectivityAnn ctx))
+                         fdInjectivityAnn
+             )
           <> foldMap (const (breakOrSpace <> txt "where")) closedEqns
+
+    familyHead =
+      typeHead
+        ctx
+        0
+        fdFixity
+        fdLName
+        spanOf
+        (at_ ctx (tyVarBndr ctx))
+        hsq_explicit
 
     resultSig = familyResultSig ctx headSpan fdResultSig
 
@@ -311,9 +349,11 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
             includeUnless (null given) $
               hardBreak
                 <> indent
+                  1
+                  (ptr keywords)
                   ( sepBy
                       hardBreak
-                      (fmap (at_ ctx (blockItem . tyFamInstEqn ctx)) given)
+                      (fmap (at_ ctx (tyFamInstEqn ctx)) given)
                   )
 
 -- | What the head of a family says of its result, a kind or a variable
@@ -355,7 +395,7 @@ tyFamInstEqn ::
   TyFamInstEqn GhcPs ->
   Doc
 tyFamInstEqn ctx FamEqn{..} =
-  binders <> nest (if hasBinders then 1 else 0) (lhs <> rhs)
+  if hasBinders then binders >+> lhs >+> rhs else binders <> (lhs >+> rhs)
   where
     binders = outerBndrs ctx breakOrSpace headSpan feqn_bndrs
     headSpan = spanOf feqn_tycon <> foldMap typeArgSpan feqn_pats
@@ -366,7 +406,7 @@ tyFamInstEqn ctx FamEqn{..} =
     lhs =
       typeHead
         ctx
-        Indented
+        1
         feqn_fixity
         feqn_tycon
         typeArgSpan
@@ -374,25 +414,22 @@ tyFamInstEqn ctx FamEqn{..} =
         feqn_pats
 
     rhs =
-      indent $
-        space
-          <> txt "="
-          <> layoutFrom
-            ctx
-            (fmap endOf headSpan <> spanOf feqn_rhs)
-            (breakOrSpace <> hsType ctx feqn_rhs)
+      space
+        <> txt "="
+        <> layoutFrom
+          ctx
+          (fmap endOf headSpan <> spanOf feqn_rhs)
+          (breakOrSpace <> hsType ctx feqn_rhs)
 
 -- | A @type role@ declaration.
 roleAnnot :: Ctx -> RoleAnnotDecl GhcPs -> Doc
 roleAnnot ctx (RoleAnnotDecl _ tyCon roles) =
   txt "type role"
-    <> breakOrSpace
-    <> indent
-      ( name ctx tyCon
-          <> breakOrSpace
-          <> indent
-            (align (sepBy breakOrSpace (fmap (align . at_ ctx role) roles)))
-      )
+    >+> breakOrSpace
+      <> ( name ctx tyCon
+             >+> breakOrSpace
+               <> align (sepBy breakOrSpace (fmap (align . at_ ctx role) roles))
+         )
   where
     role = maybe (txt "_") $ \case
       Nominal -> txt "nominal"

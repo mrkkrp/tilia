@@ -15,7 +15,7 @@ startsWithCorners
       Triangle
       )
       : _
-    ) = True
+  ) = True
 startsWithCorners _ = False
 
 isFlat :: Shape -> Bool

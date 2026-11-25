@@ -305,8 +305,13 @@ enclosures outer inner =
     go _ _ _ [] = []
     go os latest ends (i : is) =
       let (opened, later) = span ((<= startPoint i) . startPoint) os
-          latest' = foldl' admit latest opened
-          ends' = foldl' (flip (Set.insert . endPoint)) ends opened
+          live = filter ((>= startPoint i) . endPoint) opened
+          latest' = foldl' admit latest live
+          ends' =
+            foldl'
+              (flip (Set.insert . endPoint))
+              (Set.dropWhileAntitone (< startPoint i) ends)
+              live
           bounds = do
             (_, from) <- Map.lookupGE (endPoint i) latest'
             to <- Set.lookupGE (endPoint i) ends'
@@ -322,10 +327,9 @@ enclosures outer inner =
 
 -- | Claim the comments that belong to the given 'Span'.
 claimPlaced :: Span -> Placements -> ([(Position, Comment)], Placements)
-claimPlaced s p = case Map.updateLookupWithKey forget s (placedAt p) of
-  (found, rest) -> (concat found, p{placedAt = rest})
-  where
-    forget _ _ = Nothing
+claimPlaced s p = case Map.lookup s (placedAt p) of
+  Nothing -> ([], p)
+  Just found -> (found, p{placedAt = Map.delete s (placedAt p)})
 
 -- | Claim the comments to be written before the given 'Span' on lines of
 -- their own, up to the first that is to stay in place, leaving it the rest.

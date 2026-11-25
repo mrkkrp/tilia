@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Attaching comments to a 'Doc'.
 module Tilia.Comments.Attach
@@ -17,8 +18,8 @@ import Data.List (unsnoc)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (listToMaybe)
-import Data.Monoid (First (..))
+import Data.Maybe (isJust, listToMaybe)
+import Data.Monoid (Endo (..), First (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
 
@@ -29,11 +30,12 @@ import Tilia.Doc
     Spill (..),
     foldChildren,
     layoutInside,
-    leadingComma,
-    leadingSemicolon,
+    leadingSeparator,
+    namesOnly,
     printsNothing,
     unwrap,
     wrap,
+    pattern Cat,
   )
 import Tilia.Doc.Combinators
 import Tilia.Span
@@ -108,10 +110,12 @@ closingComments margin = foldMap $ \c -> commentDoc c (ownLines margin True c)
 -- | The spans of every 'DLocated' in the document, and of every 'DFence',
 -- in that order.
 markedSpans :: Doc -> ([Span], [Span])
-markedSpans = \case
-  DLocated s d -> first (s :) (markedSpans d)
-  DFence s d -> second (s :) (markedSpans d)
-  d -> foldChildren markedSpans d
+markedSpans d = go d ([], [])
+  where
+    go = \case
+      DLocated s x -> first (s :) . go x
+      DFence s x -> second (s :) . go x
+      x -> appEndo (foldChildren (Endo . go) x)
 
 -- | The innermost region each region prints first, where that one was
 -- written above it, as the Haddock of a constructor, a field or an argument
@@ -157,20 +161,8 @@ walk margin = go
       | nothingPlaced p = (d, p)
       | otherwise = step p d
     step p = \case
-      DCat a b
-        | leadsAnItem a,
-          Just s <- openingRegion b,
-          (lifted@(_ : _), p0) <- claimOwnLines s p ->
-            let (a', p') = go p0 a
-                (b', p'') = go p' b
-             in ( foldMap (\c -> commentDoc c (ownLines margin False c)) lifted
-                    <> DCat a' b',
-                  p''
-                )
-      DCat a b ->
-        let (a', p') = go p a
-            (b', p'') = go p' b
-         in (DCat a' b', p'')
+      DIndented n a b | not (namesOnly a) -> both (DIndented n) p a b
+      Cat a b -> both DCat p a b
       DLocated s d -> case claimPlaced s p of
         ([], p') -> first (DLocated s) (go p' d)
         (mine, p') ->
@@ -187,7 +179,7 @@ walk margin = go
                 _ -> False
               withUnder
                 | null under' = id
-                | otherwise = \x -> DAlign (x <> write under')
+                | otherwise = \x -> align (x <> write under')
            in ( write before' <> withUnder (DLocated s d' <> write after'),
                 p''
               )
@@ -204,6 +196,20 @@ walk margin = go
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
+    both joined p a b
+      | leadsAnItem a,
+        Just s <- openingRegion b,
+        (lifted@(_ : _), p0) <- claimOwnLines s p =
+          let (a', p') = go p0 a
+              (b', p'') = go p' b
+           in ( foldMap (\c -> commentDoc c (ownLines margin False c)) lifted
+                  <> joined a' b',
+                p''
+              )
+      | otherwise =
+          let (a', p') = go p a
+              (b', p'') = go p' b
+           in (joined a' b', p'')
 
 -- | Does a document line its lines up under the column it begins at?
 alignsItself ::
@@ -211,7 +217,7 @@ alignsItself ::
   Doc ->
   Bool
 alignsItself = \case
-  DAlign _ -> True
+  DAligned 0 _ -> True
   DLocated _ d -> alignsItself d
   DFence _ d -> alignsItself d
   DGroup _ d -> alignsItself d
@@ -227,7 +233,7 @@ leadsAnItem = \case
   DCat DSoftBreak d -> hung d
   d -> hung d
   where
-    hung d = d == leadingComma || d == leadingSemicolon
+    hung = isJust . leadingSeparator
 
 -- | The outermost region a document prints first.
 openingRegion ::
@@ -236,11 +242,14 @@ openingRegion ::
   Maybe Span
 openingRegion = \case
   DLocated s _ -> Just s
-  DCat a b
-    | printsNothing a -> openingRegion a <|> openingRegion b
-    | otherwise -> openingRegion a
+  DCat a b -> after a b
+  DIndented _ a b | not (namesOnly a) -> after a b
   DVariant _ b -> openingRegion b
   d -> openingRegion . snd =<< unwrap d
+  where
+    after a b
+      | printsNothing a = openingRegion a <|> openingRegion b
+      | otherwise = openingRegion a
 
 -- | Hold the last comment, if written as @--@ lines, off a Haddock about to
 -- be written under it.
@@ -261,9 +270,8 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
   where
     firstLine layout = \case
       DText t -> ([t], False)
-      DCat a b -> case firstLine layout a of
-        (before, True) -> (before, True)
-        (before, False) -> first (before <>) (firstLine layout b)
+      DCat a b -> both layout a b
+      DIndented _ a b | not (namesOnly a) -> both layout a b
       DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
@@ -273,6 +281,9 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       y
         | Just (w, x) <- unwrap y -> firstLine (layoutInside layout w) x
         | otherwise -> ([], False)
+    both layout a b = case firstLine layout a of
+      (before, True) -> (before, True)
+      (before, False) -> first (before <>) (firstLine layout b)
 
 -- | Render one 'Comment' where it was placed.
 writtenAs ::
