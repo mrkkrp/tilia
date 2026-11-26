@@ -67,10 +67,11 @@
 ### Comments
 
 * Comments stay where they were written in many more places: inside `()`,
-  around a context's parentheses and a `deriving` clause, after commas and
-  operators that end a line, under constructors and fields, and under the
-  last declaration of a module. [PR 364], [PR 386], [Issue 443], [PR 462],
-  [PR 499], [PR 550], [PR 552], [PR 555], [PR 567], [PR 568], [PR 573].
+  after an opening bracket, around a context's parentheses and a `deriving`
+  clause, after commas and operators that end a line, under constructors
+  and fields, and under the last declaration of a module. [PR 364],
+  [PR 386], [Issue 443], [PR 462], [PR 499], [PR 550], [PR 552], [PR 555],
+  [PR 567], [PR 568], [issue 570], [PR 573].
 * Haddocks on constructors, fields and arguments come out right in one pass,
   and a Haddock no longer runs into the one above it. [Issue 407],
   [PR 424], [PR 461], [PR 548].
@@ -229,6 +230,7 @@
 [PR 557]: https://github.com/mrkkrp/tilia/pull/557
 [PR 567]: https://github.com/mrkkrp/tilia/pull/567
 [PR 568]: https://github.com/mrkkrp/tilia/pull/568
+[Issue 570]: https://github.com/mrkkrp/tilia/issues/570
 [PR 572]: https://github.com/mrkkrp/tilia/pull/572
 [PR 573]: https://github.com/mrkkrp/tilia/pull/573
 [PR 574]: https://github.com/mrkkrp/tilia/pull/574

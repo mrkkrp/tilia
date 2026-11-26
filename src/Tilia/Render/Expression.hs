@@ -100,10 +100,11 @@ exprBody ctx site here = \case
       >+> includeWhen (isLiteral e) (negativeLiteralGap ctx)
         <> includeWhen (startsWithSymbol e) space
         <> hsExpr ctx e
-  HsPar _ e ->
+  HsPar tokens e ->
     layoutWithin ctx here (spanOf e) $
       bracketWith
         (closingFor site)
+        (pairSpans tokens)
         "("
         ")"
         (insideBrackets here (apart (hsExpr ctx e)))
@@ -118,9 +119,15 @@ exprBody ctx site here = \case
         extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums
   SectionL _ x op -> hsExpr ctx x >+> breakOrSpace <> hsExpr ctx op
   SectionR _ op x -> hsExpr ctx op >+> breakOrSpace <> hsExpr ctx x
-  ExplicitTuple _ args boxity -> tuple ctx here (closingFor site) boxity args
-  ExplicitSum _ tag arity e ->
-    unboxedSum (closingFor site) tag arity (hsExpr ctx e)
+  ExplicitTuple brackets args boxity ->
+    tuple ctx here (closingFor site) (pairSpans brackets) boxity args
+  ExplicitSum ann tag arity e ->
+    unboxedSum
+      (closingFor site)
+      (spanOf (aesOpen ann), spanOf (aesClose ann))
+      tag
+      arity
+      (hsExpr ctx e)
   HsCase anns e mg -> caseOf ctx site (ExprBody ctx) anns e mg
   HsIf anns c t e ->
     ifThenElse ctx (bodyIn (ExprBody ctx) (siteBracing site)) anns c t e
@@ -141,8 +148,9 @@ exprBody ctx site here = \case
   HsDo anns flavour es -> case flavour of
     DoExpr moduleName -> doBlock moduleName "do"
     MDoExpr moduleName -> doBlock moduleName "mdo"
-    ListComp -> comprehension ctx site here es
-    MonadComp -> comprehension ctx site here es
+    ListComp -> comprehension ctx site here (bracketSpans (al_brackets anns)) es
+    MonadComp ->
+      comprehension ctx site here (bracketSpans (al_brackets anns)) es
     GhciStmtCtxt -> error "Tilia: GhciStmtCtxt cannot occur in a source file"
     where
       doBlock moduleName word =
@@ -154,10 +162,11 @@ exprBody ctx site here = \case
               <> keywordAt (doKeywordSpan anns) word
           )
           es
-  ExplicitList _ xs ->
+  ExplicitList ann xs ->
     commaBracketWith
       (ctxCommaStyle ctx)
       (closingFor site)
+      (bracketSpans (al_brackets ann))
       "["
       "]"
       ( insideBrackets
@@ -173,6 +182,7 @@ exprBody ctx site here = \case
       >+> breakOrNothing
         <> bracketWith
           0
+          (pairSpans rcon_ext)
           "{"
           "}"
           ( insideBrackets
@@ -191,7 +201,12 @@ exprBody ctx site here = \case
   RecordUpd{..} ->
     hsExprIn ctx (leftmost site) rupd_expr
       >+> breakOrNothing
-        <> bracketWith 0 "{" "}" (insideBrackets here updates)
+        <> bracketWith
+          0
+          (pairSpans rupd_ext)
+          "{"
+          "}"
+          (insideBrackets here updates)
     where
       updates = case rupd_flds of
         RegularRecUpdFields{..} ->
@@ -211,7 +226,10 @@ exprBody ctx site here = \case
       labelChain (FieldLabelStrings flss) = dotFields ctx (unLoc <$> flss)
   HsGetField{..} ->
     hsExprIn ctx (leftmost site) gf_expr <> at ctx gf_field (dotted ctx)
-  HsProjection{..} -> parens (foldMap (dotted ctx) proj_flds)
+  HsProjection{..} ->
+    parens
+      (spanOf (apOpen proj_ext), spanOf (apClose proj_ext))
+      (foldMap (dotted ctx) proj_flds)
   ExprWithTySig _ x HsWC{hswc_body} ->
     align $
       if endsWithBlock (unLoc x)
@@ -222,12 +240,19 @@ exprBody ctx site here = \case
         else subject >+> typeAscription ctx (spanOf x) hswc_body
     where
       subject = hsExprIn ctx (withBracing MayBrace (leftmost site)) x
-  ArithSeq _ _ range -> arithSeq ctx here (closingFor site) range
-  HsTypedBracket (bracketAnn, _) e -> quoted here opener "||]" e (hsExpr ctx e)
+  ArithSeq ann _ range ->
+    arithSeq
+      ctx
+      here
+      (closingFor site)
+      (spanOf (aas_open ann), spanOf (aas_close ann))
+      range
+  HsTypedBracket (bracketAnn, close) e ->
+    quoted here (open, spanOf close) opener "||]" e (hsExpr ctx e)
     where
-      opener = case bracketAnn of
-        BracketNoE{} -> "[||"
-        BracketHasE{} -> "[e||"
+      (open, opener) = case bracketAnn of
+        BracketNoE t -> (spanOf t, "[||")
+        BracketHasE t -> (spanOf t, "[e||")
   HsUntypedBracket _ q -> quotation ctx here q
   HsTypedSplice _ (HsTypedSpliceExpr tok e) ->
     spliceTH ctx (Is #typed) (spanOf tok) e DollarSplice
@@ -266,6 +291,7 @@ exprBody ctx site here = \case
       ( contextOf
           ctx
           (spanOf qs)
+          (contextParens qs)
           bare
           (hsExpr ctx)
           . fmap unbracketed
@@ -373,13 +399,27 @@ gatherArgs f known = case unLoc f of
   _ -> (f, known)
 
 -- | A tuple, or a tuple section.
-tuple :: Ctx -> Maybe Span -> Int -> Boxity -> [HsTupArg GhcPs] -> Doc
-tuple ctx here closing boxity args
+tuple ::
+  -- | The context.
+  Ctx ->
+  -- | Where it was written.
+  Maybe Span ->
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
+  -- | Whether it is boxed.
+  Boxity ->
+  -- | What it holds.
+  [HsTupArg GhcPs] ->
+  Doc
+tuple ctx here closing brackets boxity args
   | any isMissing args = flat (brackets' (sepBy comma (fmap arg args)))
   | otherwise = brackets' (commaSep (ctxCommaStyle ctx) (fmap arg args))
   where
     brackets' =
-      boxityBrackets (ctxCommaStyle ctx) boxity closing . insideBrackets here
+      boxityBrackets (ctxCommaStyle ctx) boxity closing brackets
+        . insideBrackets here
     isMissing = \case
       Missing _ -> True
       _ -> False
@@ -389,8 +429,19 @@ tuple ctx here closing boxity args
         Missing _ -> mempty
 
 -- | An arithmetic sequence, in whichever of its four forms.
-arithSeq :: Ctx -> Maybe Span -> Int -> ArithSeqInfo GhcPs -> Doc
-arithSeq ctx here closing = \case
+arithSeq ::
+  -- | The context.
+  Ctx ->
+  -- | Where it was written.
+  Maybe Span ->
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
+  -- | The sequence.
+  ArithSeqInfo GhcPs ->
+  Doc
+arithSeq ctx here closing brackets = \case
   From from -> wrap (hsExpr ctx from <> breakOrSpace <> txt "..")
   FromThen from next ->
     wrap
@@ -409,7 +460,7 @@ arithSeq ctx here closing = \case
         <> hsExpr ctx to
   where
     wrap =
-      commaBracketWith (ctxCommaStyle ctx) closing "[" "]"
+      commaBracketWith (ctxCommaStyle ctx) closing brackets "[" "]"
         . insideBrackets here
 
 -- | One field of a record construction or update.
@@ -775,11 +826,23 @@ stmtBlock ctx site mkBody es = maybe id located (spanOf es) (block (unLoc es))
 
 -- | A list comprehension.
 comprehension ::
-  Ctx -> Site -> Maybe Span -> XRec GhcPs [ExprLStmt GhcPs] -> Doc
-comprehension ctx site here es = align (variant onOneLine acrossLines)
+  -- | The context.
+  Ctx ->
+  -- | Where it stands.
+  Site ->
+  -- | Where it was written.
+  Maybe Span ->
+  -- | Where its brackets were written.
+  (Maybe Span, Maybe Span) ->
+  -- | What it yields, and the statements it yields it from.
+  XRec GhcPs [ExprLStmt GhcPs] ->
+  Doc
+comprehension ctx site here (o, c) es = align (variant onOneLine acrossLines)
   where
-    onOneLine = txt "[" <> body <> txt "]"
-    acrossLines = txt "[" <> space <> keepInside (body <> hardBreak <> txt "]")
+    onOneLine = opening <> body <> closing
+    acrossLines = opening <> space <> keepInside (body <> hardBreak <> closing)
+    opening = openingAt o "["
+    closing = closingAt c "]"
     keepInside = if siteInBlock site then align else id
     body = insideBrackets here (at ctx es sections)
     sections xs = case unsnoc xs of
@@ -1033,16 +1096,23 @@ cmdBody ctx site = \case
                    >+> attachBody
                      (bodyIn (ExprBody ctx) (siteBracing site) writtenSecond)
                )
-  HsCmdArrForm _ form Prefix cmds ->
-    spacedBracket 0 (closingFor site) (reserved ctx "(|") (reserved ctx "|)") $
-      if null cmds
-        then hsExpr ctx form
-        else
-          hsExpr ctx form
-            >+> breakOrSpace
-              <> sepBy
-                breakOrSpace
-                (fmap (printBody . CmdTopBody ctx plainSite) cmds)
+  HsCmdArrForm ann form Prefix cmds ->
+    spacedBracket
+      0
+      (closingFor site)
+      (bracketSpans (al_brackets ann))
+      (reserved ctx "(|")
+      (reserved ctx "|)")
+      applied
+    where
+      applied
+        | null cmds = hsExpr ctx form
+        | otherwise =
+            hsExpr ctx form
+              >+> breakOrSpace
+                <> sepBy
+                  breakOrSpace
+                  (fmap (printBody . CmdTopBody ctx plainSite) cmds)
   HsCmdArrForm _ form Infix [l, r] -> cmdChain ctx site l form r
   HsCmdArrForm _ _ Infix _ ->
     error "Tilia: an infix command form always has exactly two operands"
@@ -1051,7 +1121,13 @@ cmdBody ctx site = \case
       >+> breakOrSpace
         <> hsExprIn ctx (withBracing (siteBracing site) plainSite) e
   HsCmdLam _ variant' mg -> lambda ctx site variant' (CmdBody ctx) mg
-  HsCmdPar _ c -> bracketWith (closingFor site) "(" ")" (hsCmd ctx plainSite c)
+  HsCmdPar tokens c ->
+    bracketWith
+      (closingFor site)
+      (pairSpans tokens)
+      "("
+      ")"
+      (hsCmd ctx plainSite c)
   HsCmdCase anns e mg -> caseOf ctx site (CmdBody ctx) anns e mg
   HsCmdIf anns _ c t e ->
     ifThenElse ctx (bodyIn (CmdBody ctx) (siteBracing site)) anns c t e
@@ -1113,6 +1189,7 @@ valDecl ctx bracing = \case
       False
       multAnn
       mempty
+      (Nothing, Nothing)
       [p]
       grhss
   PatSynBind _ psb -> patSynBind ctx psb
@@ -1180,6 +1257,7 @@ matchGroup ctx bracing mkBody style MG{..}
         (isInfixMatch m)
         (HsUnannotated EpPatBind)
         (bangBeforeName m)
+        (headParens m)
         (unLoc m_pats)
         m_grhss
 
@@ -1200,6 +1278,17 @@ bangBeforeName = \case
     strictness (spanOf (afr_strict mc_an)) mc_strictness
   _ -> mempty
 
+-- | Where the parentheses around this equation's head were written, where
+-- it was written infix with more arguments after them.
+headParens ::
+  -- | The equation.
+  Match GhcPs body ->
+  (Maybe Span, Maybe Span)
+headParens = \case
+  Match{m_ctxt = FunRhs{mc_an}} ->
+    outerBracketSpans (afr_opens mc_an) (afr_closes mc_an)
+  _ -> (Nothing, Nothing)
+
 -- | One equation: a head, a body, and possibly a @where@.
 match ::
   (Body b, Anno (GRHS GhcPs (LocatedA body)) ~ EpAnnCO) =>
@@ -1217,12 +1306,15 @@ match ::
   HsMultAnn GhcPs ->
   -- | The @!@ or @~@ in front of the name it defines.
   Doc ->
+  -- | Where the parentheses around its head were written, where there are
+  -- any.
+  (Maybe Span, Maybe Span) ->
   -- | Its patterns.
   [LPat GhcPs] ->
   -- | Its right-hand side.
   GRHSs GhcPs (LocatedA body) ->
   Doc
-match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
+match ctx bracing mkBody style isInfix multAnn strict parensAt pats GRHSs{..} =
   multiplicity (hsType ctx) multAnn
     <> multAnnGap
     <> strict
@@ -1281,6 +1373,7 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
         FunctionStyle n ->
           defHead
             1
+            parensAt
             (fromBool isInfix)
             (name ctx n)
             ( zipWith
@@ -1496,6 +1589,7 @@ patSynBind ctx PSB{..} =
                  ( includeUnless (null args) breakOrNothing
                      <> bracketWith
                        0
+                       (spanOf (ap_openc psb_ext), spanOf (ap_closec psb_ext))
                        "{"
                        "}"
                        ( commaSep
@@ -1605,23 +1699,31 @@ spliceTH ctx typed dollar e = \case
 -- | A Template Haskell quotation.
 quotation :: Ctx -> Maybe Span -> HsQuote GhcPs -> Doc
 quotation ctx here = \case
-  ExpBr (bracketAnn, _) e
+  ExpBr (bracketAnn, close) e
     | BracketNoE{} <- bracketAnn,
       extensionOn ctx UnicodeSyntax ->
-        quoted here "⟦" "⟧" e (hsExpr ctx e)
-    | otherwise -> quotedAs (flavour bracketAnn) e (hsExpr ctx e)
+        quoted here brackets "⟦" "⟧" e (hsExpr ctx e)
+    | otherwise -> quotedAs brackets flavour e (hsExpr ctx e)
     where
-      flavour = \case
-        BracketNoE{} -> ""
-        BracketHasE{} -> "e"
-  PatBr _ p -> quotedAs "p" p (hsPat ctx p)
-  DecBrL _ decls -> quotedAs "d" decls (knotDecls (ctxKnot ctx) ctx Free decls)
+      brackets = (open, spanOf close)
+      (open, flavour) = case bracketAnn of
+        BracketNoE t -> (spanOf t, "")
+        BracketHasE t -> (spanOf t, "e")
+  PatBr brackets p -> quotedAs (pairSpans brackets) "p" p (hsPat ctx p)
+  DecBrL (open, close, _) decls ->
+    quotedAs
+      (pairSpans (open, close))
+      "d"
+      decls
+      (knotDecls (ctxKnot ctx) ctx Free decls)
   DecBrG _ _ -> error "Tilia: DecBrG is produced by the renamer"
-  TypBr _ ty -> quotedAs "t" ty (hsType ctx ty)
+  TypBr brackets ty -> quotedAs (pairSpans brackets) "t" ty (hsType ctx ty)
   VarBr _ isSingle n -> txt (if isSingle then "'" else "''") <> name ctx n
   where
-    quotedAs :: Data a => Text -> a -> Doc -> Doc
-    quotedAs flavour = quoted here ("[" <> flavour <> "|") "|]"
+    quotedAs ::
+      Data a => (Maybe Span, Maybe Span) -> Text -> a -> Doc -> Doc
+    quotedAs brackets flavour =
+      quoted here brackets ("[" <> flavour <> "|") "|]"
 
 -- | The body of a quotation between its brackets, indented where it breaks,
 -- and spaced from them where it may end with a symbol character.
@@ -1629,6 +1731,8 @@ quoted ::
   Data a =>
   -- | Where the quotation is written.
   Maybe Span ->
+  -- | Where its brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | The opening bracket.
   Text ->
   -- | The closing bracket.
@@ -1638,8 +1742,12 @@ quoted ::
   -- | The body.
   Doc ->
   Doc
-quoted here opener closer x body =
-  txt opener >+> gap <> insideBrackets here body <> gap <> txt closer
+quoted here (o, c) opener closer x body =
+  openingAt o opener
+    >+> gap
+      <> insideBrackets here body
+      <> gap
+      <> closingAt c closer
   where
     gap = if risky then breakOrSpace else breakOrNothing
     risky =
@@ -1667,7 +1775,8 @@ itemsOrBraces ::
   Doc
 itemsOrBraces ann bracing blank = case al_brackets (anns ann) of
   brackets@ListBraces{} ->
-    maybe id located (bracketsSpan brackets) . braced blank
+    maybe id located (bracketsSpan brackets)
+      . braced (bracketSpans brackets) blank
   _ -> items bracing . keepBlanks blank
 
 -- | Print an item of a block braced by its position: the last one keeps

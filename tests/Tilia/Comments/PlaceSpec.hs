@@ -324,7 +324,12 @@ placedIn regions fences src =
   where
     cs = commentsIn src
     gathered =
-      fst (foldl collect ([], placeComments regions mempty fences cs) regions)
+      fst
+        ( foldl
+            collect
+            ([], placeComments regions mempty mempty fences cs)
+            regions
+        )
     collect (found, placements) r = case claimPlaced r placements of
       (mine, rest) ->
         (found <> [(commentSpan c, (p, r)) | (p, c) <- mine], rest)

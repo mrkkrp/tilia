@@ -47,7 +47,7 @@ import Tilia.Render.Haddock
 import Tilia.Render.Layout
 import Tilia.Render.Literal (writtenString)
 import Tilia.Render.Name
-import Tilia.Render.Pragma (warningTxt)
+import Tilia.Render.Pragma (warningSquares, warningTxt)
 import Tilia.Source (Source, directivePresentOnLine, sourceLines)
 import Tilia.Source qualified as Source
 import Tilia.Span
@@ -314,17 +314,31 @@ hsModule ctx ModuleCtx{..} pragmas HsModule{hsmodExt = XModulePs{..}, ..} =
           <> hardBreak
     documentation = foldMap (haddock ctx Pipe Closed) hsmodHaddockModHeader
     warning modName w =
-      at ctx w (indent 1 (ptr (headName modName)) . warningTxt ctx)
+      at ctx w (indent 1 (ptr (headName modName)) . warningTxt ctx (warningSquares w))
         <> breakOrSpace
-    exports' modName l =
-      at ctx l (indent 1 (ptr (headName modName)) . exportList ctx (spanOf l))
+    exports' modName l@(L ann _) =
+      at
+        ctx
+        l
+        ( indent 1 (ptr (headName modName))
+            . exportList ctx (spanOf l) (bracketSpans (al_brackets (anns ann)))
+        )
         <> breakOrSpace
     headName modName = at ctx modName (moduleHeadName ctx)
 
 -- | The parenthesised list after a module name.
-exportList :: Ctx -> Maybe Span -> [LIE GhcPs] -> Doc
-exportList ctx enclosing xs =
-  layoutHere . parens . insideBrackets enclosing $
+exportList ::
+  -- | The context.
+  Ctx ->
+  -- | Where the list was written.
+  Maybe Span ->
+  -- | Where its parentheses were written.
+  (Maybe Span, Maybe Span) ->
+  -- | The items.
+  [LIE GhcPs] ->
+  Doc
+exportList ctx enclosing brackets xs =
+  layoutHere . parens brackets . insideBrackets enclosing $
     importExportItems ctx xs
   where
     layoutHere
@@ -408,14 +422,14 @@ ieItem ::
 ieItem ctx here = \case
   IEVar warning n _ -> plain warning n
   IEThingAbs warning n _ -> plain warning n
-  IEThingAll (warning, (_, dots, _)) n _ ->
+  IEThingAll (warning, (open, dots, close)) n _ ->
     region $
       exportWarning warning
         <> at ctx n (wrappedName ctx)
         <> space
-        <> txt "("
+        <> openingAt (spanOf open) "("
         <> keywordAt (spanOf dots) ".."
-        <> txt ")"
+        <> closingAt (spanOf close) ")"
   IEThingWith (warning, (open, dots, _, close)) n wildcard members _ ->
     region . align $
       ( exportWarning warning
@@ -424,7 +438,11 @@ ieItem ctx here = \case
                    ctx
                    here
                    (spanOf open <> spanOf close <|> here)
-                   (breakOrSpace <> parens (insideBrackets here listed))
+                   ( breakOrSpace
+                       <> parens
+                         (spanOf open, spanOf close)
+                         (insideBrackets here listed)
+                   )
              )
       )
     where
@@ -450,7 +468,8 @@ ieItem ctx here = \case
       Just _ -> region (exportWarning warning <> at ctx n (wrappedName ctx))
     region = maybe id located here
     exportWarning =
-      foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace)
+      foldMap
+        (\w -> at ctx w (warningTxt ctx (warningSquares w)) <> breakOrSpace)
 
 -- | The documentation written with an export list item, if any.
 itemDoc :: IE GhcPs -> Maybe (ExportDoc GhcPs)
@@ -535,6 +554,7 @@ importDecl ctx ImportDecl{..} =
               <> fence
                 parensSpan
                 ( parens
+                    (bracketSpans (al_brackets (anns listLoc)))
                     (insideBrackets listSpan (importExportItems ctx xs))
                 )
 

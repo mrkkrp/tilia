@@ -75,17 +75,34 @@ patBody ctx inParens closing here = \case
   VarPat _ n -> name ctx n
   LazyPat tok p -> keywordAt (spanOf tok) "~" <> recur p
   AsPat tok n p -> name ctx n <> keywordAt (spanOf tok) "@" <> recur p
-  pat@ParPat{} -> inside (bracketWith closing "(" ")") pat
+  pat@(ParPat parens' _) ->
+    inside (bracketWith closing (pairSpans parens') "(" ")") pat
   BangPat tok p -> keywordAt (spanOf tok) "!" <> recur p
-  pat@ListPat{} ->
-    inside (commaBracketWith (ctxCommaStyle ctx) closing "[" "]") pat
-  pat@(TuplePat _ _ boxity) ->
-    inside (boxityBrackets (ctxCommaStyle ctx) boxity closing) pat
+  pat@(ListPat ann _) ->
+    inside
+      ( commaBracketWith
+          (ctxCommaStyle ctx)
+          closing
+          (bracketSpans (al_brackets ann))
+          "["
+          "]"
+      )
+      pat
+  pat@(TuplePat brackets _ boxity) ->
+    inside
+      ( boxityBrackets
+          (ctxCommaStyle ctx)
+          boxity
+          closing
+          (pairSpans brackets)
+      )
+      pat
   OrPat _ ps ->
     itemsSepBy (fromBool (isTrue inParens)) NoBrace (fmap recur (NE.toList ps))
-  SumPat _ p tag arity ->
-    unboxedSum closing tag arity (ref (recur p))
-  ConPat _ con details -> conPattern ctx inParens here con details
+  SumPat ann p tag arity ->
+    unboxedSum closing (pairSpans (sumPatParens ann)) tag arity (ref (recur p))
+  ConPat braces con details ->
+    conPattern ctx inParens here (pairSpans braces) con details
   ViewPat _ e p ->
     align $
       knotExpr (ctxKnot ctx) ctx e
@@ -121,12 +138,14 @@ conPattern ::
   Choice "inParens" ->
   -- | Where the pattern was written.
   Maybe Span ->
+  -- | Where the braces around its fields were written, if it has them.
+  (Maybe Span, Maybe Span) ->
   -- | The constructor.
   LocatedN RdrName ->
   -- | What it was applied to.
   HsConPatDetails GhcPs ->
   Doc
-conPattern ctx inParens here con details = case details of
+conPattern ctx inParens here braces con details = case details of
   PrefixCon [] -> align (name ctx con)
   PrefixCon _ ->
     align (name ctx con >+> breakOrSpace <> ref (align arguments))
@@ -135,7 +154,7 @@ conPattern ctx inParens here con details = case details of
     layoutFrom ctx (spanOf l <> spanOf r) $
       hsPatIn ctx inParens 1 l >+> ref arguments
   where
-    arguments = conArguments ctx inParens here con details
+    arguments = conArguments ctx inParens here braces con details
 
 -- | What a constructor of a pattern is applied to, as a part that what
 -- follows the pattern is placed relative to, before it is lined up: its
@@ -148,16 +167,19 @@ conArguments ::
   Choice "inParens" ->
   -- | Where the pattern was written.
   Maybe Span ->
+  -- | Where the braces around its fields were written, if it has them.
+  (Maybe Span, Maybe Span) ->
   -- | The constructor.
   LocatedN RdrName ->
   -- | What it was applied to.
   HsConPatDetails GhcPs ->
   Doc
-conArguments ctx inParens here con = \case
+conArguments ctx inParens here braces con = \case
   PrefixCon args -> sepBy breakOrSpace (fmap (align . recur) args)
   RecCon (HsRecFields _ fields dotdot) ->
     bracketWith
       0
+      braces
       "{"
       "}"
       ( insideBrackets
@@ -198,8 +220,16 @@ patArguments ctx p = fromMaybe (hsPat ctx p) (arguments p)
   where
     arguments q = case unLoc q of
       ConPat _ _ (PrefixCon []) -> Nothing
-      ConPat _ con details ->
-        Just (conArguments ctx (Isn't #inParens) (spanOf q) con details)
+      ConPat braces con details ->
+        Just
+          ( conArguments
+              ctx
+              (Isn't #inParens)
+              (spanOf q)
+              (pairSpans braces)
+              con
+              details
+          )
       AsPat _ _ q' -> arguments q'
       BangPat _ q' -> arguments q'
       LazyPat _ q' -> arguments q'
@@ -238,11 +268,23 @@ fieldOcc ctx FieldOcc{..} = name ctx foLabel
 
 -- | An unboxed sum: the one alternative that is present, with a bar for each
 -- one that is not.
-unboxedSum :: Int -> ConTag -> Arity -> Doc -> Doc
-unboxedSum closing tag arity d =
+unboxedSum ::
+  -- | How many steps in from the opening bracket the closing one goes.
+  Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
+  -- | Which alternative is present.
+  ConTag ->
+  -- | How many alternatives there are.
+  Arity ->
+  -- | The alternative.
+  Doc ->
+  Doc
+unboxedSum closing brackets tag arity d =
   spacedBracket
     0
     closing
+    brackets
     "(#"
     "#)"
     (sepBy (txt "|") (before <> [space <> d <> space] <> after))
@@ -258,9 +300,11 @@ boxityBrackets ::
   Boxity ->
   -- | How many steps in from the opening bracket the closing one goes.
   Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | The items, separated.
   Doc ->
   Doc
-boxityBrackets commas = \case
-  Boxed -> \closing -> commaBracketWith commas closing "(" ")"
-  Unboxed -> \closing -> spacedBracket (commaWidth commas) closing "(#" "#)"
+boxityBrackets commas boxity closing brackets = case boxity of
+  Boxed -> commaBracketWith commas closing brackets "(" ")"
+  Unboxed -> spacedBracket (commaWidth commas) closing brackets "(#" "#)"

@@ -51,6 +51,9 @@ dataDecl ::
   (tyVar -> Doc) ->
   -- | Was the head written infix?
   LexicalFixity ->
+  -- | Where the parentheses around the head were written, where there are
+  -- any.
+  (Maybe Span, Maybe Span) ->
   -- | The @forall@ a family instance may bind its variables with, which an
   -- ordinary declaration does not have and passes as 'mempty'.
   Doc ->
@@ -65,6 +68,7 @@ dataDecl
   tyVarSpan
   renderTyVar
   fixity
+  headParens
   outerBinders
   HsDataDefn{..} =
     keywords <> header <> constructors <> derivings
@@ -96,7 +100,7 @@ dataDecl
             <> outerBinders
             <> foldMap (leftContext ctx headSpan) dd_ctxt
             <> kinded
-              (typeHead ctx 0 fixity tyCon tyVarSpan renderTyVar tyVars)
+              (typeHead ctx 0 headParens fixity tyCon tyVarSpan renderTyVar tyVars)
             <> includeWhen
               (isJust (spanOf (andd_where dd_ext)))
               (breakOrSpace <> txt "where")
@@ -278,9 +282,11 @@ conDecl ctx ConDeclGADT{..} =
     -- making up the whole signature, which would be read as the
     -- constructor's own.
     resultType = case unLoc con_res_ty of
-      HsKindSig{} -> parens (hsType ctx con_res_ty)
-      HsForAllTy{} | standsAlone -> parens (hsType ctx con_res_ty)
-      HsQualTy{} | standsAlone -> parens (hsType ctx con_res_ty)
+      HsKindSig{} -> parens (Nothing, Nothing) (hsType ctx con_res_ty)
+      HsForAllTy{}
+        | standsAlone -> parens (Nothing, Nothing) (hsType ctx con_res_ty)
+      HsQualTy{}
+        | standsAlone -> parens (Nothing, Nothing) (hsType ctx con_res_ty)
       _ -> signaturePart ctx (hsType ctx) con_res_ty
     standsAlone = case (unLoc con_outer_bndrs, con_g_args) of
       (HsOuterImplicit{}, PrefixConGADT _ []) ->
@@ -429,9 +435,10 @@ derivingClause ctx HsDerivingClause{..} =
     what =
       at ctx deriv_clause_tys $ \tys ->
         brokenForDocs $ case tys of
-          DctSingle NoExtField sigTy -> parens (hsSigType ctx sigTy)
+          DctSingle NoExtField sigTy ->
+            parens (contextParens deriv_clause_tys) (hsSigType ctx sigTy)
           DctMulti NoExtField sigTys ->
-            parens
+            parens (contextParens deriv_clause_tys)
               . insideBrackets (spanOf deriv_clause_tys)
               $ commaSep
                 (ctxCommaStyle ctx)
@@ -469,8 +476,8 @@ derivingClause ctx HsDerivingClause{..} =
 synDecl ::
   -- | The context.
   Ctx ->
-  -- | Where its keyword was.
-  EpToken "type" ->
+  -- | Where its keyword and the parentheses around its head were.
+  AnnSynDecl ->
   -- | The synonym's name.
   LocatedN RdrName ->
   -- | Was its head written infix?
@@ -480,7 +487,7 @@ synDecl ::
   -- | What it stands for.
   LHsType GhcPs ->
   Doc
-synDecl ctx typeToken tyCon fixity HsQTvs{..} rhs =
+synDecl ctx written tyCon fixity HsQTvs{..} rhs =
   keyword
     <> indent
       1
@@ -491,6 +498,7 @@ synDecl ctx typeToken tyCon fixity HsQTvs{..} rhs =
             headSpan
             ( defHead
                 0
+                (outerBracketSpans (asd_opens written) (asd_closes written))
                 (fromBool (fixity == Infix))
                 (name ctx tyCon)
                 (fmap (at_ ctx (tyVarBndr ctx)) hsq_explicit)
@@ -506,6 +514,6 @@ synDecl ctx typeToken tyCon fixity HsQTvs{..} rhs =
             (separator <> hsType ctx rhs)
       )
   where
-    keyword = refAt (spanOf typeToken) (txt "type")
+    keyword = refAt (spanOf (asd_type written)) (txt "type")
     headSpan = spanOf tyCon <> spansOf hsq_explicit
     separator = typeBreak (typeIsDocumented (unLoc rhs))

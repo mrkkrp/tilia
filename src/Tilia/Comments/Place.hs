@@ -116,12 +116,15 @@ placeComments ::
   -- | The innermost region each region prints first, where that one was
   -- written above it.
   Map Span Span ->
+  -- | The opening brackets, which a comment written after one is not given
+  -- to a region before.
+  [Span] ->
   -- | The constructs a comment printed in place may not be carried out of.
   [Span] ->
   -- | The comments to place.
   [Comment] ->
   Placements
-placeComments regions leads fences comments =
+placeComments regions leads openings fences comments =
   Placements
     { placedAt =
         Map.fromListWith
@@ -138,6 +141,9 @@ placeComments regions leads fences comments =
       IntMap.fromListWith (<>) [(spanEndLine r, [r]) | r <- regions]
 
     regionEndPoints = Set.fromList (fmap endPoint regions)
+
+    openingsByEndPoint =
+      Map.fromList [(endPoint o, startPoint o) | o <- openings]
 
     regionsByStartPoint =
       Map.fromListWith wider [(startPoint r, r) | r <- regions]
@@ -176,6 +182,10 @@ placeComments regions leads fences comments =
           endPoint r <= startPoint here
             && not (zeroWidth r)
             && not (fencedOff r)
+            && not (openedBetween r)
+
+        openedBetween r = maybe False ((endPoint r <=) . snd) lastOpening
+        lastOpening = Map.lookupLE (startPoint here) openingsByEndPoint
 
         writtenAgainst = maybe False (`Set.member` regionEndPoints) stopsAt
         stopsAt = (,) (spanStartLine here) <$> commentCodeBeforeStopsAt c

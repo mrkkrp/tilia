@@ -202,7 +202,7 @@ formatted       118d2453fffa  Agda-2.8.0/src/full/Agda/TypeChecking/DeadCode.hs
 formatted       700e5be888c0  Agda-2.8.0/src/full/Agda/TypeChecking/DiscrimTree.hs
 formatted       b540ac69d090  Agda-2.8.0/src/full/Agda/TypeChecking/DiscrimTree/Types.hs
 formatted       53a6fc29fc7a  Agda-2.8.0/src/full/Agda/TypeChecking/DisplayForm.hs
-formatted       9510d3974287  Agda-2.8.0/src/full/Agda/TypeChecking/DropArgs.hs
+formatted       3871d4020263  Agda-2.8.0/src/full/Agda/TypeChecking/DropArgs.hs
 formatted       a6199bbffa41  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs
 formatted       d61ce8e28ae4  Agda-2.8.0/src/full/Agda/TypeChecking/Empty.hs-boot
 formatted       5fe7ed750f79  Agda-2.8.0/src/full/Agda/TypeChecking/Errors.hs
@@ -805,7 +805,7 @@ formatted       2f29ba3d968d  bifunctors-5.6.3/src/Data/Bifunctor/Join.hs
 formatted       7b23f4b53643  bifunctors-5.6.3/src/Data/Bifunctor/Joker.hs
 formatted       de571760ebb2  bifunctors-5.6.3/src/Data/Bifunctor/Product.hs
 formatted       26813b3cc233  bifunctors-5.6.3/src/Data/Bifunctor/Sum.hs
-formatted       af3be5aaa08e  bifunctors-5.6.3/src/Data/Bifunctor/TH.hs
+formatted       f01396e8e722  bifunctors-5.6.3/src/Data/Bifunctor/TH.hs
 formatted       977becc5c358  bifunctors-5.6.3/src/Data/Bifunctor/TH/Internal.hs
 formatted       6af71bdfdf78  bifunctors-5.6.3/src/Data/Bifunctor/Tannen.hs
 formatted       43934d97b340  bifunctors-5.6.3/src/Data/Bifunctor/Wrapped.hs
@@ -996,7 +996,7 @@ formatted       7c1bca51eb76  brittany-0.14.0.2/data/Test164.hs
 formatted       1d7b340799de  brittany-0.14.0.2/data/Test165.hs
 formatted       660e2a8d17c4  brittany-0.14.0.2/data/Test166.hs
 formatted       9034e094d375  brittany-0.14.0.2/data/Test167.hs
-formatted       d8056c8b2928  brittany-0.14.0.2/data/Test168.hs
+formatted       691edd915888  brittany-0.14.0.2/data/Test168.hs
 formatted       cd8fce2bda23  brittany-0.14.0.2/data/Test169.hs
 formatted       bce8e4d3c9ba  brittany-0.14.0.2/data/Test17.hs
 formatted       b9c1ba677274  brittany-0.14.0.2/data/Test170.hs
@@ -2550,7 +2550,7 @@ formatted       df799f9ffb57  hedgehog-1.7/test/test.hs
 formatted       aef5c0cc644b  hledger-1.52.1/Hledger/Cli.hs
 formatted       4cbd78441bec  hledger-1.52.1/Hledger/Cli/Anchor.hs
 formatted       f1687165b7a8  hledger-1.52.1/Hledger/Cli/Anon.hs
-formatted       d3f7f50b7609  hledger-1.52.1/Hledger/Cli/CliOptions.hs
+formatted       c94f5e6e5262  hledger-1.52.1/Hledger/Cli/CliOptions.hs
 formatted       6b90cb5fb8ee  hledger-1.52.1/Hledger/Cli/Commands.hs
 formatted       d0b765df9151  hledger-1.52.1/Hledger/Cli/Commands/Accounts.hs
 formatted       4ab3f5ebc9f8  hledger-1.52.1/Hledger/Cli/Commands/Activity.hs
@@ -2916,7 +2916,7 @@ formatted       4e51b04458bf  intero-0.1.40/src/GhciTags.hs
 formatted       13f3d6414d11  intero-0.1.40/src/GhciTypes.hs
 declined        -             intero-0.1.40/src/InteractiveUI.hs
 formatted       05c4ab5e8850  intero-0.1.40/src/Intero/Compat.hs
-partly-checked  1800fa2f68f3  intero-0.1.40/src/Main.hs
+partly-checked  887f2214d71c  intero-0.1.40/src/Main.hs
 formatted       66b7288dc3fb  intero-0.1.40/src/test/Main.hs
 formatted       4fe73bbfe233  leksah-0.16.2.2/data/leksah-welcome/src/Main.hs
 formatted       1cefb44a49bc  leksah-0.16.2.2/data/leksah-welcome/test/Main.hs

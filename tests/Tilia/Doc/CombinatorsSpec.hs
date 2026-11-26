@@ -76,18 +76,18 @@ spec = withEachSettings $ \settings -> do
 
   describe "brackets" $ do
     it "adds nothing when flat" $
-      out (flat (parens (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (flat (parens (Nothing, Nothing) (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(a, b)\n"
     it "keeps the opening bracket company when broken" $
-      out (broken (parens (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (broken (parens (Nothing, Nothing) (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "( a,\n  b\n)\n"
     it "lines the body up under itself" $ do
       let items = [txt "a", txt "b", txt "c"]
-      out (broken (bracketWith 0 "[" "]" (commaSep TrailingCommas items)))
+      out (broken (bracketWith 0 (Nothing, Nothing) "[" "]" (commaSep TrailingCommas items)))
         `shouldBe` "[ a,\n  b,\n  c\n]\n"
     it "keeps the closing bracket in when asked" $ do
       let items = [txt "a", txt "b"]
-      out (broken (bracketWith 1 "(" ")" (commaSep TrailingCommas items)))
+      out (broken (bracketWith 1 (Nothing, Nothing) "(" ")" (commaSep TrailingCommas items)))
         `shouldBe` "( a,\n  b\n" <> step 1 <> ")\n"
     it "puts leading commas under the opening bracket" $
       out (broken (ledByCommas 0 [txt "a", txt "b", txt "c"]))
@@ -99,12 +99,13 @@ spec = withEachSettings $ \settings -> do
       out (flat (ledByCommas 0 [txt "a", txt "b"]))
         `shouldBe` "[a, b]\n"
     it "renders an empty bracket pair flat" $
-      out (flat (bracketWith 0 "[" "]" mempty)) `shouldBe` "[]\n"
+      out (flat (bracketWith 0 (Nothing, Nothing) "[" "]" mempty))
+        `shouldBe` "[]\n"
     it "spaces the unboxed pair" $
-      out (flat (spacedBracket 0 0 "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (flat (spacedBracket 0 0 (Nothing, Nothing) "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(# a, b #)\n"
     it "gives a spaced pair its own lines when broken" $
-      out (broken (spacedBracket 0 0 "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
+      out (broken (spacedBracket 0 0 (Nothing, Nothing) "(#" "#)" (commaSep TrailingCommas [txt "a", txt "b"])))
         `shouldBe` "(#\n" <> step 1 <> "a,\n" <> step 1 <> "b\n#)\n"
     it "wraps in backticks" $
       out (flat (backticks (txt "div"))) `shouldBe` "`div`\n"
@@ -155,6 +156,6 @@ ledByCommas ::
   [Doc] ->
   Doc
 ledByCommas closing =
-  commaBracketWith LeadingCommas closing "[" "]"
+  commaBracketWith LeadingCommas closing (Nothing, Nothing) "[" "]"
     . commaSep LeadingCommas
     . zipWith (\l -> located (mkSpan (l, 3) (l, 4))) [1 ..]

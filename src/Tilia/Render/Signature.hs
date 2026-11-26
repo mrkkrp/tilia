@@ -39,7 +39,7 @@ import Tilia.Render.Name
 import Tilia.Render.Pragma
 import Tilia.Render.Type
 import Tilia.Span (endOf, startOf)
-import Tilia.Span.Ghc (spanOf, spansOf)
+import Tilia.Span.Ghc (outerBracketSpans, spanOf, spansOf)
 
 -- | A signature declaration.
 sigDecl :: Ctx -> Sig GhcPs -> Doc
@@ -217,7 +217,7 @@ booleanFormula ctx = \case
           (breakOrSpace <> leadingBar)
           (fmap (at_ ctx (booleanFormula ctx)) (concatMap alternatives xs))
       )
-  Parens l -> at ctx l (parens . booleanFormula ctx)
+  Parens l -> at ctx l (parens (Nothing, Nothing) . booleanFormula ctx)
   where
     alternatives = \case
       L _ (Or ys) -> concatMap alternatives ys
@@ -319,5 +319,7 @@ ruleBinders ctx (RuleBndrs HsRuleBndrsAnn{..} tyvars binders) =
 ruleBinder :: Ctx -> RuleBndr GhcPs -> Doc
 ruleBinder ctx = \case
   RuleBndr _ n -> name ctx n
-  RuleBndrSig _ n HsPS{..} ->
-    parens (name ctx n >+> typeAscription ctx (spanOf n) (asSigType hsps_body))
+  RuleBndrSig ann n HsPS{..} ->
+    parens
+      (outerBracketSpans (atv_opens ann) (atv_closes ann))
+      (name ctx n >+> typeAscription ctx (spanOf n) (asSigType hsps_body))

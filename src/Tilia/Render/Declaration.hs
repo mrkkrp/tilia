@@ -442,7 +442,7 @@ tyClDecl :: Ctx -> FamilyStyle -> TyClDecl GhcPs -> Doc
 tyClDecl ctx style = \case
   FamDecl _ x -> famDecl ctx style x
   SynDecl{..} ->
-    synDecl ctx (asd_type tcdSExt) tcdLName tcdFixity tcdTyVars tcdRhs
+    synDecl ctx tcdSExt tcdLName tcdFixity tcdTyVars tcdRhs
   DataDecl{..} ->
     dataDecl
       ctx
@@ -452,6 +452,10 @@ tyClDecl ctx style = \case
       spanOf
       (at_ ctx (tyVarBndr ctx))
       tcdFixity
+      ( outerBracketSpans
+          (andd_openp (dd_ext tcdDataDefn))
+          (andd_closep (dd_ext tcdDataDefn))
+      )
       mempty
       tcdDataDefn
   ClassDecl{tcdCExt = (anns, _, _), ..} ->
@@ -483,10 +487,12 @@ defaultDecl ::
   -- | The declaration.
   DefaultDecl GhcPs ->
   Doc
-defaultDecl ctx (DefaultDecl _ className types) =
+defaultDecl ctx (DefaultDecl (_, open, close) className types) =
   (txt "default" <> foldMap (\c -> space <> name ctx c) className)
     >+> breakOrSpace
-      <> parens (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types))
+      <> parens
+        (spanOf open, spanOf close)
+        (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) types))
 
 -- | An @ANN@ pragma.
 annDecl :: Ctx -> AnnDecl GhcPs -> Doc
