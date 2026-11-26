@@ -167,18 +167,19 @@ joinedByFunctionArrow ::
   Doc
 joinedByFunctionArrow ctx render separator before after = \case
   HsLinearAnn _ | extensionOn ctx UnicodeSyntax -> joined "⊸"
-  HsUnannotated _ -> joined (reserved ctx "->")
+  HsUnannotated _ -> joined arrow
   multAnn -> case ctxArrowStyle ctx of
     TrailingArrows ->
-      space <> multiplicity render multAnn <> joined (reserved ctx "->")
+      space <> multiplicity render multAnn <> joined arrow
     LeadingArrows ->
       separator
         <> lineLed before after
         <> multiplicity render multAnn
         <> space
-        <> txt (reserved ctx "->" <> " ")
+        <> leading (txt arrow)
   where
     joined = joinedByArrow ctx separator before after
+    arrow = reserved ctx "->"
 
 -- | A multiplicity annotation on an arrow or a field.
 multiplicity :: (mult -> Doc) -> HsMultAnnOf mult GhcPs -> Doc
@@ -208,7 +209,10 @@ defHead ::
 defHead closing writtenInfix nameDoc args = case args of
   a0 : a1 : rest
     | isTrue writtenInfix ->
-        let infixHead = a0 >+> breakOrSpace <> align (nameDoc <> space <> a1)
+        let infixHead =
+              a0
+                >+> breakOrSpace
+                  <> align (leadingOperator nameDoc <> space <> a1)
          in if
               | null rest -> a0 >+> breakOrSpace <> arguments
               | otherwise ->
@@ -232,7 +236,8 @@ headArguments ::
   [Doc] ->
   Doc
 headArguments writtenInfix nameDoc = \case
-  [_, a1] | isTrue writtenInfix -> align (nameDoc <> space <> a1)
+  [_, a1]
+    | isTrue writtenInfix -> align (leadingOperator nameDoc <> space <> a1)
   _ : _ : rest | isTrue writtenInfix -> spread rest
   args -> spread args
 

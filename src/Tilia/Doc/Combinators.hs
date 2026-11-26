@@ -59,6 +59,11 @@ module Tilia.Doc.Combinators
     -- * Punctuation
     CommaStyle (..),
     comma,
+    trailing,
+    leading,
+    leadingBar,
+    leadingDot,
+    leadingOperator,
     separatingComma,
     separatingSemicolon,
     commaSep,
@@ -81,6 +86,7 @@ import Tilia.Doc
     Doc (..),
     Layout (..),
     LineStart (..),
+    SeparatorSide (..),
     TrailingWhitespace (..),
     mapChildren,
     printsNothing,
@@ -134,7 +140,8 @@ verbatimLines ::
   -- | The lines.
   [Text] ->
   Doc
-verbatimLines start trailing = sepBy (DVerbatimBreak start trailing) . fmap txt
+verbatimLines start whitespace =
+  sepBy (DVerbatimBreak start whitespace) . fmap txt
 
 -- | Text reproduced exactly, line breaks and all.
 verbatim :: Text -> Doc
@@ -325,7 +332,7 @@ sepBy s = mconcat . intersperse s
 -- | The token that joins two parts of a construct: a space, the token, and
 -- then the place the line may break.
 joinedBy :: Text -> Doc
-joinedBy t = space <> txt t <> breakOrSpace
+joinedBy t = trailing (txt t) <> breakOrSpace
 
 ----------------------------------------------------------------------------
 -- Wrapping
@@ -427,7 +434,38 @@ backticks d = txt "`" <> d <> txt "`"
 
 -- | @,@.
 comma :: Doc
-comma = txt ","
+comma = DSeparator TrailingSeparator (txt "," <> space) (txt ",")
+
+-- | A leading separator which is in the common case followed by a space,
+-- but if it is rearranged by the merge the space is put in front of it.
+leading :: Doc -> Doc
+leading d = DSeparator LeadingSeparator (d <> space) (space <> d)
+
+-- | A trailing separator which is in the common case preceded by a space,
+-- but if it is rearranged by the merge the space is put after it.
+trailing ::
+  -- | The token.
+  Doc ->
+  Doc
+trailing d = DSeparator TrailingSeparator (d <> space) (space <> d)
+
+-- | An operator leading its operand, which trailing the part before it is
+-- written after a space.
+leadingOperator ::
+  -- | The operator.
+  Doc ->
+  Doc
+leadingOperator d = DSeparator LeadingSeparator d (space <> d)
+
+-- | @|@ leading the part after it.
+leadingBar :: Doc
+leadingBar = leading (txt "|")
+
+-- | The dot of a @forall@ leading the part after it, a column right of the
+-- indentation where it begins a line.
+leadingDot :: Doc
+leadingDot =
+  DSeparator LeadingSeparator (DAligned 1 (txt ".") <> space) (txt ".")
 
 -- | A comma between two items, with the place the line may break: after
 -- it, or, with 'LeadingCommas', before it, hung left of the indentation by
@@ -438,20 +476,24 @@ separatingComma ::
   Doc
 separatingComma = \case
   TrailingCommas -> comma <> breakOrSpace
-  LeadingCommas -> breakOrNothing <> hung ", "
+  LeadingCommas -> breakOrNothing <> hung ","
 
 -- | A semicolon leading the item after it, with the place the line may
 -- break before it, hung left of the indentation by its width.
 separatingSemicolon :: Doc
-separatingSemicolon = breakOrNothing <> hung "; "
+separatingSemicolon = breakOrNothing <> hung ";"
 
--- | A separator leading the item after it, its lines its width left of the
--- column it begins at.
+-- | A separator and a space leading the item after it, hung left of the
+-- column they begin at by their width.
 hung ::
   -- | The separator.
   Text ->
   Doc
-hung t = DAligned (negate (T.length t)) (txt t)
+hung t =
+  DSeparator
+    LeadingSeparator
+    (DAligned (negate (T.length t + 1)) (txt t <> space))
+    (txt t)
 
 -- | How many columns a comma takes where it leads the item after it.
 commaWidth ::
@@ -481,7 +523,7 @@ commaSepUnderFirst commas steps = \case
         TrailingCommas -> separatingComma commas <> commaSep commas xs
         LeadingCommas ->
           breakOrNothing
-            <> DAligned (commaWidth commas) (hung ", " <> commaSep commas xs)
+            <> DAligned (commaWidth commas) (hung "," <> commaSep commas xs)
 
 -- | Separate by 'separatingComma'.
 commaSep ::
@@ -503,7 +545,7 @@ commaSepAfter ::
   [Doc] ->
   Doc
 commaSepAfter commas leadIn items =
-  txt leadIn <> space <> align (commaSep commas items)
+  leading (txt leadIn) <> align (commaSep commas items)
 
 ----------------------------------------------------------------------------
 -- Inclusion

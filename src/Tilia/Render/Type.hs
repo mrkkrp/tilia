@@ -547,7 +547,7 @@ forallClose ctx visibility bndrs = case visibility of
   Invisible ->
     includeWhen (null bndrs && extensionOn ctx UnicodeSyntax) space
       <> txt "."
-  Visible -> space <> txt (reserved ctx "->")
+  Visible -> trailing (txt (reserved ctx "->"))
 
 -- | A @forall@ in a type, with the break between it and what it
 -- quantifies.
@@ -572,7 +572,7 @@ quantifier ctx separator visibility after bndrs =
       unclosed
         <> variant
           (forallClose ctx Invisible bndrs <> space)
-          (separator <> lineLed (spansOf bndrs) after <> txt " . ")
+          (separator <> lineLed (spansOf bndrs) after <> leadingDot)
     (LeadingArrows, Visible) ->
       unclosed
         <> joinedByArrow

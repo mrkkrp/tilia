@@ -3,15 +3,14 @@
 module Network.Endpoint where
 
 data Endpoint
-    =
 #ifdef WITH_UNIX
-    Tcp
+    = Tcp
         { tcpPort :: Int
         } -- the default
     | -- every platform has TCP
       Unix
 #else
-    Tcp
+    = Tcp
     { tcpPort :: Int
     } -- the default
 -- every platform has TCP

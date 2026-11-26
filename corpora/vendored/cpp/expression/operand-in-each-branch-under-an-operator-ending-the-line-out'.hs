@@ -9,11 +9,10 @@ module Data.Array.Lookup ((!?), lookupSpec) where
     | inRange b i =
         Just
             $ unsafeAt arr
-            $
 #if MIN_VERSION_base(4,14,0)
-            unsafeIndex b i
+            $ unsafeIndex b i
 #else
-            index b i
+            $ index b i
 #endif
     | otherwise = Nothing
     where
@@ -23,9 +22,8 @@ lookupSpec :: Spec
 lookupSpec = it "reports a name it cannot find" $ do
     (_, actualStderr) <- runHieDb ["name-refs", "$", "GHC.Base"]
     actualStderr
-        `shouldBe`
 #if MIN_VERSION_base(4,20,0)
-        "Couldn't find name: $ from module GHC.Internal.Base(ghc-internal)\n"
+        `shouldBe` "Couldn't find name: $ from module GHC.Internal.Base(ghc-internal)\n"
 #else
-        "Couldn't find name: $ from module GHC.Base(base)\n"
+        `shouldBe` "Couldn't find name: $ from module GHC.Base(base)\n"
 #endif

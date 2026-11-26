@@ -529,12 +529,12 @@ attachOperator ctx placement placing before here after op operand =
               Normal
               ( placing
                   ( foldMap indentation after
-                      <> unclaimed op
+                      <> leadingOperator (unclaimed op)
                       <> space
                       <> operand
                   )
               )
-    _ -> attach placement (placing (op <> gap <> operand))
+    _ -> attach placement (placing (leadingOperator op <> gap <> operand))
   where
     gap
       | remarkOnEachLine ctx here after = hardBreak
@@ -542,9 +542,6 @@ attachOperator ctx placement placing before here after op operand =
 
 -- | The @::@, @=>@ or @->@ that joins two parts of a type, at the end of a
 -- line or at the start of the next one, as the project asks.
---
--- A leading arrow is one fragment with the space after it, which the
--- preprocessor merge tells from a trailing one by that space.
 joinedByArrow ::
   -- | The context.
   Ctx ->
@@ -558,8 +555,11 @@ joinedByArrow ::
   Text ->
   Doc
 joinedByArrow ctx separator before after arrow = case ctxArrowStyle ctx of
-  TrailingArrows -> space <> txt arrow <> separator
-  LeadingArrows -> separator <> lineLed before after <> txt (arrow <> " ")
+  TrailingArrows -> trailing (txt arrow) <> separator
+  LeadingArrows ->
+    separator
+      <> lineLed before after
+      <> leading (txt arrow)
 
 -- | A region over the indentation of the line a part begins, where that
 -- line is below the part before it, so that the comments written above it

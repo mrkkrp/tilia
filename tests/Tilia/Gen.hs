@@ -154,6 +154,10 @@ shrinkDoc = \case
   DVariant a b -> [DEmpty, a, b]
   DLocated s d -> [DEmpty, d] <> [DLocated s d' | d' <- shrinkDoc d]
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
+  DSeparator e l t ->
+    [DEmpty, l, t]
+      <> [DSeparator e l' t | l' <- shrinkDoc l]
+      <> [DSeparator e l t' | t' <- shrinkDoc t]
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
   DDeclarationsStart -> [DEmpty]
@@ -186,6 +190,8 @@ docTexts = \case
   DVariant a _ -> docTexts a
   DLocated _ d -> docTexts d
   DFence _ d -> docTexts d
+  DSeparator LeadingSeparator l _ -> docTexts l
+  DSeparator TrailingSeparator _ t -> docTexts t
   DCppChoice _ bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
   DCppDirective _ t -> [t]
   DDeclarationsStart -> []

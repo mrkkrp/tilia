@@ -731,7 +731,6 @@ together formatter reached c
           varied = Varied (variedLines (variedBy parser c) <> ranges)
           merged =
             merge
-              (rcSettings (formatterRender formatter))
               (reachedLines reached)
               (cfgConditionals c)
               (cfgGuards c)
@@ -943,7 +942,6 @@ mergeOf ::
 mergeOf formatter written c docs =
   ( varied,
     merge
-      (rcSettings (formatterRender formatter))
       written
       (cfgConditionals c)
       (cfgGuards c)
