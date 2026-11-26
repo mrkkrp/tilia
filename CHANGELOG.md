@@ -52,6 +52,9 @@
 * The body of a lambda or an alternative whose patterns span several lines
   goes one step in from where they begin, and an instance head broken after
   `instance` puts its `where` on a line of its own. [PR 469], [PR 575].
+* A record that is a data declaration's only constructor is laid out as one
+  of several is: lined up after an `=` that begins a line, with its braces
+  one step in from it. [PR 581].
 * Several layouts that did not parse, or that GHC read as another program,
   are no longer printed. [PR 428], [PR 522], [PR 548], [PR 549].
 
@@ -84,6 +87,8 @@
 * A class or an instance keeps its head outside the conditionals its
   members or its `where` are behind, and each conditional where it was
   written. [PR 506], [PR 508], [issue 517], [issue 518], [issue 519].
+* A record constructor that every configuration has stays outside a
+  conditional adding constructors after it. [PR 581].
 * A conditional that switches an extension no longer changes the program in
   its other configurations. [PR 436], [PR 468], [PR 498], [PR 526].
 * Conditionals asking one question in different spellings, or about the
@@ -226,6 +231,7 @@
 [PR 574]: https://github.com/mrkkrp/tilia/pull/574
 [PR 575]: https://github.com/mrkkrp/tilia/pull/575
 [PR 579]: https://github.com/mrkkrp/tilia/pull/579
+[PR 581]: https://github.com/mrkkrp/tilia/pull/581
 
 ## Tilia 0.1.4.0
 

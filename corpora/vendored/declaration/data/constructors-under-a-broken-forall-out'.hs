@@ -9,16 +9,16 @@ data Handler
 data Hook a
     = Show a
       => Hook
-         { hookRun :: a -> IO ()
-         }
+            { hookRun :: a -> IO ()
+            }
 
 data Task
     = forall a
        . Task
-         { taskRun :: a -> IO ()
-         }
+            { taskRun :: a -> IO ()
+            }
 
 data Step = forall a
      . Step
-       { stepRun :: a -> IO ()
-       }
+        { stepRun :: a -> IO ()
+        }

@@ -129,13 +129,7 @@ dataDecl
                 breakOrSpace
                   <> items
                     (if null (drop 1 cons) then NoBrace else MayBrace)
-                    ( fmap
-                        ( at_
-                            ctx
-                            (conDecl ctx (Isn't #singleRecCon))
-                        )
-                        cons
-                    )
+                    (fmap (at_ ctx (conDecl ctx)) cons)
           | otherwise ->
               layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons)
                 . indent 1 (ptr keywords)
@@ -170,12 +164,9 @@ dataDecl
               | otherwise = breakOrSpace <> leadingBar
 
             keepTogether
-              | lineHaddocks || not singleRecCon = align
-              | existential && not compactAroundEquals = align
+              | lineHaddocks || not singleRecCon || not compactAroundEquals =
+                  align
               | otherwise = id
-            existential = case unLoc firstCon of
-              ConDeclH98{..} -> con_forall || isJust con_mb_cxt
-              ConDeclGADT{} -> False
 
             alternatives =
               fence
@@ -190,7 +181,7 @@ dataDecl
                 fromItsBar
                   | sameLine (spanOf previous) (barAfter previous) = fence
                   | otherwise = maybe id located
-            constructor = at_ ctx (conDecl ctx (fromBool singleRecCon))
+            constructor = at_ ctx (conDecl ctx)
       derivings =
         includeUnless (null dd_derivs) beforeDerivings
           <> indent
@@ -236,12 +227,10 @@ isGadtCon = \case
 conDecl ::
   -- | The context.
   Ctx ->
-  -- | Is it the declaration's only constructor, and a record?
-  Choice "singleRecCon" ->
   -- | The constructor.
   ConDecl GhcPs ->
   Doc
-conDecl ctx _ ConDeclGADT{..} =
+conDecl ctx ConDeclGADT{..} =
   foldMap (haddock ctx Pipe Closed) con_doc
     <> layoutFrom ctx declSpan (brokenForDocs body)
   where
@@ -334,7 +323,7 @@ conDecl ctx _ ConDeclGADT{..} =
       spanOf con_res_ty <> case con_g_args of
         PrefixConGADT NoExtField xs -> spansOf (fmap cdf_type xs)
         RecConGADT _ x -> spanOf x
-conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
+conDecl ctx ConDeclH98{..} = case con_args of
   PrefixCon xs ->
     ownDoc
       <> existentials
@@ -354,9 +343,7 @@ conDecl ctx singleRecCon ConDeclH98{..} = case con_args of
     ownDoc
       <> existentials
         ( brokenForDocs $
-            if isTrue singleRecCon
-              then name ctx con_name <> breakOrNothing <> recordFieldsAt ctx l
-              else name ctx con_name >+> breakOrNothing <> recordFieldsAt ctx l
+            name ctx con_name >+> breakOrNothing <> recordFieldsAt ctx l
         )
   InfixCon l r ->
     includeWhen docOnTop ownDoc
