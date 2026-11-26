@@ -6,6 +6,7 @@
 -- | Documents: what they hold, and turning them into source text.
 module Tilia.Doc
   ( Doc (..),
+    SeparatorSide (..),
     Spill (..),
     LineStart (..),
     TrailingWhitespace (..),
@@ -13,8 +14,7 @@ module Tilia.Doc
     Conditional (..),
     conditionalRange,
     printDoc,
-    printExcerpt,
-    leadingSeparator,
+    separatorSide,
     printsNothing,
     namesOnly,
     referentIn,
@@ -40,13 +40,13 @@ where
 
 import Data.Maybe (mapMaybe)
 import Data.Monoid (Any (..))
-import Data.Text (Text)
 
 import Tilia.Doc.Internal
   ( Conditional (..),
     Doc (..),
     Layout (..),
     LineStart (..),
+    SeparatorSide (..),
     Spill (..),
     TrailingWhitespace (..),
     Wrapper (..),
@@ -54,7 +54,6 @@ import Tilia.Doc.Internal
     layoutInside,
     namesOnly,
     printDoc,
-    printExcerpt,
     printsNothing,
     referentIn,
     unwrap,
@@ -62,13 +61,16 @@ import Tilia.Doc.Internal
   )
 import Tilia.Span (Span, spanEndLine, spanStartLine)
 
--- | The separator a document is, if it leads the item after it.
-leadingSeparator ::
+-- | The side a separator, in the indentation it was written in or named as
+-- a referent, is written on.
+separatorSide ::
   -- | The document.
   Doc ->
-  Maybe Text
-leadingSeparator = \case
-  DAligned _ (DText t) | t == ", " || t == "; " -> Just t
+  Maybe SeparatorSide
+separatorSide = \case
+  DSeparator s _ _ -> Just s
+  DIndented _ _ d -> separatorSide d
+  DReferent _ d -> separatorSide d
   _ -> Nothing
 
 -- | Does this document print on one line, holding neither a line break nor

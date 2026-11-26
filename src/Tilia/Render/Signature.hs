@@ -214,7 +214,7 @@ booleanFormula ctx = \case
   Or xs ->
     align
       ( sepBy
-          (breakOrSpace <> txt "|" <> space)
+          (breakOrSpace <> leadingBar)
           (fmap (at_ ctx (booleanFormula ctx)) (concatMap alternatives xs))
       )
   Parens l -> at ctx l (parens . booleanFormula ctx)
@@ -298,8 +298,7 @@ ruleDecl ctx (HsRule (_, written) ruleName phase binders lhs rhs) =
       <> ruleBinders ctx binders
       <> breakOrSpace
       <> ( hsExpr ctx lhs
-             >+> space
-               <> txt "="
+             >+> trailing (txt "=")
                <> layoutFrom
                  ctx
                  (fmap endOf (spanOf lhs) <> spanOf rhs)

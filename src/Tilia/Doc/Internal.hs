@@ -8,6 +8,7 @@ module Tilia.Doc.Internal
     Spill (..),
     LineStart (..),
     TrailingWhitespace (..),
+    SeparatorSide (..),
     Layout (..),
     Conditional (..),
     conditionalRange,
@@ -21,7 +22,6 @@ module Tilia.Doc.Internal
 
     -- * Rendering
     printDoc,
-    printExcerpt,
   )
 where
 
@@ -118,6 +118,12 @@ data Doc
   | -- | Fence prevents comments inside from floating out and attaching to
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
+  | -- | A separator between two parts, such as a comma: the side of the
+    -- part it goes with it is written on, how it is written leading the
+    -- part after it, and how it is written trailing the part before it.
+    -- The engine prints the form for the side; the other form is for the
+    -- merge, which may move it.
+    DSeparator !SeparatorSide !Doc !Doc
   | -- | Alternatives the preprocessor chooses between, the condition it
     -- chooses on, and the conditionals of the input they were printed from.
     DCppChoice ![Conditional] ![(Text, Doc)] !Doc
@@ -148,6 +154,14 @@ data LineStart
     AtIndent
   | -- | At column zero, whatever the indentation.
     AtMargin
+  deriving (Eq, Show)
+
+-- | Which side of the part it goes with a 'DSeparator' is written on.
+data SeparatorSide
+  = -- | Before it: the separator leads the part after it.
+    LeadingSeparator
+  | -- | After it: the separator trails the part before it.
+    TrailingSeparator
   deriving (Eq, Show)
 
 -- | What to do with the whitespace a finished line ends in.
@@ -240,6 +254,8 @@ referentsIn = \case
 data Wrapper
   = WLocated !Span
   | WFence !Span
+  | -- | A 'DSeparator' less the form for its side, holding the other.
+    WSeparator !SeparatorSide !Doc
   | WReferent !(Maybe Span)
   | WIndented !Int !Doc
   | WAligned !Int
@@ -255,6 +271,8 @@ unwrap ::
 unwrap = \case
   DLocated s d -> Just (WLocated s, d)
   DFence s d -> Just (WFence s, d)
+  DSeparator LeadingSeparator l t -> Just (WSeparator LeadingSeparator t, l)
+  DSeparator TrailingSeparator l t -> Just (WSeparator TrailingSeparator l, t)
   DReferent k d -> Just (WReferent k, d)
   DIndented n a d | namesOnly a -> Just (WIndented n a, d)
   DAligned n d -> Just (WAligned n, d)
@@ -273,6 +291,8 @@ wrap ::
 wrap = \case
   WLocated s -> DLocated s
   WFence s -> DFence s
+  WSeparator LeadingSeparator t -> \l -> DSeparator LeadingSeparator l t
+  WSeparator TrailingSeparator l -> DSeparator TrailingSeparator l
   WReferent k -> DReferent k
   WIndented n a -> DIndented n a
   WAligned n -> DAligned n
@@ -343,10 +363,7 @@ data Env = Env
     -- flat.
     envHeldFlat :: !Bool,
     -- | What the document is printed with.
-    envSettings :: !Settings,
-    -- | Whether the document is an excerpt, whose pointers may name parts
-    -- outside it.
-    envExcerpt :: !Bool
+    envSettings :: !Settings
   }
 
 -- | Output built so far.
@@ -458,28 +475,7 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc = printing False
-
--- | Turn an excerpt of a document into text, a pointer in it to a part
--- outside it measuring from the indentation in force.
-printExcerpt ::
-  -- | What to print it with.
-  Settings ->
-  -- | The excerpt.
-  Doc ->
-  Text
-printExcerpt = printing True
-
--- | Turn a document into text, or an excerpt of one.
-printing ::
-  -- | Whether it is an excerpt.
-  Bool ->
-  -- | What to print it with.
-  Settings ->
-  -- | The document.
-  Doc ->
-  Text
-printing excerpt settings doc = finish (go env doc emptyOut)
+printDoc settings doc = finish (go env doc emptyOut)
   where
     env =
       Env
@@ -489,8 +485,7 @@ printing excerpt settings doc = finish (go env doc emptyOut)
           envLayout = Broken,
           envNote = False,
           envHeldFlat = False,
-          envSettings = settings,
-          envExcerpt = excerpt
+          envSettings = settings
         }
 
 -- | Walk a document, accumulating output.
@@ -552,12 +547,9 @@ go env = \case
         printed = if pointer then out else go env (unnamed a) out
         base
           | pointer =
-              fromMaybe dangling . asum $
+              fromMaybe (error "Tilia: dangling pointer") . asum $
                 fmap (`HashMap.lookup` outReferents out) names
           | otherwise = baseAt env out
-        dangling
-          | envExcerpt env = baseAt env out
-          | otherwise = error "Tilia: dangling pointer"
         aliased = case names of
           _ : _ : _ ->
             printed
@@ -592,6 +584,8 @@ go env = \case
     _ -> go env flatD
   DLocated _ d -> go env d
   DFence _ d -> go env d
+  DSeparator LeadingSeparator l _ -> go env l
+  DSeparator TrailingSeparator _ t -> go env t
   DCppChoice cs branches fallback -> \out ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
@@ -1024,9 +1018,11 @@ started out = not (null (outCurrent out)) || linePinned (outLine out)
 endsWithOpener :: Out -> Bool
 endsWithOpener out =
   null (outHeldBack out)
-    && case dropWhile (T.all isSpace) (outCurrent out) of
-      t : _ -> t == ", " || T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
-      [] -> False
+    && case outCurrent out of
+      " " : "," : _ -> True
+      ts -> case dropWhile (T.all isSpace) ts of
+        t : _ -> T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
+        [] -> False
 
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool

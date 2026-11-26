@@ -18,7 +18,7 @@ import Data.List (unsnoc)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Monoid (Endo (..), First (..))
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -27,10 +27,10 @@ import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc
   ( Doc (..),
+    SeparatorSide (..),
     Spill (..),
     foldChildren,
     layoutInside,
-    leadingSeparator,
     namesOnly,
     printsNothing,
     unwrap,
@@ -233,7 +233,9 @@ leadsAnItem = \case
   DCat DSoftBreak d -> hung d
   d -> hung d
   where
-    hung = isJust . leadingSeparator
+    hung = \case
+      DSeparator LeadingSeparator (DAligned n _) _ -> n < 0
+      _ -> False
 
 -- | The outermost region a document prints first.
 openingRegion ::

@@ -423,8 +423,7 @@ fieldBind ctx label HsFieldBind{..}
   | hfbPun = label hfbLHS
   | otherwise =
       label hfbLHS
-        >+> space
-          <> keywordAt (spanOf =<< hfbAnn) "="
+        >+> trailing (keywordAt (spanOf =<< hfbAnn) "=")
           <> attach placement (hsExpr ctx hfbRHS)
   where
     placement
@@ -507,7 +506,7 @@ operatorChain ctx outerSite mkBody isDo =
       Operand e -> printBody (mkBody site e)
       chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
-          if trailing
+          if operatorsTrail
             then laidOut MayBrace
             else
               mayBraceWhenFlat
@@ -542,7 +541,7 @@ operatorChain ctx outerSite mkBody isDo =
                     (ptr first')
                 pieces = links operands operators
              in ref first'
-                  <> if trailing
+                  <> if operatorsTrail
                     then
                       fromFirst (foldr (piece bracing fromFirst) mempty pieces)
                     else foldr (piece bracing fromFirst) mempty pieces
@@ -584,20 +583,19 @@ operatorChain ctx outerSite mkBody isDo =
                 kept
                   | isLast = id
                   | otherwise = infrangible
-                rendered = kept (render (not trailing) operandSite operand)
-             in if trailing
+                rendered =
+                  kept (render (not operatorsTrail) operandSite operand)
+             in if operatorsTrail
                   then
-                    space
-                      <> ( hsExpr ctx o
-                             >+> attach
-                               ( tailPlacement
-                                   isLast
-                                   (chainSpan spanOf previous)
-                                   o
-                                   operand
-                               )
-                               (if isLast then rendered else rendered >+> rest')
-                         )
+                    trailing (hsExpr ctx o)
+                      >+> attach
+                        ( tailPlacement
+                            isLast
+                            (chainSpan spanOf previous)
+                            o
+                            operand
+                        )
+                        (if isLast then rendered else rendered >+> rest')
                   else operatorLine placing previous o operand rendered <> rest'
           tailPlacement isLast before o operand
             | isLast,
@@ -609,7 +607,7 @@ operatorChain ctx outerSite mkBody isDo =
             or (zipWith commentedBefore (NE.toList operands) operators)
           commentedBefore operand o =
             commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
-          trailing =
+          operatorsTrail =
             (length operators == 1 || endsHanging)
               && not commentedOperators
               && and (zipWith couldTrail (NE.toList operands) operators)
@@ -688,8 +686,7 @@ stmtBody ctx site mkBody = \case
   BodyStmt _ body _ _ -> printBody (mkBody site body)
   BindStmt arrow p f ->
     hsPatClosing ctx (closingFor site) p
-      >+> space
-        <> keywordAt (spanOf arrow) (reserved ctx "<-")
+      >+> trailing (keywordAt (spanOf arrow) (reserved ctx "<-"))
         <> layoutFrom
           ctx
           (fmap endOf (spanOf p) <> spanOf f)
@@ -841,8 +838,7 @@ caseOf ctx site mkBody EpAnnHsCase{..} scrutinee mg =
       (ptr keyword)
       ( space
           <> hsExpr ctx scrutinee
-          <> space
-          <> keywordAt (spanOf hsCaseAnnOf) "of"
+          <> trailing (keywordAt (spanOf hsCaseAnnOf) "of")
       )
     <> indent
       (underSite site)
@@ -978,8 +974,7 @@ localBinds ctx bracing = \case
   where
     implicitBind (IPBind _ n e) =
       at ctx n outputable
-        >+> space
-          <> txt "="
+        >+> trailing (txt "=")
           <> attach placement (hsExpr ctx e)
       where
         placement
@@ -1346,9 +1341,9 @@ match ctx bracing mkBody style isInfix multAnn strict pats GRHSs{..} =
     separator
       | hasGuards = mempty
       | otherwise = case style of
-          FunctionStyle _ -> space <> txt "="
-          PatternBindStyle -> space <> txt "="
-          _ -> space <> txt (reserved ctx "->")
+          FunctionStyle _ -> trailing (txt "=")
+          PatternBindStyle -> trailing (txt "=")
+          _ -> trailing (txt (reserved ctx "->"))
 
     alternative g =
       fence (spanOf g) $
@@ -1418,7 +1413,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
             ( bar
                 <> space
                 <> equation (align (ref conditions))
-                <> indent 1 (ptr bar) (space <> txt (reserved ctx separator))
+                <> indent 1 (ptr bar) (trailing (txt (reserved ctx separator)))
             )
         )
         <> fence

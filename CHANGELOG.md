@@ -34,6 +34,8 @@
   out in them. [Issue 350].
 * A context of one constraint written on one line loses the parentheses it
   does not need. [PR 493].
+* A `where` written after a class, an instance or a GADT declaration with
+  nothing under it stays. [Issue 517].
 * A block written between braces keeps them, and one written without them
   gets none. [Issue 447], [PR 494], [PR 502], [PR 520], [PR 524].
 * More of what is written beside an `=`, a `<-` or a keyword stays there, in
@@ -76,8 +78,12 @@
   of a construct, each branch keeps what it needs to parse. [PR 388],
   [PR 463], [PR 472], [PR 505], [PR 523], [PR 525], [PR 527], [PR 554],
   [PR 567], [PR 575].
-* A class or an instance whose members are all behind a conditional keeps
-  its head and its `where` outside it. [PR 506], [PR 508].
+* A comma, an operator or an `=` that every configuration has no longer
+  stands alone on a line next to a conditional: it goes into each branch
+  with what it joins, or at the end of the line before. [PR 579].
+* A class or an instance keeps its head outside the conditionals its
+  members or its `where` are behind, and each conditional where it was
+  written. [PR 506], [PR 508], [issue 517], [issue 518], [issue 519].
 * A conditional that switches an extension no longer changes the program in
   its other configurations. [PR 436], [PR 468], [PR 498], [PR 526].
 * Conditionals asking one question in different spellings, or about the
@@ -186,6 +192,9 @@
 [PR 506]: https://github.com/mrkkrp/tilia/pull/506
 [PR 507]: https://github.com/mrkkrp/tilia/pull/507
 [PR 508]: https://github.com/mrkkrp/tilia/pull/508
+[Issue 517]: https://github.com/mrkkrp/tilia/issues/517
+[Issue 518]: https://github.com/mrkkrp/tilia/issues/518
+[Issue 519]: https://github.com/mrkkrp/tilia/issues/519
 [PR 520]: https://github.com/mrkkrp/tilia/pull/520
 [PR 521]: https://github.com/mrkkrp/tilia/pull/521
 [PR 522]: https://github.com/mrkkrp/tilia/pull/522
@@ -216,6 +225,7 @@
 [PR 573]: https://github.com/mrkkrp/tilia/pull/573
 [PR 574]: https://github.com/mrkkrp/tilia/pull/574
 [PR 575]: https://github.com/mrkkrp/tilia/pull/575
+[PR 579]: https://github.com/mrkkrp/tilia/pull/579
 
 ## Tilia 0.1.4.0
 

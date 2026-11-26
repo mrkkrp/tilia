@@ -3,15 +3,14 @@
 module Route.Vehicle where
 
 data Vehicle
-    =
 #ifdef WITH_TRAMS
-    Bus
+    = Bus
         { busLine :: Int
         }
     | -- buses run on every route
       Tram
 #else
-    Bus
+    = Bus
     { busLine :: Int
     }
 -- buses run on every route

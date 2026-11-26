@@ -18,7 +18,7 @@ where
 
 import Data.Choice (fromBool)
 import Data.Foldable (fold)
-import Data.Maybe (isNothing)
+import Data.Maybe (isJust, isNothing)
 import GHC.Builtin.Types (cTupleTyConName, isCTupleTyConName)
 import GHC.Core.Coercion.Axiom (Role (..))
 import GHC.Hs
@@ -93,8 +93,8 @@ classDecl
                        then classHead
                        else classHead >+> funDeps ctx fdeps
                    )
-                <> includeUnless
-                  onlyDocs
+                <> includeWhen
+                  (isJust whereSpan)
                   (breakOrSpace <> keywordAt whereSpan "where")
             )
 
@@ -121,10 +121,9 @@ classDecl
               hsq_explicit
 
       body =
-        includeUnless (null members) . indent 1 (ptr keyword) $
-          breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
-
-      onlyDocs = null sigs && null binds && null families && null defaults
+        includeUnless (null members && isNothing whereSpan)
+          . indent 1 (ptr keyword)
+          $ breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
       members =
         inSourceOrder
@@ -173,9 +172,6 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
     headSpan = foldMap spanOf warning <> typeSpan
     typeSpan = spanOf cid_poly_ty
     whereSpan = spanOf (acid_where anns)
-    typeRegion
-      | null members = typeSpan <> whereSpan
-      | otherwise = typeSpan
 
     head' =
       breakOrSpace
@@ -184,17 +180,18 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
           (ptr keyword)
           ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
-              <> ( maybe id located typeRegion $
+              <> ( maybe id located typeSpan $
                      layoutFrom ctx typeSpan (hsSigTypeBody ctx (unLoc cid_poly_ty))
-                       <> includeUnless
-                         (null members)
+                       <> includeWhen
+                         (isJust whereSpan)
                          (breakOrSpace <> keywordAt whereSpan "where")
                  )
           )
 
     body =
-      includeUnless (null members) . indent 1 (ptr keyword) $
-        breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
+      includeUnless (null members && isNothing whereSpan)
+        . indent 1 (ptr keyword)
+        $ breakOrSpace <> knotDecls (ctxKnot ctx) ctx Associated members
 
     members =
       inSourceOrder
@@ -379,8 +376,7 @@ familyResultSig ctx headSpan (L _ sig) = case sig of
 -- | The injectivity annotation of a type family, as in @| r -> a@.
 injectivityAnn :: Ctx -> InjectivityAnn GhcPs -> Doc
 injectivityAnn ctx (InjectivityAnn _ from to) =
-  txt "|"
-    <> space
+  leadingBar
     <> name ctx from
     <> space
     <> txt (reserved ctx "->")
@@ -414,8 +410,7 @@ tyFamInstEqn ctx FamEqn{..} =
         feqn_pats
 
     rhs =
-      space
-        <> txt "="
+      trailing (txt "=")
         <> layoutFrom
           ctx
           (fmap endOf headSpan <> spanOf feqn_rhs)

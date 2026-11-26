@@ -12,7 +12,6 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
-import Data.Bifunctor (bimap)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.List
@@ -23,12 +22,13 @@ import Data.List
     minimumBy,
     nub,
     sortOn,
-    stripPrefix,
     transpose,
+    uncons,
     unsnoc,
   )
 import Data.Maybe
-  ( fromMaybe,
+  ( catMaybes,
+    fromMaybe,
     isJust,
     listToMaybe,
     mapMaybe,
@@ -40,30 +40,29 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Utils.Lexeme (okConSymOcc, okVarSymOcc)
 
 import Tilia.Cpp.Directives (Guard, Varied (..), guardText, untouched)
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),
     Layout (..),
+    SeparatorSide (..),
     Wrapper (..),
     choosing,
     conditionalRange,
     foldChildren,
     foldRegions,
     layoutInside,
-    leadingSeparator,
     mapChildren,
     namesOnly,
     onlyBreaks,
     onlySpacing,
-    printExcerpt,
     printedFrom,
     printsNothing,
     printsOnOneLine,
     referentIn,
     regionOf,
+    separatorSide,
     spine,
     spineAt,
     unwrap,
@@ -71,7 +70,6 @@ import Tilia.Doc
     pattern Cat,
   )
 import Tilia.Doc.Combinators qualified as Doc
-import Tilia.Settings (Settings)
 import Tilia.Source (Lines, lineAt, offsetOf)
 import Tilia.Span (Span (..), covers, endOf, meets, startOf)
 
@@ -90,8 +88,6 @@ data Settled = Settled
 -- A structural walk that keeps what they all agree on and puts a choice
 -- where they part.
 merge ::
-  -- | What the merged document is printed with.
-  Settings ->
   -- | The module as written.
   Lines ->
   -- | The conditionals asking the question, as written.
@@ -105,7 +101,7 @@ merge ::
   -- | One document per answer.
   [Doc] ->
   Doc
-merge settings written conditionals guards varied settledOthers = go Broken
+merge written conditionals guards varied settledOthers = go Broken
   where
     go _ [] = mempty
     go layout ds@(d : _)
@@ -129,8 +125,8 @@ merge settings written conditionals guards varied settledOthers = go Broken
             (WGroup l, merged)
               | l /= Broken,
                 not (beginsWithChoice merged),
-                choosing merged ->
-                  choice $ case fmap regionOf xs of
+                not (any printsLeftAlone xs) ->
+                  choice layout $ case fmap regionOf xs of
                     r : rs | all (== r) rs -> xs
                     _ -> fmap Doc.infrangible xs
             (WGroup _, merged)
@@ -157,12 +153,25 @@ merge settings written conditionals guards varied settledOthers = go Broken
         | Just spans <- traverse regionOf xs,
           Just opened <- unwrapping layout spans xs (const True) ->
             opened
-        | otherwise -> choice xs
+        | otherwise -> choice layout xs
       where
         every f = traverse f xs
         ungrouped = \case
           DGroup Broken d | layout == Broken -> Just d
           _ -> Nothing
+
+    -- Does this document print anything from lines the conditional left
+    -- alone?
+    printsLeftAlone =
+      getAny
+        . foldRegions
+          ( \s d inside ->
+              inside
+                <> Any
+                  ( not (printsNothing d)
+                      && untouched varied (spanWithHaddock s d)
+                  )
+          )
 
     -- A choice among the configurations whose groups these layouts are,
     -- each alternative laid out as its configuration lays the group out.
@@ -209,8 +218,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
                    | e <- xs,
                      regionOf e == regionOf y,
                      fmap spanStartColumn (regionOf e) == column,
-                     printExcerpt settings (DGroup l' (mconcat code))
-                       == printExcerpt settings e
+                     untouchedRegion varied e
                    ] of
                 e : _ -> Just (spacing <> [e])
                 [] -> do
@@ -230,33 +238,41 @@ merge settings written conditionals guards varied settledOthers = go Broken
           anchors = transpose (fmap snd cut)
        in mconcat (woven within layout stretches (fmap (go layout) anchors))
 
+    -- The stretches between the parts every spine shares, merged, each
+    -- taking in the part after it where it ends with differing separators
+    -- leading that, and the trailing separator the part begins with.
     woven within layout (s : ss) (c : cs)
-      | all (maybe False ((== DSpace) . snd) . unsnoc) s
-          || opensWithSpace layout c,
-        (line, rest) <- lineOf layout c,
-        printsOneToken layout line,
-        Just (opening, ws, bs, e, gap) <- choiceAt written Last stretch,
-        not (any printsNothing (e : fmap snd bs)) =
-          opening
-            <> Doc.cppChoice
-              ws
-              [(g, b <> gap <> line) | (g, b) <- bs]
-              (e <> gap <> line)
-            <> rest
-            : woven within layout ss (afterChoice rest ss cs)
-      | otherwise = stretch : c : woven within layout ss cs
-      where
-        stretch = foldMap (varying within layout) (cutAtConditionals s)
-        afterChoice before (t : _) (d : ds)
-          | printsNothing before,
-            all null t,
-            (line, rest) <- lineOf layout d,
-            printsNothing line =
-              rest : ds
-        afterChoice _ _ ds = ds
+      | Just leads <- traverse ledInto s,
+        (l : ls) <- leads,
+        any (/= l) ls,
+        s' : ss' <- ss =
+          woven within layout (zipWith (<>) (fmap (<> [c]) s) s' : ss') cs
+      | any (not . null) s,
+        Just (t, c') <- separatorFirst c =
+          woven within layout (fmap (<> [t]) s : ss) (c' : cs)
+      | otherwise =
+          foldMap (varying within layout) (cutAtConditionals s)
+            : c
+            : woven within layout ss cs
     woven within layout ss [] =
       fmap (foldMap (varying within layout) . cutAtConditionals) ss
     woven _ _ [] _ = []
+
+    -- The trailing separator a part begins with, in the indentation it was
+    -- written in or as the referent the part is indented from, and the rest.
+    separatorFirst = \case
+      DIndented n a d
+        | separatorSide a == Just TrailingSeparator ->
+            Just (a, DIndented n (Doc.ptr a) d)
+        | t : rest <- spine d,
+          separatorSide t == Just TrailingSeparator ->
+            Just (DIndented n a t, DIndented n a (mconcat rest))
+      _ -> Nothing
+
+    -- The leading separator a stretch ends with, spacing aside.
+    ledInto s = case dropWhile onlySpacing (reverse s) of
+      x : _ | separatorSide x == Just LeadingSeparator -> Just x
+      _ -> Nothing
 
     -- A stretch the configurations disagree over, cut where one conditional
     -- asking the question ends and the next begins, so that each comes out
@@ -298,86 +314,122 @@ merge settings written conditionals guards varied settledOthers = go Broken
         ascending os = and (zipWith (<=) os (drop 1 os))
 
     varying within layout ss =
-      let (opening, ss1) = leadingSeparatorIn (sharedStart layout ss)
+      let (opening, ss1) = sharedStart layout ss
+          (ss2, closing) = sharedEnd layout ss1
        in fromMaybe
-            (mconcat opening <> disagreement ss1)
-            (arrowAhead opening ss1)
+            (mconcat opening <> disagreement ss2)
+            (separatorAhead opening ss2)
+            <> mconcat closing
       where
-        disagreement ss1 =
-          let (ss2, closing) = sharedEnd layout ss1
-              (lead, ss3, trail) = hoisted layout ss2
+        disagreement ss2 =
+          let (lead, ss3, trail) = hoisted layout ss2
            in mconcat lead
-                <> fromMaybe (within layout ss3) (leftAlone ss3)
+                <> within layout ss3
                 <> mconcat trail
-                <> mconcat closing
 
-        leftAlone ss3 = case filter (not . all printsNothing) ss3 of
-          s : rest
-            | all (untouchedRegion varied) s,
-              all (alike layout s) rest ->
-                Just (mconcat s)
-          _ -> Nothing
-
-        -- The arrow every configuration leads what they disagree over with,
-        -- after the break they share, at the end of the line before them
-        -- where one of them has nothing there.
-        arrowAhead opening ss1 = do
-          heads <- traverse ledByArrow ss1
+        -- The separator every configuration leads what they disagree over
+        -- with, after the break they share, on its other side at the end of
+        -- the line before them where one of them has nothing there.
+        separatorAhead opening ss2 = do
+          heads <- traverse ledBySeparator ss2
           (a, _) : others <- Just heads
           guard (all ((== a) . fst) others)
           (front, b) <- unsnoc opening
           guard (onlyBreaks b)
           let d = disagreement (fmap snd heads)
           guard (maybe False (any printsNothing) (leadingAlternatives d))
-          Just (mconcat front <> mconcat (trailingArrow a) <> b <> d)
+          Just (mconcat front <> otherSide a <> b <> d)
 
-        ledByArrow s = case dropWhile emptyRegion s of
-          a : more | leadingArrow a -> Just (a, more)
+        ledBySeparator s = case dropWhile emptyRegion s of
+          a : more | separatorSide a == Just LeadingSeparator -> Just (a, more)
           _ -> Nothing
 
-    sharedStart layout ss
-      | Just (h : hs) <- traverse listToMaybe ss,
-        all (agree varied layout h) hs =
-          let (c, ss') = sharedStart layout (fmap (drop 1) ss)
-           in (h : c, ss')
-      | otherwise = ([], ss)
+    sharedStart = sharedAlong LeadingSeparator
 
-    leadingSeparatorIn (opening, ss) = case reverse opening of
-      x : DSoftBreak : rest
-        | isJust (leadingSeparator x) ->
-            (reverse rest, fmap ([DSoftBreak, x] <>) ss)
-      DSpace : DText "|" : rest ->
-        (reverse rest, fmap ([DText "|", DSpace] <>) ss)
-      _ -> (opening, ss)
+    -- What every spine begins with, a separator only together with the
+    -- part it goes with where that lies ahead, a part never apart from the
+    -- differing separators it goes with, and seen past a choice where only
+    -- that makes them agree.
+    sharedAlong ahead layout ss
+      | Just (h : hs) <- traverse listToMaybe ss,
+        all (agree varied layout h) hs,
+        not ledApart,
+        (c, ss') <- sharedAlong ahead layout (fmap (drop 1) ss),
+        separatorSide h /= Just ahead || not (null c) =
+          (h : c, ss')
+      | moved <- fmap (separatorPast ahead layout) ss,
+        any isJust moved,
+        let ss' = zipWith fromMaybe ss moved,
+        Just (h : hs) <- traverse listToMaybe ss',
+        all (agree varied layout h) hs =
+          sharedAlong ahead layout ss'
+      | otherwise = ([], ss)
+      where
+        ledApart =
+          case traverse (listToMaybe . dropWhile onlySpacing . drop 1) ss of
+            Just (x : xs) ->
+              all ((== Just behind) . separatorSide) (x : xs) && any (/= x) xs
+            _ -> False
+        behind = case ahead of
+          LeadingSeparator -> TrailingSeparator
+          TrailingSeparator -> LeadingSeparator
+
+    -- A spine seen with the separator by the choice it begins with, before
+    -- it or at the far end of every alternative, past the choice instead.
+    separatorPast ahead layout = \case
+      s : rest
+        | isJust (separatorSide s),
+          (spacing, c : rest') <- span onlySpacing rest,
+          Just (_, c') <- through (Just s) layout c ->
+            Just (c' : s : spacing <> dropWhile onlySpacing rest')
+      c : rest
+        | Just (t, c') <- through Nothing layout c -> Just (c' : t : rest)
+      _ -> Nothing
+      where
+        through near l = \case
+          DCppChoice ws bs e -> do
+            (t, e') <- past near l e
+            bs' <- traverse (traverse (past near l)) bs
+            first' : more <- Just (catMaybes (t : fmap (fst . snd) bs'))
+            guard (all (same first') more)
+            Just (first', Doc.cppChoice ws (fmap (fmap snd) bs') e')
+          d -> do
+            (w, x) <- unwrap d
+            fmap (wrap w) <$> through near (layoutInside l w) x
+        past near l a
+          | printsNothing a = (Nothing, a) <$ near
+          | otherwise = do
+              (t, inner) <- farEnd (spineAt l a)
+              guard (isJust (separatorSide t) && all (same t) near)
+              Just
+                ( Just t,
+                  mconcat (nearEnd (onSide ahead <$> maybeToList near) inner)
+                )
+        farEnd xs = case ahead of
+          LeadingSeparator -> (\(front, t) -> (t, front)) <$> unsnoc xs
+          TrailingSeparator -> uncons xs
+        nearEnd n inner = case ahead of
+          LeadingSeparator -> n <> inner
+          TrailingSeparator -> inner <> n
+        same x y = onSide LeadingSeparator x == onSide LeadingSeparator y
 
     sharedEnd layout ss =
-      let (c, ss') = sharedStart layout (fmap reverse ss)
-          ends = fmap reverse ss'
-       in case reverse c of
-            x : closing
-              | x == Doc.comma,
-                all (maybe False (not . onlySpacing . snd) . unsnoc) ends ->
-                  (fmap (<> [x]) ends, closing)
-            closing -> (ends, closing)
+      let (c, ss') = sharedAlong TrailingSeparator layout (fmap reverse ss)
+       in (fmap reverse ss', reverse c)
 
     middle _ [] = mempty
     middle layout ss
       | Just xs <- traverse sole ss = go layout xs
-      | Just (c, tails) <- commaLed layout ss = c <> middle layout tails
-      | Just (fronts, c) <- commaTrailed layout ss = middle layout fronts <> c
-      | Just (c, tails) <- leadingCommaOf ss,
-        not (any (all onlySpacing) tails) =
-          onEdge First c (middle layout tails)
-      | Just tails <- traverse (stripPrefix [DText "|", DSpace]) ss,
-        let merged = middle layout tails,
-        not (onlyChoice merged) =
-          DText "|" <> DSpace <> merged
+      | Just (c, rests) <- separated LeadingSeparator ss =
+          onEdge First c (middle layout rests)
+      | Just (c, rests) <- separated TrailingSeparator ss =
+          onEdge Last c (middle layout rests)
       | otherwise =
           minimumBy
             (comparing (weigh layout))
             (apart : maybeToList (alongsideHeads layout ss) <> byLines)
       where
-        apart = choice (fmap (mconcat . separatorGlued) ss)
+        apart = choice layout (fmap mconcat ss)
         byLines
           | not (any continuing ss),
             not (null (foldr1 Set.intersection (foldMap writtenAt <$> ss))),
@@ -388,9 +440,30 @@ merge settings written conditionals guards varied settledOthers = go Broken
         continuing = \case
           x : xs
             | printsNothing x -> continuing xs
+            | separatorSide x == Just TrailingSeparator -> False
             | Just (_, y) <- unwrap x -> continuing (spine y <> xs)
             | otherwise -> x == DSpace
           [] -> False
+
+    -- The separator every stretch begins or ends with, on the side it is
+    -- written on, and what each holds besides.
+    separated side ss = do
+      views@((c, _) : more) <- traverse edgeOf ss
+      guard (all ((== c) . fst) more)
+      let rests = fmap snd views
+      guard (not (any (all onlySpacing) rests))
+      Just (c, rests)
+      where
+        edgeOf s = case side of
+          LeadingSeparator
+            | c : r <- s,
+              separatorSide c == Just LeadingSeparator ->
+                Just (c, r)
+          TrailingSeparator
+            | Just (r, c) <- unsnoc s,
+              separatorSide c == Just TrailingSeparator ->
+                Just (c, r)
+          _ -> Nothing
 
     whole _ [] = mempty
     whole layout ss@(s : rest)
@@ -404,129 +477,65 @@ merge settings written conditionals guards varied settledOthers = go Broken
           inside
       | otherwise = apart
       where
-        apart = choice (fmap mconcat ss)
+        apart = choice layout (fmap mconcat ss)
 
     firstPart parts = case break (not . blank) parts of
       (spacing, x : more) -> Just (spacing, x, more)
       _ -> Nothing
 
-    -- An alternative with the comma or the arrow leading a line it ends
-    -- with put at the end of the line before instead.
-    separatorGlued = \case
-      x : DBreak : rest | x == Doc.comma -> x : Doc.space : rest
-      xs -> case reverse xs of
-        x : DSoftBreak : rest
-          | leadsWithComma x -> reverse (gluedTo [Doc.comma] rest)
-        x : rest
-          | leadingArrow x,
-            (_ : _, rest') <- span blank rest ->
-              reverse (gluedTo (reverse (trailingArrow x)) rest')
-        _ -> xs
+    -- An alternative with the trailing separator it begins with, inside
+    -- whatever wraps its start, written leading the line it ends, or with
+    -- the leading separator it ends with put at the end of the line before.
+    separatorGlued xs = fromMaybe (gluedEnd xs) (gluedStart xs)
+
+    gluedStart = \case
+      x : DBreak : rest
+        | separatorSide x == Just TrailingSeparator ->
+            Just (otherSide x : rest)
+      x : DIndented n a d : rest
+        | separatorSide x == Just TrailingSeparator,
+          DBreak : more <- spine d ->
+            Just (otherSide x : DIndented n a (mconcat more) : rest)
+      x : rest
+        | onlySpacing x -> (x :) <$> gluedStart rest
+        | separatorSide x /= Just TrailingSeparator,
+          Just (w, y) <- unwrap x ->
+            (: rest) . wrap w . mconcat <$> gluedStart (spine y)
+      _ -> Nothing
+
+    gluedEnd xs = case reverse xs of
+      x : rest
+        | separatorSide x == Just LeadingSeparator,
+          (_ : _, rest') <- span blank rest ->
+            reverse (gluedTo [otherSide x] rest')
+      _ -> xs
 
     gluedTo glue = \case
       d : DHardBreak : rest -> d : DHardBreak : glue <> rest
       rest -> glue <> rest
 
-    commaLed layout ss = do
-      views <- traverse (ledBy layout) ss
-      let unmoved = [v | v@(_, _, False) <- views]
-      (c, _, _) : _ <- Just (if null unmoved then views else unmoved)
-      if length unmoved < length views
-        && all (\(d, _, _) -> agree varied layout c d) views
-        then Just (c, [r | (_, r, _) <- views])
-        else Nothing
-
-    ledBy layout = \case
-      c@DCppChoice{} : r
-        | everyAlternative (\xs -> take 1 xs == [Doc.comma]) c ->
-            Just (c, r, False)
-      x : DBreak : DCppChoice ws bs e : r
-        | x == Doc.comma,
-          following@(_ : _) <- dropWhile onlySpacing r,
-          everyAlternative
-            (\xs -> fmap snd (unsnoc xs) == Just Doc.comma)
-            (DCppChoice ws bs e) ->
-            Just
-              ( Doc.cppChoice ws [(g, led b) | (g, b) <- bs] (led e),
-                x : DBreak : following,
-                True
-              )
-      _ -> Nothing
-      where
-        everyAlternative p = \case
-          DCppChoice _ bs e ->
-            all
-              (\a -> printsNothing a || p (spineAt layout a))
-              (e : fmap snd bs)
-          _ -> False
-        led a
-          | printsNothing a = a
-          | otherwise =
-              mconcat
-                ( Doc.comma
-                    : Doc.space
-                    : maybe [] fst (unsnoc (spineAt layout a))
-                )
-
-    commaTrailed layout ss = do
-      views <- traverse (trailedBy layout) ss
-      c : _ <- Just [c | (c, _, False) <- views]
-      guard (any (\(_, _, moved) -> moved) views)
-      guard (all (\(d, _, _) -> agree varied layout c d) views)
-      Just ([f | (_, f, _) <- views], c)
-
-    trailedBy layout s = case reverse s of
-      x : DSoftBreak : r | leadsWithComma x -> movedIn [Doc.comma] r
-      x : r | x == Doc.comma -> movedIn [Doc.comma] r
-      c : r -> movedIn [] (c : r) <|> Just (c, reverse r, False)
-      _ -> Nothing
-      where
-        movedIn after = \case
-          c : DSoftBreak : r ->
-            (\c' -> (c', commaAfter r, True))
-              <$> trailedIn after layout c
-          _ -> Nothing
-        trailedIn after l = \case
-          DCppChoice ws bs e ->
-            Doc.cppChoice ws
-              <$> traverse (traverse (trailed after l)) bs
-              <*> trailed after l e
-          d -> do
-            (w, x) <- unwrap d
-            wrap w <$> trailedIn after (layoutInside l w) x
-        trailed after l a
-          | printsNothing a = Just a
-          | otherwise =
-              mconcat . reverse . gluedTo after . reverse . concat . snd
-                <$> leadingCommaOf [spineAt l a]
-        commaAfter = reverse . gluedTo [Doc.comma]
-
     alongsideHeads layout ss = do
       heads <- traverse listToMaybe ss
-      let rest = fmap (drop 1) ss
-          (glued, tails) = case traverse (stripPrefix [Doc.comma]) rest of
-            Just rest' -> (onEdge Last Doc.comma, rest')
-            Nothing -> (id, rest)
+      let tails = fmap (drop 1) ss
       case heads of
         (h : hs)
           | all (sameKind h) hs,
-            all (breaksFirst (lineEnding h hs)) tails ->
+            all (breaksFirst lineEnding) tails ->
               Just
                 ( joined
-                    (glued (go layout heads))
+                    merged
                     (middle layout tails)
                     (varying middle layout tails)
                 )
+          where
+            merged = go layout heads
+            lineEnding = if choosing merged then Flat else layout
         _ -> Nothing
       where
         breaksFirst l t = case dropWhile (quiet l) t of
           [] -> True
           (d : _) -> opensWithBreak layout d
         quiet l d = weigh layout d == 0 && not (opensWithBreak l d)
-        lineEnding h hs
-          | all ((== printed h) . printed) hs = layout
-          | otherwise = Flat
-        printed = printExcerpt settings
 
     onEdge edge t d = fromMaybe (beside d) (inAlternatives d)
       where
@@ -551,7 +560,11 @@ merge settings written conditionals guards varied settledOthers = go Broken
               | otherwise -> (a <>) <$> inAlternatives b
           y -> do
             (w, x) <- unwrap y
+            guard (keepsColumn w x)
             wrap w <$> inAlternatives x
+        keepsColumn w x = case edge of
+          First -> not (aligning w) || onlyChoice x
+          Last -> True
 
     joined before after apart =
       case (choiceAt written Last before, choiceAt written First after) of
@@ -614,9 +627,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
             not (printsNothing x) && breaking x
         | otherwise -> onlyBreaks d
 
-    choice ds
-      | (d : _) <- mapMaybe (settledChoice ds) settledOthers = d
-    choice ds = case unsnoc (fmap joinedToOperator ds) of
+    choice layout ds
+      | (d : _) <- mapMaybe (settledChoice layout ds) settledOthers = d
+    choice _ ds = case unsnoc
+      (fmap (mconcat . separatorGlued . spine) ds) of
       Just (branches, fallback) ->
         Doc.cppChoice
           (filter (evidenced ds) conditionals)
@@ -624,7 +638,7 @@ merge settings written conditionals guards varied settledOthers = go Broken
           fallback
       Nothing -> mempty
 
-    settledChoice ds s =
+    settledChoice layout ds s =
       listToMaybe
         [ open'
         | open' <- ds,
@@ -632,8 +646,10 @@ merge settings written conditionals guards varied settledOthers = go Broken
           and (zipWith (fits open') (settledBranches s) ds)
         ]
       where
-        fits open' k d = printed k open' == printed k d
-        printed k = printExcerpt settings . maybe id taking k
+        fits open' k d = alike layout (inLines open') (inLines d)
+          where
+            inLines =
+              fst . printedLines layout . spineAt layout . maybe id taking k
         holds = \case
           DCppChoice cs _ _ | settled cs -> True
           d -> getAny (foldChildren (Any . holds) d)
@@ -1168,7 +1184,7 @@ partsOf layout = walk [[]] False
               xs
         | place == Between,
           a : more <- xs,
-          leadingArrow a,
+          separatorSide a == Just LeadingSeparator,
           emptyRegion x ->
             walk ([x, a] : ls) cut Within more
         | printsNothing x || x == DSpace -> walk (onto [[x]] ls) cut place xs
@@ -1204,18 +1220,29 @@ partsOf layout = walk [[]] False
 writtenAt :: Doc -> Set Span
 writtenAt = foldRegions (\s _ -> Set.insert s)
 
--- | Is this an arrow that leads a line of a type, with the space after it?
-leadingArrow :: Doc -> Bool
-leadingArrow = \case
-  DText t -> t `elem` [":: ", "=> ", "-> ", " . ", "∷ ", "⇒ ", "→ ", "⊸ "]
-  _ -> False
+-- | A separator as it is written on the other side of the part it goes
+-- with.
+otherSide ::
+  -- | The separator.
+  Doc ->
+  Doc
+otherSide = \case
+  DSeparator LeadingSeparator l t -> DSeparator TrailingSeparator l t
+  DSeparator TrailingSeparator l t -> DSeparator LeadingSeparator l t
+  DIndented n a d -> DIndented n a (otherSide d)
+  DReferent k d -> DReferent k (otherSide d)
+  d -> d
 
--- | A leading arrow, put at the end of a line instead.
-trailingArrow :: Doc -> [Doc]
-trailingArrow = \case
-  DText " . " -> [DText "."]
-  DText t -> [DSpace, DText (T.stripEnd t)]
-  d -> [d]
+-- | A separator as it is written on this side of the part it goes with.
+onSide ::
+  -- | The side.
+  SeparatorSide ->
+  -- | The separator.
+  Doc ->
+  Doc
+onSide side d
+  | separatorSide d == Just side = d
+  | otherwise = otherSide d
 
 -- | Is this a region with nothing in it?
 emptyRegion :: Doc -> Bool
@@ -1245,98 +1272,6 @@ opensWithBreak layout d = case dropWhile (== DSpace) (spineAt layout d) of
         _ -> False
   [] -> False
 
--- | Is the first thing this document puts on the page a space?
-opensWithSpace :: Layout -> Doc -> Bool
-opensWithSpace layout d = case spineAt layout d of
-  x : _
-    | Just (w, y) <- unwrap x -> opensWithSpace (layoutInside layout w) y
-    | otherwise -> x == DSpace
-  [] -> False
-
--- | What a document puts on the line it continues, and the rest of it, cut
--- through the wrappers around it before the first break, a frangible group
--- that opens with one laid out broken, and a group that hangs a body after
--- a space broken and indented before it.
-lineOf ::
-  -- | The layout of the group the document is printed in.
-  Layout ->
-  -- | The document.
-  Doc ->
-  (Doc, Doc)
-lineOf layout d = case spineAt layout d of
-  [x]
-    | Just (w, y) <- unwrap x,
-      indenting w ->
-        bimap (wrap w) (wrap w) (lineOf layout y)
-  xs -> case break (opensWithBreak layout . broken) xs of
-    (line, x : rest) -> (mconcat line, mconcat (broken x : rest))
-    (line, []) -> (mconcat line, mempty)
-  where
-    broken = \case
-      DGroup _ (DCat DSpace x) -> DGroup Broken (Doc.attach Doc.Normal x)
-      DGroup Frangible x -> DGroup Broken x
-      x -> x
-
--- | An alternative of a conditional with what an operator beginning it,
--- inside whatever wraps its start, hangs after a break put on the
--- operator's line: a configuration breaks there only to end a line with
--- the operator, which the conditional moved to the start of the next.
-joinedToOperator ::
-  -- | The alternative.
-  Doc ->
-  Doc
-joinedToOperator d = case span onlySpacing (spine d) of
-  (spacing, op : DIndented r a x : rest)
-    | operatorToken op,
-      referentIn a == Just (referentOf op),
-      DBreak : after <- spine x ->
-        mconcat
-          (spacing <> (op : DIndented r a (DSpace <> mconcat after) : rest))
-  (spacing, x : rest)
-    | Just (w, y) <- unwrap x ->
-        mconcat (spacing <> (wrap w (joinedToOperator y) : rest))
-  _ -> d
-  where
-    referentOf = \case
-      DReferent k _ -> k
-      x -> regionOf x
-
--- | Is this an operator, in symbols or as a name in backticks?
-operatorToken ::
-  -- | The document.
-  Doc ->
-  Bool
-operatorToken d = case T.unpack (T.concat (textsOf d)) of
-  '`' : _ -> True
-  s -> okVarSymOcc s || okConSymOcc s
-  where
-    textsOf = \case
-      DText x -> [x]
-      x -> foldChildren textsOf x
-
--- | Is this a comma leading the item after it?
-leadsWithComma ::
-  -- | The document.
-  Doc ->
-  Bool
-leadsWithComma d = leadingSeparator d == Just ", "
-
--- | The comma leading the item after it that each of these spines begins
--- with, as the first prints it where they are all placed alike, and what
--- follows it in each.
-leadingCommaOf ::
-  -- | The spines.
-  [[Doc]] ->
-  Maybe (Doc, [[Doc]])
-leadingCommaOf ss = do
-  (cs, tails) <- unzip <$> traverse ledByComma ss
-  w <- joint . fmap fst =<< traverse unwrap cs
-  Just (wrap w (DText ", "), tails)
-  where
-    ledByComma = \case
-      c : rest | leadsWithComma c -> Just (c, rest)
-      _ -> Nothing
-
 -- | Does a wrapper indent what it holds?
 indenting ::
   -- | The wrapper.
@@ -1354,17 +1289,6 @@ aligning ::
 aligning = \case
   WAligned{} -> True
   _ -> False
-
--- | Does this document print one token, spaces aside?
-printsOneToken :: Layout -> Doc -> Bool
-printsOneToken layout d = case tokens layout d of
-  [DText _] -> True
-  _ -> False
-  where
-    tokens l = concatMap (leaf l) . spineAt l
-    leaf l x = case unwrap x of
-      Just (w, y) -> tokens (layoutInside l w) y
-      Nothing -> [x | x /= DSpace, not (printsNothing x)]
 
 -- | How much text this document holds, counting what a choice repeats once
 -- for each alternative that repeats it.
@@ -1423,10 +1347,8 @@ anchoring ::
   Doc ->
   Bool
 anchoring = \case
-  DText "," -> False
+  DSeparator{} -> False
   DText "|" -> False
-  d | isJust (leadingSeparator d) -> False
-  d | leadingArrow d -> False
   DDeclarationsStart -> False
   DIndented _ a d | namesOnly a -> located d || not (blank d)
   DAligned _ d -> located d || not (blank d)

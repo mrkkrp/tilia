@@ -98,7 +98,7 @@ dataDecl
             <> kinded
               (typeHead ctx 0 fixity tyCon tyVarSpan renderTyVar tyVars)
             <> includeWhen
-              (isGadt && not (null cons))
+              (isJust (spanOf (andd_where dd_ext)))
               (breakOrSpace <> txt "where")
 
       kinded h = case dd_kindSig of
@@ -140,8 +140,7 @@ dataDecl
               layoutFrom ctx (fmap endOf wholeHeadSpan <> spansOf cons)
                 . indent 1 (ptr keywords)
                 $ beforeEquals
-                  <> txt "="
-                  <> space
+                  <> leading (txt "=")
                   <> alternatives
           where
             singleRecCon = case cons of
@@ -167,8 +166,8 @@ dataDecl
               | otherwise = breakOrSpace
 
             separator
-              | lineHaddocks = hardBreak <> txt "|" <> space
-              | otherwise = breakOrSpace <> txt "|" <> space
+              | lineHaddocks = hardBreak <> leadingBar
+              | otherwise = breakOrSpace <> leadingBar
 
             keepTogether
               | lineHaddocks || not singleRecCon = align
@@ -513,8 +512,7 @@ synDecl ctx typeToken tyCon fixity HsQTvs{..} rhs =
     <> indent
       1
       (ptr keyword)
-      ( space
-          <> txt "="
+      ( trailing (txt "=")
           <> layoutFrom
             ctx
             (fmap endOf headSpan <> spanOf rhs)

@@ -11,8 +11,8 @@ blend :: Track -> Track -> Track
 #endif
 (Track a)
 #ifdef MIXER
-  <+>
+  <+> (Track b) =
 #else
-  `blend`
+  `blend` (Track b) =
 #endif
-  (Track b) = Track (a <> b)
+    Track (a <> b)
