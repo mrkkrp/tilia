@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corpus Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --ground: #f4f6f1;
+  --surface: #ffffff;
+  --ink: #1d2420;
+  --muted: #5f6b63;
+  --line: #dde3d8;
+  --accent: #2e6b5c;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2eee9;
+  --add-bg: #e5f2df;
+  --add-hi: #bde2ae;
+  --add-ink: #1f5a2a;
+  --del-bg: #fbe8e4;
+  --del-hi: #f1c1b9;
+  --del-ink: #8a2b22;
+  --hunk-bg: #eef2ea;
+  --warn: #8f5300;
+  --warn-bg: #fff0d2;
+  --cpp: #4b508f;
+  --cpp-bg: #e8e9f6;
+  --done: #2e6b5c;
+  --bar-h: 64px;
+  --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #111513;
+    --surface: #171c19;
+    --ink: #e1e7e1;
+    --muted: #96a299;
+    --line: #29312c;
+    --accent: #7cc2ae;
+    --accent-ink: #0e1a16;
+    --accent-soft: #1d2e28;
+    --add-bg: #16291b;
+    --add-hi: #285a36;
+    --add-ink: #a9dcaa;
+    --del-bg: #2c1716;
+    --del-hi: #5e2b26;
+    --del-ink: #f0b2a9;
+    --hunk-bg: #1c221e;
+    --warn: #f2c26b;
+    --warn-bg: #3a2c10;
+    --cpp: #bbbef0;
+    --cpp-bg: #26284a;
+    --done: #7cc2ae;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #111513;
+  --surface: #171c19;
+  --ink: #e1e7e1;
+  --muted: #96a299;
+  --line: #29312c;
+  --accent: #7cc2ae;
+  --accent-ink: #0e1a16;
+  --accent-soft: #1d2e28;
+  --add-bg: #16291b;
+  --add-hi: #285a36;
+  --add-ink: #a9dcaa;
+  --del-bg: #2c1716;
+  --del-hi: #5e2b26;
+  --del-ink: #f0b2a9;
+  --hunk-bg: #1c221e;
+  --warn: #f2c26b;
+  --warn-bg: #3a2c10;
+  --cpp: #bbbef0;
+  --cpp-bg: #26284a;
+  --done: #7cc2ae;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--ground); }
+body {
+  margin: 0;
+  font-variant-ligatures: none;
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 14px;
+  line-height: 1.45;
+}
+code, .mono { font-family: var(--mono); }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Top bar */
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  min-height: var(--bar-h);
+}
+.brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.brand h1 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 3px;
+  gap: 3px;
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+.seg button small { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.seg button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button[aria-checked="true"] small { color: var(--accent-ink); opacity: 0.8; }
+
+/* Intro + summary */
+.page { padding-inline: 20px; }
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 62ch) minmax(0, 1fr);
+  gap: 16px 32px;
+  padding-block: 18px 14px;
+  align-items: start;
+}
+.intro p { margin: 0; color: var(--muted); }
+.intro p code { color: var(--ink); font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  padding-block: 10px;
+  border-block: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.stat { display: flex; align-items: baseline; gap: 6px; }
+.stat b { font-size: 17px; }
+.stat span { color: var(--muted); }
+.stat .del { color: var(--del-ink); }
+.stat .add { color: var(--add-ink); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.chip.cpp { color: var(--cpp); background: var(--cpp-bg); }
+.chip.text { color: var(--warn); background: var(--warn-bg); }
+.chip.minus { color: var(--del-ink); background: var(--del-bg); font-family: var(--mono); }
+.chip.plus { color: var(--add-ink); background: var(--add-bg); font-family: var(--mono); }
+
+.note {
+  margin-block: 12px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--ink);
+  max-width: 90ch;
+}
+.note b { color: var(--warn); }
+
+/* Two panes */
+.layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  padding-block: 16px 40px;
+  align-items: start;
+}
+.index {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + var(--bar-h) + 12px);
+  max-height: calc(100vh - var(--bar-h) - 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.filters { display: flex; flex-direction: column; gap: 8px; }
+.filters input[type="search"] {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.toggles { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.toggles label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--accent); }
+.count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tree {
+  overflow-y: auto;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 6px 0;
+}
+.pkg { padding: 6px 10px 2px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.entry {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 10px;
+  text-decoration: none;
+  color: inherit;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.entry:hover { background: var(--hunk-bg); }
+.entry.current { background: var(--accent-soft); }
+.entry .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.entry .name bdi { direction: ltr; }
+.entry .dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--line); }
+.entry.reviewed .dot { background: var(--done); border-color: var(--done); }
+.entry.reviewed .name { color: var(--muted); }
+.entry .marks { display: flex; gap: 3px; }
+.entry .marks i { width: 6px; height: 6px; border-radius: 1px; display: block; }
+.entry .marks .c { background: var(--cpp); }
+.entry .marks .t { background: var(--warn); }
+.keys { font-size: 12px; color: var(--muted); }
+.keys kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+  background: var(--surface);
+}
+
+/* Files */
+.diffs { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.empty { color: var(--muted); padding: 24px 0; }
+.file {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  min-width: 0;
+}
+.file-head {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + var(--bar-h));
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+}
+.file.collapsed .file-head { border-bottom: 0; border-radius: 8px; }
+.fold {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--muted);
+  flex: none;
+}
+.fold:hover { background: var(--hunk-bg); }
+.fold svg { transition: transform 0.12s; }
+.file.collapsed .fold svg { transform: rotate(-90deg); }
+.path { font-family: var(--mono); font-size: 13px; min-width: 0; overflow-wrap: anywhere; flex: 1 1 300px; }
+.path .pkgname { color: var(--muted); }
+.head-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.review {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.review[aria-pressed="true"] { background: var(--done); border-color: var(--done); color: var(--accent-ink); }
+.body { overflow-x: auto; }
+.file.collapsed .body { display: none; }
+.placeholder { color: var(--muted); padding: 12px; font-size: 12px; }
+
+table.diff {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  width: 100%;
+}
+table.diff td { padding: 0; vertical-align: top; }
+td.ln {
+  width: 1%;
+  min-width: 44px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--muted);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+td.sg { width: 1%; padding: 0 6px; user-select: none; color: var(--muted); }
+td.code { white-space: pre; padding-right: 16px; }
+tr.add td { background: var(--add-bg); }
+tr.add td.sg { color: var(--add-ink); }
+tr.del td { background: var(--del-bg); }
+tr.del td.sg { color: var(--del-ink); }
+tr.add mark { background: var(--add-hi); color: inherit; border-radius: 2px; }
+tr.del mark { background: var(--del-hi); color: inherit; border-radius: 2px; }
+tr.hunk td {
+  background: var(--hunk-bg);
+  color: var(--muted);
+  font-family: var(--ui);
+  font-size: 12px;
+  padding: 3px 12px;
+  border-block: 1px solid var(--line);
+}
+tr.hunk:first-child td { border-top: 0; }
+tr.hunk .chip { margin-left: 8px; }
+
+@media (max-width: 860px) {
+  .intro { grid-template-columns: minmax(0, 1fr); }
+  .legend { justify-content: flex-start; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .index { position: static; max-height: none; }
+  .tree { max-height: 320px; }
+  .bar { position: static; }
+  .file-head { top: env(safe-area-inset-top, 0px); }
+}
+@media (max-width: 480px) {
+  .page, .bar { padding-inline: 16px; }
+  .seg button { padding: 6px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold svg { transition: none; }
+}
+</style>
+
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="eyebrow" id="eyebrow"></span>
+    <h1 id="heading"></h1>
+  </div>
+  <div class="seg" role="radiogroup" aria-label="Settings the corpus was formatted with" id="seg"></div>
+</header>
+
+<div class="page">
+  <section class="intro">
+    <p id="lede"></p>
+    <div class="legend" aria-label="Legend">
+      <span class="chip minus" id="legend-base"></span>
+      <span class="chip plus" id="legend-head"></span>
+      <span class="chip cpp">conditionals</span>
+      <span class="chip text">changes text</span>
+    </div>
+  </section>
+  <div class="stats" id="stats" aria-live="polite"></div>
+
+  <div class="layout">
+    <aside class="index" aria-label="Changed modules">
+      <div class="filters">
+        <input type="search" id="q" placeholder="Filter by package or module" autocomplete="off" aria-label="Filter by package or module">
+        <div class="toggles">
+          <label><input type="checkbox" id="only-cpp"> With conditionals</label>
+          <label><input type="checkbox" id="only-text"> Changing text</label>
+          <label><input type="checkbox" id="hide-reviewed"> Hide reviewed</label>
+        </div>
+        <div class="count" id="count"></div>
+      </div>
+      <nav class="tree" id="tree"></nav>
+      <div class="keys"><kbd>j</kbd> <kbd>k</kbd> next and previous module · <kbd>x</kbd> mark the current one reviewed</div>
+    </aside>
+    <main class="diffs" id="diffs">
+      <p class="empty">Loading the diffs…</p>
+    </main>
+  </div>
+</div>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('data').textContent);
+  const KEY = 'compare-corpus:' + DATA.base.rev + ':' + DATA.head.rev + ':';
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  const state = {
+    setting: Math.min(+(store.get(KEY + 'setting') || 0), DATA.settings.length - 1),
+    shown: [],
+    current: -1
+  };
+  const $ = (id) => document.getElementById(id);
+  const diffsEl = $('diffs'), treeEl = $('tree'), statsEl = $('stats');
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const fmt = (n) => n.toLocaleString('en-GB');
+  const revKey = (f) => KEY + 'rev:' + DATA.settings[state.setting].name + ':' + f.p;
+  const isReviewed = (f) => store.get(revKey(f)) === '1';
+
+  const pkgOf = (p) => p.slice(0, p.indexOf('/'));
+  const restOf = (p) => p.slice(p.indexOf('/') + 1);
+
+  function filtered() {
+    const files = DATA.settings[state.setting].files;
+    const q = $('q').value.trim().toLowerCase();
+    const onlyCpp = $('only-cpp').checked, onlyText = $('only-text').checked, hide = $('hide-reviewed').checked;
+    return files.filter((f) =>
+      (!q || f.p.toLowerCase().includes(q)) &&
+      (!onlyCpp || f.c) &&
+      (!onlyText || f.t) &&
+      (!hide || !isReviewed(f)));
+  }
+
+  function renderStats() {
+    const files = DATA.settings[state.setting].files;
+    let a = 0, d = 0, c = 0, t = 0, r = 0;
+    for (const f of files) { a += f.a; d += f.d; c += f.c; t += f.t; r += isReviewed(f) ? 1 : 0; }
+    statsEl.innerHTML =
+      `<div class="stat"><b>${fmt(files.length)}</b><span>modules changed</span></div>` +
+      `<div class="stat"><b>${fmt(c)}</b><span>with conditionals</span></div>` +
+      `<div class="stat"><b>${fmt(t)}</b><span>changing text</span></div>` +
+      `<div class="stat"><b class="del">−${fmt(d)}</b><b class="add">+${fmt(a)}</b><span>lines</span></div>` +
+      `<div class="stat"><b>${fmt(r)}</b><span>of ${fmt(files.length)} reviewed</span></div>`;
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { fill(e.target); io.unobserve(e.target); }
+  }, { rootMargin: '1500px 0px' });
+
+  const spy = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) setCurrent(+e.target.dataset.i, false);
+    }
+  }, { rootMargin: '-80px 0px -70% 0px' });
+
+  function render() {
+    io.disconnect();
+    spy.disconnect();
+    renderStats();
+    const files = filtered();
+    state.shown = files;
+    state.current = -1;
+    const all = DATA.settings[state.setting].files.length;
+    $('count').textContent = files.length === all
+      ? `${fmt(files.length)} modules`
+      : `${fmt(files.length)} of ${fmt(all)} modules`;
+
+    let tree = '', last = null;
+    files.forEach((f, i) => {
+      const pkg = pkgOf(f.p);
+      if (pkg !== last) { tree += `<div class="pkg">${esc(pkg)}</div>`; last = pkg; }
+      tree += `<a class="entry${isReviewed(f) ? ' reviewed' : ''}" data-i="${i}" href="#m${i}">` +
+        `<span class="dot"></span><span class="name"><bdi>${esc(restOf(f.p))}</bdi></span>` +
+        `<span class="marks">${f.c ? '<i class="c" title="conditionals"></i>' : ''}${f.t ? '<i class="t" title="changes text"></i>' : ''}</span></a>`;
+    });
+    treeEl.innerHTML = tree || '<p class="empty" style="padding:8px 10px">No module matches.</p>';
+
+    if (!files.length) {
+      diffsEl.innerHTML = '<p class="empty">No module matches these filters.</p>';
+      return;
+    }
+    diffsEl.innerHTML = files.map((f, i) => {
+      const lines = f.h.reduce((n, h) => n + h[3].length + 1, 0);
+      const rev = isReviewed(f);
+      return `<section class="file${rev ? ' collapsed' : ''}" id="m${i}" data-i="${i}">` +
+        `<div class="file-head">` +
+        `<button type="button" class="fold" aria-label="Fold or unfold this module" aria-expanded="${!rev}"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>` +
+        `<div class="path"><span class="pkgname">${esc(pkgOf(f.p))}/</span>${esc(restOf(f.p))}</div>` +
+        `<div class="head-right">` +
+        (f.c ? '<span class="chip cpp">conditionals</span>' : '') +
+        (f.t ? '<span class="chip text">changes text</span>' : '') +
+        `<span class="chip minus">−${f.d}</span><span class="chip plus">+${f.a}</span>` +
+        `<button type="button" class="review" aria-pressed="${rev}">${rev ? 'Reviewed' : 'Mark reviewed'}</button>` +
+        `</div></div>` +
+        `<div class="body" style="min-height:${Math.min(lines * 19, 4000)}px"><div class="placeholder">${fmt(lines)} lines</div></div>` +
+        `</section>`;
+    }).join('');
+    diffsEl.querySelectorAll('.file').forEach((s) => { io.observe(s.querySelector('.body')); spy.observe(s); });
+  }
+
+  function intra(a, b) {
+    let p = 0;
+    while (p < a.length && p < b.length && a[p] === b[p]) p++;
+    let s = 0;
+    while (s < a.length - p && s < b.length - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+    const mk = (x) => {
+      const mid = x.slice(p, x.length - s);
+      return esc(x.slice(0, p)) + (mid ? `<mark>${esc(mid)}</mark>` : '') + esc(x.slice(x.length - s));
+    };
+    return [mk(a), mk(b)];
+  }
+
+  function fill(body) {
+    const i = +body.parentElement.dataset.i;
+    const f = state.shown[i];
+    if (!f) return;
+    let rows = '';
+    for (const [o0, n0, textHunk, lines] of f.h) {
+      rows += `<tr class="hunk"><td colspan="4">${esc(DATA.base.name)} line ${o0} · ${esc(DATA.head.name)} line ${n0}${textHunk ? '<span class="chip text">changes text</span>' : ''}</td></tr>`;
+      const html = lines.map((l) => esc(l.slice(1)));
+      for (let k = 0; k < lines.length;) {
+        if (lines[k][0] === '-') {
+          let j = k; while (j < lines.length && lines[j][0] === '-') j++;
+          let m = j; while (m < lines.length && lines[m][0] === '+') m++;
+          if (m - j === j - k) {
+            for (let q = 0; q < j - k; q++) {
+              const [x, y] = intra(lines[k + q].slice(1), lines[j + q].slice(1));
+              html[k + q] = x; html[j + q] = y;
+            }
+          }
+          k = m;
+        } else k++;
+      }
+      let o = o0, n = n0;
+      lines.forEach((l, k) => {
+        const s = l[0];
+        if (s === '-') rows += `<tr class="del"><td class="ln">${o++}</td><td class="ln"></td><td class="sg">−</td><td class="code">${html[k]}</td></tr>`;
+        else if (s === '+') rows += `<tr class="add"><td class="ln"></td><td class="ln">${n++}</td><td class="sg">+</td><td class="code">${html[k]}</td></tr>`;
+        else rows += `<tr><td class="ln">${o++}</td><td class="ln">${n++}</td><td class="sg"></td><td class="code">${html[k]}</td></tr>`;
+      });
+    }
+    body.style.minHeight = '';
+    body.innerHTML = `<table class="diff"><tbody>${rows}</tbody></table>`;
+  }
+
+  function setCurrent(i, scroll) {
+    if (i < 0 || i >= state.shown.length) return;
+    state.current = i;
+    treeEl.querySelectorAll('.entry.current').forEach((e) => e.classList.remove('current'));
+    const entry = treeEl.querySelector(`.entry[data-i="${i}"]`);
+    if (entry) {
+      entry.classList.add('current');
+      const t = treeEl.getBoundingClientRect(), r = entry.getBoundingClientRect();
+      if (r.top < t.top || r.bottom > t.bottom) entry.scrollIntoView({ block: 'nearest' });
+    }
+    if (scroll) {
+      const sec = $('m' + i);
+      const body = sec.querySelector('.body');
+      if (!body.querySelector('table')) { fill(body); io.unobserve(body); }
+      sec.scrollIntoView({ block: 'start' });
+    }
+  }
+
+  function toggleReviewed(i) {
+    const f = state.shown[i];
+    if (!f) return;
+    const now = !isReviewed(f);
+    if (now) store.set(revKey(f), '1'); else store.del(revKey(f));
+    const sec = $('m' + i);
+    const btn = sec.querySelector('.review');
+    btn.setAttribute('aria-pressed', now);
+    btn.textContent = now ? 'Reviewed' : 'Mark reviewed';
+    sec.classList.toggle('collapsed', now);
+    sec.querySelector('.fold').setAttribute('aria-expanded', !now);
+    const entry = treeEl.querySelector(`.entry[data-i="${i}"]`);
+    if (entry) entry.classList.toggle('reviewed', now);
+    renderStats();
+    if (now) {
+      const top = sec.getBoundingClientRect().top;
+      if (top < 0) sec.scrollIntoView({ block: 'start' });
+    }
+  }
+
+  diffsEl.addEventListener('click', (e) => {
+    const sec = e.target.closest('.file');
+    if (!sec) return;
+    const i = +sec.dataset.i;
+    if (e.target.closest('.review')) { toggleReviewed(i); return; }
+    if (e.target.closest('.fold')) {
+      const folded = sec.classList.toggle('collapsed');
+      sec.querySelector('.fold').setAttribute('aria-expanded', !folded);
+      if (!folded) { const body = sec.querySelector('.body'); if (!body.querySelector('table')) fill(body); }
+    }
+  });
+  treeEl.addEventListener('click', (e) => {
+    const a = e.target.closest('.entry');
+    if (!a) return;
+    e.preventDefault();
+    const i = +a.dataset.i;
+    const sec = $('m' + i);
+    if (sec.classList.contains('collapsed')) {
+      sec.classList.remove('collapsed');
+      sec.querySelector('.fold').setAttribute('aria-expanded', true);
+    }
+    setCurrent(i, true);
+  });
+  function pick(i) {
+    if (i === state.setting) return;
+    state.setting = i;
+    store.set(KEY + 'setting', String(i));
+    document.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-checked', +x.dataset.i === i));
+    window.scrollTo({ top: 0 });
+    render();
+  }
+  ['q', 'only-cpp', 'only-text', 'hide-reviewed'].forEach((id) => $(id).addEventListener('input', render));
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'j') setCurrent(Math.min(state.current + 1, state.shown.length - 1), true);
+    else if (e.key === 'k') setCurrent(Math.max(state.current - 1, 0), true);
+    else if (e.key === 'x' && state.current >= 0) toggleReviewed(state.current);
+  });
+
+  const bar = document.querySelector('.bar');
+  const barHeight = () => document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
+  new ResizeObserver(barHeight).observe(bar);
+  barHeight();
+
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  $('eyebrow').textContent = 'Corpus comparison · ' + DATA.corpus;
+  $('heading').textContent = DATA.base.name + ' against ' + DATA.head.name;
+  $('legend-base').textContent = '− ' + DATA.base.name;
+  $('legend-head').textContent = '+ ' + DATA.head.name;
+  $('lede').innerHTML = 'Every example whose formatted output differs between ' +
+    `<code>${esc(DATA.base.name)}</code> at <code>${esc(DATA.base.rev)}</code> and ` +
+    `<code>${esc(DATA.head.name)}</code> at <code>${esc(DATA.head.rev)}</code>. ` +
+    'Lines marked − are the first’s output and lines marked + the second’s. An example marked as changing text differs in more than line breaks and spaces; in every other example the change is to layout alone.';
+  $('seg').innerHTML = DATA.settings.map((x, i) =>
+    `<button type="button" role="radio" data-i="${i}" aria-checked="${i === state.setting}">${esc(cap(x.name))}<small>${fmt(x.files.length)} changed</small></button>`).join('');
+  $('seg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) pick(+b.dataset.i); });
+  render();
+})();
+</script>
+</body>
+</html>
