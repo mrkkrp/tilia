@@ -89,6 +89,9 @@
   written. [PR 506], [PR 508], [issue 517], [issue 518], [issue 519].
 * A record constructor that every configuration has stays outside a
   conditional adding constructors after it. [PR 581].
+* An operator and its operand behind a conditional with another argument
+  after them no longer leave an empty conditional, one more each time the
+  module is formatted. [PR 582].
 * A conditional that switches an extension no longer changes the program in
   its other configurations. [PR 436], [PR 468], [PR 498], [PR 526].
 * Conditionals asking one question in different spellings, or about the
@@ -232,6 +235,7 @@
 [PR 575]: https://github.com/mrkkrp/tilia/pull/575
 [PR 579]: https://github.com/mrkkrp/tilia/pull/579
 [PR 581]: https://github.com/mrkkrp/tilia/pull/581
+[PR 582]: https://github.com/mrkkrp/tilia/pull/582
 
 ## Tilia 0.1.4.0
 
