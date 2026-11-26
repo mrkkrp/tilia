@@ -15,6 +15,7 @@ module Tilia.Render.Type
     context,
     leftContext,
     contextOf,
+    contextParens,
     tyVarBndr,
     Visibility (..),
     forallBndrs,
@@ -129,32 +130,39 @@ typeBody ctx documented here = \case
       fenced = case ctxArrowStyle ctx of
         TrailingArrows -> fence (fmap endOf (arrowSpan multAnn) <> spanOf y)
         LeadingArrows -> id
-  HsListTy _ t ->
+  HsListTy brackets t ->
     layoutWithin ctx here (spanOf t) $
-      bracketWith 0 "[" "]" (insideBrackets here (hsType ctx t))
-  HsTupleTy _ sort xs ->
+      bracketWith
+        0
+        (parenSpans brackets)
+        "["
+        "]"
+        (insideBrackets here (hsType ctx t))
+  HsTupleTy brackets sort xs ->
     layoutWithin ctx here (spansOf xs) $
       tupleBrackets
         (ctxCommaStyle ctx)
+        (parenSpans brackets)
         sort
         ( insideBrackets
             here
             (commaSep (ctxCommaStyle ctx) (fmap (align . hsType ctx) xs))
         )
-  HsSumTy _ xs ->
+  HsSumTy brackets xs ->
     spacedBracket
       0
       0
+      (parenSpans brackets)
       "(#"
       "#)"
       (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
-  HsParTy _ t ->
+  HsParTy brackets t ->
     layoutWithin
       ctx
       here
       (spanOf t)
-      (parens (insideBrackets here (hsType ctx t)))
+      (parens (pairSpans brackets) (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
     align (at ctx n outputable >+> typeAscription ctx (spanOf n) (asSigType t))
   HsStarTy _ _ -> txt (reserved ctx "*")
@@ -166,6 +174,7 @@ typeBody ctx documented here = \case
     ticked (spanOf tok) promoted (spanOf open <> spanOf close) $
       bracketWith
         0
+        (spanOf open, spanOf close)
         "["
         "]"
         ( insideBrackets
@@ -177,6 +186,7 @@ typeBody ctx documented here = \case
   HsExplicitTupleTy (tok, open, close) promoted xs ->
     ticked (spanOf tok) promoted (spanOf open <> spanOf close) $
       parens
+        (spanOf open, spanOf close)
         ( insideBrackets
             here
             ( quoteGap promoted xs
@@ -193,7 +203,8 @@ typeBody ctx documented here = \case
       unpackPragma unpacked
         <> strictness (spanOf bang) strict
         <> hsType ctx t
-    HsRecTy _ fields -> recordFields ctx Nothing fields
+    HsRecTy ann fields ->
+      recordFields ctx Nothing (bracketSpans (al_brackets ann)) fields
   where
     recur = typeBody ctx documented Nothing
     recurAt l = at ctx l (typeBody ctx documented (spanOf l))
@@ -275,14 +286,16 @@ gatherAppArgs f known = case unLoc f of
 tupleBrackets ::
   -- | Where the commas go.
   CommaStyle ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | Which kind of tuple.
   HsTupleSort ->
   -- | The items, separated.
   Doc ->
   Doc
-tupleBrackets commas = \case
-  HsUnboxedTuple -> spacedBracket (commaWidth commas) 0 "(#" "#)"
-  HsBoxedOrConstraintTuple -> parens
+tupleBrackets commas brackets = \case
+  HsUnboxedTuple -> spacedBracket (commaWidth commas) 0 brackets "(#" "#)"
+  HsBoxedOrConstraintTuple -> parens brackets
 
 -- | A list or tuple behind the tick that promotes it, if any, its brackets
 -- then a region apart from the tick, so that a comment after the opening
@@ -390,7 +403,7 @@ spine t =
 context :: Ctx -> LHsContext GhcPs -> Doc
 context ctx l =
   at ctx l $
-    contextOf ctx (spanOf l) bare (hsType ctx)
+    contextOf ctx (spanOf l) (contextParens l) bare (hsType ctx)
       . fmap unbracket
   where
     -- funPrec is opPrec, yet a context may be an operator application.
@@ -431,6 +444,8 @@ contextOf ::
   Ctx ->
   -- | Where the context was written.
   Maybe Span ->
+  -- | Where the parentheses around it were written, where there are any.
+  (Maybe Span, Maybe Span) ->
   -- | Can this constraint, when it is the only one, go without parentheses?
   (a -> Bool) ->
   -- | How to print one.
@@ -438,15 +453,22 @@ contextOf ::
   -- | The constraints.
   [a] ->
   Doc
-contextOf ctx here bare render = \case
-  [] -> txt "()"
+contextOf ctx here (o, c) bare render = \case
+  [] -> openingAt o "(" <> closingAt c ")"
   [x]
     | bare x,
       here == spanOf x || maybe True (writtenOnOneLine ctx) here ->
         render x
   xs ->
-    parens . insideBrackets here $
+    parens (o, c) . insideBrackets here $
       commaSep (ctxCommaStyle ctx) (fmap (align . render) xs)
+
+-- | Where the outermost parentheses around a context were written.
+contextParens ::
+  -- | The context.
+  GenLocated (EpAnn AnnContext) a ->
+  (Maybe Span, Maybe Span)
+contextParens (L l _) = outerBracketSpans (ac_open (anns l)) (ac_close (anns l))
 
 -- | The flags a type variable binder may carry.
 --
@@ -487,9 +509,10 @@ tyVarBndr ctx HsTvb{..} = flagPrefix tvb_flag <> enclosed kinded
       HsBndrNoKind _ -> False
       HsBndrKind _ _ -> True
     enclosed
-      | flagIsInferred tvb_flag = bracketWith 0 "{" "}"
-      | hasKind = parens
+      | flagIsInferred tvb_flag = bracketWith 0 brackets "{" "}"
+      | hasKind = parens brackets
       | otherwise = id
+    brackets = outerBracketSpans (atv_opens tvb_ext) (atv_closes tvb_ext)
 
 -- | Whether a @forall@ binds visibly.
 data Visibility
@@ -703,7 +726,8 @@ asSigType ty = L (getLoc ty) (HsSig NoExtField (HsOuterImplicit NoExtField) ty)
 
 -- | The braces of a record, and the fields inside them.
 recordFieldsAt :: Ctx -> XRec GhcPs [LHsConDeclRecField GhcPs] -> Doc
-recordFieldsAt ctx l = at ctx l (recordFields ctx (spanOf l))
+recordFieldsAt ctx l@(L ann _) =
+  at ctx l (recordFields ctx (spanOf l) (bracketSpans (al_brackets (anns ann))))
 
 -- | The fields of a record, each documented above it or, with leading
 -- commas, below it.
@@ -712,12 +736,14 @@ recordFields ::
   Ctx ->
   -- | The braces and what they hold.
   Maybe Span ->
+  -- | Where the braces were written.
+  (Maybe Span, Maybe Span) ->
   -- | The fields.
   [LHsConDeclRecField GhcPs] ->
   Doc
-recordFields ctx enclosing xs =
+recordFields ctx enclosing braces xs =
   brokenForDocs
-    . bracketWith 0 "{" "}"
+    . bracketWith 0 braces "{" "}"
     . insideBrackets enclosing
     $ commaSep commas (fmap field xs)
   where

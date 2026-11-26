@@ -7,6 +7,7 @@
 module Tilia.Doc
   ( Doc (..),
     SeparatorSide (..),
+    BracketSide (..),
     Spill (..),
     LineStart (..),
     TrailingWhitespace (..),
@@ -42,7 +43,8 @@ import Data.Maybe (mapMaybe)
 import Data.Monoid (Any (..))
 
 import Tilia.Doc.Internal
-  ( Conditional (..),
+  ( BracketSide (..),
+    Conditional (..),
     Doc (..),
     Layout (..),
     LineStart (..),

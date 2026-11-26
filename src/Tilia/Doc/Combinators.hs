@@ -51,6 +51,8 @@ module Tilia.Doc.Combinators
 
     -- * Wrapping
     parens,
+    openingAt,
+    closingAt,
     bracketWith,
     commaBracketWith,
     spacedBracket,
@@ -82,7 +84,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Tilia.Doc
-  ( Conditional (..),
+  ( BracketSide (..),
+    Conditional (..),
     Doc (..),
     Layout (..),
     LineStart (..),
@@ -341,6 +344,8 @@ joinedBy t = trailing (txt t) <> breakOrSpace
 bracketWith ::
   -- | How many steps in from the opening bracket the closing one goes.
   Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -359,6 +364,8 @@ commaBracketWith ::
   CommaStyle ->
   -- | How many steps in from the opening bracket the closing one goes.
   Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -366,13 +373,13 @@ commaBracketWith ::
   -- | The items, separated.
   Doc ->
   Doc
-commaBracketWith commas closing open close body =
+commaBracketWith commas closing (o, c) open close body =
   align $
     opener
       <> variant body (space <> linedUp body <> hardBreak)
-      <> indent closing (ptr opener) (txt close)
+      <> indent closing (ptr opener) (closingAt c close)
   where
-    opener = openerOf body open
+    opener = openerOf body (openingAt o open)
     linedUp = DAligned $ case commas of
       LeadingCommas | closing > 0 -> commaWidth commas
       _ -> 0
@@ -389,6 +396,8 @@ spacedBracket ::
   Int ->
   -- | How many steps in from the opening bracket the closing one goes.
   Int ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | Opening bracket.
   Text ->
   -- | Closing bracket.
@@ -396,7 +405,7 @@ spacedBracket ::
   -- | Body.
   Doc ->
   Doc
-spacedBracket columns closing open close body =
+spacedBracket columns closing (o, c) open close body =
   align $
     opener
       <> variant
@@ -405,25 +414,45 @@ spacedBracket columns closing open close body =
             <> indent 1 (ptr opener) (DAligned columns body)
             <> hardBreak
         )
-      <> indent closing (ptr opener) (txt close)
+      <> indent closing (ptr opener) (closingAt c close)
   where
-    opener = openerOf body open
+    opener = openerOf body (openingAt o open)
 
 -- | An opening bracket, a 'ref' named by the start of what it holds.
 openerOf ::
   -- | What it holds.
   Doc ->
   -- | The bracket.
+  Doc ->
+  Doc
+openerOf body = refAt (startOf <$> regionOf body)
+
+-- | An opening bracket, marked with where it was written.
+openingAt ::
+  -- | Where it was written.
+  Maybe Span ->
+  -- | The bracket.
   Text ->
   Doc
-openerOf body = refAt (startOf <$> regionOf body) . txt
+openingAt s = DBracket OpeningBracket s . txt
+
+-- | A closing bracket, marked with where it was written.
+closingAt ::
+  -- | Where it was written.
+  Maybe Span ->
+  -- | The bracket.
+  Text ->
+  Doc
+closingAt s = DBracket ClosingBracket s . txt
 
 -- | @(@ and @)@.
 parens ::
+  -- | Where they were written.
+  (Maybe Span, Maybe Span) ->
   -- | Body.
   Doc ->
   Doc
-parens = bracketWith 0 "(" ")"
+parens at = bracketWith 0 at "(" ")"
 
 -- | Surround with backticks.
 backticks :: Doc -> Doc

@@ -13,7 +13,7 @@ module Tilia.Comments.Attach
 where
 
 import Control.Applicative ((<|>))
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (first)
 import Data.List (unsnoc)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
@@ -26,7 +26,8 @@ import Data.Text (Text)
 import Tilia.Comments
 import Tilia.Comments.Place
 import Tilia.Doc
-  ( Doc (..),
+  ( BracketSide (..),
+    Doc (..),
     SeparatorSide (..),
     Spill (..),
     foldChildren,
@@ -83,12 +84,17 @@ attachScopedComments margin scopeOf cs doc =
   written <> closingComments margin (unplaced left)
   where
     (written, left) = walk margin placements doc
-    (regions, fences) = markedSpans doc
+    (regions, fences, openings) = markedSpans doc
     leads = leadingRegions doc
     placements =
       foldMap
         ( \k ->
-            placeComments (inScope k rs) leads (inScope k fs) (inScope k xs)
+            placeComments
+              (inScope k rs)
+              leads
+              openings
+              (inScope k fs)
+              (inScope k xs)
         )
         (Set.toList (Map.keysSet rs <> Map.keysSet fs <> Map.keysSet xs))
     rs = byScope id regions
@@ -107,14 +113,16 @@ closingComments ::
   Doc
 closingComments margin = foldMap $ \c -> commentDoc c (ownLines margin True c)
 
--- | The spans of every 'DLocated' in the document, and of every 'DFence',
--- in that order.
-markedSpans :: Doc -> ([Span], [Span])
-markedSpans d = go d ([], [])
+-- | The spans of every 'DLocated' in the document, of every 'DFence', and
+-- of every opening bracket, in that order.
+markedSpans :: Doc -> ([Span], [Span], [Span])
+markedSpans d = go d ([], [], [])
   where
     go = \case
-      DLocated s x -> first (s :) . go x
-      DFence s x -> second (s :) . go x
+      DLocated s x -> (\ ~(rs, fs, os) -> (s : rs, fs, os)) . go x
+      DFence s x -> (\ ~(rs, fs, os) -> (rs, s : fs, os)) . go x
+      DBracket OpeningBracket (Just s) x ->
+        (\ ~(rs, fs, os) -> (rs, fs, s : os)) . go x
       x -> appEndo (foldChildren (Endo . go) x)
 
 -- | The innermost region each region prints first, where that one was

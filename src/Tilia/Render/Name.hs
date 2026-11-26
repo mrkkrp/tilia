@@ -90,14 +90,23 @@ adorn ctx here x = go
       NameAnnQuote{nann_quote, nann_quoted} ->
         (keywordAt (spanOf nann_quote) "'" <>) . go nann_quoted
       NameAnnOnly{nann_adornment = NameParensHash o c} ->
-        const (txt "(#" <> space <> inside o c <> space <> txt "#)")
+        const
+          ( openingAt (spanOf o) "(#"
+              <> space
+              <> inside o c
+              <> space
+              <> closingAt (spanOf c) "#)"
+          )
       NameAnnOnly{nann_adornment = NameParens o c} ->
-        const (inParens (inside o c))
+        const (inParens (spanOf o) (spanOf c) (inside o c))
       NameAnnOnly{nann_adornment = NameSquare o c} ->
-        const (txt "[" <> inside o c <> txt "]")
-      NameAnnRArrow{nann_mopen = Just _} -> inParens
+        const
+          (openingAt (spanOf o) "[" <> inside o c <> closingAt (spanOf c) "]")
+      NameAnnRArrow{nann_mopen = Just o, nann_mclose} ->
+        inParens (spanOf o) (spanOf nann_mclose)
       NameAnn{nann_adornment, nann_name} -> case nann_adornment of
-        NameParens{} -> inParens . spaceOutHash . itsOwn nann_name
+        NameParens o c ->
+          inParens (spanOf o) (spanOf c) . spaceOutHash . itsOwn nann_name
         NameBackquotes{} -> backticks . itsOwn nann_name
         _ -> itsOwn nann_name
       _ -> id
@@ -105,7 +114,7 @@ adorn ctx here x = go
     inside o c
       | fmap endPoint (spanOf o) == fmap startPoint (spanOf c) = mempty
       | otherwise = insideBrackets here mempty
-    inParens d = txt "(" <> d <> txt ")"
+    inParens o c d = openingAt o "(" <> d <> closingAt c ")"
     spaceOutHash d
       | extensionOn ctx UnboxedTuples || extensionOn ctx UnboxedSums,
         Unqual (occNameString -> '#' : _) <- x =
@@ -199,6 +208,8 @@ defHead ::
   -- | How many steps in from the opening parenthesis the closing one goes,
   -- where there is one.
   Int ->
+  -- | Where the parentheses were written, where there are any.
+  (Maybe Span, Maybe Span) ->
   -- | Written infix?
   Choice "writtenInfix" ->
   -- | The name.
@@ -206,7 +217,7 @@ defHead ::
   -- | The arguments.
   [Doc] ->
   Doc
-defHead closing writtenInfix nameDoc args = case args of
+defHead closing parensAt writtenInfix nameDoc args = case args of
   a0 : a1 : rest
     | isTrue writtenInfix ->
         let infixHead =
@@ -216,7 +227,7 @@ defHead closing writtenInfix nameDoc args = case args of
          in if
               | null rest -> a0 >+> breakOrSpace <> arguments
               | otherwise ->
-                  bracketWith closing "(" ")" infixHead
+                  bracketWith closing parensAt "(" ")" infixHead
                     >+> breakOrSpace
                       <> arguments
   [] -> nameDoc
@@ -256,6 +267,8 @@ typeHead ::
   -- | How many steps in from the opening parenthesis the closing one goes,
   -- where there is one.
   Int ->
+  -- | Where the parentheses were written, where there are any.
+  (Maybe Span, Maybe Span) ->
   -- | Was it written infix?
   LexicalFixity ->
   -- | The type constructor.
@@ -267,10 +280,11 @@ typeHead ::
   -- | The arguments.
   [arg] ->
   Doc
-typeHead ctx closing fixity tyCon argSpan arg args =
+typeHead ctx closing parensAt fixity tyCon argSpan arg args =
   layoutFrom ctx (spanOf tyCon <> foldMap argSpan args) $
     defHead
       closing
+      parensAt
       (fromBool (fixity == Infix))
       (name ctx tyCon)
       (fmap arg args)

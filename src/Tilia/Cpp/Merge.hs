@@ -986,6 +986,7 @@ samePlacing ::
 samePlacing a b = case (a, b) of
   (WReferent _, WReferent _) -> True
   (WIndented n _, WIndented m _) -> n == m
+  (WBracket x _, WBracket y _) -> x == y
   _ -> a == b
 
 -- | A stretch of the baseline, and what one document put there instead.

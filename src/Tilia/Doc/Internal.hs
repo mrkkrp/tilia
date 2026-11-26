@@ -9,6 +9,7 @@ module Tilia.Doc.Internal
     LineStart (..),
     TrailingWhitespace (..),
     SeparatorSide (..),
+    BracketSide (..),
     Layout (..),
     Conditional (..),
     conditionalRange,
@@ -124,6 +125,8 @@ data Doc
     -- The engine prints the form for the side; the other form is for the
     -- merge, which may move it.
     DSeparator !SeparatorSide !Doc !Doc
+  | -- | A bracket, which of its pair it is, and where it was written.
+    DBracket !BracketSide !(Maybe Span) !Doc
   | -- | Alternatives the preprocessor chooses between, the condition it
     -- chooses on, and the conditionals of the input they were printed from.
     DCppChoice ![Conditional] ![(Text, Doc)] !Doc
@@ -162,6 +165,14 @@ data SeparatorSide
     LeadingSeparator
   | -- | After it: the separator trails the part before it.
     TrailingSeparator
+  deriving (Eq, Show)
+
+-- | Which of its pair a 'DBracket' is.
+data BracketSide
+  = -- | The one that opens what the pair holds.
+    OpeningBracket
+  | -- | The one that closes it.
+    ClosingBracket
   deriving (Eq, Show)
 
 -- | What to do with the whitespace a finished line ends in.
@@ -256,6 +267,7 @@ data Wrapper
   | WFence !Span
   | -- | A 'DSeparator' less the form for its side, holding the other.
     WSeparator !SeparatorSide !Doc
+  | WBracket !BracketSide !(Maybe Span)
   | WReferent !(Maybe Span)
   | WIndented !Int !Doc
   | WAligned !Int
@@ -273,6 +285,7 @@ unwrap = \case
   DFence s d -> Just (WFence s, d)
   DSeparator LeadingSeparator l t -> Just (WSeparator LeadingSeparator t, l)
   DSeparator TrailingSeparator l t -> Just (WSeparator TrailingSeparator l, t)
+  DBracket b s d -> Just (WBracket b s, d)
   DReferent k d -> Just (WReferent k, d)
   DIndented n a d | namesOnly a -> Just (WIndented n a, d)
   DAligned n d -> Just (WAligned n, d)
@@ -293,6 +306,7 @@ wrap = \case
   WFence s -> DFence s
   WSeparator LeadingSeparator t -> \l -> DSeparator LeadingSeparator l t
   WSeparator TrailingSeparator l -> DSeparator TrailingSeparator l
+  WBracket b s -> DBracket b s
   WReferent k -> DReferent k
   WIndented n a -> DIndented n a
   WAligned n -> DAligned n
@@ -586,6 +600,7 @@ go env = \case
   DFence _ d -> go env d
   DSeparator LeadingSeparator l _ -> go env l
   DSeparator TrailingSeparator _ t -> go env t
+  DBracket _ _ d -> go env d
   DCppChoice cs branches fallback -> \out ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)

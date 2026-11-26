@@ -24,7 +24,7 @@ import GHC.Core.Coercion.Axiom (Role (..))
 import GHC.Hs
 import GHC.Types.Fixity (LexicalFixity (..))
 import GHC.Types.Name.Reader (RdrName (..))
-import GHC.Types.SrcLoc (GenLocated (..), unLoc)
+import GHC.Types.SrcLoc (GenLocated (..), getLoc, unLoc)
 
 import Tilia.Doc.Combinators
 import Tilia.Render.Context
@@ -103,6 +103,7 @@ classDecl
             layoutFrom ctx headSpan
               . layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit)
               $ parens
+                tupleParens
                 ( insideBrackets
                     (spanOf tyCon)
                     ( commaSep
@@ -114,11 +115,17 @@ classDecl
             typeHead
               ctx
               0
+              (outerBracketSpans (acd_openp anns) (acd_closep anns))
               fixity
               tyCon
               spanOf
               (at_ ctx (tyVarBndr ctx))
               hsq_explicit
+
+      tupleParens = case getLoc tyCon of
+        EpAnn{anns = NameAnnCommas{nann_adornment = NameParens o c}} ->
+          (spanOf o, spanOf c)
+        _ -> (Nothing, Nothing)
 
       body =
         includeUnless (null members && isNothing whereSpan)
@@ -178,7 +185,7 @@ clsInstDecl ctx ClsInstDecl{cid_ext = (warning, anns, _), ..} =
         <> indent
           1
           (ptr keyword)
-          ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
+          ( foldMap (\w -> at ctx w (warningTxt ctx (warningSquares w)) <> breakOrSpace) warning
               <> foldMap (<> breakOrSpace) (overlapMode ctx cid_overlap_mode)
               <> ( maybe id located typeSpan $
                      layoutFrom ctx typeSpan (hsSigTypeBody ctx (unLoc cid_poly_ty))
@@ -220,7 +227,7 @@ standaloneDerivDecl
           <> indent
             1
             (ptr from)
-            ( foldMap (\w -> at ctx w (warningTxt ctx) <> breakOrSpace) warning
+            ( foldMap (\w -> at ctx w (warningTxt ctx (warningSquares w)) <> breakOrSpace) warning
                 <> foldMap (<> breakOrSpace) (overlapMode ctx deriv_overlap_mode)
                 <> hsSigType ctx (hswc_body deriv_type)
             )
@@ -268,6 +275,7 @@ dataFamInstDecl ctx style (DataFamInstDecl FamEqn{..}) =
     typeArgSpan
     (typeArgument ctx)
     feqn_fixity
+    (let (opens, closes, _) = feqn_ext in outerBracketSpans opens closes)
     outerBinders
     feqn_rhs
   where
@@ -329,6 +337,7 @@ famDecl ctx style FamilyDecl{fdTyVars = HsQTvs{..}, ..} =
       typeHead
         ctx
         0
+        (outerBracketSpans (afd_openp fdExt) (afd_closep fdExt))
         fdFixity
         fdLName
         spanOf
@@ -403,6 +412,7 @@ tyFamInstEqn ctx FamEqn{..} =
       typeHead
         ctx
         1
+        (let (opens, closes, _) = feqn_ext in outerBracketSpans opens closes)
         feqn_fixity
         feqn_tycon
         typeArgSpan

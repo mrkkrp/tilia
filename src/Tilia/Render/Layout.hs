@@ -44,10 +44,12 @@ itemsSepBy semisWhenBroken bracing xs = case (bracing, xs) of
   _ -> variant flatForm brokenForm
   where
     flatForm = case (bracing, xs) of
-      (MayBrace, []) -> txt "{}"
+      (MayBrace, []) -> opening <> closing
       (NoBrace, []) -> mempty
-      (MayBrace, _) -> txt "{" <> space <> joined <> space <> txt "}"
+      (MayBrace, _) -> opening <> space <> joined <> space <> closing
       (NoBrace, _) -> joined
+    opening = openingAt Nothing "{"
+    closing = closingAt Nothing "}"
     joined = sepBy (txt ";" <> space) xs
     brokenForm =
       sepBy (includeWhen (isTrue semisWhenBroken) (txt ";") <> hardBreak) xs
@@ -56,22 +58,24 @@ itemsSepBy semisWhenBroken bracing xs = case (bracing, xs) of
 -- by semicolons on one line, and across lines each after the first led by
 -- one under the opening brace.
 braced ::
+  -- | Where the braces were written.
+  (Maybe Span, Maybe Span) ->
   -- | Was there an empty line between two items?
   (Maybe Span -> Maybe Span -> Bool) ->
   -- | Where each item was, and what it prints as.
   [(Maybe Span, Doc)] ->
   Doc
-braced blank = \case
-  [] -> txt "{}"
+braced (o, c) blank = \case
+  [] -> openingAt o "{" <> closingAt c "}"
   x : xs ->
-    txt "{"
+    openingAt o "{"
       <> space
       <> align
         ( mconcat
             (keepBlanks blank (x : fmap led xs))
         )
       <> breakOrSpace
-      <> txt "}"
+      <> closingAt c "}"
   where
     led (here, d) = (here, separatingSemicolon <> d)
 

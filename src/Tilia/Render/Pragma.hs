@@ -13,6 +13,7 @@ module Tilia.Render.Pragma
     overlapMode,
     warnDecls,
     warningTxt,
+    warningSquares,
   )
 where
 
@@ -24,7 +25,7 @@ import GHC.Data.FastString (unpackFS)
 import GHC.Hs
 import GHC.Types.Basic hiding (overlapMode)
 import GHC.Types.SourceText
-import GHC.Types.SrcLoc (unLoc)
+import GHC.Types.SrcLoc (GenLocated (..), unLoc)
 import GHC.Unit.Module.Warnings
 
 import Tilia.Doc (regionOf)
@@ -32,7 +33,8 @@ import Tilia.Doc.Combinators
 import Tilia.Render.Context
 import Tilia.Render.Literal (stringLiteral, writtenString)
 import Tilia.Render.Name
-import Tilia.Span.Ghc (spanOf)
+import Tilia.Span (Span)
+import Tilia.Span.Ghc (pairSpans, spanOf)
 
 -- | Wrap a body in pragma braces, the opening one a 'ref' named by the
 -- whole region of the body.
@@ -115,12 +117,12 @@ warnDecls ctx (Warnings (_, opening) warnings) =
 
 -- | One of the things a warning declaration names.
 warned :: Ctx -> WarnDecl GhcPs -> Doc
-warned ctx (Warning (namespace, _) names wtxt) =
+warned ctx (Warning (namespace, squares) names wtxt) =
   category
     <> namespaceSpec namespace
     <> commaSepUnderFirst (ctxCommaStyle ctx) 0 (fmap (name ctx) names)
     <> breakOrSpace
-    <> literalList (ctxCommaStyle ctx) literals
+    <> literalList (ctxCommaStyle ctx) (pairSpans squares) literals
   where
     (_, category, literals) = warningParts wtxt
 
@@ -128,13 +130,24 @@ warned ctx (Warning (namespace, _) names wtxt) =
 warningTxt ::
   -- | The context.
   Ctx ->
+  -- | Where the brackets around its messages were written.
+  (Maybe Span, Maybe Span) ->
   -- | The warning.
   WarningTxt GhcPs ->
   Doc
-warningTxt ctx wtxt =
-  pragma keyword (category <> literalList (ctxCommaStyle ctx) literals)
+warningTxt ctx squares wtxt =
+  pragma
+    keyword
+    (category <> literalList (ctxCommaStyle ctx) squares literals)
   where
     (keyword, category, literals) = warningParts wtxt
+
+-- | Where the brackets around a warning's messages were written.
+warningSquares ::
+  -- | The warning.
+  LWarningTxt GhcPs ->
+  (Maybe Span, Maybe Span)
+warningSquares (L l _) = pairSpans (apr_squares (anns l))
 
 -- | Which keyword introduces a warning, which category it is filed under,
 -- and what it says.
@@ -158,13 +171,15 @@ warningParts = \case
 literalList ::
   -- | Where the commas go.
   CommaStyle ->
+  -- | Where the brackets were written.
+  (Maybe Span, Maybe Span) ->
   -- | The messages.
   [LocatedE StringLiteral] ->
   Doc
-literalList commas = \case
+literalList commas squares = \case
   [l] -> writtenString (unLoc l)
   ls ->
-    bracketWith 0 "[" "]" $
+    bracketWith 0 squares "[" "]" $
       commaSep
         commas
         [maybe id located (spanOf l) (writtenString (unLoc l)) | l <- ls]
