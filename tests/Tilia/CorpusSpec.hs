@@ -19,7 +19,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import System.Directory (createDirectoryIfMissing, removePathForcibly)
-import System.FilePath (replaceExtension, (</>))
+import System.Environment (lookupEnv)
+import System.FilePath (replaceExtension, takeDirectory, (</>))
 import System.IO (stdout)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec hiding (Example, after, before, example)
@@ -84,6 +85,7 @@ corpusSpec testedSettings corpus =
             <> T.unpack problem
       Right examples -> do
         palette <- runIO (paletteFor stdout)
+        dumpExample <- runIO (dumpExampleForCorpus (corpusName corpus))
         accepting <- runIO (switchedOn "TILIA_VENDORED_ACCEPT")
         let answered = case corpusReference corpus of
               ReferenceMarked mark | accepting -> answersWritten mark
@@ -92,12 +94,12 @@ corpusSpec testedSettings corpus =
           Listed lists ->
             againstLists
               lists
-              (check palette testedSettings <=< answered)
+              (check palette dumpExample testedSettings <=< answered)
               examples
           -- Plain, so that what a record says does not depend on whether the
           -- run that wrote it printed to a terminal.
           Recorded path ->
-            againstRecord path (check Plain testedSettings) examples
+            againstRecord path (check Plain dumpExample testedSettings) examples
 
 -- | A corpus small enough to name its exceptions in "Tilia.Corpus".
 againstLists :: Lists -> (Example -> IO Result) -> [Example] -> Spec
@@ -318,12 +320,14 @@ verdict False declines (Result outcome why _) = case outcome of
 check ::
   -- | How to color the diffs it reports.
   Palette ->
+  -- | What to do with the output, given the name of the settings.
+  Dump ->
   -- | The settings other than the defaults, each with its name.
   [(String, Settings)] ->
   -- | The example.
   Example ->
   IO Result
-check palette testedSettings example = do
+check palette dumpExample testedSettings example = do
   source <- readUtf8 (exampleInput example)
   expected <- traverse readUtf8 (exampleReference example)
   expectedAlternatively <-
@@ -348,7 +352,7 @@ check palette testedSettings example = do
                 printed
           alternatively result (name, settings)
             | resultOutcome result `elem` [Formatted, PartlyChecked] =
-                format (Do #check) settings text <&> \case
+                format (Do #check) settings text >>= dumpExample name example <&> \case
                   Right formatted
                     | settings == alternativeSettings,
                       Just reference <- expectedAlternatively,
@@ -370,7 +374,9 @@ check palette testedSettings example = do
                   { resultOutcome = Broken,
                     resultWhy = "with " <> T.pack name <> ": " <> why
                   }
-      checked <- format (Do #check) defaultSettings text
+      checked <-
+        format (Do #check) defaultSettings text
+          >>= dumpExample "the default settings" example
       passes <- case checked of
         Left NotEquivalent{} -> Just <$> unchecked
         Left NotIdempotent{} -> Just <$> unchecked
@@ -379,6 +385,28 @@ check palette testedSettings example = do
         alternatively
         (checkPure palette package text (join expected) checked passes)
         testedSettings
+
+-- | What to do with the output, given the name of the settings.
+type Dump =
+  String -> Example -> Either FormatError Text -> IO (Either FormatError Text)
+
+-- | Write what each example of a corpus comes out as, or why it does not,
+-- into the directory @TILIA_CORPUS_DUMP@ names, by the settings, the
+-- corpus and the example.
+dumpExampleForCorpus ::
+  -- | The name of the corpus.
+  String ->
+  IO Dump
+dumpExampleForCorpus corpus =
+  lookupEnv "TILIA_CORPUS_DUMP" <&> \case
+    Just dir@(_ : _) -> \settings example result -> do
+      let path = dir </> settings </> corpus </> exampleName example
+      createDirectoryIfMissing True (takeDirectory path)
+      case result of
+        Right formatted -> writeUtf8File path formatted
+        Left e -> writeUtf8File (path <> ".err") (describeFormatError Plain e)
+      pure result
+    _ -> \_ _ -> pure
 
 -- | Write what an example comes out as with the default and the
 -- alternative settings where the corpus keeps its answers, where it comes

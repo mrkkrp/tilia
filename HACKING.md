@@ -48,6 +48,19 @@ $ TILIA_VENDORED_ACCEPT=1 cabal test
 Only examples that format and pass every check will write output files. A
 `name-out'.hs` that happens to be the same as `name-out.hs` is not written.
 
+To see what a change does to a corpus before accepting it, run:
+
+```console
+$ ./compare-corpus.py
+```
+
+It formats the Hackage corpus at `origin/master` and in the working tree and
+writes `dist-newstyle/corpus-comparison.html`, a page with every module
+whose output differs, under each settings. Another revision to compare with
+can be given as the first argument. `--corpus` can be passed to select a
+corpus: the options are `hackage` (the default), `tilia`,
+`ghc-9.14.1-testsuite`, or `all`.
+
 Finally, Tilia formats itself, so make sure to run this command before you
 open a PR:
 
