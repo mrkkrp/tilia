@@ -629,6 +629,8 @@ merge written conditionals guards varied settledOthers = go Broken
 
     choice layout ds
       | (d : _) <- mapMaybe (settledChoice layout ds) settledOthers = d
+    choice _ ds
+      | all blank ds = fromMaybe mempty (find (not . printsNothing) ds)
     choice _ ds = case unsnoc
       (fmap (mconcat . separatorGlued . spine) ds) of
       Just (branches, fallback) ->
