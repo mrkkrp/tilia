@@ -230,7 +230,7 @@ groupDecls ctx isSignatureFile (d : ds)
 isSignatureSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 isSignatureSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
   (SigD _ TypeSig{}, SigD _ TypeSig{}) ->
-    not (commentPrintedBetween ctx (spanOf x) (spanOf y))
+    nothingWrittenBetween ctx (spanOf x) (spanOf y)
   _ -> False
 
 -- | Two standalone @deriving@ declarations, or two splices, the author ran
