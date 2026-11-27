@@ -49,6 +49,7 @@ import Tilia.Doc
     SeparatorSide (..),
     Wrapper (..),
     choosing,
+    chosen,
     conditionalRange,
     foldChildren,
     foldRegions,
@@ -1295,8 +1296,7 @@ weigh layout = go
   where
     go = \case
       Cat a b -> go a + go b
-      DVariant flatD brokenD ->
-        go (case layout of Broken -> brokenD; _ -> flatD)
+      DVariant by a b -> go (chosen by layout a b)
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t

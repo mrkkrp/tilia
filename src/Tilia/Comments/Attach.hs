@@ -31,6 +31,7 @@ import Tilia.Doc
   ( BracketSide (..),
     Doc (..),
     SeparatorSide (..),
+    chosen,
     foldChildren,
     layoutInside,
     namesOnly,
@@ -221,10 +222,10 @@ walk margin = go
          in ( DCppChoice cs [(c, d') | (c, (d', _)) <- bs'] e',
               foldr (unclaimedByEither . snd . snd) pe bs'
             )
-      DVariant a b ->
+      DVariant by a b ->
         let (a', _) = go p a
             (b', p') = go p b
-         in (DVariant a' b', p')
+         in (DVariant by a' b', p')
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
@@ -278,7 +279,7 @@ openingRegion = \case
   DLocated s _ -> Just s
   DCat a b -> after a b
   DIndented _ a b | not (namesOnly a) -> after a b
-  DVariant _ b -> openingRegion b
+  DVariant by a b -> openingRegion (chosen by Broken a b)
   d -> openingRegion . snd =<< unwrap d
   where
     after a b
@@ -306,7 +307,7 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DText t -> ([t], False)
       DCat a b -> both layout a b
       DIndented _ a b | not (namesOnly a) -> both layout a b
-      DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
+      DVariant by a b -> firstLine layout (chosen by layout a b)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
       DBreak -> ([], layout == Broken)

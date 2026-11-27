@@ -53,6 +53,8 @@ import Tilia.Cpp.Directives
 import Tilia.Doc
   ( Conditional (..),
     Doc (..),
+    Layout (..),
+    chosen,
     conditionalRange,
     foldChildren,
     foldRegions,
@@ -269,7 +271,7 @@ keptApart haddocks notes = snd . go Apart
         let (between, a') = go before a
             (after, b') = go between b
          in (after, DCat a' b')
-      DVariant a b -> DVariant (snd (go before a)) <$> go before b
+      DVariant by a b -> DVariant by (snd (go before a)) <$> go before b
       d@DCppChoice{} -> (Apart, mapChildren (snd . go Apart) d)
       d
         | Just (w, x) <- unwrap d -> wrap w <$> go before x
@@ -488,7 +490,7 @@ beforeWrittenAfter point body = go
         | startPoint s > point -> Just (body <> d)
         | otherwise -> DLocated s <$> go x
       Cat a b -> (`DCat` b) <$> go a <|> DCat a <$> go b
-      DVariant a b -> DVariant (fromMaybe (a <> body) (go a)) <$> go b
+      DVariant by a b -> DVariant by (fromMaybe (a <> body) (go a)) <$> go b
       d -> unwrap d >>= \(w, x) -> wrap w <$> go x
 
 -- | A column past the end of any line, for an anchor that has to come after
@@ -611,7 +613,7 @@ placeAt present written n body continuing = among []
       DIndented m a x | namesOnly a -> DIndented m a (within ctx x)
       DAligned m x -> DAligned m (within ctx x)
       DGroup l x -> DGroup l (within ctx x)
-      DVariant x y -> DVariant (within ctx x) (within ctx y)
+      DVariant by x y -> DVariant by (within ctx x) (within ctx y)
       DLocated s x
         | spanStartLine s > n -> among ctx d
         | otherwise -> DLocated s (within ctx x)
@@ -756,7 +758,7 @@ firstNesting = \case
   Cat a b -> firstNesting a <|> firstNesting b
   DIndented n a x | isJust (referentIn a) -> (+ 2 * n) <$> firstNesting x
   DAligned n x -> (+ n) <$> firstNesting x
-  DVariant _ x -> firstNesting x
+  DVariant by a b -> firstNesting (chosen by Broken a b)
   DCppChoice _ bs e -> foldr ((<|>) . firstNesting . snd) (firstNesting e) bs
   d -> firstNesting . snd =<< unwrap d
 
@@ -773,7 +775,7 @@ nestedLike = \case
     | otherwise -> nestedLike b
   DIndented n a x | isJust (referentIn a) -> DIndented n a . nestedLike x
   DAligned n x -> DAligned n . nestedLike x
-  DVariant _ x -> nestedLike x
+  DVariant by a b -> nestedLike (chosen by Broken a b)
   DCppChoice _ bs e ->
     nestedLike (fromMaybe e (find (isJust . firstNesting) (fmap snd bs)))
   d -> maybe id (nestedLike . snd) (unwrap d)
@@ -793,7 +795,7 @@ boundsOf = \case
     (Just (from, _), Just (_, to)) -> Just (from, to)
     (found, Nothing) -> found
     (Nothing, found) -> found
-  DVariant _ b -> boundsOf b
+  DVariant by a b -> boundsOf (chosen by Broken a b)
   d -> boundsOf . snd =<< unwrap d
   where
     hull = \case

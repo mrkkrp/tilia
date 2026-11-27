@@ -12,8 +12,10 @@ module Tilia.Doc.Internal
     SeparatorSide (..),
     BracketSide (..),
     Layout (..),
+    ChosenBy (..),
     Conditional (..),
     conditionalRange,
+    chosen,
     printsNothing,
     namesOnly,
     referentIn,
@@ -89,17 +91,14 @@ data Doc
     DCppMarginNote !Doc
   | -- | Lay the enclosed document out flat or broken.
     DGroup !Layout !Doc
-  | -- | Choose between two documents according to the enclosing group: the
-    -- first when it is flat, the second when it is broken. For the
-    -- constructs whose two layouts differ by more than where the breaks
-    -- fall.
+  | -- | Two layouts of one piece of code, and what chooses between them.
     --
-    -- Both fields are lazy, and that is not an oversight. The engine walks
+    -- Both layouts are lazy, and that is not an oversight. The engine walks
     -- one of them and never looks at the other, so the branch not taken
     -- should cost nothing. Were they strict, building a variant would build
     -- both layouts of everything inside it; a construct nested @n@ deep
     -- would be built @2^n@ times.
-    DVariant Doc Doc
+    DVariant !ChosenBy Doc Doc
   | -- | Record that the enclosed document was produced from the given
     -- region of the input.
     --
@@ -204,6 +203,17 @@ data Layout
     Frangible
   deriving (Eq, Show)
 
+-- | What chooses between the two layouts of a 'DVariant'.
+data ChosenBy
+  = -- | The enclosing group: the first when it is flat, the second when it
+    -- is broken.
+    ByLayout
+  | -- | The separators of the first, which trail the parts before them: the
+    -- first, unless a comment ends the line right before one of them, and
+    -- the second, where they lead, if it does.
+    BySeparators
+  deriving (Eq, Show)
+
 -- | A conditional as its author wrote it.
 data Conditional = Conditional
   { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
@@ -234,7 +244,7 @@ printsNothing = \case
   DDeclarationsStart -> True
   DCat a b -> printsNothing a && printsNothing b
   DIndented _ a b -> printsNothing a && printsNothing b
-  DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
+  DVariant _ a b -> printsNothing a && printsNothing b
   d -> maybe False (printsNothing . snd) (unwrap d)
 
 -- | Is this document nothing but pointers to parts printed elsewhere?
@@ -257,7 +267,7 @@ referentIn = \case
   DReferent k _ -> Just k
   DCat a b -> referentIn a <|> referentIn b
   DIndented _ a b -> referentIn a <|> referentIn b
-  DVariant flatD brokenD -> referentIn flatD <|> referentIn brokenD
+  DVariant _ a b -> referentIn a <|> referentIn b
   DCppChoice _ bs e -> asum (fmap (referentIn . snd) bs) <|> referentIn e
   d -> referentIn . snd =<< unwrap d
 
@@ -626,9 +636,7 @@ go env = \case
                 Broken
           _ -> l
      in go env{envLayout = settled, envHeldFlat = settled /= Broken} d out
-  DVariant flatD brokenD -> case envLayout env of
-    Broken -> go env brokenD
-    _ -> go env flatD
+  DVariant by a b -> go env (chosen by (envLayout env) a b)
   DLocated _ d -> go env d
   DFence _ d -> go env d
   DSeparator LeadingSeparator l@(DCat _ DSpace) _ -> opened . go env l
@@ -875,9 +883,8 @@ columnReached limit bound = walk
                     column
                     spaceDue
                     ((settled, held || settled == Flat, y) : rest)
-            DVariant flatD brokenD -> case layout of
-              Broken -> walk column spaceDue ((layout, held, brokenD) : rest)
-              _ -> walk column spaceDue ((layout, held, flatD) : rest)
+            DVariant by a b ->
+              walk column spaceDue ((layout, held, chosen by layout a b) : rest)
             DHardBreak -> (column, spaceDue, True)
             DCloseLine -> (column, spaceDue, True)
             DComment shape _ y -> case shape of
@@ -1131,7 +1138,7 @@ opensUp d = go' (0 :: Int) False [d]
         DGroup _ _ -> ended || go' depth ended rest
         DCat a b -> go' depth ended (a : b : rest)
         DIndented _ a b -> go' depth ended (a : b : rest)
-        DVariant flatD _ -> go' depth ended (flatD : rest)
+        DVariant by a b -> go' depth ended (chosen by Flat a b : rest)
         DHardBreak -> go' depth False rest
         DCloseLine -> go' depth False rest
         DVerbatimBreak{} -> go' depth False rest
@@ -1140,6 +1147,60 @@ opensUp d = go' (0 :: Int) False [d]
         _
           | Just (_, y) <- unwrap x -> go' depth ended (y : rest)
           | otherwise -> go' depth ended rest
+
+-- | The layout of a variant that is printed in a group of the given layout.
+chosen ::
+  -- | What chooses between them.
+  ChosenBy ->
+  -- | The layout of the group.
+  Layout ->
+  -- | The first layout.
+  Doc ->
+  -- | The second layout.
+  Doc ->
+  Doc
+chosen by layout a b = case by of
+  ByLayout
+    | layout == Broken -> b
+    | otherwise -> a
+  BySeparators
+    | separatorAfterComment a -> b
+    | otherwise -> a
+
+-- | Does a comment end a line right before a separator of the document's
+-- own that trails the part before it, which would then begin a line?
+--
+-- A region holds a part, whose separators are its own concern.
+separatorAfterComment ::
+  -- | The document.
+  Doc ->
+  Bool
+separatorAfterComment d = go' False False [d]
+  where
+    go' separating ended = \case
+      [] -> False
+      x : rest -> case x of
+        DText t
+          | T.null t -> go' separating ended rest
+          | otherwise -> separating && ended || go' False False rest
+        DSeparator TrailingSeparator _ t -> go' True ended (t : rest)
+        DComment shape _ c -> case shape of
+          EndsTheLine -> go' separating True rest
+          OnItsOwnLines _ -> go' separating True rest
+          InPlace -> go' separating ended (c : rest)
+          HeldBack _ -> go' separating ended rest
+        DLocated _ y
+          | separating -> go' separating ended (y : rest)
+          | otherwise -> go' False (ended && printsNothing y) rest
+        DVariant BySeparators _ _ -> go' False False rest
+        DVariant ByLayout a _ -> go' separating ended (a : rest)
+        DCat a b -> go' separating ended (a : b : rest)
+        DIndented _ a b -> go' separating ended (a : b : rest)
+        DCppChoice{} -> go' False False rest
+        DCppDirective{} -> go' False False rest
+        _
+          | Just (_, y) <- unwrap x -> go' separating ended (y : rest)
+          | otherwise -> go' separating ended rest
 
 -- | Record the remark held back for the line as crowded, if code was
 -- written after it, since a comment is about to join it.
@@ -1164,7 +1225,7 @@ endingTheirLines crowded = go'
       DComment (HeldBack _) c d | c `elem` crowded -> DComment EndsTheLine c d
       DCat a b -> DCat (go' a) (go' b)
       DIndented n a b -> DIndented n (go' a) (go' b)
-      DVariant a b -> DVariant (go' a) (go' b)
+      DVariant by a b -> DVariant by (go' a) (go' b)
       DCppChoice cs bs e -> DCppChoice cs [(t, go' d) | (t, d) <- bs] (go' e)
       d
         | Just (w, x) <- unwrap d -> wrap w (go' x)

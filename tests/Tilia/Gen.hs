@@ -110,7 +110,7 @@ genDoc withVariant withBreaks = go
             <> [ DGroup <$> elements [Flat, Broken] <*> go (n - 1)
                | withBreaks
                ]
-            <> [ DVariant <$> go half <*> go half
+            <> [ DVariant ByLayout <$> go half <*> go half
                | withVariant
                ]
     leaf =
@@ -149,7 +149,7 @@ shrinkDoc = \case
   DAligned n d -> [DEmpty, d] <> [DAligned n d' | d' <- shrinkDoc d]
   DCppMarginNote d -> [DEmpty, d] <> [DCppMarginNote d' | d' <- shrinkDoc d]
   DGroup l d -> [DEmpty, d] <> [DGroup l d' | d' <- shrinkDoc d]
-  DVariant a b -> [DEmpty, a, b]
+  DVariant _ a b -> [DEmpty, a, b]
   DLocated s d -> [DEmpty, d] <> [DLocated s d' | d' <- shrinkDoc d]
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
   DSeparator e l t ->
@@ -185,7 +185,7 @@ docTexts = \case
   DAligned _ d -> docTexts d
   DCppMarginNote d -> docTexts d
   DGroup _ d -> docTexts d
-  DVariant a _ -> docTexts a
+  DVariant _ a _ -> docTexts a
   DLocated _ d -> docTexts d
   DFence _ d -> docTexts d
   DSeparator LeadingSeparator l _ -> docTexts l

@@ -557,13 +557,14 @@ operatorChain ctx outerSite mkBody isDo =
       Operand e -> printBody (mkBody site e)
       chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
-          if operatorsTrail
-            then laidOut MayBrace
-            else
-              mayBraceWhenFlat
-                (if placement == Hanging then MayBrace else NoBrace)
-                laidOut
+          if mayTrail
+            then trailingOrLeading (laidOut True MayBrace) leadingForm
+            else leadingForm
         where
+          leadingForm =
+            mayBraceWhenFlat
+              (if placement == Hanging then MayBrace else NoBrace)
+              (laidOut False)
           placement
             | leadingDo && not (siteInBlock site) = Normal
             | otherwise =
@@ -575,7 +576,7 @@ operatorChain ctx outerSite mkBody isDo =
             Chain (Operand e :| _) _ -> doWithinAStep ctx isDo e
             Chain (first :| _) _ -> ledByDo first
             Operand _ -> False
-          laidOut bracing =
+          laidOut trails bracing =
             let first' =
                   infrangible
                     ( render
@@ -592,10 +593,11 @@ operatorChain ctx outerSite mkBody isDo =
                     (ptr first')
                 pieces = links operands operators
              in ref first'
-                  <> if operatorsTrail
+                  <> if trails
                     then
-                      fromFirst (foldr (piece bracing fromFirst) mempty pieces)
-                    else foldr (piece bracing fromFirst) mempty pieces
+                      fromFirst
+                        (foldr (piece trails bracing fromFirst) mempty pieces)
+                    else foldr (piece trails bracing fromFirst) mempty pieces
           followedBy next s =
             s{siteFollowed = maybe (siteFollowed site) isMinus next}
           -- A step would carry the operators on the last statement of a do
@@ -623,7 +625,7 @@ operatorChain ctx outerSite mkBody isDo =
                   (chainSpan spanOf operand)
                   (hsExpr ctx o)
                   rendered
-          piece bracing placing (previous, o, operand, next) rest' =
+          piece trails bracing placing (previous, o, operand, next) rest' =
             let isLast = isNothing next
                 operandSite =
                   followedBy next $
@@ -634,8 +636,8 @@ operatorChain ctx outerSite mkBody isDo =
                   | isLast = id
                   | otherwise = infrangible
                 rendered =
-                  kept (render (not operatorsTrail) operandSite operand)
-             in if operatorsTrail
+                  kept (render (not trails) operandSite operand)
+             in if trails
                   then
                     trailing (hsExpr ctx o)
                       >+> attach
@@ -653,13 +655,8 @@ operatorChain ctx outerSite mkBody isDo =
               not (lineCommentWrittenBetween ctx before (spanOf o)) =
                 placementOf (spanOf o) operand
             | otherwise = Normal
-          commentedOperators =
-            or (zipWith commentedBefore (NE.toList operands) operators)
-          commentedBefore operand o =
-            commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
-          operatorsTrail =
+          mayTrail =
             (length operators == 1 || endsHanging)
-              && not commentedOperators
               && and (zipWith couldTrail (NE.toList operands) operators)
           endsHanging = hangs (lastOperand chain) == Hanging
           couldTrail previous o =

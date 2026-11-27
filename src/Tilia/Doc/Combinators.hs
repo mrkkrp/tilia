@@ -28,6 +28,7 @@ module Tilia.Doc.Combinators
     frangible,
     infrangible,
     variant,
+    trailingOrLeading,
     located,
     unclaimed,
     fence,
@@ -85,6 +86,7 @@ import Data.Text qualified as T
 
 import Tilia.Doc
   ( BracketSide (..),
+    ChosenBy (..),
     Conditional (..),
     Doc (..),
     Layout (..),
@@ -200,7 +202,18 @@ variant ::
   -- | When broken.
   Doc ->
   Doc
-variant = DVariant
+variant = DVariant ByLayout
+
+-- | Parts with their separators trailing the parts before them, or leading
+-- the parts after them where a comment would leave one alone at the start
+-- of a line.
+trailingOrLeading ::
+  -- | With the separators trailing.
+  Doc ->
+  -- | With the separators leading.
+  Doc ->
+  Doc
+trailingOrLeading = DVariant BySeparators
 
 -- | Record where the output is coming from in the input.
 --

@@ -13,8 +13,10 @@ module Tilia.Doc
     LineStart (..),
     TrailingWhitespace (..),
     Layout (..),
+    ChosenBy (..),
     Conditional (..),
     conditionalRange,
+    chosen,
     printDoc,
     separatorSide,
     printsNothing,
@@ -45,6 +47,7 @@ import Data.Monoid (Any (..))
 
 import Tilia.Doc.Internal
   ( BracketSide (..),
+    ChosenBy (..),
     Conditional (..),
     Doc (..),
     Layout (..),
@@ -54,6 +57,7 @@ import Tilia.Doc.Internal
     Spill (..),
     TrailingWhitespace (..),
     Wrapper (..),
+    chosen,
     conditionalRange,
     layoutInside,
     namesOnly,
@@ -88,8 +92,7 @@ printsOnOneLine ::
 printsOnOneLine layout = \case
   DCat a b -> printsOnOneLine layout a && printsOnOneLine layout b
   DIndented _ a b -> printsOnOneLine layout a && printsOnOneLine layout b
-  DVariant flatD brokenD ->
-    printsOnOneLine layout (case layout of Broken -> brokenD; _ -> flatD)
+  DVariant by a b -> printsOnOneLine layout (chosen by layout a b)
   DHardBreak -> False
   DBreak -> layout /= Broken
   DSoftBreak -> layout /= Broken
@@ -121,7 +124,7 @@ foldChildren ::
 foldChildren f = \case
   DCat a b -> f a <> f b
   DIndented _ a b | not (namesOnly a) -> f a <> f b
-  DVariant _ d -> f d
+  DVariant by a b -> f (chosen by Broken a b)
   DCppChoice _ bs e -> foldr ((<>) . f . snd) (f e) bs
   d -> maybe mempty (f . snd) (unwrap d)
 {-# INLINE foldChildren #-}
@@ -137,7 +140,7 @@ mapChildren ::
 mapChildren f = \case
   DCat a b -> f a <> f b
   DIndented n a b | not (namesOnly a) -> DIndented n (f a) (f b)
-  DVariant a b -> DVariant (f a) (f b)
+  DVariant by a b -> DVariant by (f a) (f b)
   DCppChoice cs bs e -> DCppChoice cs [(g, f d) | (g, d) <- bs] (f e)
   d -> maybe d (\(w, x) -> wrap w (f x)) (unwrap d)
 {-# INLINE mapChildren #-}
@@ -215,8 +218,7 @@ spineAt ::
 spineAt layout = \case
   DEmpty -> []
   Cat a b -> spineAt layout a <> spineAt layout b
-  DVariant flatD brokenD ->
-    spineAt layout (case layout of Broken -> brokenD; _ -> flatD)
+  DVariant by a b -> spineAt layout (chosen by layout a b)
   d -> [d]
 
 -- | The lines of the input a document holds something printed from, as far
