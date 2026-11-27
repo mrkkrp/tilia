@@ -120,8 +120,9 @@ data Doc
     DSeparator !SeparatorSide !Doc !Doc
   | -- | A bracket, which of its pair it is, and where it was written.
     DBracket !BracketSide !(Maybe Span) !Doc
-  | -- | A comment, put among the lines around it as its shape says.
-    DComment !Shape !Doc
+  | -- | A comment, put among the lines around it as its shape says, and
+    -- where it was written.
+    DComment !Shape !Span !Doc
   | -- | Alternatives the preprocessor chooses between, the condition it
     -- chooses on, and the conditionals of the input they were printed from.
     DCppChoice ![Conditional] ![(Text, Doc)] !Doc
@@ -277,7 +278,7 @@ data Wrapper
   | -- | A 'DSeparator' less the form for its side, holding the other.
     WSeparator !SeparatorSide !Doc
   | WBracket !BracketSide !(Maybe Span)
-  | WComment !Shape
+  | WComment !Shape !Span
   | WReferent !(Maybe Span)
   | WIndented !Int !Doc
   | WAligned !Int
@@ -296,7 +297,7 @@ unwrap = \case
   DSeparator LeadingSeparator l t -> Just (WSeparator LeadingSeparator t, l)
   DSeparator TrailingSeparator l t -> Just (WSeparator TrailingSeparator l, t)
   DBracket b s d -> Just (WBracket b s, d)
-  DComment s d -> Just (WComment s, d)
+  DComment s c d -> Just (WComment s c, d)
   DReferent k d -> Just (WReferent k, d)
   DIndented n a d | namesOnly a -> Just (WIndented n a, d)
   DAligned n d -> Just (WAligned n, d)
@@ -318,7 +319,7 @@ wrap = \case
   WSeparator LeadingSeparator t -> \l -> DSeparator LeadingSeparator l t
   WSeparator TrailingSeparator l -> DSeparator TrailingSeparator l
   WBracket b s -> DBracket b s
-  WComment s -> DComment s
+  WComment s c -> DComment s c
   WReferent k -> DReferent k
   WIndented n a -> DIndented n a
   WAligned n -> DAligned n
@@ -413,6 +414,13 @@ data Out = Out
     -- given. The first goes at the end of the line; any after it get lines
     -- of their own under it.
     outHeldBack :: ![(Spill, Text)],
+    -- | The first remark held back for the line, and the column the line
+    -- had reached when it was.
+    outRemark :: !(Maybe (Span, Int)),
+    -- | The remarks held back for a line that another comment was written
+    -- on after code, which end their lines where they stand when the
+    -- document is printed again.
+    outCrowded :: ![Span],
     -- | What the line being built ends with, so far as what is written
     -- next depends on it.
     outEnding :: !Ending,
@@ -500,6 +508,8 @@ emptyOut =
       outCurrent = [],
       outColumn = 0,
       outHeldBack = [],
+      outRemark = Nothing,
+      outCrowded = [],
       outEnding = Written,
       outReferents = HashMap.empty,
       outUnwritten = [],
@@ -514,8 +524,13 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc settings doc = finish (go env doc emptyOut)
+printDoc settings = finish . settled
   where
+    settled doc = case outCrowded out of
+      [] -> out
+      crowded -> settled (endingTheirLines crowded doc)
+      where
+        out = go env doc emptyOut
     env =
       Env
         { envIndent = 0,
@@ -600,6 +615,7 @@ go env = \case
     go env{envNote = not (hasContent out)} d out
   DGroup l d -> \out ->
     let settled = case l of
+          _ | l /= Broken, opensUp d -> Broken
           Frangible
             | not (envHeldFlat env),
               fracturesFrom
@@ -620,14 +636,20 @@ go env = \case
   DSeparator TrailingSeparator _ t -> go env t
   DBracket OpeningBracket _ d -> opened . go env d
   DBracket ClosingBracket _ d -> go env d
-  DComment shape d -> case shape of
+  DComment shape c d -> case shape of
     InPlace -> go env d
-    EndsTheLine -> closeLine (envIndent env) . go env d . putSpace
+    EndsTheLine -> closeLine (envIndent env) . go env d . putSpace . crowding
     HeldBack spill -> \out ->
-      foldl
-        (\o (s, t) -> placed (putHeldBack (envIndent env) s t (noting False o)))
-        out
-        (heldBackLines spill d)
+      let held =
+            foldl
+              ( \o (s, t) ->
+                  placed (putHeldBack (envIndent env) s t (noting False o))
+              )
+              (crowding out)
+              (heldBackLines spill d)
+       in if isNothing (outRemark out) && not (null (outHeldBack held))
+            then held{outRemark = Just (c, outColumn out)}
+            else held
     OnItsOwnLines gap -> \out ->
       let begun
             | outEnding out == Opened && null (outHeldBack out) = putSpace out
@@ -838,6 +860,10 @@ columnReached limit bound = walk
                 column
                 spaceDue
                 ((layout, held, a) : (layout, held, b) : rest)
+            DGroup l y
+              | l /= Broken,
+                opensUp y ->
+                  walk column spaceDue ((Broken, held, y) : rest)
             DGroup Frangible y
               | not held -> case fracture limit column spaceDue y of
                   Just (c, s, True) -> (c, s, True)
@@ -854,7 +880,7 @@ columnReached limit bound = walk
               _ -> walk column spaceDue ((layout, held, flatD) : rest)
             DHardBreak -> (column, spaceDue, True)
             DCloseLine -> (column, spaceDue, True)
-            DComment shape y -> case shape of
+            DComment shape _ y -> case shape of
               InPlace -> walk column spaceDue ((layout, held, y) : rest)
               EndsTheLine ->
                 space
@@ -983,6 +1009,7 @@ fresh out =
       outCurrent = [],
       outColumn = 0,
       outHeldBack = [],
+      outRemark = Nothing,
       outEnding = Written
     }
 
@@ -1072,6 +1099,76 @@ repeatsBlank out = case outLines out of
 -- it reproduces starting it at the margin?
 started :: Out -> Bool
 started out = not (null (outCurrent out)) || linePinned (outLine out)
+
+-- | Does a comment end a line inside a bracket that a document opens, with
+-- more of the document to follow, where it is laid out flat?
+--
+-- Only the document's own level counts: a group inside it settles that
+-- for itself.
+opensUp ::
+  -- | The document.
+  Doc ->
+  Bool
+opensUp d = go' (0 :: Int) False [d]
+  where
+    go' depth ended = \case
+      [] -> False
+      x : rest -> case x of
+        DText t
+          | T.null t -> go' depth ended rest
+          | otherwise -> ended || go' depth ended rest
+        DBracket side _ _ ->
+          ended
+            || go'
+              (if side == OpeningBracket then depth + 1 else depth - 1)
+              ended
+              rest
+        DComment shape _ _ -> case shape of
+          EndsTheLine -> go' depth (ended || depth > 0) rest
+          OnItsOwnLines _ -> go' depth (ended || depth > 0) rest
+          InPlace -> ended || go' depth ended rest
+          HeldBack _ -> go' depth ended rest
+        DGroup _ _ -> ended || go' depth ended rest
+        DCat a b -> go' depth ended (a : b : rest)
+        DIndented _ a b -> go' depth ended (a : b : rest)
+        DVariant flatD _ -> go' depth ended (flatD : rest)
+        DHardBreak -> go' depth False rest
+        DCloseLine -> go' depth False rest
+        DVerbatimBreak{} -> go' depth False rest
+        DCppChoice{} -> go' depth False rest
+        DCppDirective{} -> go' depth False rest
+        _
+          | Just (_, y) <- unwrap x -> go' depth ended (y : rest)
+          | otherwise -> go' depth ended rest
+
+-- | Record the remark held back for the line as crowded, if code was
+-- written after it, since a comment is about to join it.
+crowding :: Out -> Out
+crowding out = case outRemark out of
+  Just (r, column)
+    | outColumn out > column ->
+        out{outCrowded = r : outCrowded out, outRemark = Nothing}
+  _ -> out
+
+-- | The document with each of these remarks ending its line where it
+-- stands rather than held back to the end of it.
+endingTheirLines ::
+  -- | Where the remarks were written.
+  [Span] ->
+  -- | The document.
+  Doc ->
+  Doc
+endingTheirLines crowded = go'
+  where
+    go' = \case
+      DComment (HeldBack _) c d | c `elem` crowded -> DComment EndsTheLine c d
+      DCat a b -> DCat (go' a) (go' b)
+      DIndented n a b -> DIndented n (go' a) (go' b)
+      DVariant a b -> DVariant (go' a) (go' b)
+      DCppChoice cs bs e -> DCppChoice cs [(t, go' d) | (t, d) <- bs] (go' e)
+      d
+        | Just (w, x) <- unwrap d -> wrap w (go' x)
+        | otherwise -> d
 
 -- | Note that the line ends with an opener.
 opened :: Out -> Out

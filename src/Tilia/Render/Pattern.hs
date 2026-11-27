@@ -191,7 +191,6 @@ conArguments ctx inParens here braces con = \case
       )
   InfixCon l r ->
     attachOperator
-      ctx
       Normal
       id
       (spanOf l)

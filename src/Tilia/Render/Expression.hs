@@ -101,7 +101,7 @@ exprBody ctx site here = \case
         <> includeWhen (startsWithSymbol e) space
         <> hsExpr ctx e
   HsPar tokens e ->
-    layoutWithin ctx here (spanOf e) $
+    layoutFrom ctx (spanOf e) $
       bracketWith
         (closingFor site)
         (pairSpans tokens)
@@ -616,7 +616,6 @@ operatorChain ctx outerSite mkBody isDo =
             where
               attachedWith p =
                 attachOperator
-                  ctx
                   p
                   placing
                   (chainSpan spanOf previous)
@@ -971,10 +970,7 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
             (attach placement (printBody (bodyOf body)))
       where
         keywordSpan = spanOfSrcSpan written
-        placement
-          | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
-          | remarkOnEachLine ctx keywordSpan (spanOf body) = Normal
-          | otherwise = bodyPlacement (bodyOf body)
+        placement = bodyPlacement (bodyOf body)
 
 -- | A @let@ expression or command, with @in@ ending its line where it is
 -- one of a chain written that way, and the next on the line under it.
@@ -1534,9 +1530,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
       EqualsSign -> "="
       RightArrow -> "->"
     placement
-      | sameLine separatorSpan (spanOf body),
-        not (commentPrintedBetween ctx (spansOf guards) separatorSpan),
-        not (remarkOnEachLine ctx (spansOf guards) separatorSpan) =
+      | sameLine separatorSpan (spanOf body) =
           bodyPlacement bound
       | otherwise = Normal
     separatorSpan = either spanOf spanOf ga_sep
@@ -1611,7 +1605,6 @@ patSynBind ctx PSB{..} =
                   1
                   (ptr left)
                   ( attachOperator
-                      ctx
                       Normal
                       id
                       (spanOf l)

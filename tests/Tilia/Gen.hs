@@ -157,7 +157,7 @@ shrinkDoc = \case
       <> [DSeparator e l' t | l' <- shrinkDoc l]
       <> [DSeparator e l t' | t' <- shrinkDoc t]
   DBracket b s d -> [DEmpty, d] <> [DBracket b s d' | d' <- shrinkDoc d]
-  DComment s d -> [DEmpty, d] <> [DComment s d' | d' <- shrinkDoc d]
+  DComment s c d -> [DEmpty, d] <> [DComment s c d' | d' <- shrinkDoc d]
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
   DDeclarationsStart -> [DEmpty]
@@ -191,7 +191,7 @@ docTexts = \case
   DSeparator LeadingSeparator l _ -> docTexts l
   DSeparator TrailingSeparator _ t -> docTexts t
   DBracket _ _ d -> docTexts d
-  DComment _ d -> docTexts d
+  DComment _ _ d -> docTexts d
   DCppChoice _ bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
   DCppDirective _ t -> [t]
   DDeclarationsStart -> []

@@ -308,13 +308,14 @@ writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
     Before ->
       includeUnless glued space
-        <> DComment InPlace body
+        <> DComment InPlace (commentSpan c) body
         <> includeUnless atTheEnd space
-    _ -> space <> DComment InPlace body
-  EndsTheLine -> DComment EndsTheLine body <> gapBelow
+    _ -> space <> DComment InPlace (commentSpan c) body
+  EndsTheLine -> DComment EndsTheLine (commentSpan c) body <> gapBelow
   shape@(HeldBack _) ->
     DComment
       shape
+      (commentSpan c)
       (body <> includeWhen gapLeft (DVerbatimBreak AtIndent TrimWhitespace))
   OnItsOwnLines _ -> ownLines margin atTheEnd c
   where
@@ -338,7 +339,10 @@ ownLines ::
   Comment ->
   Doc
 ownLines margin atTheEnd c =
-  DComment (OnItsOwnLines (commentGapAbove c)) (commentText margin c)
+  DComment
+    (OnItsOwnLines (commentGapAbove c))
+    (commentSpan c)
+    (commentText margin c)
     <> includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
 -- | A comment, and the spacing that goes with it, as one region.

@@ -29,7 +29,6 @@ module Tilia.Render.Context
     -- * What lies between two spans
     commentPrintedBetween,
     lineCommentWrittenBetween,
-    remarkOnEachLine,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -41,7 +40,6 @@ module Tilia.Render.Context
     atSpan,
     keywordAt,
     layoutFrom,
-    layoutWithin,
     layoutAcross,
     writtenOnOneLine,
     attachOperator,
@@ -344,23 +342,6 @@ lineCommentWrittenBetween ctx (Just a) (Just b) =
   holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
 lineCommentWrittenBetween _ _ _ = False
 
--- | Was a comment that ends its line written between the two spans, and
--- another on the line the second begins, so that joining the two lines
--- would take one of them off its line?
-remarkOnEachLine ::
-  -- | The context.
-  Ctx ->
-  -- | What comes first.
-  Maybe Span ->
-  -- | What comes next.
-  Maybe Span ->
-  Bool
-remarkOnEachLine ctx a b =
-  lineCommentWrittenBetween ctx a b
-    && lineCommentWrittenBetween ctx (startOf <$> b) (nextLine <$> b)
-  where
-    nextLine s = mkSpan (spanStartLine s + 1, 1) (spanStartLine s + 1, 1)
-
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no
 -- preprocessor directive anywhere between?
@@ -474,35 +455,16 @@ layoutFrom ctx s
   | maybe True (writtenOnOneLine ctx) s = frangible
   | otherwise = broken
 
--- | Lay a construct out from the region its contents occupy rather than the
--- region it occupies.
-layoutWithin ::
-  -- | The context.
-  Ctx ->
-  -- | The whole construct, delimiters included. Where comments are looked
-  -- for.
-  Maybe Span ->
-  -- | What it holds, delimiters left out.
-  Maybe Span ->
-  Doc ->
-  Doc
-layoutWithin ctx whole contents d
-  | any (holdsLineComment ctx) whole = broken d
-  | otherwise = layoutFrom ctx contents d
-
 -- | 'layoutFrom' over the region several located things cover.
 layoutAcross :: HasLoc l => Ctx -> [GenLocated l a] -> Doc -> Doc
 layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
 -- | 'attach' an operator and its operand, placed on their line as told,
 -- leaving the operator's region at the end of the line when it was written
--- there, so that the comments written around it stay on that line, giving
--- the indentation of the operand's line a region, so that those above the
--- operand come before it, and putting the operand on the next line where a
--- remark ends both lines.
+-- there, so that the comments written around it stay on that line, and
+-- giving the indentation of the operand's line a region, so that those
+-- above the operand come before it.
 attachOperator ::
-  -- | The context.
-  Ctx ->
   -- | How the operator and its operand attach to what they follow.
   Placement ->
   -- | How their line is placed.
@@ -518,7 +480,7 @@ attachOperator ::
   -- | Its operand, printed.
   Doc ->
   Doc
-attachOperator ctx placement placing before here after op operand =
+attachOperator placement placing before here after op operand =
   case here of
     Just s
       | placement == Normal,
@@ -534,11 +496,7 @@ attachOperator ctx placement placing before here after op operand =
                       <> operand
                   )
               )
-    _ -> attach placement (placing (leadingOperator op <> gap <> operand))
-  where
-    gap
-      | remarkOnEachLine ctx here after = hardBreak
-      | otherwise = space
+    _ -> attach placement (placing (leadingOperator op <> space <> operand))
 
 -- | The @::@, @=>@ or @->@ that joins two parts of a type, at the end of a
 -- line or at the start of the next one, as the project asks.

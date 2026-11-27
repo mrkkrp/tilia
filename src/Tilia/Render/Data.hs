@@ -459,13 +459,9 @@ derivingClause ctx HsDerivingClause{..} =
               ( what
                   <> breakOrSpace
                   <> keywordAt (spanOf tok) "via"
-                  <> gap
+                  <> space
                   <> hsSigType ctx sigTy
               )
-          where
-            gap
-              | remarkOnEachLine ctx (spanOf tok) (spanOf sigTy) = hardBreak
-              | otherwise = space
       where
         named tok kw =
           indent 1 (ptr keyword) (keywordAt (spanOf tok) kw)

@@ -101,7 +101,7 @@ classDecl
       classHead
         | isCTuple (unLoc tyCon) (length hsq_explicit) =
             layoutFrom ctx headSpan
-              . layoutWithin ctx (spanOf tyCon) (spansOf hsq_explicit)
+              . layoutFrom ctx (spansOf hsq_explicit)
               $ parens
                 tupleParens
                 ( insideBrackets
@@ -249,11 +249,8 @@ standaloneDerivDecl
                 (ref instanceWord <> instanceHead instanceWord)
         where
           named tok kw =
-            indent 1 (ptr keyword) (keywordAt (spanOf tok) kw <> gap tok <> instanceWord)
+            indent 1 (ptr keyword) (keywordAt (spanOf tok) kw <> space <> instanceWord)
               <> instanceHead keyword
-          gap tok
-            | remarkOnEachLine ctx (spanOf tok) (spanOf instTok) = hardBreak
-            | otherwise = space
 
 -- | A type family instance.
 tyFamInstDecl :: Ctx -> FamilyStyle -> TyFamInstDecl GhcPs -> Doc

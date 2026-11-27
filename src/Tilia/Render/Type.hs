@@ -131,7 +131,7 @@ typeBody ctx documented here = \case
         TrailingArrows -> fence (fmap endOf (arrowSpan multAnn) <> spanOf y)
         LeadingArrows -> id
   HsListTy brackets t ->
-    layoutWithin ctx here (spanOf t) $
+    layoutFrom ctx (spanOf t) $
       bracketWith
         0
         (parenSpans brackets)
@@ -139,7 +139,7 @@ typeBody ctx documented here = \case
         "]"
         (insideBrackets here (hsType ctx t))
   HsTupleTy brackets sort xs ->
-    layoutWithin ctx here (spansOf xs) $
+    layoutFrom ctx (spansOf xs) $
       tupleBrackets
         (ctxCommaStyle ctx)
         (parenSpans brackets)
@@ -158,9 +158,8 @@ typeBody ctx documented here = \case
       (sepBy (joinedBy "|") (fmap (align . hsType ctx) xs))
   HsOpTy _ _ x op y -> typeChain ctx x op y
   HsParTy brackets t ->
-    layoutWithin
+    layoutFrom
       ctx
-      here
       (spanOf t)
       (parens (pairSpans brackets) (insideBrackets here (hsType ctx t)))
   HsIParamTy _ n t ->
@@ -264,7 +263,6 @@ renderChain ctx = \case
   where
     piece placing (previous, op, operand, _) =
       attachOperator
-        ctx
         Normal
         placing
         (chainSpan spanOf previous)

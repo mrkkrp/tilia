@@ -117,8 +117,9 @@ stepIn :: Doc -> Doc
 stepIn d = ref mempty <> indent 1 (ptr mempty) d
 
 held, underPrevious :: Text -> Doc
-held = DComment (HeldBack SpillAtIndentation) . DText
-underPrevious = DComment (HeldBack SpillUnderPrevious) . DText
+held = DComment (HeldBack SpillAtIndentation) (mkSpan (1, 1) (1, 1)) . DText
+underPrevious =
+  DComment (HeldBack SpillUnderPrevious) (mkSpan (1, 1) (1, 1)) . DText
 
 directive :: Doc
 directive = DCppDirective (mkSpan (9, 1) (9, 6)) "if X"
