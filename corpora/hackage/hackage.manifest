@@ -191,7 +191,7 @@ formatted       d00d3643e1b4  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.
 formatted       06f64c978a9d  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
 formatted       ffb9e4d9ba07  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       24a333bdcca1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
-formatted       0ddfd381ec68  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
+formatted       976fa9bd973d  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
 formatted       ea2d63c03af0  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Cubical.hs
 formatted       bf42ab8aecbd  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Match.hs
 formatted       25ad1190369c  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/SplitClause.hs

@@ -641,18 +641,12 @@ operatorChain ctx outerSite mkBody isDo =
                   then
                     trailing (hsExpr ctx o)
                       >+> attach
-                        ( tailPlacement
-                            isLast
-                            (chainSpan spanOf previous)
-                            o
-                            operand
-                        )
+                        (tailPlacement isLast o operand)
                         (if isLast then rendered else rendered >+> rest')
                   else operatorLine placing previous o operand rendered <> rest'
-          tailPlacement isLast before o operand
+          tailPlacement isLast o operand
             | isLast,
-              not (maybe True isSingleLine (chainSpan spanOf operand)),
-              not (lineCommentWrittenBetween ctx before (spanOf o)) =
+              not (maybe True isSingleLine (chainSpan spanOf operand)) =
                 placementOf (spanOf o) operand
             | otherwise = Normal
           mayTrail =
