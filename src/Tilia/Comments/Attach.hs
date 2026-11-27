@@ -19,7 +19,9 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
-import Data.Monoid (Endo (..), First (..))
+import Data.Monoid (Endo (..), First (..), Last (..))
+import Data.Semigroup (Max (..))
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 
@@ -85,12 +87,14 @@ attachScopedComments margin scopeOf cs doc =
     (written, left) = walk margin placements doc
     (regions, fences, openings) = markedSpans doc
     leads = leadingRegions doc
+    elsewhere = endingElsewhere doc
     placements =
       foldMap
         ( \k ->
             placeComments
               (inScope k rs)
               leads
+              elsewhere
               openings
               (inScope k fs)
               (inScope k xs)
@@ -134,6 +138,27 @@ leadingRegions = \case
       startPoint h < startPoint s ->
         Map.insert s h (leadingRegions d)
   d -> foldChildren leadingRegions d
+
+-- | The regions that do not print last what was written at their end,
+-- where they print anything written that far, as a signature prints the
+-- Haddock of its last argument under that argument.
+endingElsewhere :: Doc -> Set Span
+endingElsewhere = (\(_, _, found) -> found) . go
+  where
+    go = \case
+      DLocated s d -> spanning s d (Set.insert s)
+      DFence s d -> spanning s d id
+      d -> foldChildren go d
+    spanning s d flag =
+      let (lastOne, furthest, found) = go d
+          elsewhere = case (getLast lastOne, furthest) of
+            (Just (l, further), Just (Max f)) ->
+              further || f >= endPoint s && endPoint l /= endPoint s
+            _ -> False
+       in ( Last (Just (s, elsewhere)),
+            Just (Max (maybe id (max . getMax) furthest (endPoint s))),
+            if elsewhere then flag found else found
+          )
 
 -- | The innermost region a document prints first.
 firstRegion :: Doc -> Maybe Span

@@ -22,6 +22,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..), comparing)
+import Data.Set (Set)
 import Data.Set qualified as Set
 
 import Tilia.Comments
@@ -101,6 +102,9 @@ placeComments ::
   -- | The innermost region each region prints first, where that one was
   -- written above it.
   Map Span Span ->
+  -- | The regions that do not print last what was written at their end,
+  -- which a comment written after them is not given to.
+  Set Span ->
   -- | The opening brackets, which a comment written after one is not given
   -- to a region before.
   [Span] ->
@@ -109,7 +113,7 @@ placeComments ::
   -- | The comments to place.
   [Comment] ->
   Placements
-placeComments regions leads openings fences comments =
+placeComments regions leads elsewhere openings fences comments =
   Placements
     { placedAt =
         Map.fromListWith
@@ -165,6 +169,7 @@ placeComments regions leads openings fences comments =
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
         candidate r =
           endPoint r <= startPoint here
+            && r `Set.notMember` elsewhere
             && not (zeroWidth r)
             && not (fencedOff r)
             && not (openedBetween r)
