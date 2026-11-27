@@ -29,6 +29,7 @@ module Tilia.Doc.Combinators
     infrangible,
     variant,
     trailingOrLeading,
+    endingItsLine,
     located,
     unclaimed,
     fence,
@@ -92,6 +93,7 @@ import Tilia.Doc
     Layout (..),
     LineStart (..),
     SeparatorSide (..),
+    Shape (..),
     TrailingWhitespace (..),
     mapChildren,
     printsNothing,
@@ -214,6 +216,15 @@ trailingOrLeading ::
   Doc ->
   Doc
 trailingOrLeading = DVariant BySeparators
+
+-- | A comment that ends its line, as a Haddock written as a @--@ line does.
+endingItsLine ::
+  -- | Where it was written.
+  Span ->
+  -- | The comment.
+  Doc ->
+  Doc
+endingItsLine = DComment EndsTheLine
 
 -- | Record where the output is coming from in the input.
 --

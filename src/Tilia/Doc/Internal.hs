@@ -646,14 +646,15 @@ go env = \case
   DBracket ClosingBracket _ d -> go env d
   DComment shape c d -> case shape of
     InPlace -> go env d
-    EndsTheLine -> closeLine (envIndent env) . go env d . putSpace . crowding
+    EndsTheLine ->
+      closeLine (envIndent env) . go env d . putSpace . crowding True
     HeldBack spill -> \out ->
       let held =
             foldl
               ( \o (s, t) ->
                   placed (putHeldBack (envIndent env) s t (noting False o))
               )
-              (crowding out)
+              (crowding False out)
               (heldBackLines spill d)
        in if isNothing (outRemark out) && not (null (outHeldBack held))
             then held{outRemark = Just (c, outColumn out)}
@@ -1202,12 +1203,18 @@ separatorAfterComment d = go' False False [d]
           | Just (_, y) <- unwrap x -> go' separating ended (y : rest)
           | otherwise -> go' separating ended rest
 
--- | Record the remark held back for the line as crowded, if code was
--- written after it, since a comment is about to join it.
-crowding :: Out -> Out
-crowding out = case outRemark out of
+-- | Record the remark held back for the line as crowded where a comment
+-- about to join the line would come before it: after code written after
+-- it, or anywhere if the comment ends the line.
+crowding ::
+  -- | Does the comment end the line?
+  Bool ->
+  -- | The output so far.
+  Out ->
+  Out
+crowding ends out = case outRemark out of
   Just (r, column)
-    | outColumn out > column ->
+    | ends || outColumn out > column ->
         out{outCrowded = r : outCrowded out, outRemark = Nothing}
   _ -> out
 

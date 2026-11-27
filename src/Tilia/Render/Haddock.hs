@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- | Haddocks.
 module Tilia.Render.Haddock
@@ -10,7 +8,6 @@ module Tilia.Render.Haddock
     Ending (..),
     haddock,
     haddockInline,
-    blockHaddock,
     docSectionName,
     printsWholeLineDocs,
     haddockSpans,
@@ -18,7 +15,7 @@ module Tilia.Render.Haddock
 where
 
 import Data.Char (isSpace)
-import Data.Choice (Choice, isTrue, pattern Is, pattern Isn't)
+import Data.Choice (Choice, isTrue)
 import Data.Data (Data)
 import Data.Generics.Schemes (listify)
 import Data.List (dropWhileEnd)
@@ -69,7 +66,7 @@ data Ending
 -- | Print a Haddock.
 haddock :: Ctx -> DocStyle -> Ending -> LHsDoc GhcPs -> Doc
 haddock ctx style ending doc =
-  fst (docBody ctx (Isn't #block) style doc) <> close
+  fst (docBody ctx style doc) <> close
   where
     close = case ending of
       Open -> mempty
@@ -81,22 +78,12 @@ haddock ctx style ending doc =
 -- left as written. A @--@ Haddock owns the rest of its line and still has to
 -- end it.
 haddockInline :: Ctx -> DocStyle -> LHsDoc GhcPs -> Doc
-haddockInline ctx style doc =
-  body <> (if isSelfClosing then breakOrSpace else hardBreak)
+haddockInline ctx style doc
+  | isSelfClosing = body <> breakOrSpace
+  | otherwise =
+      maybe id endingItsLine (spanOfSrcSpan (getLoc doc)) body <> hardBreak
   where
-    (body, isSelfClosing) = docBody ctx (Isn't #block) style doc
-
--- | A Haddock as a block comment, which ends where it closes, so that a
--- comment after it on its line stays out of it.
-blockHaddock ::
-  -- | The context.
-  Ctx ->
-  -- | The style to print it in.
-  DocStyle ->
-  -- | The Haddock.
-  LHsDoc GhcPs ->
-  Doc
-blockHaddock ctx style doc = fst (docBody ctx (Is #block) style doc)
+    (body, isSelfClosing) = docBody ctx style doc
 
 -- | The Haddock itself, and whether the form it took delimits itself.
 --
@@ -106,16 +93,13 @@ blockHaddock ctx style doc = fst (docBody ctx (Is #block) style doc)
 docBody ::
   -- | The context.
   Ctx ->
-  -- | Must it come out as a block comment?
-  Choice "block" ->
   -- | The style to print it in.
   DocStyle ->
   -- | The Haddock.
   LHsDoc GhcPs ->
   (Doc, Bool)
-docBody ctx block style doc@(L l str)
-  | not (isTrue block),
-    all isSpace text,
+docBody ctx style doc@(L l str)
+  | all isSpace text,
     any (/= '\n') text,
     Just c <- writtenHaddock ctx (spanOfSrcSpan l),
     not (bracketed c || singleLine c) =
@@ -124,11 +108,10 @@ docBody ctx block style doc@(L l str)
         False
       )
   | otherwise = case reusableText ctx style doc of
-      Just c
-        | not (isTrue block) || bracketed c ->
-            ( maybe id located (spanOfSrcSpan l) (commentText margin c),
-              selfClosing c
-            )
+      Just c ->
+        ( maybe id located (spanOfSrcSpan l) (commentText margin c),
+          selfClosing c
+        )
       _
         | null written' -> (writtenAt emptyBlock, True)
         | blockForm -> (writtenAt rebuiltBlock, False)
@@ -165,7 +148,7 @@ docBody ctx block style doc@(L l str)
           <> txt "-}"
     asBlock = writtenAsBlock ctx doc
     written' = docLines asBlock str
-    blockForm = isTrue block || asBlock && length written' > 1
+    blockForm = asBlock && length written' > 1
 
 -- | How a rebuilt Haddock begins.
 opener :: DocStyle -> Text

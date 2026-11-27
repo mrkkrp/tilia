@@ -28,7 +28,6 @@ module Tilia.Render.Context
 
     -- * What lies between two spans
     commentPrintedBetween,
-    lineCommentWrittenBetween,
     commentRightUnder,
     remarkUnder,
     separatedByBlank,
@@ -335,13 +334,6 @@ printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
 commentPrintedBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
 commentPrintedBetween ctx a b = nextPrinted ctx a b /= b
 
--- | Was a comment that ends its line written between the two spans, wherever
--- it is printed?
-lineCommentWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
-lineCommentWrittenBetween ctx (Just a) (Just b) =
-  holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
-lineCommentWrittenBetween _ _ _ = False
-
 -- | Do the comments printed between the two spans begin right under the
 -- first, with an empty line the author left under one of them and no
 -- preprocessor directive anywhere between?
@@ -551,13 +543,6 @@ writtenAt ctx s = do
   l <- lineAt (spanStartLine s) (sourceLines (ctxSource ctx))
   let from = offsetOf l (spanStartColumn s)
   pure (T.take (offsetOf l (spanEndColumn s) - from) (T.drop from l))
-
--- | Does a comment that ends its line begin inside this span?
-holdsLineComment :: Ctx -> Span -> Bool
-holdsLineComment ctx s =
-  case Map.lookupGE (startPoint s) (ctxLineComments ctx) of
-    Just (start, _) -> start < endPoint s
-    Nothing -> False
 
 ----------------------------------------------------------------------------
 -- Haddocks
