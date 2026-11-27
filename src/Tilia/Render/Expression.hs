@@ -1230,12 +1230,13 @@ matchGroup ::
   -- | The equations.
   MatchGroup GhcPs (LocatedA body) ->
   Doc
-matchGroup ctx bracing mkBody style MG{..}
-  | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
-  | otherwise =
-      itemsOrBraces (getLoc mg_alts) blockBracing (\_ _ -> False) $
-        [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
+matchGroup ctx bracing mkBody style MG{..} =
+  itemsOrBraces alternatives blockBracing (\_ _ -> False) $
+    [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
   where
+    alternatives
+      | isCaseStyle style, null (unLoc mg_alts) = withBraces (getLoc mg_alts)
+      | otherwise = getLoc mg_alts
     (blockBracing, lastBracing)
       | isCaseStyle style = (bracing, NoBrace)
       | otherwise = (NoBrace, bracing)
@@ -1551,9 +1552,15 @@ lastLetBraced guards = case unsnoc guards of
       HsValBinds ann bs -> HsValBinds (withBraces ann) bs
       HsIPBinds ann bs -> HsIPBinds (withBraces ann) bs
       bs -> bs
-    withBraces ann = case al_brackets (anns ann) of
-      ListBraces{} -> ann
-      _ -> ann{anns = (anns ann){al_brackets = ListBraces noAnn noAnn}}
+
+-- | A block's annotation, with braces where it was written without them.
+withBraces ::
+  -- | The annotation.
+  EpAnn (AnnList a) ->
+  EpAnn (AnnList a)
+withBraces ann = case al_brackets (anns ann) of
+  ListBraces{} -> ann
+  _ -> ann{anns = (anns ann){al_brackets = ListBraces noAnn noAnn}}
 
 -- | A pattern synonym binding.
 patSynBind ::

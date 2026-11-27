@@ -66,7 +66,7 @@ braced ::
   [(Maybe Span, Doc)] ->
   Doc
 braced (o, c) blank = \case
-  [] -> openingAt o "{" <> closingAt c "}"
+  [] -> openingAt o "{" <> closing
   x : xs ->
     openingAt o "{"
       <> space
@@ -75,8 +75,9 @@ braced (o, c) blank = \case
             (keepBlanks blank (x : fmap led xs))
         )
       <> breakOrSpace
-      <> closingAt c "}"
+      <> closing
   where
+    closing = foldMap (emptyAnchor . endOf) c <> closingAt c "}"
     led (here, d) = (here, separatingSemicolon <> d)
 
 -- | Put back the empty lines the author left between items.
