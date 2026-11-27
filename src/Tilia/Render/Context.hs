@@ -28,8 +28,7 @@ module Tilia.Render.Context
 
     -- * What lies between two spans
     nothingWrittenBetween,
-    commentRightUnder,
-    remarkUnder,
+    writtenRightUnder,
     separatedByBlank,
     directiveBetween,
 
@@ -66,8 +65,6 @@ import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Comments
   ( Comment (..),
     CommentStyle (..),
-    carriesOn,
-    commentTrailing,
   )
 import Tilia.Doc.Combinators
 import Tilia.Fixity
@@ -155,11 +152,6 @@ data Ctx = Ctx
     -- | The uses of an operator a local binding captures, by where the
     -- operator is written, with their fixities.
     ctxCaptured :: Map Span Fixity,
-    -- | The comments that end their line, by starting position.
-    ctxLineComments :: Map (Int, Int) Comment,
-    -- | The column of the trailing comment each comment that carries one on
-    -- begins at, by where that comment begins.
-    ctxCarryingOn :: Map (Int, Int) Int,
     -- | The module as its author wrote it.
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
@@ -301,20 +293,6 @@ operatorFixity ctx namespace name = do
 ----------------------------------------------------------------------------
 -- What lies between two spans
 
--- | The comments printed between two spans rather than after the first.
-printedBetween :: Ctx -> Span -> Span -> [Comment]
-printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
-  where
-    inTheGap =
-      Map.takeWhileAntitone (< startPoint b) $
-        Map.dropWhileAntitone (< endPoint a) (ctxLineComments ctx)
-    printedAfter c =
-      commentTrailing c
-        || maybe
-          False
-          (\remark -> carriesOn remark (commentSpan c) (Just b))
-          (Map.lookup (startPoint (commentSpan c)) (ctxCarryingOn ctx))
-
 -- | Is nothing written between the two spans but empty lines, directives
 -- and Haddocks?
 nothingWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
@@ -322,32 +300,13 @@ nothingWrittenBetween ctx (Just a) (Just b) =
   all (passedOver ctx) [spanEndLine a + 1 .. spanStartLine b - 1]
 nothingWrittenBetween _ _ _ = True
 
--- | Do the comments printed between the two spans begin right under the
--- first, with an empty line the author left under one of them and no
--- preprocessor directive anywhere between?
-remarkUnder ::
-  -- | The context.
-  Ctx ->
-  -- | What comes first.
-  Maybe Span ->
-  -- | What comes next.
-  Maybe Span ->
-  Bool
-remarkUnder ctx ma@(Just a) mb@(Just b) =
-  not (separatedByBlank ctx ma mb)
-    && not (directiveBetween ctx ma mb)
-    && any
-      (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
-      (printedBetween ctx a b)
-remarkUnder _ _ _ = False
-
--- | Does the first comment printed between the two spans begin on the line
--- right under the first?
-commentRightUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
-commentRightUnder ctx (Just a) (Just b) = case printedBetween ctx a b of
-  c : _ -> spanStartLine (commentSpan c) == spanEndLine a + 1
-  [] -> False
-commentRightUnder _ _ _ = False
+-- | Is something but an empty line, a directive and a Haddock written on
+-- the line right under the first of these, above the second?
+writtenRightUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
+writtenRightUnder ctx (Just a) (Just b) =
+  spanEndLine a + 1 < spanStartLine b
+    && not (passedOver ctx (spanEndLine a + 1))
+writtenRightUnder _ _ _ = False
 
 -- | Did the author leave an empty line directly after the first of these,
 -- past directives and Haddocks?

@@ -87,6 +87,7 @@ attachScopedComments margin scopeOf cs doc =
   where
     (written, left) = walk margin placements doc
     (regions, fences, openings) = markedSpans doc
+    gaps = gappedItems doc
     leads = leadingRegions doc
     elsewhere = endingElsewhere doc
     placements =
@@ -97,6 +98,7 @@ attachScopedComments margin scopeOf cs doc =
               leads
               elsewhere
               openings
+              gaps
               (inScope k fs)
               (inScope k xs)
         )
@@ -128,6 +130,24 @@ markedSpans d = go d ([], [], [])
       DBracket OpeningBracket (Just s) x ->
         (\ ~(rs, fs, os) -> (rs, fs, s : os)) . go x
       x -> appEndo (foldChildren (Endo . go) x)
+
+-- | The region that finishes printing last before each 'DGap', where no
+-- directive comes after it: the item of a run that the empty line is under.
+gappedItems :: Doc -> [Span]
+gappedItems d = snd (go d (Nothing, []))
+  where
+    go x (above, found) = case x of
+      DLocated _ y@DCppChoice{} -> go y (above, found)
+      DLocated s y
+        | zeroWidth s -> go y (above, found)
+        | otherwise -> (Just s, snd (go y (above, found)))
+      DCppChoice _ bs e ->
+        ( Nothing,
+          foldl (\f a -> snd (go a (Nothing, f))) found (fmap snd bs <> [e])
+        )
+      DCppDirective{} -> (Nothing, found)
+      DGap y -> go y (above, maybe id (:) above found)
+      _ -> foldl (flip go) (above, found) (foldChildren (: []) x)
 
 -- | The innermost region each region prints first, where that one was
 -- written above it, as the Haddock of a constructor, a field or an argument

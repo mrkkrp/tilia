@@ -2009,7 +2009,7 @@ formatted       a10147422ed6  esqueleto-3.6.0.3/test/PostgreSQL/MigrateJSON.hs
 formatted       2dde05a2b3f2  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
 formatted       afd35e1e0f76  esqueleto-3.6.0.3/test/SQLite/Test.hs
 formatted       309fa3598dfd  esqueleto-3.6.0.3/test/Spec.hs
-formatted       b5e20315ef3f  exceptions-0.10.12/src/Control/Monad/Catch.hs
+formatted       cd987fc6ca3b  exceptions-0.10.12/src/Control/Monad/Catch.hs
 formatted       1f33e955665d  exceptions-0.10.12/src/Control/Monad/Catch/Pure.hs
 formatted       7b3e5f654c45  exceptions-0.10.12/tests/Control/Monad/Catch/Tests.hs
 formatted       3391c0943219  exceptions-0.10.12/tests/Tests.hs

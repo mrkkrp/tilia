@@ -19,6 +19,7 @@ module Tilia.Doc.Combinators
     verbatim,
     emptyAnchor,
     insideBrackets,
+    itemGap,
     declarationsStart,
 
     -- * Layout
@@ -163,6 +164,14 @@ emptyAnchor s = located s mempty
 -- | Give the inside of a bracketed construct an anchor at its far end.
 insideBrackets :: Maybe Span -> Doc -> Doc
 insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
+
+-- | The break that leaves an empty line between two items of a run, so
+-- that the comments written right under the first can go with it.
+itemGap ::
+  -- | The break.
+  Doc ->
+  Doc
+itemGap = DGap
 
 -- | Where a module's declarations begin, marked without printing anything.
 declarationsStart :: Doc

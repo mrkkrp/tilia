@@ -152,6 +152,7 @@ shrinkDoc = \case
   DVariant _ a b -> [DEmpty, a, b]
   DLocated s d -> [DEmpty, d] <> [DLocated s d' | d' <- shrinkDoc d]
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
+  DGap d -> [DEmpty, d] <> [DGap d' | d' <- shrinkDoc d]
   DSeparator e l t ->
     [DEmpty, l, t]
       <> [DSeparator e l' t | l' <- shrinkDoc l]
@@ -188,6 +189,7 @@ docTexts = \case
   DVariant _ a _ -> docTexts a
   DLocated _ d -> docTexts d
   DFence _ d -> docTexts d
+  DGap d -> docTexts d
   DSeparator LeadingSeparator l _ -> docTexts l
   DSeparator TrailingSeparator _ t -> docTexts t
   DBracket _ _ d -> docTexts d

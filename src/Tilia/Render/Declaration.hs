@@ -123,10 +123,10 @@ decls ::
 decls ctx style ds =
   items
     NoBrace
-    [ includeWhen gap breakOrSpace <> (if held then infrangible else id) printed
+    [ gap <> (if held then infrangible else id) printed
     | (current, above, below) <-
         zip3 groups (Nothing : fmap Just links) (fmap Just links <> [Nothing]),
-      let gaps = any fst above : repeat False
+      let gaps = foldMap fst above : repeat mempty
           held = style == Free && (any snd above || any snd below),
       (gap, (_, printed)) <- zip gaps (NE.toList current)
     ]
@@ -137,18 +137,18 @@ decls ctx style ds =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds
 
-    -- Whether an empty line goes between each two neighbouring groups, and
-    -- whether they are written together and not kept apart.
+    -- The empty line between each two neighbouring groups, and whether they
+    -- are written together and not kept apart.
     links = zipWith link groups (drop 1 groups)
     link previous current =
-      (not (remarkUnder ctx ended began || underHeading || glued), glued)
+      (includeUnless (glued || underHeading) (itemGap breakOrSpace), glued)
       where
+        underHeading =
+          isHeading (unLoc (fst (NE.last previous)))
+            && writtenRightUnder ctx ended began
         glued = not (separatedByBlank ctx ended began || apart previous current)
         ended = spanOf (fst (NE.last previous))
         began = spanOf (fst (NE.head current))
-        underHeading =
-          isHeading (unLoc (fst (NE.last previous)))
-            && commentRightUnder ctx ended began
 
     isHeading = \case
       DocD _ DocGroup{} -> True

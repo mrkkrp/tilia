@@ -111,6 +111,9 @@ data Doc
   | -- | Fence prevents comments inside from floating out and attaching to
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
+  | -- | The break that leaves an empty line between two items of a run, so
+    -- that the comments written right under the first can go with it.
+    DGap !Doc
   | -- | A separator between two parts, such as a comma: the side of the
     -- part it goes with it is written on, how it is written leading the
     -- part after it, and how it is written trailing the part before it.
@@ -285,6 +288,7 @@ referentsIn = \case
 data Wrapper
   = WLocated !Span
   | WFence !Span
+  | WGap
   | -- | A 'DSeparator' less the form for its side, holding the other.
     WSeparator !SeparatorSide !Doc
   | WBracket !BracketSide !(Maybe Span)
@@ -304,6 +308,7 @@ unwrap ::
 unwrap = \case
   DLocated s d -> Just (WLocated s, d)
   DFence s d -> Just (WFence s, d)
+  DGap d -> Just (WGap, d)
   DSeparator LeadingSeparator l t -> Just (WSeparator LeadingSeparator t, l)
   DSeparator TrailingSeparator l t -> Just (WSeparator TrailingSeparator l, t)
   DBracket b s d -> Just (WBracket b s, d)
@@ -326,6 +331,7 @@ wrap ::
 wrap = \case
   WLocated s -> DLocated s
   WFence s -> DFence s
+  WGap -> DGap
   WSeparator LeadingSeparator t -> \l -> DSeparator LeadingSeparator l t
   WSeparator TrailingSeparator l -> DSeparator TrailingSeparator l
   WBracket b s -> DBracket b s
@@ -639,6 +645,7 @@ go env = \case
   DVariant by a b -> go env (chosen by (envLayout env) a b)
   DLocated _ d -> go env d
   DFence _ d -> go env d
+  DGap d -> go env d
   DSeparator LeadingSeparator l@(DCat _ DSpace) _ -> opened . go env l
   DSeparator LeadingSeparator l _ -> go env l
   DSeparator TrailingSeparator _ t -> go env t

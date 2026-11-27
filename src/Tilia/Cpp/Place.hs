@@ -65,6 +65,7 @@ import Tilia.Doc
     referentIn,
     regionOf,
     spine,
+    ungapped,
     unwrap,
     wrap,
     pattern Cat,
@@ -429,7 +430,8 @@ spacedApart written = go
           (spacing@(_ : _), y : rest') <- span onlySpacing rest,
           Just _ <- ownLines y ->
             x
-              : ( if blankAt (to + 1) written && DHardBreak `elem` spacing
+              : ( if blankAt (to + 1) written
+                    && DHardBreak `elem` fmap ungapped spacing
                     then blankLine
                     else hardBreak
                 )

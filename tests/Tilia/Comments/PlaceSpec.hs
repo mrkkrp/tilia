@@ -327,7 +327,7 @@ placedIn regions fences src =
       fst
         ( foldl
             collect
-            ([], placeComments regions mempty mempty mempty fences cs)
+            ([], placeComments regions mempty mempty mempty mempty fences cs)
             regions
         )
     collect (found, placements) r = case claimPlaced r placements of

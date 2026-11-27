@@ -45,7 +45,6 @@ import Tilia.Comments
     commentTrailing,
     continuesHaddock,
     holdsOff,
-    sharesItsLine,
     widenTrigger,
   )
 import Tilia.Comments.Attach (attachComments)
@@ -124,13 +123,6 @@ renderConfiguration render parsed =
           ctxScope = rcScope render,
           ctxCaptured = capturedUses (pmGathered parsed),
           ctxSource = pmSource parsed,
-          ctxLineComments = indexOn (filter (not . sharesItsLine) loose),
-          ctxCarryingOn =
-            Map.fromList
-              [ (startPoint (commentSpan c), remark)
-              | c <- loose,
-                Just (_, remark) <- [carryingOn c]
-              ],
           ctxHaddocks = indexOn haddocks,
           ctxKnot = knot,
           ctxIndentation = settingsIndentation (rcSettings render),

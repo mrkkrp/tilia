@@ -35,6 +35,7 @@ module Tilia.Doc
     printedFrom,
     onlySpacing,
     onlyBreaks,
+    ungapped,
     Wrapper (..),
     unwrap,
     wrap,
@@ -252,4 +253,14 @@ onlyBreaks = \case
   DSoftBreak -> True
   DHardBreak -> True
   DCloseLine -> True
+  DGap d -> onlyBreaks d
   _ -> False
+
+-- | The break a 'DGap' leaves an empty line with, or the document itself.
+ungapped ::
+  -- | The document.
+  Doc ->
+  Doc
+ungapped = \case
+  DGap d -> ungapped d
+  d -> d
