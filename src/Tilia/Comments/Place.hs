@@ -34,7 +34,7 @@ import Tilia.Comments
     commentTrailing,
     singleLine,
   )
-import Tilia.Doc (Spill (..))
+import Tilia.Doc (Shape (..), Spill (..))
 import Tilia.Span
 
 -- | Where a comment is emitted in relation to its region.
@@ -56,21 +56,6 @@ data Alignment
     ByTheIndentation
   deriving (Eq, Show)
 
--- | How a comment is printed in relation to the region carrying it.
-data Shape
-  = -- | Spliced where the region prints, with code able to follow it on the
-    -- same line.
-    InPlace
-  | -- | Printed where the region is, and the line closed after it.
-    EndsTheLine
-  | -- | Held back to the end of whatever line of output it lands on,
-    -- however much of that line is still to be written.
-    HeldBack Spill
-  | -- | On lines of its own, keeping the empty lines the author left around
-    -- it.
-    OnItsOwnLines
-  deriving (Eq, Show)
-
 -- | What a comment given to a region at this position will look like.
 shapeOf ::
   -- | Where the comment is given to the region.
@@ -82,13 +67,13 @@ shapeOf position c = case position of
   Before
     | closesItself c && commentFollowed c -> InPlace
     | commentTrailing c -> EndsTheLine
-    | otherwise -> OnItsOwnLines
+    | otherwise -> OnItsOwnLines (commentGapAbove c)
   After spill
     | not (commentTrailing c) -> HeldBack spill
     | closesItself c -> InPlace
     | singleLine c -> HeldBack spill
     | otherwise -> EndsTheLine
-  Under _ -> OnItsOwnLines
+  Under _ -> OnItsOwnLines (commentGapAbove c)
 
 -- | Comment placements not yet written: all of them when placement is
 -- decided, fewer as a walk writes them.

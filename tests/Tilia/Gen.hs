@@ -137,8 +137,6 @@ shrinkDoc = \case
   DHardBreak -> [DEmpty]
   DVerbatimBreak _ _ -> [DEmpty]
   DCloseLine -> [DEmpty]
-  DCloseLineUnlessAfterOpener _ -> [DEmpty, DCloseLine]
-  DHoldBack s t -> DHoldBack s <$> filter (not . T.null) (T.inits t)
   DCat a b ->
     [DEmpty, a, b]
       <> [DCat a' b | a' <- shrinkDoc a]
@@ -159,6 +157,7 @@ shrinkDoc = \case
       <> [DSeparator e l' t | l' <- shrinkDoc l]
       <> [DSeparator e l t' | t' <- shrinkDoc t]
   DBracket b s d -> [DEmpty, d] <> [DBracket b s d' | d' <- shrinkDoc d]
+  DComment s d -> [DEmpty, d] <> [DComment s d' | d' <- shrinkDoc d]
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
   DDeclarationsStart -> [DEmpty]
@@ -180,8 +179,6 @@ docTexts = \case
   DHardBreak -> []
   DVerbatimBreak _ _ -> []
   DCloseLine -> []
-  DCloseLineUnlessAfterOpener _ -> []
-  DHoldBack _ t -> [t]
   DCat a b -> docTexts a <> docTexts b
   DReferent _ d -> docTexts d
   DIndented _ a d -> docTexts a <> docTexts d
@@ -194,6 +191,7 @@ docTexts = \case
   DSeparator LeadingSeparator l _ -> docTexts l
   DSeparator TrailingSeparator _ t -> docTexts t
   DBracket _ _ d -> docTexts d
+  DComment _ d -> docTexts d
   DCppChoice _ bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
   DCppDirective _ t -> [t]
   DDeclarationsStart -> []

@@ -9,6 +9,7 @@ module Tilia.Doc
     SeparatorSide (..),
     BracketSide (..),
     Spill (..),
+    Shape (..),
     LineStart (..),
     TrailingWhitespace (..),
     Layout (..),
@@ -49,6 +50,7 @@ import Tilia.Doc.Internal
     Layout (..),
     LineStart (..),
     SeparatorSide (..),
+    Shape (..),
     Spill (..),
     TrailingWhitespace (..),
     Wrapper (..),
@@ -248,5 +250,4 @@ onlyBreaks = \case
   DSoftBreak -> True
   DHardBreak -> True
   DCloseLine -> True
-  DCloseLineUnlessAfterOpener _ -> True
   _ -> False

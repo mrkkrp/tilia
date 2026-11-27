@@ -29,7 +29,6 @@ import Tilia.Doc
   ( BracketSide (..),
     Doc (..),
     SeparatorSide (..),
-    Spill (..),
     foldChildren,
     layoutInside,
     namesOnly,
@@ -285,7 +284,6 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
-      DCloseLineUnlessAfterOpener _ -> ([], True)
       DBreak -> ([], layout == Broken)
       DSoftBreak -> ([], layout == Broken)
       y
@@ -308,22 +306,24 @@ writtenAs ::
   Doc
 writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
-    Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
-    _ -> space <> body
-  EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill ->
-    foldMap (uncurry (heldBack spill)) (numbered c)
-      <> includeWhen (commentJoined c || gapLeft) (DHoldBack spill "")
-  OnItsOwnLines -> ownLines margin atTheEnd c
+    Before ->
+      includeUnless glued space
+        <> DComment InPlace body
+        <> includeUnless atTheEnd space
+    _ -> space <> DComment InPlace body
+  EndsTheLine -> DComment EndsTheLine body <> gapBelow
+  shape@(HeldBack _) ->
+    DComment
+      shape
+      (body <> includeWhen gapLeft (DVerbatimBreak AtIndent TrimWhitespace))
+  OnItsOwnLines _ -> ownLines margin atTheEnd c
   where
-    heldBack spill n x
-      | marginLine margin n = DHoldBack SpillAtMargin x
-      | otherwise = DHoldBack spill x
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
     gapLeft =
       not (commentTrailing c)
+        && not (commentJoined c)
         && commentGapBelow c
         && all ((> spanEndLine (commentSpan c) + 1) . fst) (commentNextLine c)
 
@@ -338,9 +338,7 @@ ownLines ::
   Comment ->
   Doc
 ownLines margin atTheEnd c =
-  DCloseLineUnlessAfterOpener (commentGapAbove c)
-    <> commentText margin c
-    <> DCloseLine
+  DComment (OnItsOwnLines (commentGapAbove c)) (commentText margin c)
     <> includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
 -- | A comment, and the spacing that goes with it, as one region.

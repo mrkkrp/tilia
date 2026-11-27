@@ -1504,7 +1504,6 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         headSpan
         ( heldBesideTheHead
             ( bar
-                <> space
                 <> equation (align (ref conditions))
                 <> indent 1 (ptr bar) (trailing (txt (reserved ctx separator)))
             )
@@ -1516,7 +1515,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
           )
   where
     GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
-    bar = refAt (spanOf =<< ga_vbar) (txt "|")
+    bar = refAt (spanOf =<< ga_vbar) (leading (txt "|"))
     conditions =
       commaSep
         (ctxCommaStyle ctx)
