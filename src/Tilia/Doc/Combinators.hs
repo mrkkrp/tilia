@@ -166,7 +166,9 @@ insideBrackets :: Maybe Span -> Doc -> Doc
 insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
 
 -- | The break that leaves an empty line between two items of a run, so
--- that the comments written right under the first can go with it.
+-- that the comments written right under the first can go with it, or,
+-- given nothing, the boundary between two items that run into each other,
+-- which holds them on their lines.
 itemGap ::
   -- | The break.
   Doc ->

@@ -123,12 +123,9 @@ decls ::
 decls ctx style ds =
   items
     NoBrace
-    [ gap <> (if held then infrangible else id) printed
-    | (current, above, below) <-
-        zip3 groups (Nothing : fmap Just links) (fmap Just links <> [Nothing]),
-      let gaps = foldMap fst above : repeat mempty
-          held = style == Free && (any snd above || any snd below),
-      (gap, (_, printed)) <- zip gaps (NE.toList current)
+    [ gap <> printed
+    | (current, above) <- zip groups (mempty : links),
+      (gap, (_, printed)) <- zip (above : repeat mempty) (NE.toList current)
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
@@ -137,11 +134,14 @@ decls ctx style ds =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds
 
-    -- The empty line between each two neighbouring groups, and whether they
-    -- are written together and not kept apart.
+    -- The boundary between each two neighbouring groups: with the empty
+    -- line between them where there is one, and holding them on their
+    -- lines where they are written together and not kept apart.
     links = zipWith link groups (drop 1 groups)
-    link previous current =
-      (includeUnless (glued || underHeading) (itemGap breakOrSpace), glued)
+    link previous current
+      | glued = includeWhen (style == Free) (itemGap mempty)
+      | underHeading = mempty
+      | otherwise = itemGap breakOrSpace
       where
         underHeading =
           isHeading (unLoc (fst (NE.last previous)))

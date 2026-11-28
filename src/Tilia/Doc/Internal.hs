@@ -112,7 +112,9 @@ data Doc
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
   | -- | The break that leaves an empty line between two items of a run, so
-    -- that the comments written right under the first can go with it.
+    -- that the comments written right under the first can go with it, or
+    -- nothing, where the two run into each other, which holds them on
+    -- their lines.
     DGap !Doc
   | -- | A separator between two parts, such as a comma: the side of the
     -- part it goes with it is written on, how it is written leading the
@@ -405,6 +407,9 @@ data Env = Env
     -- broken group in between, which keeps every 'Frangible' group in it
     -- flat.
     envHeldFlat :: !Bool,
+    -- | Whether what is written now is in an item of a run that runs into
+    -- a neighbour, which keeps every 'Frangible' group in it flat.
+    envHolding :: !Bool,
     -- | What the document is printed with.
     envSettings :: !Settings
   }
@@ -555,8 +560,44 @@ printDoc settings = finish . settled
           envLayout = Broken,
           envNote = False,
           envHeldFlat = False,
+          envHolding = False,
           envSettings = settings
         }
+
+-- | Does a gap among the things a document concatenates leave no empty
+-- line, holding the items of a run on either side of it?
+runsInto ::
+  -- | The document.
+  Doc ->
+  Bool
+runsInto = \case
+  DCat a b -> runsInto a || runsInto b
+  DGap d -> printsNothing d
+  _ -> False
+
+-- | For each of the things a run concatenates, whether the nearest gap
+-- above it, on its side of where the declarations begin, leaves no empty
+-- line.
+gluedAbove ::
+  -- | What the run concatenates.
+  [Doc] ->
+  [Bool]
+gluedAbove = scanl nearest False
+  where
+    nearest glued = \case
+      DGap d -> printsNothing d
+      DDeclarationsStart -> False
+      _ -> glued
+
+-- | The things a document concatenates.
+concatenated ::
+  -- | The document.
+  Doc ->
+  [Doc]
+concatenated = \case
+  DCat a b -> concatenated a <> concatenated b
+  DEmpty -> []
+  d -> [d]
 
 -- | Walk a document, accumulating output.
 go ::
@@ -584,7 +625,19 @@ go env = \case
   DHardBreak -> breakLine (envIndent env)
   DVerbatimBreak lineStart trailing ->
     verbatimBreakLine (envNote env) lineStart trailing
-  DCat a b -> go env b . go env a
+  d@(DCat a b)
+    | runsInto d -> \out ->
+        foldl
+          (\o (held, x) -> go env{envHolding = envHolding env || held} x o)
+          out
+          (zip (zipWith (||) (gluedAbove xs) below) xs)
+    | otherwise -> along b . along a
+    where
+      xs = concatenated d
+      below = drop 1 (reverse (gluedAbove (reverse xs)))
+      along = \case
+        DCat x y -> along y . along x
+        x -> go env x
   DReferent k d -> \out ->
     let naming = isJust k || printsNothing d
         recorded =
@@ -634,6 +687,7 @@ go env = \case
           _ | l /= Broken, opensUp d -> Broken
           Frangible
             | not (envHeldFlat env),
+              not (envHolding env),
               fracturesFrom
                 (settingsColumnLimit (envSettings env))
                 out
