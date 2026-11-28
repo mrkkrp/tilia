@@ -110,7 +110,7 @@ genDoc withVariant withBreaks = go
             <> [ DGroup <$> elements [Flat, Broken] <*> go (n - 1)
                | withBreaks
                ]
-            <> [ DVariant <$> go half <*> go half
+            <> [ DVariant ByLayout <$> go half <*> go half
                | withVariant
                ]
     leaf =
@@ -137,8 +137,6 @@ shrinkDoc = \case
   DHardBreak -> [DEmpty]
   DVerbatimBreak _ _ -> [DEmpty]
   DCloseLine -> [DEmpty]
-  DCloseLineUnlessAfterOpener _ -> [DEmpty, DCloseLine]
-  DHoldBack s t -> DHoldBack s <$> filter (not . T.null) (T.inits t)
   DCat a b ->
     [DEmpty, a, b]
       <> [DCat a' b | a' <- shrinkDoc a]
@@ -151,14 +149,16 @@ shrinkDoc = \case
   DAligned n d -> [DEmpty, d] <> [DAligned n d' | d' <- shrinkDoc d]
   DCppMarginNote d -> [DEmpty, d] <> [DCppMarginNote d' | d' <- shrinkDoc d]
   DGroup l d -> [DEmpty, d] <> [DGroup l d' | d' <- shrinkDoc d]
-  DVariant a b -> [DEmpty, a, b]
+  DVariant _ a b -> [DEmpty, a, b]
   DLocated s d -> [DEmpty, d] <> [DLocated s d' | d' <- shrinkDoc d]
   DFence s d -> [DEmpty, d] <> [DFence s d' | d' <- shrinkDoc d]
+  DGap d -> [DEmpty, d] <> [DGap d' | d' <- shrinkDoc d]
   DSeparator e l t ->
     [DEmpty, l, t]
       <> [DSeparator e l' t | l' <- shrinkDoc l]
       <> [DSeparator e l t' | t' <- shrinkDoc t]
   DBracket b s d -> [DEmpty, d] <> [DBracket b s d' | d' <- shrinkDoc d]
+  DComment s c d -> [DEmpty, d] <> [DComment s c d' | d' <- shrinkDoc d]
   DCppChoice _ bs e -> [DEmpty, e] <> fmap snd bs
   DCppDirective _ _ -> [DEmpty]
   DDeclarationsStart -> [DEmpty]
@@ -180,20 +180,20 @@ docTexts = \case
   DHardBreak -> []
   DVerbatimBreak _ _ -> []
   DCloseLine -> []
-  DCloseLineUnlessAfterOpener _ -> []
-  DHoldBack _ t -> [t]
   DCat a b -> docTexts a <> docTexts b
   DReferent _ d -> docTexts d
   DIndented _ a d -> docTexts a <> docTexts d
   DAligned _ d -> docTexts d
   DCppMarginNote d -> docTexts d
   DGroup _ d -> docTexts d
-  DVariant a _ -> docTexts a
+  DVariant _ a _ -> docTexts a
   DLocated _ d -> docTexts d
   DFence _ d -> docTexts d
+  DGap d -> docTexts d
   DSeparator LeadingSeparator l _ -> docTexts l
   DSeparator TrailingSeparator _ t -> docTexts t
   DBracket _ _ d -> docTexts d
+  DComment _ _ d -> docTexts d
   DCppChoice _ bs e -> concat [c : docTexts d | (c, d) <- bs] <> docTexts e
   DCppDirective _ t -> [t]
   DDeclarationsStart -> []

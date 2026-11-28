@@ -19,6 +19,7 @@ module Tilia.Doc.Combinators
     verbatim,
     emptyAnchor,
     insideBrackets,
+    itemGap,
     declarationsStart,
 
     -- * Layout
@@ -28,6 +29,8 @@ module Tilia.Doc.Combinators
     frangible,
     infrangible,
     variant,
+    trailingOrLeading,
+    endingItsLine,
     located,
     unclaimed,
     fence,
@@ -85,11 +88,13 @@ import Data.Text qualified as T
 
 import Tilia.Doc
   ( BracketSide (..),
+    ChosenBy (..),
     Conditional (..),
     Doc (..),
     Layout (..),
     LineStart (..),
     SeparatorSide (..),
+    Shape (..),
     TrailingWhitespace (..),
     mapChildren,
     printsNothing,
@@ -160,6 +165,16 @@ emptyAnchor s = located s mempty
 insideBrackets :: Maybe Span -> Doc -> Doc
 insideBrackets here d = d <> foldMap (emptyAnchor . endOf) here
 
+-- | The break that leaves an empty line between two items of a run, so
+-- that the comments written right under the first can go with it, or,
+-- given nothing, the boundary between two items that run into each other,
+-- which holds them on their lines.
+itemGap ::
+  -- | The break.
+  Doc ->
+  Doc
+itemGap = DGap
+
 -- | Where a module's declarations begin, marked without printing anything.
 declarationsStart :: Doc
 declarationsStart = DDeclarationsStart
@@ -200,7 +215,27 @@ variant ::
   -- | When broken.
   Doc ->
   Doc
-variant = DVariant
+variant = DVariant ByLayout
+
+-- | Parts with their separators trailing the parts before them, or leading
+-- the parts after them where a comment would leave one alone at the start
+-- of a line.
+trailingOrLeading ::
+  -- | With the separators trailing.
+  Doc ->
+  -- | With the separators leading.
+  Doc ->
+  Doc
+trailingOrLeading = DVariant BySeparators
+
+-- | A comment that ends its line, as a Haddock written as a @--@ line does.
+endingItsLine ::
+  -- | Where it was written.
+  Span ->
+  -- | The comment.
+  Doc ->
+  Doc
+endingItsLine = DComment EndsTheLine
 
 -- | Record where the output is coming from in the input.
 --

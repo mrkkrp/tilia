@@ -101,7 +101,7 @@ exprBody ctx site here = \case
         <> includeWhen (startsWithSymbol e) space
         <> hsExpr ctx e
   HsPar tokens e ->
-    layoutWithin ctx here (spanOf e) $
+    layoutFrom ctx (spanOf e) $
       bracketWith
         (closingFor site)
         (pairSpans tokens)
@@ -557,13 +557,14 @@ operatorChain ctx outerSite mkBody isDo =
       Operand e -> printBody (mkBody site e)
       chain@(Chain operands@(firstOne :| _) operators) ->
         layoutFrom ctx (chainSpan spanOf chain) $
-          if operatorsTrail
-            then laidOut MayBrace
-            else
-              mayBraceWhenFlat
-                (if placement == Hanging then MayBrace else NoBrace)
-                laidOut
+          if mayTrail
+            then trailingOrLeading (laidOut True MayBrace) leadingForm
+            else leadingForm
         where
+          leadingForm =
+            mayBraceWhenFlat
+              (if placement == Hanging then MayBrace else NoBrace)
+              (laidOut False)
           placement
             | leadingDo && not (siteInBlock site) = Normal
             | otherwise =
@@ -575,7 +576,7 @@ operatorChain ctx outerSite mkBody isDo =
             Chain (Operand e :| _) _ -> doWithinAStep ctx isDo e
             Chain (first :| _) _ -> ledByDo first
             Operand _ -> False
-          laidOut bracing =
+          laidOut trails bracing =
             let first' =
                   infrangible
                     ( render
@@ -592,10 +593,11 @@ operatorChain ctx outerSite mkBody isDo =
                     (ptr first')
                 pieces = links operands operators
              in ref first'
-                  <> if operatorsTrail
+                  <> if trails
                     then
-                      fromFirst (foldr (piece bracing fromFirst) mempty pieces)
-                    else foldr (piece bracing fromFirst) mempty pieces
+                      fromFirst
+                        (foldr (piece trails bracing fromFirst) mempty pieces)
+                    else foldr (piece trails bracing fromFirst) mempty pieces
           followedBy next s =
             s{siteFollowed = maybe (siteFollowed site) isMinus next}
           -- A step would carry the operators on the last statement of a do
@@ -616,7 +618,6 @@ operatorChain ctx outerSite mkBody isDo =
             where
               attachedWith p =
                 attachOperator
-                  ctx
                   p
                   placing
                   (chainSpan spanOf previous)
@@ -624,7 +625,7 @@ operatorChain ctx outerSite mkBody isDo =
                   (chainSpan spanOf operand)
                   (hsExpr ctx o)
                   rendered
-          piece bracing placing (previous, o, operand, next) rest' =
+          piece trails bracing placing (previous, o, operand, next) rest' =
             let isLast = isNothing next
                 operandSite =
                   followedBy next $
@@ -635,32 +636,21 @@ operatorChain ctx outerSite mkBody isDo =
                   | isLast = id
                   | otherwise = infrangible
                 rendered =
-                  kept (render (not operatorsTrail) operandSite operand)
-             in if operatorsTrail
+                  kept (render (not trails) operandSite operand)
+             in if trails
                   then
                     trailing (hsExpr ctx o)
                       >+> attach
-                        ( tailPlacement
-                            isLast
-                            (chainSpan spanOf previous)
-                            o
-                            operand
-                        )
+                        (tailPlacement isLast o operand)
                         (if isLast then rendered else rendered >+> rest')
                   else operatorLine placing previous o operand rendered <> rest'
-          tailPlacement isLast before o operand
+          tailPlacement isLast o operand
             | isLast,
-              not (maybe True isSingleLine (chainSpan spanOf operand)),
-              not (lineCommentWrittenBetween ctx before (spanOf o)) =
+              not (maybe True isSingleLine (chainSpan spanOf operand)) =
                 placementOf (spanOf o) operand
             | otherwise = Normal
-          commentedOperators =
-            or (zipWith commentedBefore (NE.toList operands) operators)
-          commentedBefore operand o =
-            commentPrintedBetween ctx (chainSpan spanOf operand) (spanOf o)
-          operatorsTrail =
+          mayTrail =
             (length operators == 1 || endsHanging)
-              && not commentedOperators
               && and (zipWith couldTrail (NE.toList operands) operators)
           endsHanging = hangs (lastOperand chain) == Hanging
           couldTrail previous o =
@@ -971,10 +961,7 @@ ifThenElse ctx bodyOf AnnsIf{aiIf, aiThen, aiElse} condition thenBody elseBody =
             (attach placement (printBody (bodyOf body)))
       where
         keywordSpan = spanOfSrcSpan written
-        placement
-          | commentPrintedBetween ctx keywordSpan (spanOf body) = Normal
-          | remarkOnEachLine ctx keywordSpan (spanOf body) = Normal
-          | otherwise = bodyPlacement (bodyOf body)
+        placement = bodyPlacement (bodyOf body)
 
 -- | A @let@ expression or command, with @in@ ending its line where it is
 -- one of a chain written that way, and the next on the line under it.
@@ -1234,12 +1221,13 @@ matchGroup ::
   -- | The equations.
   MatchGroup GhcPs (LocatedA body) ->
   Doc
-matchGroup ctx bracing mkBody style MG{..}
-  | isCaseStyle style, null (unLoc mg_alts) = txt "{}"
-  | otherwise =
-      itemsOrBraces (getLoc mg_alts) blockBracing (\_ _ -> False) $
-        [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
+matchGroup ctx bracing mkBody style MG{..} =
+  itemsOrBraces alternatives blockBracing (\_ _ -> False) $
+    [(spanOf m, rendered x) | x@(_, m) <- positioned (unLoc mg_alts)]
   where
+    alternatives
+      | isCaseStyle style, null (unLoc mg_alts) = withBraces (getLoc mg_alts)
+      | otherwise = getLoc mg_alts
     (blockBracing, lastBracing)
       | isCaseStyle style = (bracing, NoBrace)
       | otherwise = (NoBrace, bracing)
@@ -1504,7 +1492,6 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
         headSpan
         ( heldBesideTheHead
             ( bar
-                <> space
                 <> equation (align (ref conditions))
                 <> indent 1 (ptr bar) (trailing (txt (reserved ctx separator)))
             )
@@ -1516,7 +1503,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
           )
   where
     GRHS EpAnn{anns = GrhsAnn{ga_vbar, ga_sep}} guards body = grhs
-    bar = refAt (spanOf =<< ga_vbar) (txt "|")
+    bar = refAt (spanOf =<< ga_vbar) (leading (txt "|"))
     conditions =
       commaSep
         (ctxCommaStyle ctx)
@@ -1535,9 +1522,7 @@ guardedRhs ctx parentPlacement bracing mkBody style lgrhs@(L _ grhs) = case guar
       EqualsSign -> "="
       RightArrow -> "->"
     placement
-      | sameLine separatorSpan (spanOf body),
-        not (commentPrintedBetween ctx (spansOf guards) separatorSpan),
-        not (remarkOnEachLine ctx (spansOf guards) separatorSpan) =
+      | sameLine separatorSpan (spanOf body) =
           bodyPlacement bound
       | otherwise = Normal
     separatorSpan = either spanOf spanOf ga_sep
@@ -1558,9 +1543,15 @@ lastLetBraced guards = case unsnoc guards of
       HsValBinds ann bs -> HsValBinds (withBraces ann) bs
       HsIPBinds ann bs -> HsIPBinds (withBraces ann) bs
       bs -> bs
-    withBraces ann = case al_brackets (anns ann) of
-      ListBraces{} -> ann
-      _ -> ann{anns = (anns ann){al_brackets = ListBraces noAnn noAnn}}
+
+-- | A block's annotation, with braces where it was written without them.
+withBraces ::
+  -- | The annotation.
+  EpAnn (AnnList a) ->
+  EpAnn (AnnList a)
+withBraces ann = case al_brackets (anns ann) of
+  ListBraces{} -> ann
+  _ -> ann{anns = (anns ann){al_brackets = ListBraces noAnn noAnn}}
 
 -- | A pattern synonym binding.
 patSynBind ::
@@ -1612,7 +1603,6 @@ patSynBind ctx PSB{..} =
                   1
                   (ptr left)
                   ( attachOperator
-                      ctx
                       Normal
                       id
                       (spanOf l)

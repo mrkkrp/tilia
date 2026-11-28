@@ -11,7 +11,6 @@ module Tilia.Comments
     transcendentComment,
     renderComment,
     closesItself,
-    sharesItsLine,
     bracketed,
     commentTrailing,
     singleLine,
@@ -311,11 +310,6 @@ renderComment = T.intercalate "\n" . NE.toList . commentBody
 -- | Does this comment let code follow it on the same line?
 closesItself :: Comment -> Bool
 closesItself c = commentStyle c == BlockComment && singleLine c
-
--- | Is this a comment that closes itself with code before or after it on
--- its line?
-sharesItsLine :: Comment -> Bool
-sharesItsLine c = closesItself c && (commentTrailing c || commentFollowed c)
 
 -- | Was this comment written between brackets rather than as @--@ lines?
 bracketed :: Comment -> Bool

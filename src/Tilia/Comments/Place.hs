@@ -22,6 +22,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (..), comparing)
+import Data.Set (Set)
 import Data.Set qualified as Set
 
 import Tilia.Comments
@@ -34,7 +35,7 @@ import Tilia.Comments
     commentTrailing,
     singleLine,
   )
-import Tilia.Doc (Spill (..))
+import Tilia.Doc (Shape (..), Spill (..))
 import Tilia.Span
 
 -- | Where a comment is emitted in relation to its region.
@@ -56,21 +57,6 @@ data Alignment
     ByTheIndentation
   deriving (Eq, Show)
 
--- | How a comment is printed in relation to the region carrying it.
-data Shape
-  = -- | Spliced where the region prints, with code able to follow it on the
-    -- same line.
-    InPlace
-  | -- | Printed where the region is, and the line closed after it.
-    EndsTheLine
-  | -- | Held back to the end of whatever line of output it lands on,
-    -- however much of that line is still to be written.
-    HeldBack Spill
-  | -- | On lines of its own, keeping the empty lines the author left around
-    -- it.
-    OnItsOwnLines
-  deriving (Eq, Show)
-
 -- | What a comment given to a region at this position will look like.
 shapeOf ::
   -- | Where the comment is given to the region.
@@ -82,13 +68,13 @@ shapeOf position c = case position of
   Before
     | closesItself c && commentFollowed c -> InPlace
     | commentTrailing c -> EndsTheLine
-    | otherwise -> OnItsOwnLines
+    | otherwise -> OnItsOwnLines (commentGapAbove c)
   After spill
     | not (commentTrailing c) -> HeldBack spill
     | closesItself c -> InPlace
     | singleLine c -> HeldBack spill
     | otherwise -> EndsTheLine
-  Under _ -> OnItsOwnLines
+  Under _ -> OnItsOwnLines (commentGapAbove c)
 
 -- | Comment placements not yet written: all of them when placement is
 -- decided, fewer as a walk writes them.
@@ -116,15 +102,22 @@ placeComments ::
   -- | The innermost region each region prints first, where that one was
   -- written above it.
   Map Span Span ->
+  -- | The regions that do not print last what was written at their end,
+  -- which a comment written after them is not given to.
+  Set Span ->
   -- | The opening brackets, which a comment written after one is not given
   -- to a region before.
+  [Span] ->
+  -- | The items of runs with an empty line under them, each of which takes
+  -- the comments written right under it, down to one with an empty line
+  -- under it, if there is one.
   [Span] ->
   -- | The constructs a comment printed in place may not be carried out of.
   [Span] ->
   -- | The comments to place.
   [Comment] ->
   Placements
-placeComments regions leads openings fences comments =
+placeComments regions leads elsewhere openings gaps fences comments =
   Placements
     { placedAt =
         Map.fromListWith
@@ -157,6 +150,7 @@ placeComments regions leads openings fences comments =
           Just (r, After SpillAtIndentation)
       | Just placed <- continues = Just placed
       | Just placed <- under = Just placed
+      | Just r <- takenBy c = Just (r, Under ByTheRegion)
       | Just r <- next =
           Just (maybe (r, Before) (,Under ByTheRegion) (Map.lookup r leads))
       | otherwise = Nothing
@@ -180,6 +174,7 @@ placeComments regions leads openings fences comments =
             onThatLine = IntMap.findWithDefault [] line regionsByEndLine
         candidate r =
           endPoint r <= startPoint here
+            && r `Set.notMember` elsewhere
             && not (zeroWidth r)
             && not (fencedOff r)
             && not (openedBetween r)
@@ -206,14 +201,10 @@ placeComments regions leads openings fences comments =
         next = snd <$> Map.lookupGE (endPoint here) regionsByStartPoint
 
         continues
-          | Just (anchor, remark) <- carriedOn c,
-            carriesOn remark here (codeFrom <$> next) =
+          | carriesOnItsRemark c,
+            Just (anchor, remark) <- carriedOn c =
               (,linedUpWith remark) <$> endingOn anchor
           | otherwise = Nothing
-
-        codeFrom r = case commentNextLine c of
-          Just p | fst p > spanStartLine r -> mkSpan p p
-          _ -> r
 
         linedUpWith remark
           | remark <= spanStartColumn here = After SpillUnderPrevious
@@ -275,6 +266,45 @@ placeComments regions leads openings fences comments =
 
     commentsByEndPoint =
       Map.fromList [(endPoint (commentSpan c), c) | c <- comments]
+
+    commentsByStartPoint =
+      Map.fromList [(startPoint (commentSpan c), c) | c <- comments]
+
+    writtenUnder a =
+      maybe id (Map.takeWhileAntitone . (>) . fst) (nextRegion a) $
+        Map.dropWhileAntitone (< endPoint a) commentsByStartPoint
+
+    nextRegion a = Map.lookupGE (spanEndLine a + 1, 0) regionsByStartPoint
+
+    takenBy c = do
+      (_, a) <- Map.lookupLT (startPoint (commentSpan c)) gapsByEnd
+      let run =
+            [ x
+            | x <- Map.elems (writtenUnder a),
+              not (commentTrailing x || carriesOnItsRemark x)
+            ]
+          (open, closing) = break emptyLineUnder run
+      top : _ <- pure run
+      final : _ <- pure closing
+      guard (spanStartLine (commentSpan top) == spanEndLine a + 1)
+      guard (commentSpan c `elem` fmap commentSpan (final : open))
+      pure a
+
+    carriesOnItsRemark x = case carriedOn x of
+      Just (_, remark) -> carriesOn remark s (codeFrom <$> after)
+      Nothing -> False
+      where
+        s = commentSpan x
+        after = snd <$> Map.lookupGE (endPoint s) regionsByStartPoint
+        codeFrom r = case commentNextLine x of
+          Just p | fst p > spanStartLine r -> mkSpan p p
+          _ -> r
+
+    gapsByEnd = Map.fromList [(endPoint a, a) | a <- gaps]
+
+    emptyLineUnder x =
+      commentGapBelow x
+        && any ((> spanEndLine (commentSpan x) + 1) . fst) (commentNextLine x)
 
     endsItsLine c =
       not (commentFollowed c)

@@ -90,7 +90,10 @@ import Tilia.Doc
     mapChildren,
     printDoc,
     printedFrom,
+    printsNothing,
+    spine,
   )
+import Tilia.Doc.Combinators (breakOrSpace, itemGap)
 import Tilia.Parser
   ( ParsedModule,
     ParserConfig,
@@ -110,6 +113,7 @@ import Tilia.Source
   ( Lines,
     Written (..),
     comments,
+    directivePresentOnLine,
     dropping,
     endsInBackslash,
     linesOf,
@@ -817,12 +821,42 @@ formatSingleConfig formatter reached text =
               }
           (document, loose) = renderConfiguration render parsed
        in Right
-            ( document,
+            ( apartAtDirectives
+                (`directivePresentOnLine` reachedLines reached)
+                document,
               summarizeComments
                 (fmap startPoint (haddockSpans (pmGathered parsed)))
                 loose
                 (comments (pmSource parsed))
             )
+
+-- | Leave an empty line between two items of a run with a directive
+-- written between them, which sets a conditional apart from what is
+-- around it.
+apartAtDirectives ::
+  -- | Is a directive written on the line?
+  (Int -> Bool) ->
+  -- | The document.
+  Doc ->
+  Doc
+apartAtDirectives directiveOn d =
+  mconcat (zipWith3 apart xs (scanl ending Nothing xs) beginnings)
+  where
+    xs = spine d
+    beginnings = drop 1 (scanr beginning Nothing xs)
+    ending previous x = maybe previous (Just . maximum . fmap snd) (lines' x)
+    beginning x next = maybe next (Just . minimum . fmap fst) (lines' x)
+    lines' = nonEmpty . printedFrom
+    apart x above below = case x of
+      DGap y
+        | printsNothing y,
+          Just a <- above,
+          Just b <- below,
+          any directiveOn [a + 1 .. b - 1] ->
+            itemGap breakOrSpace
+      DLocated s _
+        | not (any directiveOn [spanStartLine s .. spanEndLine s]) -> x
+      _ -> mapChildren (apartAtDirectives directiveOn) x
 
 -- | How a configuration was reached, and what to call it.
 data Reached = Reached

@@ -6,13 +6,16 @@ module Tilia.Doc.Internal
   ( -- * Documents
     Doc (..),
     Spill (..),
+    Shape (..),
     LineStart (..),
     TrailingWhitespace (..),
     SeparatorSide (..),
     BracketSide (..),
     Layout (..),
+    ChosenBy (..),
     Conditional (..),
     conditionalRange,
+    chosen,
     printsNothing,
     namesOnly,
     referentIn,
@@ -27,7 +30,6 @@ module Tilia.Doc.Internal
 where
 
 import Control.Applicative ((<|>))
-import Data.Char (isSpace)
 import Data.Foldable (asum)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
@@ -64,16 +66,9 @@ data Doc
     DSoftBreak
   | -- | A line break regardless of the enclosing group.
     DHardBreak
-  | -- | Text to be put at the end of the line this position falls on,
-    -- however much of the line is still to be written.
-    DHoldBack !Spill !Text
   | -- | Close the line, and let a break that immediately follows know that
     -- it has nothing left to do.
     DCloseLine
-  | -- | Close the line, and leave an empty line under it if told to, unless
-    -- it ends with an opening bracket, a bar, an equals sign or a leading
-    -- comma, which what follows then shares.
-    DCloseLineUnlessAfterOpener !Bool
   | -- | A line break between two lines of text that is being reproduced
     -- rather than laid out.
     DVerbatimBreak !LineStart !TrailingWhitespace
@@ -96,17 +91,14 @@ data Doc
     DCppMarginNote !Doc
   | -- | Lay the enclosed document out flat or broken.
     DGroup !Layout !Doc
-  | -- | Choose between two documents according to the enclosing group: the
-    -- first when it is flat, the second when it is broken. For the
-    -- constructs whose two layouts differ by more than where the breaks
-    -- fall.
+  | -- | Two layouts of one piece of code, and what chooses between them.
     --
-    -- Both fields are lazy, and that is not an oversight. The engine walks
+    -- Both layouts are lazy, and that is not an oversight. The engine walks
     -- one of them and never looks at the other, so the branch not taken
     -- should cost nothing. Were they strict, building a variant would build
     -- both layouts of everything inside it; a construct nested @n@ deep
     -- would be built @2^n@ times.
-    DVariant Doc Doc
+    DVariant !ChosenBy Doc Doc
   | -- | Record that the enclosed document was produced from the given
     -- region of the input.
     --
@@ -119,6 +111,11 @@ data Doc
   | -- | Fence prevents comments inside from floating out and attaching to
     -- elements they are not supposed to attach to.
     DFence !Span !Doc
+  | -- | The break that leaves an empty line between two items of a run, so
+    -- that the comments written right under the first can go with it, or
+    -- nothing, where the two run into each other, which holds them on
+    -- their lines.
+    DGap !Doc
   | -- | A separator between two parts, such as a comma: the side of the
     -- part it goes with it is written on, how it is written leading the
     -- part after it, and how it is written trailing the part before it.
@@ -127,6 +124,9 @@ data Doc
     DSeparator !SeparatorSide !Doc !Doc
   | -- | A bracket, which of its pair it is, and where it was written.
     DBracket !BracketSide !(Maybe Span) !Doc
+  | -- | A comment, put among the lines around it as its shape says, and
+    -- where it was written.
+    DComment !Shape !Span !Doc
   | -- | Alternatives the preprocessor chooses between, the condition it
     -- chooses on, and the conditionals of the input they were printed from.
     DCppChoice ![Conditional] ![(Text, Doc)] !Doc
@@ -149,6 +149,20 @@ data Spill
   | -- | On a line of its own at the margin, leaving what is held back after
     -- it to line up as if it were not there.
     SpillAtMargin
+  deriving (Eq, Show)
+
+-- | How a comment is printed among the lines of the code around it.
+data Shape
+  = -- | Spliced into its line, with code able to follow it there.
+    InPlace
+  | -- | After what comes before it on its line, closing the line.
+    EndsTheLine
+  | -- | Held back to the end of whatever line of output it lands on,
+    -- however much of that line is still to be written.
+    HeldBack !Spill
+  | -- | On lines of its own, under an empty line where told to, but on the
+    -- line of an opener it follows, with nothing held back for that line.
+    OnItsOwnLines !Bool
   deriving (Eq, Show)
 
 -- | Where the line after a 'DVerbatimBreak' begins.
@@ -194,6 +208,17 @@ data Layout
     Frangible
   deriving (Eq, Show)
 
+-- | What chooses between the two layouts of a 'DVariant'.
+data ChosenBy
+  = -- | The enclosing group: the first when it is flat, the second when it
+    -- is broken.
+    ByLayout
+  | -- | The separators of the first, which trail the parts before them: the
+    -- first, unless a comment ends the line right before one of them, and
+    -- the second, where they lead, if it does.
+    BySeparators
+  deriving (Eq, Show)
+
 -- | A conditional as its author wrote it.
 data Conditional = Conditional
   { -- | The lines of its directives, the @#if@ first and the @#endif@ last.
@@ -224,7 +249,7 @@ printsNothing = \case
   DDeclarationsStart -> True
   DCat a b -> printsNothing a && printsNothing b
   DIndented _ a b -> printsNothing a && printsNothing b
-  DVariant flatD brokenD -> printsNothing flatD && printsNothing brokenD
+  DVariant _ a b -> printsNothing a && printsNothing b
   d -> maybe False (printsNothing . snd) (unwrap d)
 
 -- | Is this document nothing but pointers to parts printed elsewhere?
@@ -247,7 +272,7 @@ referentIn = \case
   DReferent k _ -> Just k
   DCat a b -> referentIn a <|> referentIn b
   DIndented _ a b -> referentIn a <|> referentIn b
-  DVariant flatD brokenD -> referentIn flatD <|> referentIn brokenD
+  DVariant _ a b -> referentIn a <|> referentIn b
   DCppChoice _ bs e -> asum (fmap (referentIn . snd) bs) <|> referentIn e
   d -> referentIn . snd =<< unwrap d
 
@@ -265,9 +290,11 @@ referentsIn = \case
 data Wrapper
   = WLocated !Span
   | WFence !Span
+  | WGap
   | -- | A 'DSeparator' less the form for its side, holding the other.
     WSeparator !SeparatorSide !Doc
   | WBracket !BracketSide !(Maybe Span)
+  | WComment !Shape !Span
   | WReferent !(Maybe Span)
   | WIndented !Int !Doc
   | WAligned !Int
@@ -283,9 +310,11 @@ unwrap ::
 unwrap = \case
   DLocated s d -> Just (WLocated s, d)
   DFence s d -> Just (WFence s, d)
+  DGap d -> Just (WGap, d)
   DSeparator LeadingSeparator l t -> Just (WSeparator LeadingSeparator t, l)
   DSeparator TrailingSeparator l t -> Just (WSeparator TrailingSeparator l, t)
   DBracket b s d -> Just (WBracket b s, d)
+  DComment s c d -> Just (WComment s c, d)
   DReferent k d -> Just (WReferent k, d)
   DIndented n a d | namesOnly a -> Just (WIndented n a, d)
   DAligned n d -> Just (WAligned n, d)
@@ -304,9 +333,11 @@ wrap ::
 wrap = \case
   WLocated s -> DLocated s
   WFence s -> DFence s
+  WGap -> DGap
   WSeparator LeadingSeparator t -> \l -> DSeparator LeadingSeparator l t
   WSeparator TrailingSeparator l -> DSeparator TrailingSeparator l
   WBracket b s -> DBracket b s
+  WComment s c -> DComment s c
   WReferent k -> DReferent k
   WIndented n a -> DIndented n a
   WAligned n -> DAligned n
@@ -376,6 +407,9 @@ data Env = Env
     -- broken group in between, which keeps every 'Frangible' group in it
     -- flat.
     envHeldFlat :: !Bool,
+    -- | Whether what is written now is in an item of a run that runs into
+    -- a neighbour, which keeps every 'Frangible' group in it flat.
+    envHolding :: !Bool,
     -- | What the document is printed with.
     envSettings :: !Settings
   }
@@ -401,10 +435,16 @@ data Out = Out
     -- given. The first goes at the end of the line; any after it get lines
     -- of their own under it.
     outHeldBack :: ![(Spill, Text)],
-    -- | Whether the line was closed by something that already knew it was
-    -- ending it, so that a break arriving now would add an empty line
-    -- rather than end anything.
-    outClosed :: !Bool,
+    -- | The first remark held back for the line, and the column the line
+    -- had reached when it was.
+    outRemark :: !(Maybe (Span, Int)),
+    -- | The remarks held back for a line that another comment was written
+    -- on after code, which end their lines where they stand when the
+    -- document is printed again.
+    outCrowded :: ![Span],
+    -- | What the line being built ends with, so far as what is written
+    -- next depends on it.
+    outEnding :: !Ending,
     -- | The base of each referent written so far, by its region: its
     -- indentation without the steps entered on the line it begins on,
     -- which steps from it count from.
@@ -419,6 +459,20 @@ data Out = Out
     -- | How many lines were begun.
     outBegun :: !Int
   }
+
+-- | What the line being built ends with, so far as what is written next
+-- depends on it.
+data Ending
+  = -- | Whatever was written to it last, or nothing yet.
+    Written
+  | -- | Nothing, since something that knew it was ending the line before
+    -- closed it: a break arriving now would add an empty line rather than
+    -- end anything.
+    Closed
+  | -- | An opener, spaces aside: an opening bracket, or a leading separator
+    -- that keeps what it leads on its line.
+    Opened
+  deriving (Eq)
 
 -- | A line, and what the engine knew about it as it wrote it.
 data Line = Line
@@ -475,7 +529,9 @@ emptyOut =
       outCurrent = [],
       outColumn = 0,
       outHeldBack = [],
-      outClosed = False,
+      outRemark = Nothing,
+      outCrowded = [],
+      outEnding = Written,
       outReferents = HashMap.empty,
       outUnwritten = [],
       outBlank = [],
@@ -489,8 +545,13 @@ printDoc ::
   -- | The document.
   Doc ->
   Text
-printDoc settings doc = finish (go env doc emptyOut)
+printDoc settings = finish . settled
   where
+    settled doc = case outCrowded out of
+      [] -> out
+      crowded -> settled (endingTheirLines crowded doc)
+      where
+        out = go env doc emptyOut
     env =
       Env
         { envIndent = 0,
@@ -499,8 +560,44 @@ printDoc settings doc = finish (go env doc emptyOut)
           envLayout = Broken,
           envNote = False,
           envHeldFlat = False,
+          envHolding = False,
           envSettings = settings
         }
+
+-- | Does a gap among the things a document concatenates leave no empty
+-- line, holding the items of a run on either side of it?
+runsInto ::
+  -- | The document.
+  Doc ->
+  Bool
+runsInto = \case
+  DCat a b -> runsInto a || runsInto b
+  DGap d -> printsNothing d
+  _ -> False
+
+-- | For each of the things a run concatenates, whether the nearest gap
+-- above it, on its side of where the declarations begin, leaves no empty
+-- line.
+gluedAbove ::
+  -- | What the run concatenates.
+  [Doc] ->
+  [Bool]
+gluedAbove = scanl nearest False
+  where
+    nearest glued = \case
+      DGap d -> printsNothing d
+      DDeclarationsStart -> False
+      _ -> glued
+
+-- | The things a document concatenates.
+concatenated ::
+  -- | The document.
+  Doc ->
+  [Doc]
+concatenated = \case
+  DCat a b -> concatenated a <> concatenated b
+  DEmpty -> []
+  d -> [d]
 
 -- | Walk a document, accumulating output.
 go ::
@@ -524,19 +621,23 @@ go env = \case
   DSoftBreak -> case envLayout env of
     Broken -> breakLine (envIndent env)
     _ -> id
-  DHoldBack spill t ->
-    placed . putHeldBack (envIndent env) spill t . noting False
   DCloseLine -> closeLine (envIndent env)
-  DCloseLineUnlessAfterOpener gap -> \out ->
-    if endsWithOpener out
-      then putSpace out
-      else go env (gapped <> DCloseLine) out
-    where
-      gapped = if gap then DCloseLine <> DHardBreak <> DHardBreak else DEmpty
   DHardBreak -> breakLine (envIndent env)
   DVerbatimBreak lineStart trailing ->
     verbatimBreakLine (envNote env) lineStart trailing
-  DCat a b -> go env b . go env a
+  d@(DCat a b)
+    | runsInto d -> \out ->
+        foldl
+          (\o (held, x) -> go env{envHolding = envHolding env || held} x o)
+          out
+          (zip (zipWith (||) (gluedAbove xs) below) xs)
+    | otherwise -> along b . along a
+    where
+      xs = concatenated d
+      below = drop 1 (reverse (gluedAbove (reverse xs)))
+      along = \case
+        DCat x y -> along y . along x
+        x -> go env x
   DReferent k d -> \out ->
     let naming = isJust k || printsNothing d
         recorded =
@@ -583,8 +684,10 @@ go env = \case
     go env{envNote = not (hasContent out)} d out
   DGroup l d -> \out ->
     let settled = case l of
+          _ | l /= Broken, opensUp d -> Broken
           Frangible
             | not (envHeldFlat env),
+              not (envHolding env),
               fracturesFrom
                 (settingsColumnLimit (envSettings env))
                 out
@@ -593,14 +696,40 @@ go env = \case
                 Broken
           _ -> l
      in go env{envLayout = settled, envHeldFlat = settled /= Broken} d out
-  DVariant flatD brokenD -> case envLayout env of
-    Broken -> go env brokenD
-    _ -> go env flatD
+  DVariant by a b -> go env (chosen by (envLayout env) a b)
   DLocated _ d -> go env d
   DFence _ d -> go env d
+  DGap d -> go env d
+  DSeparator LeadingSeparator l@(DCat _ DSpace) _ -> opened . go env l
   DSeparator LeadingSeparator l _ -> go env l
   DSeparator TrailingSeparator _ t -> go env t
-  DBracket _ _ d -> go env d
+  DBracket OpeningBracket _ d -> opened . go env d
+  DBracket ClosingBracket _ d -> go env d
+  DComment shape c d -> case shape of
+    InPlace -> go env d
+    EndsTheLine ->
+      closeLine (envIndent env) . go env d . putSpace . crowding True
+    HeldBack spill -> \out ->
+      let held =
+            foldl
+              ( \o (s, t) ->
+                  placed (putHeldBack (envIndent env) s t (noting False o))
+              )
+              (crowding False out)
+              (heldBackLines spill d)
+       in if isNothing (outRemark out) && not (null (outHeldBack held))
+            then held{outRemark = Just (c, outColumn out)}
+            else held
+    OnItsOwnLines gap -> \out ->
+      let begun
+            | outEnding out == Opened && null (outHeldBack out) = putSpace out
+            | gap =
+                go
+                  env
+                  (DCloseLine <> DHardBreak <> DHardBreak <> DCloseLine)
+                  out
+            | otherwise = closeLine (envIndent env) out
+       in closeLine (envIndent env) (go env d begun)
   DCppChoice cs branches fallback -> \out ->
     let afterElse = foldMap conditionalElse (listToMaybe cs)
         afterEndif = foldMap conditionalEndif (listToMaybe cs)
@@ -801,6 +930,10 @@ columnReached limit bound = walk
                 column
                 spaceDue
                 ((layout, held, a) : (layout, held, b) : rest)
+            DGroup l y
+              | l /= Broken,
+                opensUp y ->
+                  walk column spaceDue ((Broken, held, y) : rest)
             DGroup Frangible y
               | not held -> case fracture limit column spaceDue y of
                   Just (c, s, True) -> (c, s, True)
@@ -812,17 +945,23 @@ columnReached limit bound = walk
                     column
                     spaceDue
                     ((settled, held || settled == Flat, y) : rest)
-            DVariant flatD brokenD -> case layout of
-              Broken -> walk column spaceDue ((layout, held, brokenD) : rest)
-              _ -> walk column spaceDue ((layout, held, flatD) : rest)
+            DVariant by a b ->
+              walk column spaceDue ((layout, held, chosen by layout a b) : rest)
             DHardBreak -> (column, spaceDue, True)
             DCloseLine -> (column, spaceDue, True)
-            DCloseLineUnlessAfterOpener _ -> (column, spaceDue, True)
+            DComment shape _ y -> case shape of
+              InPlace -> walk column spaceDue ((layout, held, y) : rest)
+              EndsTheLine ->
+                space
+                  column
+                  spaceDue
+                  ((layout, held, y) : (layout, held, DCloseLine) : rest)
+              HeldBack _ -> walk column spaceDue rest
+              OnItsOwnLines _ -> (column, spaceDue, True)
             DVerbatimBreak{} -> (column, spaceDue, True)
             DCppChoice{} -> (column, spaceDue, True)
             DCppDirective{} -> (column, spaceDue, True)
             DEmpty -> walk column spaceDue rest
-            DHoldBack{} -> walk column spaceDue rest
             DDeclarationsStart -> walk column spaceDue rest
             _
               | Just (_, y) <- unwrap x ->
@@ -877,13 +1016,13 @@ putText indent t out0
           outLine = (outLine out){lineIndent = indent}
         }
   where
-    out = out0{outClosed = False}
+    out = out0{outEnding = Written}
 
 -- | Hold a fragment back until the line ends.
 putHeldBack :: Int -> Spill -> Text -> Out -> Out
 putHeldBack indent spill t out
   | started out || not (null (outHeldBack out)) =
-      out{outHeldBack = outHeldBack out <> [(spill, t)], outClosed = False}
+      out{outHeldBack = outHeldBack out <> [(spill, t)], outEnding = Written}
   | otherwise = closeLine indent (putText indent t out)
 
 -- | Append a space, unless the line has not started or already ends in one.
@@ -911,7 +1050,7 @@ breakLine ::
   Out ->
   Out
 breakLine indent out
-  | outClosed out = out{outClosed = False}
+  | outEnding out == Closed = out{outEnding = Written}
   | not (hasContent out), repeatsBlank out || opensABlock indent out = fresh out
   | otherwise = completing TrimWhitespace out
 
@@ -927,7 +1066,7 @@ closeLine ::
   Out ->
   Out
 closeLine indent out
-  | hasContent out = (breakLine indent out){outClosed = True}
+  | hasContent out = (breakLine indent out){outEnding = Closed}
   | otherwise = out
 
 -- | Begin a new line, leaving the one being built unfinished.
@@ -938,7 +1077,9 @@ fresh out =
       outLine = newLine,
       outCurrent = [],
       outColumn = 0,
-      outHeldBack = []
+      outHeldBack = [],
+      outRemark = Nothing,
+      outEnding = Written
     }
 
 -- | Finish the current line, with the held-back fragments that spill under
@@ -1010,7 +1151,7 @@ verbatimBreakLine ::
 verbatimBreakLine note lineStart trailing out =
   (completing trailing out)
     { outLine = newLine{linePinned = lineStart == AtMargin, lineNote = note},
-      outClosed = False
+      outEnding = Written
     }
 
 -- | Would this empty line be the first line or a second empty one in a
@@ -1028,16 +1169,159 @@ repeatsBlank out = case outLines out of
 started :: Out -> Bool
 started out = not (null (outCurrent out)) || linePinned (outLine out)
 
--- | Does the current line end with an opening bracket, a bar, an equals
--- sign or a leading comma, with nothing held back for its end?
-endsWithOpener :: Out -> Bool
-endsWithOpener out =
-  null (outHeldBack out)
-    && case outCurrent out of
-      " " : "," : _ -> True
-      ts -> case dropWhile (T.all isSpace) ts of
-        t : _ -> T.strip t `elem` ["(", "(#", "=", "[", "{", "|"]
-        [] -> False
+-- | Does a comment end a line inside a bracket that a document opens, with
+-- more of the document to follow, where it is laid out flat?
+--
+-- Only the document's own level counts: a group inside it settles that
+-- for itself.
+opensUp ::
+  -- | The document.
+  Doc ->
+  Bool
+opensUp d = go' (0 :: Int) False [d]
+  where
+    go' depth ended = \case
+      [] -> False
+      x : rest -> case x of
+        DText t
+          | T.null t -> go' depth ended rest
+          | otherwise -> ended || go' depth ended rest
+        DBracket side _ _ ->
+          ended
+            || go'
+              (if side == OpeningBracket then depth + 1 else depth - 1)
+              ended
+              rest
+        DComment shape _ _ -> case shape of
+          EndsTheLine -> go' depth (ended || depth > 0) rest
+          OnItsOwnLines _ -> go' depth (ended || depth > 0) rest
+          InPlace -> ended || go' depth ended rest
+          HeldBack _ -> go' depth ended rest
+        DGroup _ _ -> ended || go' depth ended rest
+        DCat a b -> go' depth ended (a : b : rest)
+        DIndented _ a b -> go' depth ended (a : b : rest)
+        DVariant by a b -> go' depth ended (chosen by Flat a b : rest)
+        DHardBreak -> go' depth False rest
+        DCloseLine -> go' depth False rest
+        DVerbatimBreak{} -> go' depth False rest
+        DCppChoice{} -> go' depth False rest
+        DCppDirective{} -> go' depth False rest
+        _
+          | Just (_, y) <- unwrap x -> go' depth ended (y : rest)
+          | otherwise -> go' depth ended rest
+
+-- | The layout of a variant that is printed in a group of the given layout.
+chosen ::
+  -- | What chooses between them.
+  ChosenBy ->
+  -- | The layout of the group.
+  Layout ->
+  -- | The first layout.
+  Doc ->
+  -- | The second layout.
+  Doc ->
+  Doc
+chosen by layout a b = case by of
+  ByLayout
+    | layout == Broken -> b
+    | otherwise -> a
+  BySeparators
+    | separatorAfterComment a -> b
+    | otherwise -> a
+
+-- | Does a comment end a line right before a separator of the document's
+-- own that trails the part before it, which would then begin a line?
+--
+-- A region holds a part, whose separators are its own concern.
+separatorAfterComment ::
+  -- | The document.
+  Doc ->
+  Bool
+separatorAfterComment d = go' False False [d]
+  where
+    go' separating ended = \case
+      [] -> False
+      x : rest -> case x of
+        DText t
+          | T.null t -> go' separating ended rest
+          | otherwise -> separating && ended || go' False False rest
+        DSeparator TrailingSeparator _ t -> go' True ended (t : rest)
+        DComment shape _ c -> case shape of
+          EndsTheLine -> go' separating True rest
+          OnItsOwnLines _ -> go' separating True rest
+          InPlace -> go' separating ended (c : rest)
+          HeldBack _ -> go' separating ended rest
+        DLocated _ y
+          | separating -> go' separating ended (y : rest)
+          | otherwise -> go' False (ended && printsNothing y) rest
+        DVariant BySeparators _ _ -> go' False False rest
+        DVariant ByLayout a _ -> go' separating ended (a : rest)
+        DCat a b -> go' separating ended (a : b : rest)
+        DIndented _ a b -> go' separating ended (a : b : rest)
+        DCppChoice{} -> go' False False rest
+        DCppDirective{} -> go' False False rest
+        _
+          | Just (_, y) <- unwrap x -> go' separating ended (y : rest)
+          | otherwise -> go' separating ended rest
+
+-- | Record the remark held back for the line as crowded where a comment
+-- about to join the line would come before it: after code written after
+-- it, or anywhere if the comment ends the line.
+crowding ::
+  -- | Does the comment end the line?
+  Bool ->
+  -- | The output so far.
+  Out ->
+  Out
+crowding ends out = case outRemark out of
+  Just (r, column)
+    | ends || outColumn out > column ->
+        out{outCrowded = r : outCrowded out, outRemark = Nothing}
+  _ -> out
+
+-- | The document with each of these remarks ending its line where it
+-- stands rather than held back to the end of it.
+endingTheirLines ::
+  -- | Where the remarks were written.
+  [Span] ->
+  -- | The document.
+  Doc ->
+  Doc
+endingTheirLines crowded = go'
+  where
+    go' = \case
+      DComment (HeldBack _) c d | c `elem` crowded -> DComment EndsTheLine c d
+      DCat a b -> DCat (go' a) (go' b)
+      DIndented n a b -> DIndented n (go' a) (go' b)
+      DVariant by a b -> DVariant by (go' a) (go' b)
+      DCppChoice cs bs e -> DCppChoice cs [(t, go' d) | (t, d) <- bs] (go' e)
+      d
+        | Just (w, x) <- unwrap d -> wrap w (go' x)
+        | otherwise -> d
+
+-- | Note that the line ends with an opener.
+opened :: Out -> Out
+opened out = out{outEnding = Opened}
+
+-- | The lines of a comment to hold back for the end of a line, each with
+-- where it goes once it spills under that line: at the margin where a break
+-- to the margin begins it, and as told otherwise.
+heldBackLines ::
+  -- | Where a line that spills goes.
+  Spill ->
+  -- | The comment.
+  Doc ->
+  [(Spill, Text)]
+heldBackLines spill d = reverse (collect d [(spill, "")])
+  where
+    collect = \case
+      DText t -> \case
+        (s, l) : ls -> (s, l <> t) : ls
+        [] -> [(spill, t)]
+      DVerbatimBreak AtMargin _ -> ((SpillAtMargin, "") :)
+      DVerbatimBreak AtIndent _ -> ((spill, "") :)
+      DCat a b -> collect b . collect a
+      x -> maybe id (collect . snd) (unwrap x)
 
 -- | Is there anything on the current line, written or held back?
 hasContent :: Out -> Bool

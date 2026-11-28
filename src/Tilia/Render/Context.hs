@@ -27,11 +27,8 @@ module Tilia.Render.Context
     operatorFixity,
 
     -- * What lies between two spans
-    commentPrintedBetween,
-    lineCommentWrittenBetween,
-    remarkOnEachLine,
-    commentRightUnder,
-    remarkUnder,
+    nothingWrittenBetween,
+    writtenRightUnder,
     separatedByBlank,
     directiveBetween,
 
@@ -41,7 +38,6 @@ module Tilia.Render.Context
     atSpan,
     keywordAt,
     layoutFrom,
-    layoutWithin,
     layoutAcross,
     writtenOnOneLine,
     attachOperator,
@@ -53,6 +49,7 @@ module Tilia.Render.Context
   )
 where
 
+import Data.Char (isSpace)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -68,8 +65,6 @@ import GHC.Types.SrcLoc qualified as GHC
 import Tilia.Comments
   ( Comment (..),
     CommentStyle (..),
-    carriesOn,
-    commentTrailing,
   )
 import Tilia.Doc.Combinators
 import Tilia.Fixity
@@ -157,11 +152,6 @@ data Ctx = Ctx
     -- | The uses of an operator a local binding captures, by where the
     -- operator is written, with their fixities.
     ctxCaptured :: Map Span Fixity,
-    -- | The comments that end their line, by starting position.
-    ctxLineComments :: Map (Int, Int) Comment,
-    -- | The column of the trailing comment each comment that carries one on
-    -- begins at, by where that comment begins.
-    ctxCarryingOn :: Map (Int, Int) Int,
     -- | The module as its author wrote it.
     ctxSource :: Source,
     -- | The author's own text for each Haddock, by starting position.
@@ -303,97 +293,40 @@ operatorFixity ctx namespace name = do
 ----------------------------------------------------------------------------
 -- What lies between two spans
 
--- | Where the next thing to be printed begins. It is either the third
--- argument or a comment, if there is any between the two spans.
-nextPrinted ::
-  -- | The context.
-  Ctx ->
-  -- | What has just been printed.
-  Maybe Span ->
-  -- | What follows it, if nothing comes between.
-  Maybe Span ->
-  Maybe Span
-nextPrinted ctx (Just a) mb@(Just b) =
-  case printedBetween ctx a b of
-    (c : _) -> Just (commentSpan c)
-    [] -> mb
-nextPrinted _ _ mb = mb
+-- | Is nothing written between the two spans but empty lines, directives
+-- and Haddocks?
+nothingWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
+nothingWrittenBetween ctx (Just a) (Just b) =
+  all (passedOver ctx) [spanEndLine a + 1 .. spanStartLine b - 1]
+nothingWrittenBetween _ _ _ = True
 
--- | The comments printed between two spans rather than after the first.
-printedBetween :: Ctx -> Span -> Span -> [Comment]
-printedBetween ctx a b = filter (not . printedAfter) (Map.elems inTheGap)
-  where
-    inTheGap =
-      Map.takeWhileAntitone (< startPoint b) $
-        Map.dropWhileAntitone (< endPoint a) (ctxLineComments ctx)
-    printedAfter c =
-      commentTrailing c
-        || maybe
-          False
-          (\remark -> carriesOn remark (commentSpan c) (Just b))
-          (Map.lookup (startPoint (commentSpan c)) (ctxCarryingOn ctx))
+-- | Is something but an empty line, a directive and a Haddock written on
+-- the line right under the first of these, above the second?
+writtenRightUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
+writtenRightUnder ctx (Just a) (Just b) =
+  spanEndLine a + 1 < spanStartLine b
+    && not (passedOver ctx (spanEndLine a + 1))
+writtenRightUnder _ _ _ = False
 
--- | Is a comment going to be printed between the two spans?
-commentPrintedBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
-commentPrintedBetween ctx a b = nextPrinted ctx a b /= b
-
--- | Was a comment that ends its line written between the two spans, wherever
--- it is printed?
-lineCommentWrittenBetween :: Ctx -> Maybe Span -> Maybe Span -> Bool
-lineCommentWrittenBetween ctx (Just a) (Just b) =
-  holdsLineComment ctx (mkSpan (endPoint a) (startPoint b))
-lineCommentWrittenBetween _ _ _ = False
-
--- | Was a comment that ends its line written between the two spans, and
--- another on the line the second begins, so that joining the two lines
--- would take one of them off its line?
-remarkOnEachLine ::
-  -- | The context.
-  Ctx ->
-  -- | What comes first.
-  Maybe Span ->
-  -- | What comes next.
-  Maybe Span ->
-  Bool
-remarkOnEachLine ctx a b =
-  lineCommentWrittenBetween ctx a b
-    && lineCommentWrittenBetween ctx (startOf <$> b) (nextLine <$> b)
-  where
-    nextLine s = mkSpan (spanStartLine s + 1, 1) (spanStartLine s + 1, 1)
-
--- | Do the comments printed between the two spans begin right under the
--- first, with an empty line the author left under one of them and no
--- preprocessor directive anywhere between?
-remarkUnder ::
-  -- | The context.
-  Ctx ->
-  -- | What comes first.
-  Maybe Span ->
-  -- | What comes next.
-  Maybe Span ->
-  Bool
-remarkUnder ctx ma@(Just a) mb@(Just b) =
-  not (separatedByBlank ctx ma mb)
-    && not (directiveBetween ctx ma mb)
-    && any
-      (writtenBlank ctx . (+ 1) . spanEndLine . commentSpan)
-      (printedBetween ctx a b)
-remarkUnder _ _ _ = False
-
--- | Does the first comment printed between the two spans begin on the line
--- right under the first?
-commentRightUnder :: Ctx -> Maybe Span -> Maybe Span -> Bool
-commentRightUnder ctx (Just a) (Just b) = case printedBetween ctx a b of
-  c : _ -> spanStartLine (commentSpan c) == spanEndLine a + 1
-  [] -> False
-commentRightUnder _ _ _ = False
-
--- | Did the author leave an empty line directly after the first of these?
+-- | Did the author leave an empty line directly after the first of these,
+-- past directives and Haddocks?
 separatedByBlank :: Ctx -> Maybe Span -> Maybe Span -> Bool
-separatedByBlank ctx ma@(Just a) mb = case nextPrinted ctx ma mb of
-  Just s -> any (writtenBlank ctx) [spanEndLine a + 1 .. spanStartLine s - 1]
-  Nothing -> False
+separatedByBlank ctx (Just a) (Just b) =
+  any (writtenBlank ctx) . takeWhile (passedOver ctx) $
+    [spanEndLine a + 1 .. spanStartLine b - 1]
 separatedByBlank _ _ _ = False
+
+-- | Is this line empty, a preprocessor directive, a Haddock's, or one this
+-- configuration does not contain?
+passedOver :: Ctx -> Int -> Bool
+passedOver ctx n = case lineAt n ls of
+  Nothing -> True
+  Just t -> T.all isSpace t || directivePresentOnLine n ls || documenting
+  where
+    ls = sourceLines (ctxSource ctx)
+    documenting =
+      maybe False ((>= n) . spanEndLine . commentSpan . snd) $
+        Map.lookupLE (n, maxBound) (ctxHaddocks ctx)
 
 -- | Is a preprocessor directive written between the two spans?
 directiveBetween ::
@@ -474,35 +407,16 @@ layoutFrom ctx s
   | maybe True (writtenOnOneLine ctx) s = frangible
   | otherwise = broken
 
--- | Lay a construct out from the region its contents occupy rather than the
--- region it occupies.
-layoutWithin ::
-  -- | The context.
-  Ctx ->
-  -- | The whole construct, delimiters included. Where comments are looked
-  -- for.
-  Maybe Span ->
-  -- | What it holds, delimiters left out.
-  Maybe Span ->
-  Doc ->
-  Doc
-layoutWithin ctx whole contents d
-  | any (holdsLineComment ctx) whole = broken d
-  | otherwise = layoutFrom ctx contents d
-
 -- | 'layoutFrom' over the region several located things cover.
 layoutAcross :: HasLoc l => Ctx -> [GenLocated l a] -> Doc -> Doc
 layoutAcross ctx xs = layoutFrom ctx (spansOf xs)
 
 -- | 'attach' an operator and its operand, placed on their line as told,
 -- leaving the operator's region at the end of the line when it was written
--- there, so that the comments written around it stay on that line, giving
--- the indentation of the operand's line a region, so that those above the
--- operand come before it, and putting the operand on the next line where a
--- remark ends both lines.
+-- there, so that the comments written around it stay on that line, and
+-- giving the indentation of the operand's line a region, so that those
+-- above the operand come before it.
 attachOperator ::
-  -- | The context.
-  Ctx ->
   -- | How the operator and its operand attach to what they follow.
   Placement ->
   -- | How their line is placed.
@@ -518,7 +432,7 @@ attachOperator ::
   -- | Its operand, printed.
   Doc ->
   Doc
-attachOperator ctx placement placing before here after op operand =
+attachOperator placement placing before here after op operand =
   case here of
     Just s
       | placement == Normal,
@@ -534,11 +448,7 @@ attachOperator ctx placement placing before here after op operand =
                       <> operand
                   )
               )
-    _ -> attach placement (placing (leadingOperator op <> gap <> operand))
-  where
-    gap
-      | remarkOnEachLine ctx here after = hardBreak
-      | otherwise = space
+    _ -> attach placement (placing (leadingOperator op <> space <> operand))
 
 -- | The @::@, @=>@ or @->@ that joins two parts of a type, at the end of a
 -- line or at the start of the next one, as the project asks.
@@ -593,13 +503,6 @@ writtenAt ctx s = do
   l <- lineAt (spanStartLine s) (sourceLines (ctxSource ctx))
   let from = offsetOf l (spanStartColumn s)
   pure (T.take (offsetOf l (spanEndColumn s) - from) (T.drop from l))
-
--- | Does a comment that ends its line begin inside this span?
-holdsLineComment :: Ctx -> Span -> Bool
-holdsLineComment ctx s =
-  case Map.lookupGE (startPoint s) (ctxLineComments ctx) of
-    Just (start, _) -> start < endPoint s
-    Nothing -> False
 
 ----------------------------------------------------------------------------
 -- Haddocks

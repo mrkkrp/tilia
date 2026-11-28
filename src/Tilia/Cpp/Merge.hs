@@ -49,6 +49,7 @@ import Tilia.Doc
     SeparatorSide (..),
     Wrapper (..),
     choosing,
+    chosen,
     conditionalRange,
     foldChildren,
     foldRegions,
@@ -835,9 +836,6 @@ spaceOf layout = go 0 False False
         DCloseLine
           | closed -> go ended closed apart ds
           | otherwise -> go (ended + 1) True apart ds
-        DCloseLineUnlessAfterOpener _
-          | closed -> go ended closed apart ds
-          | otherwise -> go (ended + 1) True apart ds
         DHardBreak -> broke ds
         DBreak
           | layout == Broken -> broke ds
@@ -1144,7 +1142,6 @@ plain = \case
       DLocated{} -> False
       DFence{} -> False
       DText t -> not (T.null t)
-      DHoldBack{} -> True
       d -> getAny (foldChildren (Any . bare) d)
 
 -- | Where a part of a run of documents begins.
@@ -1267,7 +1264,6 @@ opensWithBreak layout d = case dropWhile (== DSpace) (spineAt layout d) of
     | otherwise -> case x of
         DHardBreak -> True
         DCloseLine -> True
-        DCloseLineUnlessAfterOpener _ -> True
         DBreak -> layout == Broken
         DSoftBreak -> layout == Broken
         DCppDirective _ _ -> True
@@ -1300,12 +1296,10 @@ weigh layout = go
   where
     go = \case
       Cat a b -> go a + go b
-      DVariant flatD brokenD ->
-        go (case layout of Broken -> brokenD; _ -> flatD)
+      DVariant by a b -> go (chosen by layout a b)
       DCppChoice _ bs e -> sum (fmap (go . snd) bs) + go e
       DText t -> T.length t
       DCppDirective _ t -> T.length t
-      DHoldBack _ t -> T.length t
       d
         | Just (w, x) <- unwrap d -> weigh (layoutInside layout w) x
         | otherwise -> 0

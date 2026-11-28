@@ -13,7 +13,6 @@ roundtrip =
 
 withRemark :: IO ()
 withRemark =
-  withConnection $ -- a fresh connection
-    do
-      encode
-      decode
+  withConnection $ do -- a fresh connection
+    encode
+    decode

@@ -39,8 +39,8 @@ withNote n
 
 withTwoRemarks :: Int -> IO ()
 withTwoRemarks n
-  | n > 0 = -- only positive ones
-      do -- twice
-        print n
-        print n
+  | n > 0 -- only positive ones
+    = do -- twice
+      print n
+      print n
   | otherwise = pure ()

@@ -7,8 +7,8 @@ pending = (,Nothing {- yet -})
 leftOnly = (Left x, {- the right comes later -})
 
 rightOnly =
-  (,Right y
-  -- and the left from the caller
+  ( ,Right y
+    -- and the left from the caller
   )
 
 done = (x, y)

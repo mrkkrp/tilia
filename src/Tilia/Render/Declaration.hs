@@ -123,12 +123,9 @@ decls ::
 decls ctx style ds =
   items
     NoBrace
-    [ includeWhen gap breakOrSpace <> (if held then infrangible else id) printed
-    | (current, above, below) <-
-        zip3 groups (Nothing : fmap Just links) (fmap Just links <> [Nothing]),
-      let gaps = any fst above : repeat False
-          held = style == Free && (any snd above || any snd below),
-      (gap, (_, printed)) <- zip gaps (NE.toList current)
+    [ gap <> printed
+    | (current, above) <- zip groups (mempty : links),
+      (gap, (_, printed)) <- zip (above : repeat mempty) (NE.toList current)
     ]
   where
     isSignatureFile = ctxSourceType ctx == SignatureSource
@@ -137,18 +134,21 @@ decls ctx style ds =
       fmap (\d -> (d, declaration d))
         <$> groupDecls ctx isSignatureFile ds
 
-    -- Whether an empty line goes between each two neighbouring groups, and
-    -- whether they are written together and not kept apart.
+    -- The boundary between each two neighbouring groups: with the empty
+    -- line between them where there is one, and holding them on their
+    -- lines where they are written together and not kept apart.
     links = zipWith link groups (drop 1 groups)
-    link previous current =
-      (not (remarkUnder ctx ended began || underHeading || glued), glued)
+    link previous current
+      | glued = includeWhen (style == Free) (itemGap mempty)
+      | underHeading = mempty
+      | otherwise = itemGap breakOrSpace
       where
+        underHeading =
+          isHeading (unLoc (fst (NE.last previous)))
+            && writtenRightUnder ctx ended began
         glued = not (separatedByBlank ctx ended began || apart previous current)
         ended = spanOf (fst (NE.last previous))
         began = spanOf (fst (NE.head current))
-        underHeading =
-          isHeading (unLoc (fst (NE.last previous)))
-            && commentRightUnder ctx ended began
 
     isHeading = \case
       DocD _ DocGroup{} -> True
@@ -159,10 +159,6 @@ decls ctx style ds =
         kindOf previous /= kindOf current
           || any standsApart (withoutDistantHaddock previous)
           || any standsApart current
-          || directiveBetween
-            ctx
-            (spanOf (fst (NE.last previous)))
-            (spanOf (fst (NE.head current)))
       Associated -> any documented previous || any documented current
     standsApart (d, printed) =
       isDoc (unLoc d)
@@ -230,7 +226,7 @@ groupDecls ctx isSignatureFile (d : ds)
 isSignatureSeries :: Ctx -> LHsDecl GhcPs -> LHsDecl GhcPs -> Bool
 isSignatureSeries ctx x@(L _ a) y@(L _ b) = case (a, b) of
   (SigD _ TypeSig{}, SigD _ TypeSig{}) ->
-    not (commentPrintedBetween ctx (spanOf x) (spanOf y))
+    nothingWrittenBetween ctx (spanOf x) (spanOf y)
   _ -> False
 
 -- | Two standalone @deriving@ declarations, or two splices, the author ran

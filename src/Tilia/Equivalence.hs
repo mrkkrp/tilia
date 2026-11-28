@@ -574,7 +574,11 @@ commentDifference parsedBefore parsedAfter
 
     inHeader m cs = case lastRearrangedLine m cs of
       Nothing -> const False
-      Just lastLine -> (<= lastLine) . spanStartLine . commentSpan
+      Just lastLine -> \c ->
+        spanStartLine (commentSpan c) <= lastLine
+          && all
+            ((startPoint (commentSpan c) <) . startPoint)
+            (spanOf =<< listToMaybe (hsmodDecls (pmModule m)))
 
     lost = pragmasOf before `Set.difference` pragmasOf after
     headerBefore = headerPragmas parsedBefore

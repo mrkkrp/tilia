@@ -95,7 +95,7 @@ formatted       dfb9d2911e31  Agda-2.8.0/src/full/Agda/Interaction/Response.hs
 formatted       78200769aa4a  Agda-2.8.0/src/full/Agda/Interaction/Response/Base.hs
 formatted       a985c9516710  Agda-2.8.0/src/full/Agda/Interaction/SearchAbout.hs
 partly-checked  f05dc9272c97  Agda-2.8.0/src/full/Agda/Main.hs
-formatted       50a9635d1a57  Agda-2.8.0/src/full/Agda/Mimer/Mimer.hs
+formatted       89199cd198ba  Agda-2.8.0/src/full/Agda/Mimer/Mimer.hs
 formatted       57395b38d2dc  Agda-2.8.0/src/full/Agda/Mimer/Options.hs
 formatted       5fae35c56bb2  Agda-2.8.0/src/full/Agda/Syntax/Abstract.hs
 formatted       9d30f16474b3  Agda-2.8.0/src/full/Agda/Syntax/Abstract/Name.hs
@@ -191,7 +191,7 @@ formatted       d00d3643e1b4  Agda-2.8.0/src/full/Agda/TypeChecking/Constraints.
 formatted       06f64c978a9d  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs
 formatted       ffb9e4d9ba07  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion.hs-boot
 formatted       24a333bdcca1  Agda-2.8.0/src/full/Agda/TypeChecking/Conversion/Pure.hs
-formatted       0ddfd381ec68  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
+formatted       976fa9bd973d  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage.hs
 formatted       ea2d63c03af0  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Cubical.hs
 formatted       bf42ab8aecbd  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/Match.hs
 formatted       25ad1190369c  Agda-2.8.0/src/full/Agda/TypeChecking/Coverage/SplitClause.hs
@@ -236,7 +236,7 @@ formatted       6c602b7a185c  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Men
 formatted       c3e3b3fa768a  Agda-2.8.0/src/full/Agda/TypeChecking/MetaVars/Occurs.hs
 formatted       8a934b2ef2b0  Agda-2.8.0/src/full/Agda/TypeChecking/Modalities.hs
 formatted       1fd16a038ff2  Agda-2.8.0/src/full/Agda/TypeChecking/Monad.hs
-formatted       36d4cc6cbfd0  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base.hs
+formatted       8ccfcc9aa97c  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base.hs
 formatted       23c81d6e4b9a  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base/Types.hs
 formatted       e6b697de6666  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Base/Warning.hs
 formatted       0ef24164a31c  Agda-2.8.0/src/full/Agda/TypeChecking/Monad/Benchmark.hs
@@ -2009,7 +2009,7 @@ formatted       a10147422ed6  esqueleto-3.6.0.3/test/PostgreSQL/MigrateJSON.hs
 formatted       2dde05a2b3f2  esqueleto-3.6.0.3/test/PostgreSQL/Test.hs
 formatted       afd35e1e0f76  esqueleto-3.6.0.3/test/SQLite/Test.hs
 formatted       309fa3598dfd  esqueleto-3.6.0.3/test/Spec.hs
-formatted       b5e20315ef3f  exceptions-0.10.12/src/Control/Monad/Catch.hs
+formatted       cd987fc6ca3b  exceptions-0.10.12/src/Control/Monad/Catch.hs
 formatted       1f33e955665d  exceptions-0.10.12/src/Control/Monad/Catch/Pure.hs
 formatted       7b3e5f654c45  exceptions-0.10.12/tests/Control/Monad/Catch/Tests.hs
 formatted       3391c0943219  exceptions-0.10.12/tests/Tests.hs

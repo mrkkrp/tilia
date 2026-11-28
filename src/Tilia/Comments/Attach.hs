@@ -19,7 +19,9 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
-import Data.Monoid (Endo (..), First (..))
+import Data.Monoid (Endo (..), First (..), Last (..))
+import Data.Semigroup (Max (..))
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 
@@ -29,7 +31,7 @@ import Tilia.Doc
   ( BracketSide (..),
     Doc (..),
     SeparatorSide (..),
-    Spill (..),
+    chosen,
     foldChildren,
     layoutInside,
     namesOnly,
@@ -85,14 +87,18 @@ attachScopedComments margin scopeOf cs doc =
   where
     (written, left) = walk margin placements doc
     (regions, fences, openings) = markedSpans doc
+    gaps = gappedItems doc
     leads = leadingRegions doc
+    elsewhere = endingElsewhere doc
     placements =
       foldMap
         ( \k ->
             placeComments
               (inScope k rs)
               leads
+              elsewhere
               openings
+              gaps
               (inScope k fs)
               (inScope k xs)
         )
@@ -125,6 +131,24 @@ markedSpans d = go d ([], [], [])
         (\ ~(rs, fs, os) -> (rs, fs, s : os)) . go x
       x -> appEndo (foldChildren (Endo . go) x)
 
+-- | The region that finishes printing last before each 'DGap', where no
+-- directive comes after it: the item of a run that the empty line is under.
+gappedItems :: Doc -> [Span]
+gappedItems d = snd (go d (Nothing, []))
+  where
+    go x (above, found) = case x of
+      DLocated _ y@DCppChoice{} -> go y (above, found)
+      DLocated s y
+        | zeroWidth s -> go y (above, found)
+        | otherwise -> (Just s, snd (go y (above, found)))
+      DCppChoice _ bs e ->
+        ( Nothing,
+          foldl (\f a -> snd (go a (Nothing, f))) found (fmap snd bs <> [e])
+        )
+      DCppDirective{} -> (Nothing, found)
+      DGap y -> go y (above, maybe id (:) above found)
+      _ -> foldl (flip go) (above, found) (foldChildren (: []) x)
+
 -- | The innermost region each region prints first, where that one was
 -- written above it, as the Haddock of a constructor, a field or an argument
 -- is.
@@ -135,6 +159,27 @@ leadingRegions = \case
       startPoint h < startPoint s ->
         Map.insert s h (leadingRegions d)
   d -> foldChildren leadingRegions d
+
+-- | The regions that do not print last what was written at their end,
+-- where they print anything written that far, as a signature prints the
+-- Haddock of its last argument under that argument.
+endingElsewhere :: Doc -> Set Span
+endingElsewhere = (\(_, _, found) -> found) . go
+  where
+    go = \case
+      DLocated s d -> spanning s d (Set.insert s)
+      DFence s d -> spanning s d id
+      d -> foldChildren go d
+    spanning s d flag =
+      let (lastOne, furthest, found) = go d
+          elsewhere = case (getLast lastOne, furthest) of
+            (Just (l, further), Just (Max f)) ->
+              further || f >= endPoint s && endPoint l /= endPoint s
+            _ -> False
+       in ( Last (Just (s, elsewhere)),
+            Just (Max (maybe id (max . getMax) furthest (endPoint s))),
+            if elsewhere then flag found else found
+          )
 
 -- | The innermost region a document prints first.
 firstRegion :: Doc -> Maybe Span
@@ -197,10 +242,10 @@ walk margin = go
          in ( DCppChoice cs [(c, d') | (c, (d', _)) <- bs'] e',
               foldr (unclaimedByEither . snd . snd) pe bs'
             )
-      DVariant a b ->
+      DVariant by a b ->
         let (a', _) = go p a
             (b', p') = go p b
-         in (DVariant a' b', p')
+         in (DVariant by a' b', p')
       d
         | Just (w, x) <- unwrap d -> first (wrap w) (go p x)
         | otherwise -> (d, p)
@@ -254,7 +299,7 @@ openingRegion = \case
   DLocated s _ -> Just s
   DCat a b -> after a b
   DIndented _ a b | not (namesOnly a) -> after a b
-  DVariant _ b -> openingRegion b
+  DVariant by a b -> openingRegion (chosen by Broken a b)
   d -> openingRegion . snd =<< unwrap d
   where
     after a b
@@ -282,10 +327,9 @@ opensWithHaddock d = case listToMaybe (fst (firstLine Broken d)) of
       DText t -> ([t], False)
       DCat a b -> both layout a b
       DIndented _ a b | not (namesOnly a) -> both layout a b
-      DVariant a b -> firstLine layout (case layout of Broken -> b; _ -> a)
+      DVariant by a b -> firstLine layout (chosen by layout a b)
       DHardBreak -> ([], True)
       DCloseLine -> ([], True)
-      DCloseLineUnlessAfterOpener _ -> ([], True)
       DBreak -> ([], layout == Broken)
       DSoftBreak -> ([], layout == Broken)
       y
@@ -308,22 +352,25 @@ writtenAs ::
   Doc
 writtenAs margin atTheEnd position c = commentDoc c $ case shapeOf position c of
   InPlace -> case position of
-    Before -> includeUnless glued space <> body <> includeUnless atTheEnd space
-    _ -> space <> body
-  EndsTheLine -> space <> body <> DCloseLine <> gapBelow
-  HeldBack spill ->
-    foldMap (uncurry (heldBack spill)) (numbered c)
-      <> includeWhen (commentJoined c || gapLeft) (DHoldBack spill "")
-  OnItsOwnLines -> ownLines margin atTheEnd c
+    Before ->
+      includeUnless glued space
+        <> DComment InPlace (commentSpan c) body
+        <> includeUnless atTheEnd space
+    _ -> space <> DComment InPlace (commentSpan c) body
+  EndsTheLine -> DComment EndsTheLine (commentSpan c) body <> gapBelow
+  shape@(HeldBack _) ->
+    DComment
+      shape
+      (commentSpan c)
+      (body <> includeWhen gapLeft (DVerbatimBreak AtIndent TrimWhitespace))
+  OnItsOwnLines _ -> ownLines margin atTheEnd c
   where
-    heldBack spill n x
-      | marginLine margin n = DHoldBack SpillAtMargin x
-      | otherwise = DHoldBack spill x
     glued = commentTrailing c && (not atTheEnd || commentFirstInBrackets c)
     body = commentText margin c
     gapBelow = includeWhen (commentGapBelow c && not atTheEnd) blankLine
     gapLeft =
       not (commentTrailing c)
+        && not (commentJoined c)
         && commentGapBelow c
         && all ((> spanEndLine (commentSpan c) + 1) . fst) (commentNextLine c)
 
@@ -338,9 +385,10 @@ ownLines ::
   Comment ->
   Doc
 ownLines margin atTheEnd c =
-  DCloseLineUnlessAfterOpener (commentGapAbove c)
-    <> commentText margin c
-    <> DCloseLine
+  DComment
+    (OnItsOwnLines (commentGapAbove c))
+    (commentSpan c)
+    (commentText margin c)
     <> includeWhen (commentGapBelow c && not atTheEnd) blankLine
 
 -- | A comment, and the spacing that goes with it, as one region.

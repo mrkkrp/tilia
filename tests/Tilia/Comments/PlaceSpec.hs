@@ -163,7 +163,7 @@ spec = do
 
     it "takes lines of its own before a region otherwise" $
       shapeOf Before (firstComment "-- note\nfoo = 1\n")
-        `shouldBe` OnItsOwnLines
+        `shouldBe` OnItsOwnLines False
 
     it "sits in the line after a region when it closes itself" $
       shapeOf (After SpillAtIndentation) (firstComment "foo = 1 {- note -}\n")
@@ -327,7 +327,7 @@ placedIn regions fences src =
       fst
         ( foldl
             collect
-            ([], placeComments regions mempty mempty fences cs)
+            ([], placeComments regions mempty mempty mempty mempty fences cs)
             regions
         )
     collect (found, placements) r = case claimPlaced r placements of

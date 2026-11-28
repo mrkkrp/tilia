@@ -380,9 +380,8 @@ importExportItems ctx xs = case ctxCommaStyle ctx of
     gapAbove before x@(L _ here) = case before of
       Nothing -> mempty
       Just p
-        | isSection here,
-          not (remarkUnder ctx (spanOf p) (spanOf x)) ->
-            hardBreak
+        | isSection here ->
+            itemGap hardBreak
         | isPipe here,
           runsOn (unLoc p) || separatedByBlank ctx (spanOf p) (spanOf x) ->
             hardBreak
@@ -434,9 +433,8 @@ ieItem ctx here = \case
     region . align $
       ( exportWarning warning
           <> ( at ctx n (wrappedName ctx)
-                 >+> layoutWithin
+                 >+> layoutFrom
                    ctx
-                   here
                    (spanOf open <> spanOf close <|> here)
                    ( breakOrSpace
                        <> parens
@@ -548,7 +546,7 @@ importDecl ctx ImportDecl{..} =
               keywordAt (spanOf (fst (al_rest (anns listLoc)))) "hiding"
           listSpan = spanOfSrcSpan (locA listLoc)
           parensSpan = bracketsSpan (al_brackets (anns listLoc)) <|> listSpan
-       in layoutWithin ctx listSpan parensSpan $
+       in layoutFrom ctx parensSpan $
             hidden
               <> breakOrSpace
               <> fence

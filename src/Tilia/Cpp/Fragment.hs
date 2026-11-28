@@ -35,6 +35,7 @@ import Tilia.Doc
     printedFrom,
     regionOf,
     spineAt,
+    ungapped,
   )
 import Tilia.Doc.Combinators (declarationsStart)
 import Tilia.Source (isDirective, offsetOf)
@@ -100,7 +101,7 @@ bodyOf doc = do
 runsOf :: [Doc] -> [Run]
 runsOf items = mapMaybe asRun (pieces (zip [0 ..] items))
   where
-    pieces xs = case break ((== DBreak) . snd) xs of
+    pieces xs = case break ((== DBreak) . ungapped . snd) xs of
       (piece, []) -> [piece]
       (piece, _ : rest) -> piece : pieces rest
     asRun piece = case [(i, e) | (i, d) <- piece, Just e <- [extent d]] of
