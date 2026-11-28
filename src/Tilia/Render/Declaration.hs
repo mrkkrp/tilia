@@ -159,10 +159,6 @@ decls ctx style ds =
         kindOf previous /= kindOf current
           || any standsApart (withoutDistantHaddock previous)
           || any standsApart current
-          || directiveBetween
-            ctx
-            (spanOf (fst (NE.last previous)))
-            (spanOf (fst (NE.head current)))
       Associated -> any documented previous || any documented current
     standsApart (d, printed) =
       isDoc (unLoc d)
